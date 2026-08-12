@@ -1,6 +1,7 @@
 const ALLOWED_ORIGINS = new Set([
   "https://oriens-academy.com",
   "https://www.oriens-academy.com",
+  "https://oriens-v1.netlify.app",
 ]);
 
 export function isAllowedOrigin(origin: string | null): boolean {
