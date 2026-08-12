@@ -1,0 +1,142 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "katex/dist/katex.min.css";
+
+/*
+  Oriens Academy design tokens — sourced exactly from
+  design-system/oriens-academy/MASTER.md §3, §5, §7, §8.
+  Do not introduce new colors, radii, or shadows here without
+  updating MASTER.md first (MASTER.md is the source of truth).
+*/
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-newsreader);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-foreground: var(--brand-accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Radius scale — MASTER.md §7. Hard cap: nothing above 12px. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
+  --radius-4xl: 12px;
+}
+
+:root {
+  /* Primitive tokens — MASTER.md §3 */
+  --ink: #14181f; /* primary text/headings */
+  --secondary: #2b3a55; /* compass navy — secondary text, math/graph strokes */
+  --brand-accent: #a16207; /* bronze/gold — the one controlled accent */
+  --brand-accent-foreground: #ffffff;
+  --background: #faf9f6; /* warm paper */
+  --surface: #ffffff; /* cards, inputs, elevated panels */
+  --surface-muted: #f4f2ed; /* alternate section background */
+  --border: #e4e1d9;
+  --muted-foreground-token: #6b6558;
+  --destructive-token: #b42318;
+
+  /* Semantic aliases consumed by shadcn/Base UI primitives */
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--brand-accent);
+  --primary-foreground: var(--brand-accent-foreground);
+  --secondary-foreground: #ffffff;
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--muted-foreground-token);
+  /*
+    NOTE: shadcn's "--accent" token is a subtle hover/tint background used by
+    generic UI (menu items, expanded states) — it is NOT the brand accent.
+    Mapping it to the warm-muted surface (not gold) prevents accidental large
+    gold fills, per MASTER.md §3's "never use it for large fills" rule.
+    The real brand accent lives at --brand-accent / --color-brand-accent.
+  */
+  --accent: var(--surface-muted);
+  --accent-foreground: var(--ink);
+  --destructive: var(--destructive-token);
+  --destructive-foreground: #ffffff;
+  --input: var(--border);
+  --ring: var(--ink);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
+
+  ::selection {
+    background-color: var(--brand-accent);
+    color: var(--brand-accent-foreground);
+  }
+}
+
+@layer utilities {
+  /* Tabular numerals for stat counters, prices, dates — MASTER.md §4 */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Section anchor offset so the sticky navbar never covers content */
+  .section-offset {
+    scroll-margin-top: 6rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
