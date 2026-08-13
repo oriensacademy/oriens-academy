@@ -1,19 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CompassMark } from "./CompassMark";
-import { OriensWordmark } from "./OriensWordmark";
+import Image from "next/image";
+import { Wave } from "@/components/ui/wave";
 import { LANGUAGE_TRANSITION_STORAGE_KEY } from "./LanguageTransitionProvider";
 import { LoaderRevealProvider } from "./loader-context";
-import { useCommonContent } from "@/content/locale-context";
 
 const STORAGE_KEY = "oriens-loader-seen";
 /** Total on-screen budget for the brand moment — MASTER.md §13: 800–1400ms. */
-const TOTAL_MS = 1300;
-
-const useIsomorphicLayoutEffect =
-  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+const TOTAL_MS = 720;
 
 /**
  * The Oriens compass loading sequence: geometry draws in, the needle
@@ -25,28 +21,33 @@ const useIsomorphicLayoutEffect =
  * §12.
  */
 export function CompassLoader({ children }: { children: React.ReactNode }) {
-  const { loader } = useCommonContent();
+  // Render the initial cover in the server output. Deciding to show it in an
+  // effect caused the reported PAGE -> LOADER -> PAGE flash.
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
   const [skipExit, setSkipExit] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useIsomorphicLayoutEffect(() => {
+  useLayoutEffect(() => {
     const alreadySeen = window.sessionStorage.getItem(STORAGE_KEY) === "1";
     const languageTransitionPending = !!window.sessionStorage.getItem(LANGUAGE_TRANSITION_STORAGE_KEY);
 
     if (alreadySeen || languageTransitionPending || prefersReducedMotion) {
-      setSkipExit(true);
-      setVisible(false);
+      queueMicrotask(() => {
+        setSkipExit(true);
+        setVisible(false);
+      });
       return;
     }
 
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     timeoutRef.current = setTimeout(() => setExiting(true), TOTAL_MS);
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      document.body.style.overflow = previousOverflow;
     };
   }, [prefersReducedMotion]);
 
@@ -64,14 +65,17 @@ export function CompassLoader({ children }: { children: React.ReactNode }) {
         {visible && !exiting && (
           <motion.div
             key="oriens-loader"
-            className="fixed inset-0 z-100 flex flex-col items-center justify-center gap-6 bg-background"
+            data-initial-loader
+            className="fixed inset-0 z-100 flex flex-col items-center justify-center gap-5 bg-background"
             exit={{ opacity: 0 }}
             transition={{ duration: skipExit ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
             role="status"
-            aria-label={loader.ariaLabel}
+            aria-label="Oriens Academy loading"
           >
-            <CompassMark size={88} animated animationDelay={0.05} />
-            <OriensWordmark animated layout="stacked" size="lg" delay={0.72} />
+            <motion.div initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: .3 }}>
+              <Image src="/brand/oriens-icon.png" alt="" width={80} height={80} priority className="size-20 object-contain" />
+            </motion.div>
+            <Wave className="h-5 w-14 text-[#819586] motion-reduce:hidden" aria-label="Oriens Academy loading" />
           </motion.div>
         )}
       </AnimatePresence>

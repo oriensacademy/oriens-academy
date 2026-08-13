@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
-import { ShieldCheck, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
-const CLOUDFLARE_TEST_SITE_KEY = "1x00000000000000000000AA";
+const CLOUDFLARE_TEST_SITE_KEY = "1x00000000000000000000BB";
 
 export interface TurnstileWidgetRef {
   reset: () => void;
@@ -32,6 +32,8 @@ declare global {
           action?: string;
           theme?: "light" | "dark" | "auto";
           language?: string;
+          appearance?: "always" | "execute" | "interaction-only";
+          size?: "normal" | "compact" | "flexible" | "invisible";
         }
       ) => string;
       reset: (widgetId?: string) => void;
@@ -57,7 +59,6 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetRef, TurnstileWidgetPro
     const containerRef = useRef<HTMLDivElement>(null);
     const widgetIdRef = useRef<string | null>(null);
     const [scriptLoaded, setScriptLoaded] = useState(false);
-    const [isDevFallback, setIsDevFallback] = useState(false);
     const [isMissingConfig, setIsMissingConfig] = useState(false);
 
     const envSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -80,7 +81,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetRef, TurnstileWidgetPro
     useEffect(() => {
       if (!envSiteKey) {
         if (isDev) {
-          setIsDevFallback(true);
+          // Local development uses Cloudflare's official non-interactive test key.
         } else {
           setIsMissingConfig(true);
           return;
@@ -136,11 +137,14 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetRef, TurnstileWidgetPro
       }
 
       try {
+        const isInvisibleTestKey = activeSiteKey === "1x00000000000000000000BB";
         const id = window.turnstile.render(containerRef.current, {
           sitekey: activeSiteKey,
           action,
           theme,
           language: locale === "tr" ? "tr" : "en",
+          appearance: isInvisibleTestKey ? "execute" : "interaction-only",
+          size: isInvisibleTestKey ? "invisible" : "flexible",
           callback: (token: string) => {
             onVerify(token);
           },
@@ -187,17 +191,7 @@ export const TurnstileWidget = forwardRef<TurnstileWidgetRef, TurnstileWidgetPro
     }
 
     return (
-      <div className={`my-4 flex flex-col items-start ${className}`}>
-        {isDevFallback && (
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-            <ShieldCheck className="size-3.5" />
-            <span>
-              {locale === "tr"
-                ? "Geliştirme Modu: Cloudflare Test Anahtarı Etkin"
-                : "Development Mode: Cloudflare Test Key Active"}
-            </span>
-          </div>
-        )}
+      <div className={`my-2 flex min-h-0 flex-col items-start ${className}`}>
         <div
           ref={containerRef}
           aria-label={

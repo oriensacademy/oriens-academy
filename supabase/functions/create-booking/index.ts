@@ -210,8 +210,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Trigger transactional emails asynchronously
-    dispatchBookingEmails(supabaseAdmin, {
+    // Complete both delivery attempts and their logs before the edge runtime exits.
+    await dispatchBookingEmails(supabaseAdmin, {
       bookingId: result.booking_id!,
       fullName,
       email,

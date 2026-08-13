@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useRef, useTransition, type FormEvent } from "react";
-import { CheckCircle2, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CheckCircle2, ArrowRight, MessageCircle, Phone } from "lucide-react";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
+import Link from "next/link";
 
-export function ContactForm() {
+export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const locale = useLocale();
   const isTr = locale === "tr";
 
@@ -79,26 +80,60 @@ export function ContactForm() {
     });
   }
 
+  function resetForm() {
+    setFullName("");
+    setEmail("");
+    setPhone("");
+    setSubject("");
+    setMessage("");
+    setPrivacyConsent(false);
+    setTurnstileToken("");
+    setErrors({});
+    setSubmitted(false);
+    turnstileRef.current?.reset();
+  }
+
   if (submitted) {
+    const whatsappMessage = isTr
+      ? "Merhaba Oriens Academy, tanışma görüşmesi hakkında bilgi almak istiyorum."
+      : "Hello Oriens Academy, I would like to get information about an introductory consultation.";
+    const whatsappHref = `https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`;
+
     return (
-      <div role="status" className="border border-border bg-surface p-8 sm:p-12 text-center shadow-sm">
+      <div aria-live="polite" className={`${embedded ? "bg-[#F7F8F4]" : "border border-border bg-surface shadow-sm"} rounded-2xl p-7 text-center sm:p-12`}>
         <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-brand-accent/10 text-brand-accent">
           <CheckCircle2 className="size-8" />
         </div>
         <h2 className="mt-6 text-2xl font-medium text-ink font-heading">
-          {isTr ? "Mesajınız alındı." : "Your message has been received."}
+          {isTr ? "Talebiniz alındı." : "Request received."}
         </h2>
         <p className="mt-3 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
           {isTr
-            ? "Oriens Academy ekibine ulaştığınız için teşekkür ederiz. İletişim bilgileriniz üzerinden kısa süre içinde sizinle iletişime geçilecektir."
-            : "Thank you for contacting Oriens Academy. Our team will review your inquiry and get back to you shortly."}
+            ? "Bilgilerinizi aldık. Ekibimiz en kısa sürede sizinle iletişime geçecek."
+            : "We have your details. Our team will contact you as soon as possible."}
         </p>
+        <p className="mt-6 font-semibold text-ink">{isTr ? "Beklemeye vaktiniz yok mu?" : "Can’t wait?"}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{isTr ? "WhatsApp üzerinden bize hemen ulaşabilirsiniz." : "You can reach us immediately on WhatsApp."}</p>
+        <div className="mx-auto mt-7 grid max-w-lg gap-3 sm:grid-cols-2">
+          <ButtonLink href={whatsappHref} target="_blank" rel="noreferrer" size="lg" className="min-h-12">
+            <MessageCircle className="size-4" aria-hidden="true" />
+            {isTr ? "WhatsApp’tan Yaz" : "Message on WhatsApp"}
+          </ButtonLink>
+          <Button type="button" onClick={resetForm} variant="outline" size="lg" className="min-h-12">
+            {isTr ? "Yeni Talep Oluştur" : "Create a New Request"}
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Button>
+          <ButtonLink href="tel:+905442939040" variant="ghost" className="min-h-11 sm:col-span-2">
+            <Phone className="size-4" aria-hidden="true" />
+            {isTr ? "Bizi Ara" : "Call Us"}
+          </ButtonLink>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="border border-border bg-surface p-6 sm:p-10 shadow-sm">
+    <form onSubmit={handleSubmit} noValidate className={`${embedded ? "bg-transparent" : "border border-border bg-surface shadow-sm"} p-6 sm:p-10`}>
       {errors.submit && (
         <div role="alert" className="mb-6 border-l-4 border-destructive bg-destructive/10 p-4 text-sm font-medium text-destructive">
           {errors.submit}
@@ -112,6 +147,7 @@ export function ContactForm() {
           </label>
           <input
             id="fullName"
+            data-locale-field="contact-full-name"
             type="text"
             required
             value={fullName}
@@ -127,6 +163,7 @@ export function ContactForm() {
           </label>
           <input
             id="email"
+            data-locale-field="contact-email"
             type="email"
             required
             value={email}
@@ -142,6 +179,7 @@ export function ContactForm() {
           </label>
           <input
             id="phone"
+            data-locale-field="contact-phone"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -155,6 +193,7 @@ export function ContactForm() {
           </label>
           <input
             id="subject"
+            data-locale-field="contact-subject"
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -168,6 +207,7 @@ export function ContactForm() {
           </label>
           <textarea
             id="message"
+            data-locale-field="contact-message"
             rows={5}
             required
             value={message}
@@ -182,6 +222,7 @@ export function ContactForm() {
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
+              data-locale-field="contact-privacy"
               checked={privacyConsent}
               onChange={(e) => setPrivacyConsent(e.target.checked)}
               className="mt-1 size-4 rounded border-border text-brand-accent focus:ring-brand-accent"
@@ -190,6 +231,9 @@ export function ContactForm() {
               {isTr
                 ? "İletişim talebimin yanıtlanması amacıyla kişisel verilerimin işlenmesini kabul ediyorum."
                 : "I agree to the processing of my contact information for resolving this inquiry."}{" "}
+              <Link href={`/${locale}/privacy`} className="ml-1 font-semibold underline underline-offset-2">
+                {isTr ? "Gizlilik Politikası" : "Privacy Policy"}
+              </Link>{" "}
               <span className="text-destructive">*</span>
             </span>
           </label>
@@ -228,7 +272,7 @@ export function ContactForm() {
       >
         {isPending
           ? isTr ? "Gönderiliyor..." : "Submitting..."
-          : isTr ? "Mesaj Gönder" : "Send Message"}
+          : isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request"}
         <ArrowRight data-directional-arrow className="size-4 ml-2" />
       </Button>
     </form>

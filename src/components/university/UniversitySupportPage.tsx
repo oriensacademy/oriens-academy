@@ -8,7 +8,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ButtonLink } from "@/components/ui/button";
 import { useLocale, useUniversitySupportContent } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
-import { AcademicDepthVisual } from "./AcademicDepthVisual";
+import { StudyDestinationSection } from "@/components/discovery/StudyDestinationSection";
+import { CONTACT } from "@/config/contact";
+import { OriensLottie } from "@/components/ui/OriensLottie";
 
 const number = (index: number) => String(index + 1).padStart(2, "0");
 
@@ -18,7 +20,7 @@ export function UniversitySupportPage() {
   const sortedAreas = [...content.areas.items].sort((a, b) => a.order - b.order);
   const featured = sortedAreas.find((area) => area.featured) ?? sortedAreas[0];
   const indexedAreas = sortedAreas.filter((area) => area.id !== featured.id);
-  const bookingHref = `${localizedPath("home", locale)}#booking`;
+  const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
 
   return (
     <>
@@ -37,11 +39,10 @@ export function UniversitySupportPage() {
             </ol>
           </nav>
 
-          <div className="mt-9 grid min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-12 lg:grid-cols-12 lg:gap-10">
-            <div className="min-w-0 lg:col-span-6">
+          <div className="mt-9 grid min-w-0 items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,.75fr)]">
+            <div className="min-w-0 max-w-[760px]">
               <Reveal y={10}>
-                <p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.hero.eyebrow}</p>
-                <h1 className="mt-5 max-w-[13ch] text-[clamp(2.8rem,6.2vw,5.8rem)] leading-[0.98] font-medium tracking-[-0.035em] text-ink">
+                <h1 className="max-w-[720px] text-[clamp(50px,5.8vw,86px)] leading-[0.98] font-medium tracking-[-0.035em] text-ink">
                   {content.hero.title}
                 </h1>
                 <p className="mt-7 max-w-[60ch] text-lg leading-[1.75] text-ink/72">{content.hero.description}</p>
@@ -53,8 +54,13 @@ export function UniversitySupportPage() {
                 </div>
               </Reveal>
             </div>
-            <Reveal className="min-w-0 lg:col-span-6" delay={0.12}>
-              <AcademicDepthVisual ariaLabel={content.hero.visualLabel} labels={content.visual.labels} note={content.hero.visualNote} compact />
+            <Reveal y={10} delay={0.08} className="mx-auto w-full max-w-[470px]">
+              <OriensLottie
+                src="/animations/learning.lottie"
+                aspectRatio="learning"
+                speed={0.9}
+                ariaLabel={locale === "tr" ? "Üniversite ders desteği ve öğrenme animasyonu" : "University learning and academic support animation"}
+              />
             </Reveal>
           </div>
         </div>
@@ -79,6 +85,8 @@ export function UniversitySupportPage() {
           </Reveal>
         </div>
       </section>
+
+      <StudyDestinationSection />
 
       <section id="support-areas" className="section-offset border-y border-border bg-surface-muted py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-6 md:px-12">
@@ -138,20 +146,6 @@ export function UniversitySupportPage() {
         </div>
       </section>
 
-      <section className="overflow-hidden border-y border-border bg-surface py-20 md:py-28">
-        <div className="mx-auto grid min-w-0 max-w-[1280px] grid-cols-[minmax(0,1fr)] items-center gap-12 px-6 md:px-12 lg:grid-cols-12 lg:gap-16">
-          <Reveal className="lg:col-span-5">
-            <p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.visual.eyebrow}</p>
-            <h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.visual.title}</h2>
-            <p className="mt-6 text-base leading-[1.8] text-ink/70">{content.visual.description}</p>
-            <p className="mt-7 border-l-2 border-brand-accent pl-4 text-xs leading-relaxed text-muted-foreground">{content.visual.caption}</p>
-          </Reveal>
-          <Reveal className="min-w-0 lg:col-span-7" delay={0.1}>
-            <AcademicDepthVisual ariaLabel={content.visual.ariaLabel} labels={content.visual.labels} />
-          </Reveal>
-        </div>
-      </section>
-
       <section className="py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-6 md:px-12">
           <Reveal><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.approach.eyebrow}</p><h2 className="mt-4 max-w-2xl text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.approach.title}</h2></Reveal>
@@ -205,7 +199,7 @@ export function UniversitySupportPage() {
           <Reveal className="lg:col-span-7"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.cta.eyebrow}</p><h2 className="mt-4 text-[clamp(2.2rem,4vw,3.7rem)] leading-[1.06] font-medium text-ink">{content.cta.title}</h2><p className="mt-5 max-w-[58ch] text-lg leading-relaxed text-ink/70">{content.cta.body}</p></Reveal>
           <Reveal className="flex flex-col gap-3 sm:flex-row lg:col-span-3 lg:flex-col" delay={0.1}>
             <ButtonLink href={bookingHref} directional size="lg" className="h-12 px-5">{content.cta.primary}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
-            <ButtonLink href="mailto:hello@oriens.academy" variant="outline" size="lg" className="h-12 px-5">{content.cta.secondary}<Mail className="size-4" aria-hidden="true" /></ButtonLink>
+            <ButtonLink href={CONTACT.emailHref} variant="outline" size="lg" className="h-12 px-5">{content.cta.secondary}<Mail className="size-4" aria-hidden="true" /></ButtonLink>
           </Reveal>
         </div>
       </section>

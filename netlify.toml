@@ -1,15 +1,12 @@
 # Netlify Production Configuration for Oriens Academy
-# Architecture: Static Export (Next.js out/) + Supabase Backend + Resend Email
+# Architecture: Netlify Next.js runtime + Supabase Backend + Resend Email
 
 [build]
   command = "npm run build"
-  publish = "out"
 
 [build.environment]
   NODE_VERSION = "20.18.0"
   NEXT_TELEMETRY_DISABLED = "1"
-  NETLIFY_NEXT_PLUGIN_SKIP = "true"
-  DISABLE_DEFAULT_NEXT_PLUGIN = "true"
 
 # Root language redirect: clean host-level redirect to Turkish default locale
 [[redirects]]

@@ -7,6 +7,7 @@ export type ContactRequestPayload = {
   locale: "tr" | "en";
   privacyConsent: boolean;
   turnstileToken?: string;
+  source?: "website" | "quick_contact" | "consultation";
 };
 
 export type ContactSuccessResponse = {

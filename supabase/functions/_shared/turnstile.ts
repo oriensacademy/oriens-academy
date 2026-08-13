@@ -4,6 +4,7 @@ const TURNSTILE_SITEVERIFY_URL =
 const ALLOWED_HOSTNAMES = new Set([
   "oriens-academy.com",
   "www.oriens-academy.com",
+  "oriens-v1.netlify.app",
   "localhost",
   "127.0.0.1",
 ]);
@@ -43,10 +44,7 @@ export async function verifyTurnstile(params: {
   const rawSecret = Deno.env.get("TURNSTILE_SECRET_KEY") ?? "";
   const isDevOrTest =
     Deno.env.get("DENO_ENV") === "development" ||
-    Deno.env.get("ENVIRONMENT") === "development" ||
-    token.startsWith("1x0000") ||
-    token.startsWith("2x0000") ||
-    token.startsWith("3x0000");
+    Deno.env.get("ENVIRONMENT") === "development";
 
   let secretKey = rawSecret;
 
@@ -115,7 +113,8 @@ export async function verifyTurnstile(params: {
     }
 
     // Hostname validation
-    if (data.hostname && !ALLOWED_HOSTNAMES.has(data.hostname.toLowerCase())) {
+    const isOfficialTestResponse = secretKey === TEST_SECRET_PASS && data.hostname?.toLowerCase() === "example.com";
+    if (data.hostname && !ALLOWED_HOSTNAMES.has(data.hostname.toLowerCase()) && !isOfficialTestResponse) {
       console.warn(`[turnstile] Invalid hostname: ${data.hostname}`);
       return {
         success: false,

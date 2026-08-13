@@ -7,9 +7,12 @@ import { ButtonLink } from "@/components/ui/button";
 import { CompassMark } from "@/components/brand/CompassMark";
 import { Reveal } from "@/components/motion/Reveal";
 import { ExamDetailVisual } from "./ExamDetailVisual";
+import { ExamOverviewCarouselSection } from "./ExamOverviewCarouselSection";
 import { examRecords, type ExamRecord } from "@/content/exams";
 import { useExamsContent, useLocale } from "@/content/locale-context";
 import { examDetailPath, localizedPath } from "@/lib/routes";
+import { OriensLottie } from "@/components/ui/OriensLottie";
+import { getExamOwnerVisual } from "@/data/exam-visuals";
 
 export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
   const locale = useLocale();
@@ -17,6 +20,7 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
   const summary = examText[exam.code];
   const detail = examDetailText[exam.code];
   const related = exam.relatedExams.map((code) => examRecords.find((candidate) => candidate.code === code)).filter((candidate): candidate is ExamRecord => !!candidate);
+  const ownerVisual = getExamOwnerVisual(exam.code);
 
   return (
     <>
@@ -39,12 +43,18 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
               <p className="mt-8 max-w-2xl font-heading text-[clamp(1.5rem,2.5vw,2.35rem)] leading-[1.15] text-secondary">{summary.title}</p>
               <p className="mt-5 max-w-[62ch] text-lg leading-relaxed text-ink/72">{summary.shortDescription}</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <ButtonLink href={`${localizedPath("home", locale)}#booking`} directional size="lg" className="h-12 px-5">{detailPage.primaryCta}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
+                <ButtonLink href={`${localizedPath("home", locale)}#consultation-form`} directional size="lg" className="h-12 px-5">{detailPage.primaryCta}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
                 <ButtonLink href="#overview" variant="outline" size="lg" className="h-12 px-5">{detailPage.overviewTitle(exam.code)}<ArrowRight className="size-4" aria-hidden="true" /></ButtonLink>
               </div>
             </div>
             <div className="lg:col-span-5">
-              <ExamDetailVisual variant={exam.visualVariant} label={detailPage.visualLabel(exam.code)} />
+              {ownerVisual ? (
+                <div className="mx-auto w-full max-w-[220px] rounded-[2rem] border border-border bg-[#F6F8F3] p-3 sm:max-w-[260px] lg:max-w-[300px]">
+                  <OriensLottie src={ownerVisual.animation} speed={ownerVisual.speed} ariaLabel={ownerVisual.label[locale]} />
+                </div>
+              ) : (
+                <ExamDetailVisual code={exam.code} variant={exam.visualVariant} label={detailPage.visualLabel(exam.code)} />
+              )}
             </div>
           </div>
 
@@ -104,9 +114,11 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
       <section className="overflow-hidden bg-surface-muted py-20 md:py-28">
         <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-6 md:px-12 lg:grid-cols-12">
           <Reveal className="lg:col-span-5"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{detailPage.factsLabel}</p><h2 className="mt-4 text-[clamp(2rem,3vw,2.75rem)] leading-tight font-medium text-ink">{exam.code} · {summary.title}</h2><p className="mt-5 max-w-[50ch] text-base leading-relaxed text-ink/70">{summary.shortDescription}</p></Reveal>
-          <Reveal className="lg:col-span-7" delay={0.08}><ExamDetailVisual variant={exam.visualVariant} label={detailPage.visualLabel(exam.code)} /></Reveal>
+          <Reveal className="lg:col-span-7" delay={0.08}><ExamDetailVisual code={exam.code} variant={exam.visualVariant} label={detailPage.visualLabel(exam.code)} /></Reveal>
         </div>
       </section>
+
+      <ExamOverviewCarouselSection exam={exam} />
 
       <section className="py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-6 md:px-12">
@@ -127,7 +139,7 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
         <div className="relative mx-auto grid max-w-[1280px] gap-10 px-6 md:px-12 lg:grid-cols-12 lg:items-center">
           <Reveal className="lg:col-span-2"><CompassMark size={64} rotation={28} interactive /></Reveal>
           <Reveal className="lg:col-span-7"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{exam.code} · Oriens Academy</p><h2 className="mt-4 text-[clamp(2rem,4vw,3.5rem)] leading-[1.08] font-medium text-ink">{detail.cta.title}</h2><p className="mt-5 max-w-[58ch] text-lg leading-relaxed text-ink/70">{detail.cta.body}</p></Reveal>
-          <Reveal className="flex flex-col gap-3 sm:flex-row lg:col-span-3 lg:flex-col" delay={0.1}><ButtonLink href={`${localizedPath("home", locale)}#booking`} directional size="lg" className="h-12 px-5">{detail.cta.primary}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink><ButtonLink href={localizedPath("exams", locale)} variant="outline" size="lg" className="h-12 px-5">{detail.cta.secondary}</ButtonLink></Reveal>
+          <Reveal className="flex flex-col gap-3 sm:flex-row lg:col-span-3 lg:flex-col" delay={0.1}><ButtonLink href={`${localizedPath("home", locale)}#consultation-form`} directional size="lg" className="h-12 px-5">{detail.cta.primary}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink><ButtonLink href={localizedPath("exams", locale)} variant="outline" size="lg" className="h-12 px-5">{detail.cta.secondary}</ButtonLink></Reveal>
         </div>
       </section>
     </>

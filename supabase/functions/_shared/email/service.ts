@@ -195,7 +195,10 @@ export async function dispatchBookingEmails(
     "notification.admin_locale"
   );
 
-  const adminRecipient = adminEmailConfig?.email ?? "";
+  const configuredRecipient = adminEmailConfig?.email?.trim().toLowerCase();
+  const adminRecipient = !configuredRecipient || configuredRecipient === "notifications@oriens-academy.com"
+    ? "oriensacademy@gmail.com"
+    : configuredRecipient;
   const adminLocale = localeConfig?.locale ?? "tr";
 
   // 1. Dispatch Admin Notification
@@ -244,7 +247,10 @@ export async function dispatchContactEmails(
     "notification.admin_locale"
   );
 
-  const adminRecipient = adminEmailConfig?.email ?? "";
+  const configuredRecipient = adminEmailConfig?.email?.trim().toLowerCase();
+  const adminRecipient = !configuredRecipient || configuredRecipient === "notifications@oriens-academy.com"
+    ? "oriensacademy@gmail.com"
+    : configuredRecipient;
   const adminLocale = localeConfig?.locale ?? "tr";
 
   // 1. Dispatch Admin Notification
@@ -255,10 +261,14 @@ export async function dispatchContactEmails(
     subject: adminTemplate.subject,
     html: adminTemplate.html,
     text: adminTemplate.text,
-    eventType: "contact.created.admin_notification",
+    eventType: contactData.source === "quick_contact"
+      ? "quick_contact.created.admin_notification"
+      : contactData.source === "consultation"
+        ? "consultation.created.admin_notification"
+        : "contact.created.admin_notification",
     entityType: "contact_request",
     entityId: contactData.contactId,
-    idempotencyKey: `contact-admin-${contactData.contactId}`,
+    idempotencyKey: `${contactData.source === "quick_contact" ? "quick-contact" : contactData.source === "consultation" ? "consultation" : "contact"}-admin-${contactData.contactId}`,
   });
 
   // 2. Dispatch Student Acknowledgement
@@ -269,9 +279,13 @@ export async function dispatchContactEmails(
     subject: studentTemplate.subject,
     html: studentTemplate.html,
     text: studentTemplate.text,
-    eventType: "contact.created.student_acknowledgement",
+    eventType: contactData.source === "quick_contact"
+      ? "quick_contact.created.student_acknowledgement"
+      : contactData.source === "consultation"
+        ? "consultation.created.student_acknowledgement"
+        : "contact.created.student_acknowledgement",
     entityType: "contact_request",
     entityId: contactData.contactId,
-    idempotencyKey: `contact-student-${contactData.contactId}`,
+    idempotencyKey: `${contactData.source === "quick_contact" ? "quick-contact" : contactData.source === "consultation" ? "consultation" : "contact"}-student-${contactData.contactId}`,
   });
 }

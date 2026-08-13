@@ -4,12 +4,14 @@ export type AboutTeamMember = {
   id: string;
   name: string;
   role: string;
-  shortBio: string;
+  shortBio?: string;
+  bio?: string;
   education?: string[];
   subjects?: string[];
+  credentials?: string[];
   photo?: { src: string; alt: string; width: number; height: number };
-  active: boolean;
-  order: number;
+  active?: boolean;
+  order?: number;
 };
 
 export type AboutResultMetric = {
@@ -24,14 +26,16 @@ export type AboutResultMetric = {
 export type AboutTestimonial = {
   id: string;
   quote: string;
-  name: string;
-  context: string;
+  name?: string;
+  context?: string;
+  author?: string;
+  role?: string;
   exam?: string;
-  locale: Locale;
-  featured: boolean;
-  order: number;
-  active: boolean;
-  verified: boolean;
+  locale?: Locale;
+  featured?: boolean;
+  order?: number;
+  active?: boolean;
+  verified?: boolean;
 };
 
 export type AboutContent = {
@@ -86,7 +90,7 @@ export type AboutContent = {
     title: string;
     intro: string;
     examLabel: string;
-    links: Array<{ route: "exams" | "universitySupport" | "pricing"; title: string; description: string; linkLabel: string }>;
+    links: Array<{ route: "exams" | "universitySupport" | "pricing" | "contact"; title: string; description: string; linkLabel: string }>;
   };
   testimonials: {
     eyebrow: string;

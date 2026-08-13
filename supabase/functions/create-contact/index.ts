@@ -21,6 +21,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const requestedSource = String(payload.source ?? "website");
+    const source = requestedSource === "quick_contact"
+      ? "quick_contact"
+      : requestedSource === "consultation"
+        ? "consultation"
+        : "website";
+
     // Extract Turnstile token (from body or header)
     const turnstileToken =
       String(payload.turnstileToken ?? "").trim() ||
@@ -31,7 +38,11 @@ Deno.serve(async (req: Request) => {
     // Perform Cloudflare Turnstile bot verification
     const turnstileResult = await verifyTurnstile({
       token: turnstileToken,
-      expectedAction: "contact_submit",
+      expectedAction: source === "quick_contact"
+        ? "quick_contact_submit"
+        : source === "consultation"
+          ? "consultation_submit"
+          : "contact_submit",
       remoteIp: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
     });
 
@@ -132,6 +143,7 @@ Deno.serve(async (req: Request) => {
         locale,
         status: "new",
         privacy_consent: privacyConsent,
+        source,
       })
       .select("id, created_at")
       .single();
@@ -145,8 +157,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Trigger transactional email notifications asynchronously
-    dispatchContactEmails(supabaseAdmin, {
+    // Complete both queued notification writes before the edge runtime can terminate.
+    await dispatchContactEmails(supabaseAdmin, {
       contactId: contactRow.id,
       fullName,
       email,
@@ -154,6 +166,7 @@ Deno.serve(async (req: Request) => {
       subject,
       message,
       locale,
+      source,
       createdAt: contactRow.created_at || nowIso,
     }).catch((err) => {
       console.error("[create-contact] Email dispatch background error:", err);

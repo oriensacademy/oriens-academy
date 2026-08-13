@@ -3,207 +3,234 @@ import { Fingerprint, Globe2, Target, Users, type LucideIcon } from "lucide-reac
 /** Turkish — homepage-specific copy. */
 
 export const hero = {
-  eyebrow: "Uluslararası Eğitim Danışmanlığı",
-  headline: "Hedeflediğiniz üniversiteye giden rotanız.",
-  body: "Oriens Academy, titiz sınav hazırlığını bireysel akademik rehberlikle birleştirir — IB, AP, SAT sınavlarına ve dünya genelinde üniversite başvurularına yön bulan öğrenciler için.",
-  ctaPrimary: "Ücretsiz Görüşme Planla",
-  ctaSecondary: "Metodu İncele",
+  eyebrow: "Uluslararası Sınav Hazırlık & Üniversite Ders Desteği",
+  headline: "Dünyanın en iyi üniversitelerine giden rotanı birlikte çizelim.",
+  body: "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT ve OMPT sınavlarına; sınavın mantığını çözen, hedef odaklı ve ölçülebilir bir hazırlık süreci sunuyoruz.",
+  ctaPrimary: "Ücretsiz Tanışma Görüşmesi",
+  ctaSecondary: "Sınavları İncele",
 };
 
 export const trustResults = {
   eyebrow: "Akademik hedefe göre yapılandırılmış destek",
   items: [
-    { title: "Uluslararası sınav hazırlığı", description: "On iki sınav için ayrı içerik ve ortak bir planlama yaklaşımı." },
-    { title: "Üniversite ders desteği", description: "Kavram tekrarı, problem çözme ve planlı çalışma odağı." },
-    { title: "Türkçe ve İngilizce", description: "İki dilde erişilebilen akademik içerik ve görüşme akışı." },
-    { title: "Şeffaf ücretlendirme", description: "Program seçenekleri ve başlangıç ücretleri ayrı bir sayfada açıkça sunulur." },
+    { title: "Uluslararası sınav hazırlığı", description: "12 sınav için sınava özel hazırlık kurgusu ve birebir antrenman." },
+    { title: "Üniversite ders desteği", description: "Calculus, Lineer Cebir, Diferansiyel Denklemler, İstatistik ve Fizik I-II takviyesi." },
+    { title: "Türkçe ve İngilizce", description: "İki dilde erişilebilen akademik içerik ve ders akışı." },
+    { title: "Şeffaf ücretlendirme", description: "Haziran 2027'ye kadar sabit paket ücretleri ve ücretsiz tanışma görüşmesi." },
   ],
 };
 
 export const examPreparation = {
   eyebrow: "Sınav Hazırlığı",
-  headline: "On iki sınav. Tek bir titiz metot.",
-  body: "Öğrenciyle hedeflediği üniversite arasında hangi sınav olursa olsun, hazırlık aynı disiplinli süreci izler — teşhis edilir, rotası çizilir, ölçülür.",
+  headline: "On iki sınav. Hedef odaklı hazırlık.",
+  body: "Her sınavın kendi dili, puanlama mantığı ve zaman baskısı olduğu için hazırlık o sınava özel kurgulanır.",
   categories: [
     {
-      label: "Lise ve Üniversiteye Giriş",
-      exams: ["IB", "AP", "IGCSE", "SAT", "TMUA", "ESAT"],
+      label: "Uluslararası Sınavlar",
+      exams: ["IB", "AP", "SAT", "ESAT", "TARA", "TMUA"],
     },
     {
-      label: "Özel Kabul Sınavları",
-      exams: ["UKCAT", "IMAT", "OMPT", "TARA"],
-    },
-    {
-      label: "Lisansüstü Sınavlar",
-      exams: ["GRE", "GMAT"],
+      label: "Kabul ve Yerleştirme Sınavları",
+      exams: ["IGCSE", "GRE", "GMAT", "UKCAT", "IMAT", "OMPT"],
     },
   ],
 };
 
 export const oriensMethod = {
-  eyebrow: "Oriens Metodu",
-  headline: "Altı aşama. Tek bir kesintisiz rota.",
+  eyebrow: "Yaklaşımımız",
+  headline: "Ezber değil, sınavın mantığını çözmek.",
   stages: [
     {
       n: "01",
       name: "Anla",
-      copy: "Kapsamlı bir akademik değerlendirme: güçlü yönler, eksikler ve hedeflediğiniz nokta.",
+      copy: "Öğrencinin hedefini, mevcut seviyesini ve eksiklerini netleştiriyoruz.",
     },
     {
       n: "02",
       name: "Planla",
-      copy: "Bulunduğunuz noktadan hedefinize uzanan rotayı çiziyoruz — dersler, zaman çizelgesi, sınavlar.",
+      copy: "Sınavın diline ve formatına uygun birebir çalışma rotası oluşturuyoruz.",
     },
     {
       n: "03",
       name: "Hazırlan",
-      copy: "Çizilen rotaya göre yapılandırılmış, uzman eşliğinde çalışma — hazır bir müfredat değil.",
+      copy: "Konu bazlı derinleşme ve sınava özel pratik teknikleri uyguluyoruz.",
     },
     {
       n: "04",
       name: "Ölç",
-      copy: "Gerçek sınav koşullarında düzenli değerlendirme — ilerleme varsayılmaz, ölçülür.",
+      copy: "Düzenli zamanlı deneme sınavları ile tempo ve zaman yönetimi kazanıyoruz.",
     },
     {
       n: "05",
       name: "İyileştir",
-      copy: "Sonuçlar geldikçe plan güncellenir. Hassasiyet katlanarak artar.",
+      copy: "Deneme sonuçlarına göre eksikleri hızla kapatıyoruz.",
     },
     {
       n: "06",
-      name: "İlerle",
-      copy: "Başvurular, mülakatlar ve kabul mektubuna giden son adım.",
+      name: "Başar",
+      copy: "Sınav gününde yüksek performans ve hedeflenen puan artışı.",
     },
   ],
 };
 
 export const signatureMathematics = {
-  eyebrow: "Hassasiyet, Kanıtlanmış",
-  headline: "Noktayı hareket ettirin. Teğetin nasıl değiştiğini izleyin.",
-  body: "Öğrencilerimizin sınav gününe taşıdığı hassasiyet tam olarak budur — ezberlenmiş bir cevap değil, kavranmış kesin bir ilişki.",
+  eyebrow: "Matematik & Fizik Odağı",
+  headline: "Sınav mantığını kavrayan hassas problem çözme.",
+  body: "Karmaşık sayısal ve mantıksal problemleri basit anlatımla çözülebilir hâle getiriyoruz.",
   sliderLabel: "Eğri üzerindeki konum",
   readout: { point: "Nokta", value: "Değer", slope: "Eğim" },
 };
 
 export const universitySupport = {
   eyebrow: "Üniversite Ders Desteği",
-  headline: "Lisans eğitimi rehberliği bitirmez, yalnızca biçimini değiştirir.",
+  headline: "Sınav hazırlığıyla sınırlı değiliz.",
   areas: [
     {
       n: "I",
-      title: "Ders Ödevleri ve Problem Setleri",
-      copy: "Fen, mühendislik ve sayısal derslerde haftalık destek — problem setlerinden laboratuvar raporlarına.",
+      title: "Calculus & Lineer Cebir",
+      copy: "Üniversite düzeyinde temel matematik derslerinde dönem boyu birebir destek.",
     },
     {
       n: "II",
-      title: "Tez ve Araştırma Danışmanlığı",
-      copy: "Tez düzeyinde argüman kurgusu, metodoloji ve akademik yazım.",
+      title: "Fizik I & Fizik II",
+      copy: "Mühendislik ve fen fakültesi fizik derslerinde ödev ve sınav hazırlığı.",
     },
     {
       n: "III",
-      title: "Sınav ve Vize Yoğunlaştırılmış Programları",
-      copy: "Finallerden önce odaklı tekrar programları — sınavda gerçekten çıkan konular.",
+      title: "Diferansiyel Denklemler & İstatistik",
+      copy: "Konu mantığını kavratan ve final sınavlarına hazırlayan çalışma düzeni.",
     },
     {
       n: "IV",
-      title: "Üniversite İçin Çalışma Becerileri",
-      copy: "Zaman yönetimi, not tutma sistemleri ve liseden üniversiteye geçişin gerektirdiği bağımsız çalışma yöntemi.",
+      title: "Ödev ve Vize/Final Takviyesi",
+      copy: "Dönem içi ders performansını ve sınav notlarını yükselten düzenli antrenman.",
     },
   ],
-  visualCaption: "Birinci sınıftan mezuniyete — tek ve kararlı bir yön.",
+  visualCaption: "Calculus, Lineer Cebir, Fizik I-II ders desteği.",
 };
 
 export const whyOriens = {
   eyebrow: "Neden Oriens?",
-  headline: "Doğru rota için gerekenler.",
+  headline: "Bizi farklı kılan temel özellikler.",
   reasons: [
     {
       icon: Fingerprint as LucideIcon,
-      title: "Kişiye özel, şablona bağlı değil",
-      copy: "Her plan öğrenciye özel olarak hazırlanır — toptan uygulanan hazır bir müfredat asla.",
+      title: "10+ Yıl Deneyim",
+      copy: "Robert Kolej, St. Joseph, Liceo Italiano ve Üsküdar Amerikan öğrencileriyle 10 yılı aşkın birebir deneyim.",
     },
     {
       icon: Target as LucideIcon,
-      title: "Varsayım değil, veri",
-      copy: "Her öneri gerçek değerlendirme verileriyle desteklenir; sürekli takip edilir ve güncellenir.",
+      title: "Ezber Değil Mantık",
+      copy: "Sınavın kendi dilini, puanlama mantığını ve soru yapısını öğreten yaklaşım.",
     },
     {
       icon: Globe2 as LucideIcon,
-      title: "Uluslararası sınav odağı",
-      copy: "IB, AP, SAT ve diğer uluslararası sınavlar için sınava özel hazırlık içerikleri sunulur.",
+      title: "12 Uluslararası Sınav",
+      copy: "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, OMPT uzmanlığı.",
     },
     {
       icon: Users as LucideIcon,
-      title: "Bireysel çalışma yaklaşımı",
-      copy: "Çalışma odağı öğrencinin ihtiyacına, mevcut düzeyine ve akademik hedefine göre netleştirilir.",
+      title: "Birebir Akademik Destek",
+      copy: "Öğrencinin hedefine ve zaman takvimine göre özelleştirilen ders akışı.",
     },
   ],
 };
 
 export const instructorAbout = {
-  eyebrow: "Akademik Rehberlik",
-  name: "Kişiye özel bir akademik rota",
-  body: "Oriens, sınav hazırlığı ile üniversite düzeyindeki akademik desteği öğrencinin ihtiyacına göre planlanan bir çalışma sürecinde bir araya getirir.",
-  credentials: ["İhtiyaç analizi", "Konu odaklı hazırlık", "İlerleme değerlendirmesi"],
-  photoPlaceholder: "Oriens akademik yaklaşımı",
-  tangentCaption: "Her aşamada netleşen bir çalışma yönü.",
+  eyebrow: "Eğitmenimiz",
+  name: "Doğuhan — Matematik & Fizik Eğitmeni",
+  body: "10 yılı aşkın süredir IB, AP, SAT, ESAT, TARA, TMUA ve IGCSE öğrencileriyle birebir çalışıyor; ezber değil sınavın mantığını çözen bir sistem sunuyor.",
+  credentials: ["Robert Kolej", "St. Joseph", "Liceo Italiano", "Üsküdar Amerikan"],
+  photoPlaceholder: "Tutor Doğuhan",
+  tangentCaption: "Uluslararası sınav hazırlığı ve üniversite ders desteği.",
 };
 
 export const resultsTestimonials = {
   eyebrow: "Öğrenci Deneyimi",
-  headline: "Doğrulanmış deneyimler.",
-  functionPlotCaption: "Akademik süreç, düzenli değerlendirmeyle izlenir.",
-  testimonials: [] as Array<{ quote: string; name: string; context: string }>,
+  headline: "111'den fazla değerlendirmeden bir kaçı.",
+  functionPlotCaption: "Gerçek veli ve öğrenci yorumları.",
+  testimonials: [
+    {
+      quote: "Oğlumun IB Fizik notu belirgin şekilde yükseldi, derse artık severek katılıyor.",
+      name: "Ahu G.",
+      context: "Veli · IB Fizik",
+    },
+    {
+      quote: "Oğlumun IB HL Matematik ve Fizik'te motivasyonu ve özgüveni belirgin biçimde arttı.",
+      name: "Yasemin T.",
+      context: "Veli · IB HL Matematik & Fizik",
+    },
+    {
+      quote: "Karmaşık konuları basit anlatımıyla öğretti; tüm matematik ve fizik sınavlarımı yüksek notla geçtim.",
+      name: "Ahmet S.",
+      context: "Öğrenci · Üniversite Fizik",
+    },
+    {
+      quote: "Kısa sürede belirgin bir başarı sağladı, oldukça yetkin bir eğitimci.",
+      name: "Ece A.",
+      context: "Öğrenci · AYT Sınav Hazırlık",
+    },
+    {
+      quote: "Geometriye karşı çekingenliğimi kısa sürede aştırdı, konuları sevdirerek ve pratik ipuçlarıyla öğretti.",
+      name: "Ada Elif A.",
+      context: "Öğrenci · Lise Matematik & Fizik",
+    },
+    {
+      quote: "Kızımızın eksiklerini hızla tespit edip yazılı sınavına başarıyla hazırladı.",
+      name: "Bülent I.",
+      context: "Veli",
+    },
+  ],
 };
 
 export const pricingPreview = {
   eyebrow: "Ücretler",
-  headline: "Takvime değil, hedefe göre kurgulanan programlar.",
-  body: "İlk görüşmenin ardından size özel tam bir teklif sunulur. Aşağıdakiler bir başlangıç noktasıdır.",
+  headline: "Ders Paket Ücretleri",
+  body: "Daha fazla ders, daha avantajlı fiyat. Tanışma görüşmesi her zaman ücretsizdir.",
   featuredTag: "En Çok Tercih Edilen",
-  ctaLabel: "Ücretsiz Görüşme Planla",
+  ctaLabel: "Ücretsiz Tanışma Görüşmesi",
   tiers: [
     {
-      id: "foundation",
-      name: "Temel",
-      description: "Tek bir derse odaklı hazırlık için.",
-      price: "90€'dan başlayan",
-      cadence: "/ seans",
-      features: ["Haftalık birebir dersler", "Kapsamlı değerlendirme", "İlerleme raporlaması"],
+      id: "package5",
+      name: "5 Derslik Paket",
+      description: "Düzenli akademik destek",
+      price: "₺15.000",
+      cadence: "/ paket (%7 indirim)",
+      features: ["60 dakikalık 5 birebir ders", "%7 paket indirimi", "Düzenli konu takibi"],
     },
     {
-      id: "method",
-      name: "Metot",
-      description: "Çok dersli, kapsamlı sınav hazırlık programımız.",
-      price: "320€'dan başlayan",
-      cadence: "/ ay",
+      id: "package10",
+      name: "10 Derslik Paket",
+      description: "Düzenli akademik destek",
+      price: "₺27.000",
+      cadence: "/ paket (%15 indirim)",
       featured: true,
       features: [
-        "Temel pakette olan her şey",
-        "Kapsamlı Oriens Metodu planlaması",
-        "İki haftada bir deneme sınavı",
-        "Eğitmene doğrudan erişim",
+        "60 dakikalık 10 birebir ders",
+        "%15 paket indirimi",
+        "Sınav ve ödev takibi",
+        "En çok tercih edilen paket",
       ],
     },
     {
-      id: "immersive",
-      name: "Tam Kapsamlı",
-      description: "Üniversite başvuru sürecinin sonuna kadar kapsamlı destek.",
-      price: "Özel Teklif",
-      cadence: "",
+      id: "package30",
+      name: "30 Derslik Paket",
+      description: "Uzun vadeli maksimum avantaj",
+      price: "₺72.000",
+      cadence: "/ paket (%25 indirim)",
       features: [
-        "Metot pakette olan her şey",
-        "Üniversite başvuru danışmanlığı",
-        "Mülakat hazırlığı",
-        "Size özel süreç sorumlusu",
+        "60 dakikalık 30 birebir ders",
+        "%25 paket indirimi",
+        "Sezon boyu kesintisiz destek",
+        "En avantajlı birim fiyat (₺2.400)",
       ],
     },
   ],
 };
 
 export const bookingCTA = {
-  headline: "Bir görüşmeyle başlayın.",
-  body: "Ücretsiz ilk görüşmede öğrencinin bugün nerede olduğunu ve hedefe giden gerçekçi rotanın nasıl göründüğünü birlikte değerlendiririz.",
+  headline: "Ücretsiz Tanışma Görüşmesi",
+  body: "Formu doldurun, 24 saat içinde geri dönüş yapalım. İlk görüşme ücretsizdir.",
   successTitle: "Talebiniz alındı.",
   successBody: "Görüşmenizi planlamak için paylaştığınız iletişim bilgileri üzerinden size dönüş yapılacaktır.",
   form: {
@@ -217,7 +244,7 @@ export const bookingCTA = {
     ],
     messageLabel: "Mesaj",
     messageOptional: "(isteğe bağlı)",
-    submit: "Görüşme Talep Et",
+    submit: "Ücretsiz Görüşme Talep Et",
     requiredLabel: "zorunlu",
     errorSummary: "Lütfen aşağıdaki alanları kontrol edin:",
     nameRequired: "Ad soyad alanı zorunludur.",
@@ -228,32 +255,32 @@ export const bookingCTA = {
 
 export const faq = {
   eyebrow: "SSS",
-  headline: "Sorularınızı doğrudan yanıtlıyoruz.",
+  headline: "Sık Sorulan Sorular",
   items: [
     {
       id: "faq-1",
       q: "Oriens Academy hangi sınav sistemlerini kapsıyor?",
-      a: "Lise düzeyinde IB, AP, IGCSE, SAT, TMUA ve ESAT; özel kabul sınavlarında UKCAT, IMAT, OMPT ve TARA; lisansüstü düzeyde ise GRE ve GMAT.",
+      a: "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT ve OMPT sınavlarını kapsıyoruz.",
     },
     {
       id: "faq-2",
-      q: "Dersler yüz yüze mi, çevrimiçi mi yapılıyor?",
-      a: "İkisi de mümkün. Öğrencilerimizin çoğu süreç boyunca aynı eğitmenle uzaktan çalışıyor; yüz yüze dersler ise belirli şehirlerde sunuluyor.",
+      q: "Ders süresi ne kadardır?",
+      a: "Tüm derslerimiz 60 dakika olarak birebir işlenmektedir.",
     },
     {
       id: "faq-3",
-      q: "Bir öğrencinin programı nasıl belirleniyor?",
-      a: "Her program kapsamlı bir değerlendirmeyle başlar. Metot — Anla, Planla, Hazırlan, Ölç, İyileştir, İlerle — önceden varsayılmaz, bu sonuca göre kurgulanır.",
+      q: "Ders ücretleri ne zamana kadar geçerlidir?",
+      a: "Ders ücretlerimiz Haziran 2027 tarihine kadar sabittir.",
     },
     {
       id: "faq-4",
-      q: "Zaten üniversitede olan öğrencilere de destek veriyor musunuz?",
-      a: "Evet — ders desteği, tez ve araştırma danışmanlığı ile sınav yoğunlaştırılmış programları, yalnızca kabul öncesinde değil, lisans ya da lisansüstü eğitim boyunca da sunulur.",
+      q: "Üniversite ders desteğinde hangi dersler var?",
+      a: "Calculus, Lineer Cebir, Diferansiyel Denklemler, İstatistik, Fizik I ve Fizik II derslerinde takviye sağlıyoruz.",
     },
     {
       id: "faq-5",
-      q: "Görüşmeden sonra süreç nasıl işliyor?",
-      a: "İki iş günü içinde; önerilen programı, sıklığı ve hedef sınava ya da başvuru dönemine giden ilk zaman çizelgesini içeren yazılı bir teklif alırsınız.",
+      q: "Tanışma görüşmesi ücretli mi?",
+      a: "Hayır. İlk tanışma görüşmesi tamamen ücretsizdir.",
     },
   ],
 };
@@ -283,7 +310,7 @@ export const bookingFlow = {
   ],
   supportTypeOptions: [
     { value: "exam_preparation", label: "Sınav Hazırlığı", description: "IB, AP, SAT veya üniversite giriş sınavlarına yönelik özel destek." },
-    { value: "university_support", label: "Üniversite Ders Desteği", description: "Lisans dersleri, nicel alanlar ve tez rehberliği." },
+    { value: "university_support", label: "Üniversite Ders Desteği", description: "Calculus, Lineer Cebir, Fizik ve nicel ders desteği." },
     { value: "general_consultation", label: "Genel Akademik Danışmanlık", description: "Yol haritası analizi ve genel akademik strateji kurgusu." },
   ],
   step1: {
@@ -328,4 +355,3 @@ export const bookingFlow = {
     continue: "Devam Et",
   },
 };
-

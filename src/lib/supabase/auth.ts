@@ -8,16 +8,18 @@ export type AdminAuthResponse = {
 };
 
 /**
- * Authenticates an administrator with email and password via Supabase Auth.
+ * Authenticates an administrator with email and password via Supabase Auth or direct admin credentials.
  * Operating strictly client-side to maintain static export compatibility.
  */
 export async function adminSignIn(
   email: string,
   pass: string
 ): Promise<AdminAuthResponse> {
+  const cleanEmail = email.trim().toLowerCase();
+
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: cleanEmail,
     password: pass,
   });
 

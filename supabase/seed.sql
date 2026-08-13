@@ -1,0 +1,5 @@
+-- Intentionally contains no Auth-table inserts.
+-- Local Auth users are created through GoTrue's supported Admin API by:
+--   npm run local:admin:setup
+-- This file exists so `supabase db reset` remains warning-free and so the
+-- authentication schema is never coupled to private GoTrue table internals.

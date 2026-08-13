@@ -3,213 +3,240 @@ import { Fingerprint, Globe2, Target, Users, type LucideIcon } from "lucide-reac
 /** English — homepage-specific copy. */
 
 export const hero = {
-  eyebrow: "International Education Consultancy",
-  headline: "Your bearing to the university you're aiming for.",
-  body: "Oriens Academy pairs rigorous exam preparation with individual academic guidance — for students navigating IB, AP, SAT and university admissions worldwide.",
-  ctaPrimary: "Book a Consultation",
-  ctaSecondary: "Explore the Method",
+  eyebrow: "International Exam Preparation & Academic Consultancy",
+  headline: "Let's chart your course to the world's leading universities.",
+  body: "We prepare students for IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT and OMPT through a focused, measurable process built around how each exam actually works.",
+  ctaPrimary: "Free Intro Call",
+  ctaSecondary: "Explore Exams",
 };
 
 export const trustResults = {
   eyebrow: "Support structured around academic goals",
   items: [
-    { title: "International exam preparation", description: "Dedicated content for twelve exams within one clear planning approach." },
-    { title: "University academic support", description: "Concept review, problem solving and structured study support." },
-    { title: "Turkish and English", description: "Academic content and consultation journeys available in both languages." },
-    { title: "Transparent pricing", description: "Programme options and starting prices are clearly presented on a dedicated page." },
+    { title: "International exam preparation", description: "Exam-specific preparation and 1-on-1 practice for twelve target exams." },
+    { title: "University course support", description: "Support in Calculus, Linear Algebra, Differential Equations, Statistics, and Physics I-II." },
+    { title: "Bilingual delivery", description: "Academic content and consultation available in both Turkish and English." },
+    { title: "Transparent pricing", description: "Fixed package fees guaranteed until June 2027 and a free intro call." },
   ],
 };
 
 export const examPreparation = {
   eyebrow: "Exam Preparation",
-  headline: "Twelve exams. One rigorous method.",
-  body: "Whichever qualification stands between a student and their target university, preparation follows the same disciplined process — diagnosed, mapped, measured.",
+  headline: "Twelve exams. Goal-focused preparation.",
+  body: "Every exam has its own language, scoring logic, and time pressure, so preparation is built around that exam specifically.",
   categories: [
     {
-      label: "Secondary & University Entrance",
-      exams: ["IB", "AP", "IGCSE", "SAT", "TMUA", "ESAT"],
+      label: "International Qualifications",
+      exams: ["IB", "AP", "SAT", "ESAT", "TARA", "TMUA"],
     },
     {
-      label: "Specialist Admissions Tests",
-      exams: ["UKCAT", "IMAT", "OMPT", "TARA"],
-    },
-    {
-      label: "Graduate & Postgraduate",
-      exams: ["GRE", "GMAT"],
+      label: "Admissions & Placement Tests",
+      exams: ["IGCSE", "GRE", "GMAT", "UKCAT", "IMAT", "OMPT"],
     },
   ],
 };
 
 export const oriensMethod = {
-  eyebrow: "The Oriens Method",
-  headline: "Six stages. One continuous bearing.",
+  eyebrow: "Our Approach",
+  headline: "Understanding the exam logic, not memorisation.",
   stages: [
     {
       n: "01",
       name: "Understand",
-      copy: "A full academic diagnostic: strengths, gaps, and the target you're aiming for.",
+      copy: "We clarify the student's goals, current level, and topic gaps.",
     },
     {
       n: "02",
-      name: "Map",
-      copy: "We chart the specific route — subjects, timelines, exams — from where you are to where you're going.",
+      name: "Plan",
+      copy: "We build a 1-on-1 study route aligned with the exam's language and format.",
     },
     {
       n: "03",
       name: "Prepare",
-      copy: "Structured, expert-led tutoring against the map, not a generic curriculum.",
+      copy: "We apply subject-level depth and exam-specific techniques.",
     },
     {
       n: "04",
       name: "Measure",
-      copy: "Regular assessment under real exam conditions — progress is tracked, not assumed.",
+      copy: "We build pacing and time management through regular timed mock exams.",
     },
     {
       n: "05",
       name: "Refine",
-      copy: "The plan adjusts as results come in. Precision compounds.",
+      copy: "We rapidly close identified gaps based on mock exam results.",
     },
     {
       n: "06",
-      name: "Advance",
-      copy: "Applications, interviews, and the final approach to the offer.",
+      name: "Achieve",
+      copy: "High performance on exam day and target score improvement.",
     },
   ],
 };
 
 export const signatureMathematics = {
-  eyebrow: "Precision, Demonstrated",
-  headline: "Move the point. Watch the tangent respond.",
-  body: "This is the kind of precision our students bring to exam day — not a memorized answer, but an exact relationship, understood.",
+  eyebrow: "Maths & Physics Focus",
+  headline: "Precise problem solving that grasps exam logic.",
+  body: "We break down complex quantitative and logical problems into simple, clear solutions.",
   sliderLabel: "Position along the curve",
   readout: { point: "Point", value: "Value", slope: "Slope" },
 };
 
 export const universitySupport = {
   eyebrow: "University Support",
-  headline: "The degree doesn't end the guidance. It changes its shape.",
+  headline: "We go beyond exam preparation.",
   areas: [
     {
       n: "I",
-      title: "Coursework & Problem Sets",
-      copy: "Week-to-week support across STEM and quantitative courses, from problem sets to lab reports.",
+      title: "Calculus & Linear Algebra",
+      copy: "Term-long 1-on-1 support for core university mathematics courses.",
     },
     {
       n: "II",
-      title: "Thesis & Research Guidance",
-      copy: "Structuring arguments, methodology and academic writing at dissertation level.",
+      title: "Physics I & Physics II",
+      copy: "Homework help and final-exam preparation for engineering and science physics.",
     },
     {
       n: "III",
-      title: "Exam & Midterm Intensives",
-      copy: "Focused revision sprints before finals — the material that actually appears on the exam.",
+      title: "Differential Equations & Statistics",
+      copy: "A study routine built around understanding core concepts for midterms and finals.",
     },
     {
       n: "IV",
-      title: "Study Skills for University",
-      copy: "Time management, note systems and the independent-learning method the transition from school demands.",
+      title: "Coursework & Final Exam Prep",
+      copy: "Regular practice that improves in-term performance and exam grades.",
     },
   ],
-  visualCaption: "First year to graduation — a single, deliberate direction of travel.",
+  visualCaption: "Support in Calculus, Linear Algebra, Statistics, Physics I-II.",
 };
 
 export const whyOriens = {
   eyebrow: "Why Oriens",
-  headline: "What a bearing actually requires.",
+  headline: "What sets us apart.",
   reasons: [
     {
       icon: Fingerprint as LucideIcon,
-      title: "Bespoke, not templated",
-      copy: "Every plan is mapped to the individual student — never a generic curriculum applied at scale.",
+      title: "10+ Years Experience",
+      copy: "Over 10 years of 1-on-1 experience with Robert College, St. Joseph, Liceo Italiano, and Üsküdar American students.",
     },
     {
       icon: Target as LucideIcon,
-      title: "Evidence over assumption",
-      copy: "Every recommendation is backed by real diagnostic data, tracked and revisited.",
+      title: "Exam Logic over Memorisation",
+      copy: "An approach built around how each exam actually works and its scoring logic.",
     },
     {
       icon: Globe2 as LucideIcon,
-      title: "International exam focus",
-      copy: "Exam-specific preparation content is available for IB, AP, SAT and other international assessments.",
+      title: "12 International Exams",
+      copy: "Specialist expertise in IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, and OMPT.",
     },
     {
       icon: Users as LucideIcon,
-      title: "An individual approach",
-      copy: "The focus is shaped around the student's needs, current level and academic goal.",
+      title: "1-on-1 Academic Support",
+      copy: "Custom-tailored study flow built around the student's goals and timeline.",
     },
   ],
 };
 
 export const instructorAbout = {
-  eyebrow: "Academic Guidance",
-  name: "An academic route shaped around the student",
-  body: "Oriens brings exam preparation and university-level academic support together in a study process planned around individual needs.",
-  credentials: ["Needs analysis", "Subject-focused preparation", "Progress review"],
-  photoPlaceholder: "The Oriens academic approach",
-  tangentCaption: "A clearer direction at every stage.",
+  eyebrow: "Our Tutor",
+  name: "Doğuhan — Mathematics & Physics Tutor",
+  body: "Over 10 years of 1-on-1 work with IB, AP, SAT, ESAT, TARA, TMUA and IGCSE students — an approach built on understanding exam logic, not memorisation.",
+  credentials: ["Robert College", "St. Joseph", "Liceo Italiano", "Üsküdar American"],
+  photoPlaceholder: "Tutor Doğuhan",
+  tangentCaption: "International exam preparation & university course support.",
 };
 
 export const resultsTestimonials = {
   eyebrow: "Student Experience",
-  headline: "Verified experiences.",
-  functionPlotCaption: "Academic progress is reviewed throughout the process.",
-  testimonials: [] as Array<{ quote: string; name: string; context: string }>,
+  headline: "A few of over 111 student and parent reviews.",
+  functionPlotCaption: "Real student and parent reviews.",
+  testimonials: [
+    {
+      quote: "My son's IB Physics grade improved noticeably, and he now enjoys the subject.",
+      name: "Ahu G.",
+      context: "Parent · IB Physics",
+    },
+    {
+      quote: "My son's motivation and confidence in IB HL Maths and Physics grew noticeably.",
+      name: "Yasemin T.",
+      context: "Parent · IB HL Maths & Physics",
+    },
+    {
+      quote: "He teaches hard subjects in simple ways — I passed all my maths and physics exams with high grades.",
+      name: "Ahmet S.",
+      context: "Student · University Physics",
+    },
+    {
+      quote: "Delivered noticeable progress in a short time — a highly capable tutor.",
+      name: "Ece A.",
+      context: "Student · AYT Exam Prep",
+    },
+    {
+      quote: "Helped me get over my fear of geometry quickly, making the subject enjoyable with practical tips.",
+      name: "Ada Elif A.",
+      context: "Student · High School Maths & Physics",
+    },
+    {
+      quote: "Quickly identified our daughter's gaps and prepared her successfully for her written exam.",
+      name: "Bülent I.",
+      context: "Parent",
+    },
+  ],
 };
 
 export const pricingPreview = {
-  eyebrow: "Pricing",
-  headline: "Programs built around the destination, not the calendar.",
-  body: "A full proposal follows the initial consultation. This is a starting point.",
-  featuredTag: "Most Chosen",
-  ctaLabel: "Book a Consultation",
+  eyebrow: "Fees",
+  headline: "Lesson Package Fees",
+  body: "More lessons, better value. The intro call is always free.",
+  featuredTag: "Most Popular",
+  ctaLabel: "Free Intro Call",
   tiers: [
     {
-      id: "foundation",
-      name: "Foundation",
-      description: "For focused, single-subject preparation.",
-      price: "From €90",
-      cadence: "/ session",
-      features: ["Weekly 1:1 sessions", "Full diagnostic assessment", "Progress reporting"],
+      id: "package5",
+      name: "5-Lesson Package",
+      description: "Regular academic support",
+      price: "₺15,000",
+      cadence: "/ package (7% discount)",
+      features: ["5 60-minute 1:1 lessons", "7% package discount", "Regular topic review"],
     },
     {
-      id: "method",
-      name: "Method",
-      description: "Our full multi-subject exam preparation program.",
-      price: "From €320",
-      cadence: "/ month",
+      id: "package10",
+      name: "10-Lesson Package",
+      description: "Regular academic support",
+      price: "₺27,000",
+      cadence: "/ package (15% discount)",
       featured: true,
       features: [
-        "Everything in Foundation",
-        "Full Oriens Method mapping",
-        "Bi-weekly mock exams",
-        "Direct instructor access",
+        "10 60-minute 1:1 lessons",
+        "15% package discount",
+        "Exam and homework tracking",
+        "Most popular package",
       ],
     },
     {
-      id: "immersive",
-      name: "Immersive",
-      description: "Comprehensive support through university admissions.",
-      price: "Custom",
-      cadence: "",
+      id: "package30",
+      name: "30-Lesson Package",
+      description: "Maximum long-term value",
+      price: "₺72,000",
+      cadence: "/ package (25% discount)",
       features: [
-        "Everything in Method",
-        "University application guidance",
-        "Interview preparation",
-        "Dedicated case manager",
+        "30 60-minute 1:1 lessons",
+        "25% package discount",
+        "Season-long academic support",
+        "Best per-lesson price (₺2,400)",
       ],
     },
   ],
 };
 
 export const bookingCTA = {
-  headline: "Begin with a conversation.",
-  body: "In a complimentary initial consultation, we'll discuss where the student stands today and what a realistic route to their target looks like.",
+  headline: "Free Intro Call",
+  body: "Fill in the form and we'll get back to you within 24 hours. The first call is free.",
   successTitle: "Request received.",
-  successBody: "We'll use the contact details you shared to follow up and arrange the consultation.",
+  successBody: "We will reach out to you using the contact details provided to schedule your call.",
   form: {
-    name: "Full name",
+    name: "Full Name",
     email: "Email",
-    interestLabel: "I'm interested in",
+    interestLabel: "I am interested in",
     interestOptions: [
       { value: "exam-preparation", label: "Exam Preparation" },
       { value: "university-support", label: "University Support" },
@@ -217,7 +244,7 @@ export const bookingCTA = {
     ],
     messageLabel: "Message",
     messageOptional: "(optional)",
-    submit: "Request a Consultation",
+    submit: "Request Free Intro Call",
     requiredLabel: "required",
     errorSummary: "Please check the following fields:",
     nameRequired: "Full name is required.",
@@ -228,32 +255,32 @@ export const bookingCTA = {
 
 export const faq = {
   eyebrow: "FAQ",
-  headline: "Questions, answered directly.",
+  headline: "Frequently Asked Questions",
   items: [
     {
       id: "faq-1",
       q: "Which exam systems does Oriens Academy cover?",
-      a: "IB, AP, IGCSE, SAT, TMUA and ESAT at secondary level; UKCAT, IMAT, OMPT and TARA for specialist admissions; and GRE and GMAT at graduate level.",
+      a: "We cover IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, and OMPT exams.",
     },
     {
       id: "faq-2",
-      q: "Are sessions delivered in person or online?",
-      a: "Both. Most students work with us remotely, with the same instructor throughout — in-person sessions are available in select cities.",
+      q: "How long is each lesson?",
+      a: "All of our lessons run for 60 minutes, delivered 1-on-1.",
     },
     {
       id: "faq-3",
-      q: "How is a student's program decided?",
-      a: "Every program begins with a full diagnostic assessment. The Method — Understand, Map, Prepare, Measure, Refine, Advance — is built from that result, not assumed in advance.",
+      q: "How long are these fees valid for?",
+      a: "Our lesson fees are fixed until June 2027.",
     },
     {
       id: "faq-4",
-      q: "Do you support students already at university?",
-      a: "Yes — coursework support, thesis and research guidance, and exam intensives are available throughout an undergraduate or graduate degree, not only before admission.",
+      q: "Which courses are included in university support?",
+      a: "We provide support in Calculus, Linear Algebra, Differential Equations, Statistics, Physics I, and Physics II.",
     },
     {
       id: "faq-5",
-      q: "What happens after the consultation?",
-      a: "You'll receive a written proposal within two business days, outlining the recommended program, cadence, and an initial timeline toward the target exam or intake.",
+      q: "Is the introductory call free?",
+      a: "Yes. The initial intro call is always completely free.",
     },
   ],
 };
@@ -283,7 +310,7 @@ export const bookingFlow = {
   ],
   supportTypeOptions: [
     { value: "exam_preparation", label: "Exam Preparation", description: "Targeted support for IB, AP, SAT, or specialist admissions tests." },
-    { value: "university_support", label: "University Support", description: "Coursework, quantitative subjects, and thesis guidance." },
+    { value: "university_support", label: "University Support", description: "Support in Calculus, Linear Algebra, Physics, and STEM courses." },
     { value: "general_consultation", label: "General Consultation", description: "Academic roadmap diagnostic and general strategic planning." },
   ],
   step1: {
@@ -328,4 +355,3 @@ export const bookingFlow = {
     continue: "Continue",
   },
 };
-

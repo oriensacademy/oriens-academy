@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useState } from "react";
 import { useReducedMotion } from "motion/react";
-import { SplitFlapDisplay } from "./exam-selector/SplitFlapDisplay";
 import { ExamSearch } from "./exam-selector/ExamSearch";
 import { CompassNeedle } from "@/components/brand/CompassNeedle";
 import { examCodes } from "@/content/shared";
@@ -40,10 +39,9 @@ export function ExamSelector({ value, onChange, disabled, error, className, id }
   const prefersReducedMotion = useReducedMotion();
 
   const [idleIndex, setIdleIndex] = useState(0);
-  const [focused, setFocused] = useState(false);
   const [returning, setReturning] = useState(false);
 
-  const isIdle = value === null && !focused;
+  const isIdle = value === null;
 
   useEffect(() => {
     if (!isIdle || prefersReducedMotion) return;
@@ -65,28 +63,18 @@ export function ExamSelector({ value, onChange, disabled, error, className, id }
       </label>
 
       {value === null && (
-        <>
-          <div
-            aria-hidden="true"
-            className="mt-3 flex h-8 items-center border-b border-border text-sm font-medium tracking-[0.04em] text-muted-foreground uppercase"
-          >
-            <SplitFlapDisplay text={examCodes[idleIndex]} className="min-w-[6ch]" />
-          </div>
-
-          <div className="mt-3">
+        <div className="mt-3">
             <ExamSearch
               id={inputId}
               exams={examCodes}
+              placeholderExample={examCodes[idleIndex]}
               disabled={disabled}
               autoFocus={returning}
               aria-describedby={error ? errorId : undefined}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
               onSelectExam={(code) => onChange({ type: "exam", code })}
               onSelectOther={() => onChange({ type: "other", label: "" })}
             />
-          </div>
-        </>
+        </div>
       )}
 
       {value?.type === "exam" && (

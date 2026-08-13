@@ -40,7 +40,7 @@ export const footer = {
   socialEmailLabel: "E-posta",
   copyright: "Tüm hakları saklıdır.",
   legal: [
-    { label: "Gizlilik Politikası", href: "#" },
-    { label: "Kullanım Koşulları", href: "#" },
+    { label: "Gizlilik Politikası", href: "/tr/privacy" },
+    { label: "Kullanım Koşulları", href: "/tr/terms" },
   ],
 };

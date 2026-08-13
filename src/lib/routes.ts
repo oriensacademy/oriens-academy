@@ -7,7 +7,10 @@ export type LocalizedRouteId =
   | "about"
   | "contact"
   | "universitySupport"
-  | "booking";
+  | "booking"
+  | "assessment"
+  | "privacy"
+  | "terms";
 
 const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   home: { tr: "", en: "" },
@@ -17,7 +20,9 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   contact: { tr: "iletisim", en: "contact" },
   universitySupport: { tr: "universite-destegi", en: "university-support" },
   booking: { tr: "randevu", en: "booking" },
-
+  assessment: { tr: "degerlendirme", en: "assessment" },
+  privacy: { tr: "privacy", en: "privacy" },
+  terms: { tr: "terms", en: "terms" },
 };
 
 export function localizedPath(route: LocalizedRouteId, locale: Locale): string {
@@ -48,6 +53,12 @@ export function bookingSegment(locale: Locale): string {
 export function contactSegment(locale: Locale): string {
   return localizedSegments.contact[locale];
 }
+
+export function assessmentSegment(locale: Locale): string {
+  return localizedSegments.assessment[locale];
+}
+export function privacySegment(locale: Locale): string { return localizedSegments.privacy[locale]; }
+export function termsSegment(locale: Locale): string { return localizedSegments.terms[locale]; }
 
 
 

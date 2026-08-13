@@ -1,9 +1,10 @@
 "use client";
 
 import { Reveal } from "@/components/motion/Reveal";
-import { StaggerGroup, StaggerItem } from "@/components/motion/Stagger";
-import { AnimatedParabola } from "@/components/math/AnimatedParabola";
-import { useHomeContent } from "@/content/locale-context";
+import { AcademicSubjectMotifs } from "@/components/ui/academic-subject-motifs";
+import { GradientCard } from "@/components/gradient-card";
+import { useHomeContent, useLocale } from "@/content/locale-context";
+import { localizedPath } from "@/lib/routes";
 
 /**
  * Deliberately not twelve identical cards — an editorial index instead,
@@ -12,6 +13,7 @@ import { useHomeContent } from "@/content/locale-context";
  */
 export function ExamPreparation() {
   const { examPreparation } = useHomeContent();
+  const locale = useLocale();
   return (
     <section id="exam-preparation" className="section-offset bg-surface-muted py-20 md:py-28">
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
@@ -32,29 +34,23 @@ export function ExamPreparation() {
             </Reveal>
           </div>
 
-          <Reveal delay={0.2} className="hidden w-full max-w-[220px] shrink-0 lg:block">
-            <AnimatedParabola
-              domain={{ xMin: -4, xMax: 4, yMin: -3, yMax: 5, width: 220, height: 200, padding: 16 }}
-              showVertex
-            />
+          <Reveal delay={0.2} className="w-full max-w-[520px] shrink-0 lg:max-w-[440px]">
+            <AcademicSubjectMotifs />
           </Reveal>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-x-12 gap-y-12 md:grid-cols-3">
+        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-2">
           {examPreparation.categories.map((category, categoryIndex) => (
             <Reveal key={category.label} delay={0.1 + categoryIndex * 0.08}>
-              <h3 className="text-sm font-medium tracking-[0.08em] text-muted-foreground uppercase">
-                {category.label}
-              </h3>
-              <StaggerGroup className="mt-5 flex flex-wrap gap-x-3 gap-y-2">
-                {category.exams.map((exam) => (
-                  <StaggerItem key={exam}>
-                    <span className="inline-block border-b border-transparent font-heading text-2xl text-ink transition-colors duration-200 hover:border-brand-accent md:text-3xl">
-                      {exam}
-                    </span>
-                  </StaggerItem>
-                ))}
-              </StaggerGroup>
+              <GradientCard
+                gradient={categoryIndex === 0 ? "navy" : "gold"}
+                badgeText={category.label}
+                title={category.exams.join(" · ")}
+                description={examPreparation.body}
+                ctaText={locale === "tr" ? "Sınavları incele" : "Explore exams"}
+                ctaHref={localizedPath("exams", locale)}
+                className="min-h-[300px]"
+              />
             </Reveal>
           ))}
         </div>

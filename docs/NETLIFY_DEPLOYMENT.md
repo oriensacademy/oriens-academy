@@ -12,7 +12,7 @@ oriens-academy.com / oriens-v1.netlify.app
         ▼
 NETLIFY (Site ID: 2c0acef1-d0ec-4d17-8f1e-23bb373b7e5f)
 Frontend / CDN / HTTPS
-Next.js static export (`output: "export"`, `trailingSlash: true`)
+Next.js runtime through Netlify OpenNext (`trailingSlash: true`)
         │
         ▼
 SUPABASE (Project Ref: mwbrlfmdpbkmdjroxhcc)
@@ -26,13 +26,13 @@ RESEND
 Transactional email (Triggered by Supabase Edge Functions)
 ```
 
-- **Frontend**: Deployed to Netlify (`oriens-v1.netlify.app`) as a pure static HTML/CSS/JS export.
+- **Frontend / Runtime API**: Netlify serves static assets and provisions the Next.js runtime for SSR and Route Handlers.
 - **Backend / Database**: Hosted on Supabase.
 - **Email**: Handled by Resend via Supabase Edge Functions.
 
 ---
 
-## 2. Netlify Configuration & Static Export
+## 2. Netlify Next.js Runtime Configuration
 
 Configured in [`netlify.toml`](file:///C:/Users/merto/Desktop/oriens-academy.com/netlify.toml) and [`next.config.ts`](file:///C:/Users/merto/Desktop/oriens-academy.com/next.config.ts):
 
@@ -40,11 +40,10 @@ Configured in [`netlify.toml`](file:///C:/Users/merto/Desktop/oriens-academy.com
 |---|---|---|
 | **Site Name** | `oriens-v1` | Linked Netlify production project |
 | **Site ID** | `2c0acef1-d0ec-4d17-8f1e-23bb373b7e5f` | Netlify project API identifier |
-| **Build Command** | `npm run build` | Next.js static compilation (`next build`) |
-| **Publish Directory** | `out` | Exported static HTML/CSS/JS bundle |
+| **Build Command** | `npm run build` | Next.js production build (`next build`) |
+| **Runtime Adapter** | Netlify OpenNext | Provisions Route Handlers and other Next.js runtime output |
 | **Node Version** | `20.18.0` | Stable Node.js major runtime |
-| **Next Plugin Bypass** | `NETLIFY_NEXT_PLUGIN_SKIP=true`, `DISABLE_DEFAULT_NEXT_PLUGIN=true` | Prevents Netlify from auto-injecting SSR/Edge functions |
-| **Routing Mode** | `trailingSlash: true` | Static folder index hierarchy (`out/tr/index.html`, etc.) |
+| **Routing Mode** | `trailingSlash: true` | Preserves the established public URL format |
 
 ---
 
@@ -87,7 +86,7 @@ The following secrets reside **EXCLUSIVELY** inside Supabase Edge Function Secre
 ## 5. Host-Level Redirect & 404 Routing
 
 - **Root Language Redirect**: HTTP 302 redirect from `/` to `/tr/`.
-- **Static 404 Handling**: `out/404.html` is generated on build and served by Netlify for unmapped URLs. SPA catch-all (`/* /index.html 200`) is explicitly disabled.
+- **404 Handling**: Next.js and the Netlify runtime handle unmapped routes. No SPA catch-all rewrite is configured.
 
 ---
 

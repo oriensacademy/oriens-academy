@@ -26,8 +26,8 @@ npx supabase secrets set RESEND_FROM_EMAIL="Oriens Academy <notifications@notify
 
 Notification recipient addresses are stored in the private `site_settings` table (`is_public = false`). They cannot be queried by public anonymous connections.
 
-- `notification.booking_email`: `{"email": "admin@oriens-academy.com"}`
-- `notification.contact_email`: `{"email": "admin@oriens-academy.com"}`
+- `notification.booking_email`: admin-editable; application fallback `{"email": "oriensacademy@gmail.com"}`
+- `notification.contact_email`: admin-editable; application fallback `{"email": "oriensacademy@gmail.com"}`
 - `notification.admin_locale`: `{"locale": "tr"}`
 
 Admin panel settings UI (future phase) will update these rows directly.

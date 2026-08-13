@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ExamDetailPage } from "@/components/exams/ExamDetailPage";
 import { Footer } from "@/components/sections/Footer";
-import { Navbar } from "@/components/sections/Navbar";
 import { getDictionary, isLocale } from "@/content/dictionaries";
 import { examBySlug, examRecords } from "@/content/exams";
 import { examDetailPath, examHubSegment } from "@/lib/routes";
@@ -48,7 +47,6 @@ export default async function ExamPage({ params }: { params: Promise<Params> }) 
 
   return (
     <>
-      <Navbar />
       <main id="main-content">
         <ExamDetailPage exam={exam} />
       </main>

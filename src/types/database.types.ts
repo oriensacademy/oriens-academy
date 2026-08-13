@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -7,8 +7,6 @@
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.15"
   }
@@ -38,6 +36,888 @@ export type Database = {
           role?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      countries: {
+        Row: {
+          active: boolean
+          aliases: string[]
+          created_at: string
+          id: string
+          iso2: string
+          iso3: string
+          name: string
+          region: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          iso2: string
+          iso3: string
+          name: string
+          region?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          aliases?: string[]
+          created_at?: string
+          id?: string
+          iso2?: string
+          iso3?: string
+          name?: string
+          region?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      universities: {
+        Row: {
+          active: boolean
+          admissions_url: string | null
+          city: string | null
+          country_id: string
+          created_at: string
+          id: string
+          institution_type: string
+          logo_url: string | null
+          name: string
+          normalized_name: string
+          popularity_score: number | null
+          ranking_value: number | null
+          slug: string
+          state_or_region: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          active?: boolean
+          admissions_url?: string | null
+          city?: string | null
+          country_id: string
+          created_at?: string
+          id?: string
+          institution_type?: string
+          logo_url?: string | null
+          name: string
+          normalized_name: string
+          popularity_score?: number | null
+          ranking_value?: number | null
+          slug: string
+          state_or_region?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          active?: boolean
+          admissions_url?: string | null
+          city?: string | null
+          country_id?: string
+          created_at?: string
+          id?: string
+          institution_type?: string
+          logo_url?: string | null
+          name?: string
+          normalized_name?: string
+          popularity_score?: number | null
+          ranking_value?: number | null
+          slug?: string
+          state_or_region?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "universities_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      fields_of_study: {
+        Row: {
+          active: boolean
+          aliases: string[]
+          code: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          aliases?: string[]
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          aliases?: string[]
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fields_of_study_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "fields_of_study"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      programs: {
+        Row: {
+          active: boolean
+          application_url: string | null
+          campus: string | null
+          country_id: string | null
+          created_at: string
+          degree_level: string
+          degree_title: string | null
+          duration: string | null
+          duration_unit: string | null
+          duration_value: number | null
+          faculty: string | null
+          faculty_or_department: string | null
+          field_of_study: string | null
+          field_of_study_id: string | null
+          id: string
+          language: string
+          name: string
+          normalized_name: string
+          official_program_url: string | null
+          slug: string
+          source_id: string | null
+          study_mode: string | null
+          university_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          application_url?: string | null
+          campus?: string | null
+          country_id?: string | null
+          created_at?: string
+          degree_level?: string
+          degree_title?: string | null
+          duration?: string | null
+          duration_unit?: string | null
+          duration_value?: number | null
+          faculty?: string | null
+          faculty_or_department?: string | null
+          field_of_study?: string | null
+          field_of_study_id?: string | null
+          id?: string
+          language?: string
+          name: string
+          normalized_name: string
+          official_program_url?: string | null
+          slug: string
+          source_id?: string | null
+          study_mode?: string | null
+          university_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          application_url?: string | null
+          campus?: string | null
+          country_id?: string | null
+          created_at?: string
+          degree_level?: string
+          degree_title?: string | null
+          duration?: string | null
+          duration_unit?: string | null
+          duration_value?: number | null
+          faculty?: string | null
+          faculty_or_department?: string | null
+          field_of_study?: string | null
+          field_of_study_id?: string | null
+          id?: string
+          language?: string
+          name?: string
+          normalized_name?: string
+          official_program_url?: string | null
+          slug?: string
+          source_id?: string | null
+          study_mode?: string | null
+          university_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programs_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programs_field_of_study_id_fkey"
+            columns: ["field_of_study_id"]
+            isOneToOne: false
+            referencedRelation: "fields_of_study"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programs_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_programs_source_id"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "admission_sources"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      program_external_identifiers: {
+        Row: {
+          created_at: string
+          external_id: string
+          id: string
+          metadata: Json
+          program_id: string
+          source_type: string
+          source_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_id: string
+          id?: string
+          metadata?: Json
+          program_id: string
+          source_type: string
+          source_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_id?: string
+          id?: string
+          metadata?: Json
+          program_id?: string
+          source_type?: string
+          source_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_external_identifiers_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      qualifications: {
+        Row: {
+          active: boolean
+          category: string
+          code: string
+          country_scope: string | null
+          created_at: string
+          description: string | null
+          id: string
+          maximum_possible_score: number | null
+          minimum_possible_score: number | null
+          name: string
+          official_url: string | null
+          score_type: string | null
+          short_name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category: string
+          code: string
+          country_scope?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          maximum_possible_score?: number | null
+          minimum_possible_score?: number | null
+          name: string
+          official_url?: string | null
+          score_type?: string | null
+          short_name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          code?: string
+          country_scope?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          maximum_possible_score?: number | null
+          minimum_possible_score?: number | null
+          name?: string
+          official_url?: string | null
+          score_type?: string | null
+          short_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      admission_sources: {
+        Row: {
+          academic_year: number
+          active: boolean
+          canonical_url: string | null
+          content_hash: string | null
+          created_at: string
+          http_status: number | null
+          id: string
+          is_official: boolean
+          language: string | null
+          page_title: string | null
+          program_id: string | null
+          publisher: string | null
+          retrieved_at: string
+          source_type: string
+          title: string
+          university_id: string | null
+          updated_at: string
+          url: string
+          verified_at: string
+        }
+        Insert: {
+          academic_year?: number
+          active?: boolean
+          canonical_url?: string | null
+          content_hash?: string | null
+          created_at?: string
+          http_status?: number | null
+          id?: string
+          is_official?: boolean
+          language?: string | null
+          page_title?: string | null
+          program_id?: string | null
+          publisher?: string | null
+          retrieved_at?: string
+          source_type: string
+          title: string
+          university_id?: string | null
+          updated_at?: string
+          url: string
+          verified_at?: string
+        }
+        Update: {
+          academic_year?: number
+          active?: boolean
+          canonical_url?: string | null
+          content_hash?: string | null
+          created_at?: string
+          http_status?: number | null
+          id?: string
+          is_official?: boolean
+          language?: string | null
+          page_title?: string | null
+          program_id?: string | null
+          publisher?: string | null
+          retrieved_at?: string
+          source_type?: string
+          title?: string
+          university_id?: string | null
+          updated_at?: string
+          url?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admission_sources_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admission_sources_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      admission_source_snapshots: {
+        Row: {
+          content_hash: string
+          created_at: string
+          http_headers: Json
+          id: string
+          raw_payload: Json
+          snapshot_excerpt: string | null
+          source_id: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          http_headers?: Json
+          id?: string
+          raw_payload?: Json
+          snapshot_excerpt?: string | null
+          source_id: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          http_headers?: Json
+          id?: string
+          raw_payload?: Json
+          snapshot_excerpt?: string | null
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admission_source_snapshots_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "admission_sources"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      admission_requirement_groups: {
+        Row: {
+          created_at: string
+          id: string
+          logical_operator: string
+          name: string | null
+          parent_group_id: string | null
+          program_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logical_operator?: string
+          name?: string | null
+          parent_group_id?: string | null
+          program_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logical_operator?: string
+          name?: string | null
+          parent_group_id?: string | null
+          program_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admission_requirement_groups_parent_group_id_fkey"
+            columns: ["parent_group_id"]
+            isOneToOne: false
+            referencedRelation: "admission_requirement_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admission_requirement_groups_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      admission_requirements: {
+        Row: {
+          academic_year: number
+          admission_cycle: string
+          applicant_country_id: string | null
+          applicant_curriculum: string | null
+          applicant_type: string
+          created_at: string
+          data_confidence: string
+          effective_from: string | null
+          effective_until: string | null
+          exact_grade: string | null
+          grade_text: string | null
+          group_id: string
+          id: string
+          intake_term: string | null
+          level_requirement: string | null
+          maximum_numeric_score: number | null
+          minimum_numeric_score: number | null
+          minimum_score: number | null
+          notes: string | null
+          program_id: string | null
+          qualification_id: string | null
+          raw_evidence: Json
+          recommended_numeric_score: number | null
+          recommended_score: number | null
+          requirement_status: string
+          requirement_type: string
+          source_id: string | null
+          subject_id: string | null
+          subject_minimum_score: string | null
+          subject_name: string | null
+          subject_requirement: string | null
+          updated_at: string
+        }
+        Insert: {
+          academic_year?: number
+          admission_cycle?: string
+          applicant_country_id?: string | null
+          applicant_curriculum?: string | null
+          applicant_type?: string
+          created_at?: string
+          data_confidence?: string
+          effective_from?: string | null
+          effective_until?: string | null
+          exact_grade?: string | null
+          grade_text?: string | null
+          group_id: string
+          id?: string
+          intake_term?: string | null
+          level_requirement?: string | null
+          maximum_numeric_score?: number | null
+          minimum_numeric_score?: number | null
+          minimum_score?: number | null
+          notes?: string | null
+          program_id?: string | null
+          qualification_id?: string | null
+          raw_evidence?: Json
+          recommended_numeric_score?: number | null
+          recommended_score?: number | null
+          requirement_status?: string
+          requirement_type?: string
+          source_id?: string | null
+          subject_id?: string | null
+          subject_minimum_score?: string | null
+          subject_name?: string | null
+          subject_requirement?: string | null
+          updated_at?: string
+        }
+        Update: {
+          academic_year?: number
+          admission_cycle?: string
+          applicant_country_id?: string | null
+          applicant_curriculum?: string | null
+          applicant_type?: string
+          created_at?: string
+          data_confidence?: string
+          effective_from?: string | null
+          effective_until?: string | null
+          exact_grade?: string | null
+          grade_text?: string | null
+          group_id?: string
+          id?: string
+          intake_term?: string | null
+          level_requirement?: string | null
+          maximum_numeric_score?: number | null
+          minimum_numeric_score?: number | null
+          minimum_score?: number | null
+          notes?: string | null
+          program_id?: string | null
+          qualification_id?: string | null
+          raw_evidence?: Json
+          recommended_numeric_score?: number | null
+          recommended_score?: number | null
+          requirement_status?: string
+          requirement_type?: string
+          source_id?: string | null
+          subject_id?: string | null
+          subject_minimum_score?: string | null
+          subject_name?: string | null
+          subject_requirement?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admission_requirements_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "admission_requirement_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admission_requirements_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admission_requirements_qualification_id_fkey"
+            columns: ["qualification_id"]
+            isOneToOne: false
+            referencedRelation: "qualifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admission_requirements_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "admission_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admission_requirements_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "fields_of_study"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admission_requirements_applicant_country_id_fkey"
+            columns: ["applicant_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      university_domains: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          is_primary: boolean
+          root_domain: string
+          source_url: string | null
+          university_id: string
+          updated_at: string
+          verification_method: string | null
+          verification_status: string
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          is_primary?: boolean
+          root_domain: string
+          source_url?: string | null
+          university_id: string
+          updated_at?: string
+          verification_method?: string | null
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          is_primary?: boolean
+          root_domain?: string
+          source_url?: string | null
+          university_id?: string
+          updated_at?: string
+          verification_method?: string | null
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "university_domains_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      university_source_registry: {
+        Row: {
+          canonical_url: string | null
+          content_type: string
+          created_at: string
+          discovered_at: string
+          domain: string | null
+          http_status: number | null
+          id: string
+          is_official: boolean
+          language: string | null
+          last_checked_at: string | null
+          metadata: Json
+          notes: string | null
+          page_title: string | null
+          priority: number
+          provenance_type: string
+          source_type: string
+          status: string
+          university_id: string
+          updated_at: string
+          url: string
+          verification_status: string
+        }
+        Insert: {
+          canonical_url?: string | null
+          content_type?: string
+          created_at?: string
+          discovered_at?: string
+          domain?: string | null
+          http_status?: number | null
+          id?: string
+          is_official?: boolean
+          language?: string | null
+          last_checked_at?: string | null
+          metadata?: Json
+          notes?: string | null
+          page_title?: string | null
+          priority?: number
+          provenance_type?: string
+          source_type: string
+          status?: string
+          university_id: string
+          updated_at?: string
+          url: string
+          verification_status?: string
+        }
+        Update: {
+          canonical_url?: string | null
+          content_type?: string
+          created_at?: string
+          discovered_at?: string
+          domain?: string | null
+          http_status?: number | null
+          id?: string
+          is_official?: boolean
+          language?: string | null
+          last_checked_at?: string | null
+          metadata?: Json
+          notes?: string | null
+          page_title?: string | null
+          priority?: number
+          provenance_type?: string
+          source_type?: string
+          status?: string
+          university_id?: string
+          updated_at?: string
+          url?: string
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "university_source_registry_university_id_fkey"
+            columns: ["university_id"]
+            isOneToOne: false
+            referencedRelation: "universities"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      ingestion_runs: {
+        Row: {
+          created_at: string
+          error_summary: Json
+          finished_at: string | null
+          id: string
+          records_discovered: number
+          records_failed: number
+          records_inserted: number
+          records_skipped: number
+          records_updated: number
+          run_type: string
+          source: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_summary?: Json
+          finished_at?: string | null
+          id?: string
+          records_discovered?: number
+          records_failed?: number
+          records_inserted?: number
+          records_skipped?: number
+          records_updated?: number
+          run_type: string
+          source: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_summary?: Json
+          finished_at?: string | null
+          id?: string
+          records_discovered?: number
+          records_failed?: number
+          records_inserted?: number
+          records_skipped?: number
+          records_updated?: number
+          run_type?: string
+          source?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      search_aliases: {
+        Row: {
+          alias: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          language: string
+          normalized_alias: string
+          priority: number
+          updated_at: string
+        }
+        Insert: {
+          alias: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          language?: string
+          normalized_alias: string
+          priority?: number
+          updated_at?: string
+        }
+        Update: {
+          alias?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          language?: string
+          normalized_alias?: string
+          priority?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -84,7 +964,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
-          ends_at: string
+          ends_at?: string
           id?: string
           starts_at: string
           status?: string
@@ -160,7 +1040,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "availability_slots"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       contact_requests: {
@@ -259,10 +1139,21 @@ export type Database = {
           billing_basis: string
           created_at: string
           currency: string
+          current_total: number | null
+          description_en: string | null
+          description_tr: string | null
+          discount_percentage: number | null
           display_order: number
           featured: boolean
           id: string
+          badge_en: string | null
+          badge_tr: string | null
+          lesson_count: number | null
+          name_en: string | null
+          name_tr: string | null
+          old_total: number | null
           price_amount: number | null
+          unit_price: number | null
           updated_at: string
           updated_by: string | null
         }
@@ -271,10 +1162,21 @@ export type Database = {
           billing_basis: string
           created_at?: string
           currency?: string
+          current_total?: number | null
+          description_en?: string | null
+          description_tr?: string | null
+          discount_percentage?: number | null
           display_order?: number
           featured?: boolean
           id: string
+          badge_en?: string | null
+          badge_tr?: string | null
+          lesson_count?: number | null
+          name_en?: string | null
+          name_tr?: string | null
+          old_total?: number | null
           price_amount?: number | null
+          unit_price?: number | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -283,10 +1185,21 @@ export type Database = {
           billing_basis?: string
           created_at?: string
           currency?: string
+          current_total?: number | null
+          description_en?: string | null
+          description_tr?: string | null
+          discount_percentage?: number | null
           display_order?: number
           featured?: boolean
           id?: string
+          badge_en?: string | null
+          badge_tr?: string | null
+          lesson_count?: number | null
+          name_en?: string | null
+          name_tr?: string | null
+          old_total?: number | null
           price_amount?: number | null
+          unit_price?: number | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -327,6 +1240,7 @@ export type Database = {
           id: string
           locale: string
           name: string
+          profile_image_url: string | null
           quote: string
           updated_at: string
           updated_by: string | null
@@ -342,6 +1256,7 @@ export type Database = {
           id?: string
           locale?: string
           name: string
+          profile_image_url?: string | null
           quote: string
           updated_at?: string
           updated_by?: string | null
@@ -357,6 +1272,7 @@ export type Database = {
           id?: string
           locale?: string
           name?: string
+          profile_image_url?: string | null
           quote?: string
           updated_at?: string
           updated_by?: string | null
@@ -385,6 +1301,25 @@ export type Database = {
           p_support_type?: string
         }
         Returns: Json
+      }
+      search_autocomplete_entities: {
+        Args: {
+          p_query: string
+          p_limit?: number
+        }
+        Returns: {
+          entity_id: string
+          entity_type: string
+          title: string
+          subtitle: string
+          slug: string
+          match_layer: number
+          score: number
+          country_iso2: string
+          country_name: string
+          badge: string
+          official_url: string
+        }[]
       }
     }
     Enums: {

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
 import { CompassMark } from "@/components/brand/CompassMark";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonLink } from "@/components/ui/button";
@@ -13,64 +12,13 @@ import {
 } from "@/content/exams";
 import { useExamsContent, useLocale } from "@/content/locale-context";
 import { examDetailPath } from "@/lib/routes";
+import { OriensLottie } from "@/components/ui/OriensLottie";
+import { CONTACT } from "@/config/contact";
+import { ThreeDPhotoCarousel, type ThreeDCarouselCard } from "@/components/ui/3d-carousel";
 
-function ExamRouteVisual({ label }: { label: string }) {
-  const reducedMotion = useReducedMotion();
-  const duration = reducedMotion ? 0 : 1.1;
-
-  return (
-    <svg
-      viewBox="0 0 560 360"
-      role="img"
-      aria-label={label}
-      className="h-auto w-full"
-      fill="none"
-    >
-      <title>{label}</title>
-      <g stroke="var(--border)" strokeWidth="1">
-        {[80, 160, 240, 320, 400, 480].map((x) => <line key={`x-${x}`} x1={x} y1="24" x2={x} y2="336" />)}
-        {[60, 120, 180, 240, 300].map((y) => <line key={`y-${y}`} x1="24" y1={y} x2="536" y2={y} />)}
-      </g>
-      <line x1="24" y1="300" x2="536" y2="300" stroke="var(--secondary)" strokeWidth="1.25" />
-      <line x1="80" y1="336" x2="80" y2="24" stroke="var(--secondary)" strokeWidth="1.25" />
-      <motion.path
-        d="M80 300 C150 284 166 220 236 218 S340 150 388 158 S452 112 500 64"
-        stroke="var(--secondary)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        initial={{ pathLength: reducedMotion ? 1 : 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ duration, ease: [0.22, 1, 0.36, 1], delay: reducedMotion ? 0 : 0.15 }}
-      />
-      {[
-        { x: 80, y: 300, text: "O" },
-        { x: 236, y: 218, text: "01" },
-        { x: 388, y: 158, text: "06" },
-      ].map((point, index) => (
-        <motion.g
-          key={point.text}
-          initial={{ opacity: reducedMotion ? 1 : 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reducedMotion ? 0 : 0.35 + index * 0.18 }}
-        >
-          <circle cx={point.x} cy={point.y} r="4" fill="var(--background)" stroke="var(--ink)" strokeWidth="1.5" />
-          <text x={point.x + 10} y={point.y - 10} fill="var(--muted-foreground)" fontSize="10" fontFamily="var(--font-inter)">{point.text}</text>
-        </motion.g>
-      ))}
-      <motion.g
-        initial={{ opacity: reducedMotion ? 1 : 0, scale: reducedMotion ? 1 : 0.75 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: reducedMotion ? 0 : 0.35, delay: reducedMotion ? 0 : 1 }}
-        style={{ transformOrigin: "500px 64px" }}
-      >
-        <circle cx="500" cy="64" r="10" fill="var(--background)" stroke="var(--brand-accent)" strokeWidth="2" />
-        <circle cx="500" cy="64" r="3" fill="var(--brand-accent)" />
-      </motion.g>
-      <text x="96" y="326" fill="var(--muted-foreground)" fontSize="10" fontFamily="var(--font-inter)">x</text>
-      <text x="61" y="42" fill="var(--muted-foreground)" fontSize="10" fontFamily="var(--font-inter)">y</text>
-      <text x="390" y="91" fill="var(--brand-accent)" fontSize="11" fontWeight="600" fontFamily="var(--font-inter)" letterSpacing="1.6">DESTINATION</text>
-    </svg>
-  );
+function academicCard(code: string, label: string, background: string): ThreeDCarouselCard {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><rect width="640" height="640" rx="48" fill="${background}"/><path d="M80 104h480M80 536h480" stroke="#D6B56D" stroke-width="4" stroke-dasharray="12 14"/><text x="72" y="330" fill="#10271B" font-family="Georgia,serif" font-size="142">${code}</text><text x="78" y="390" fill="#405A49" font-family="Arial,sans-serif" font-size="24">${label}</text><text x="78" y="500" fill="#10271B" font-family="Arial,sans-serif" font-size="18" letter-spacing="5">ORIENS ACADEMY</text></svg>`;
+  return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, alt: `${code} — ${label}` };
 }
 
 export function ExamHub() {
@@ -79,6 +27,9 @@ export function ExamHub() {
   const featured = examRecords.filter((exam) => exam.featured);
   const primaryFeature = featured[0];
   const secondaryFeatures = featured.slice(1);
+  const galleryCards = featured.slice(0, 8).map((exam, index) =>
+    academicCard(exam.code, examText[exam.code].title, index % 2 === 0 ? "#E6EDE5" : "#F7F1E2")
+  );
 
   return (
     <>
@@ -95,10 +46,29 @@ export function ExamHub() {
               <span>{page.heroNote}</span>
             </div>
           </div>
-          <div className="relative lg:col-span-5">
-            <div className="absolute inset-y-8 left-0 border-l border-border" aria-hidden="true" />
-            <ExamRouteVisual label={locale === "tr" ? "Hedefe ilerleyen koordinat rotası" : "A coordinate route progressing towards a destination"} />
+
+          <div className="relative mx-auto w-full max-w-[500px] lg:col-span-5">
+            <div className="rounded-[2rem] border border-border bg-[#F6F8F3] p-3 sm:p-5">
+              <OriensLottie
+                src="/animations/exams-preparation.lottie"
+                speed={0.9}
+                ariaLabel={locale === "tr" ? "Uluslararası sınav hazırlığı animasyonu" : "International exam preparation animation"}
+              />
+            </div>
           </div>
+        </div>
+      </section>
+
+      <section className="overflow-hidden border-b border-border bg-[#10271B] py-14 text-white md:py-20" aria-labelledby="academic-gallery-title">
+        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
+          <p className="text-xs font-medium tracking-[0.24em] text-[#D6B56D] uppercase">{page.featuredEyebrow}</p>
+          <h2 id="academic-gallery-title" className="mt-4 max-w-2xl text-[clamp(2rem,3vw,2.75rem)] leading-tight">
+            {locale === "tr" ? "Hazırlık alanlarını keşfedin." : "Explore preparation pathways."}
+          </h2>
+          <div className="mt-8 rounded-[2rem] border border-white/15 bg-white/5">
+            <ThreeDPhotoCarousel cards={galleryCards} />
+          </div>
+          <p className="mt-4 text-sm text-white/60">{locale === "tr" ? "Kartları sürükleyerek döndürün; ayrıntı için seçin." : "Drag to rotate the cards; select one for detail."}</p>
         </div>
       </section>
 
@@ -250,8 +220,8 @@ export function ExamHub() {
             </Reveal>
           </div>
           <Reveal className="flex flex-col gap-3 sm:flex-row lg:col-span-3 lg:flex-col" delay={0.1}>
-            <ButtonLink href={`/${locale}#booking`} directional size="lg" className="h-12 px-5 text-sm">{page.cta.primary}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
-            <ButtonLink href="mailto:hello@oriens.academy" variant="outline" size="lg" className="h-12 px-5 text-sm">{page.cta.secondary}</ButtonLink>
+            <ButtonLink href={`/${locale}#consultation-form`} directional size="lg" className="h-12 px-5 text-sm">{page.cta.primary}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
+            <ButtonLink href={CONTACT.emailHref} variant="outline" size="lg" className="h-12 px-5 text-sm">{page.cta.secondary}</ButtonLink>
           </Reveal>
         </div>
       </section>

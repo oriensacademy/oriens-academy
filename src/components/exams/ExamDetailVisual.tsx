@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { AnimatedParabola } from "@/components/math/AnimatedParabola";
 import { FunctionPlot } from "@/components/math/FunctionPlot";
 import { VectorAnimation } from "@/components/math/VectorAnimation";
-import type { ExamVisualVariant } from "@/content/exams";
+import type { ExamCode, ExamVisualVariant } from "@/content/exams";
 
 const domain = { xMin: -4, xMax: 4, yMin: -3, yMax: 4, width: 520, height: 310, padding: 28 };
 
@@ -33,10 +33,31 @@ function GeometryVisual() {
   );
 }
 
-export function ExamDetailVisual({ variant, label }: { variant: ExamVisualVariant; label: string }) {
+const signaturePaths: Record<ExamCode, string> = {
+  IB: "M8 34 C19 8 45 8 56 34 C45 58 19 58 8 34Z M15 34H49 M32 12V56",
+  AP: "M8 51H56 M14 47V35 M25 47V25 M36 47V16 M47 47V8",
+  SAT: "M8 12H56V54H8Z M24 12V54 M40 12V54 M8 26H56 M8 40H56",
+  ESAT: "M8 48L23 19L34 42L45 12L56 48 M13 48H51",
+  TARA: "M8 16H33 M33 16L25 9 M33 16L25 23 M33 16V47 M33 47H56",
+  TMUA: "M8 49L25 18L39 40L56 12 M25 18L56 49",
+  IGCSE: "M9 12H27V30H9Z M37 12H55V30H37Z M9 38H27V56H9Z M37 38H55V56H37Z",
+  GRE: "M8 50C18 50 18 37 28 37S38 24 47 24H56 M50 18L56 24L50 30",
+  GMAT: "M8 50V36H20V25H33V15H46V8H56 M8 50H56",
+  UKCAT: "M8 33H21L27 19L37 47L43 33H56",
+  IMAT: "M32 8V56 M8 32H56 M16 16L48 48 M48 16L16 48",
+  OMPT: "M8 48C18 14 45 14 56 48 M8 48H56 M32 16V48",
+};
+
+function ExamSignature({ code, reduced }: { code: ExamCode; reduced: boolean }) {
+  return <div className="absolute top-4 right-4 z-10 rounded-xl border border-border bg-background/85 p-2.5 backdrop-blur-sm" aria-hidden="true"><svg viewBox="0 0 64 64" className="size-12 fill-none"><motion.path d={signaturePaths[code]} stroke="var(--brand-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: reduced ? 1 : 0 }} animate={{ pathLength: 1 }} transition={{ duration: reduced ? 0 : 0.75, ease: [0.22, 1, 0.36, 1] }} /></svg><span className="mt-1 block text-center text-[8px] font-bold tracking-[0.18em] text-secondary">{code}</span></div>;
+}
+
+export function ExamDetailVisual({ variant, label, code }: { variant: ExamVisualVariant; label: string; code: ExamCode }) {
+  const reduced = !!useReducedMotion();
   return (
     <div role="img" aria-label={label} className="relative mx-auto w-full max-w-[560px]">
       <span className="sr-only">{label}</span>
+      <ExamSignature code={code} reduced={reduced} />
       {variant === "coordinate" && <AnimatedParabola domain={domain} showVertex />}
       {variant === "vector" && <VectorAnimation domain={domain} from={{ x: -2.6, y: -1.5 }} to={{ x: 2.8, y: 2.4 }} />}
       {variant === "function" && <FunctionPlot domain={{ xMin: 0, xMax: 10, yMin: 0, yMax: 5, width: 520, height: 310, padding: 28 }} />}

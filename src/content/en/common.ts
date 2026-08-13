@@ -40,7 +40,7 @@ export const footer = {
   socialEmailLabel: "Email",
   copyright: "All rights reserved.",
   legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
+    { label: "Privacy Policy", href: "/en/privacy" },
+    { label: "Terms of Service", href: "/en/terms" },
   ],
 };

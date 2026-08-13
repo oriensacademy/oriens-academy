@@ -6,10 +6,11 @@ import { PricingPage } from "@/components/pricing/PricingPage";
 import { AboutPage } from "@/components/about/AboutPage";
 import { BookingFlow } from "@/components/booking/BookingFlow";
 import { ContactPage } from "@/components/contact/ContactPage";
+import { AssessmentPage } from "@/components/assessment/AssessmentPage";
+import { LegalPage } from "@/components/legal/LegalPage";
 import { Footer } from "@/components/sections/Footer";
-import { Navbar } from "@/components/sections/Navbar";
 import { getDictionary, isLocale } from "@/content/dictionaries";
-import { aboutSegment, bookingSegment, contactSegment, examHubSegment, localizedPath, pricingSegment, universitySupportSegment } from "@/lib/routes";
+import { aboutSegment, assessmentSegment, bookingSegment, contactSegment, examHubSegment, localizedPath, pricingSegment, privacySegment, termsSegment, universitySupportSegment } from "@/lib/routes";
 
 type Params = { lang: string; examHub: string };
 
@@ -22,6 +23,9 @@ export function generateStaticParams({ params }: { params: { lang: string } }) {
         { examHub: aboutSegment(params.lang) },
         { examHub: bookingSegment(params.lang) },
         { examHub: contactSegment(params.lang) },
+        { examHub: assessmentSegment(params.lang) },
+        { examHub: privacySegment(params.lang) },
+        { examHub: termsSegment(params.lang) },
       ]
     : [];
 }
@@ -38,7 +42,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const isAbout = examHub === aboutSegment(lang);
   const isBooking = examHub === bookingSegment(lang);
   const isContact = examHub === contactSegment(lang);
-  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact) return {};
+  const isAssessment = examHub === assessmentSegment(lang);
+  const isPrivacy = examHub === privacySegment(lang);
+  const isTerms = examHub === termsSegment(lang);
+  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact && !isAssessment && !isPrivacy && !isTerms) return {};
 
   const route = isExams
     ? "exams"
@@ -50,7 +57,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
           ? "about"
           : isBooking
             ? "booking"
-            : "contact";
+            : isContact
+              ? "contact"
+              : isAssessment ? "assessment" : isPrivacy ? "privacy" : "terms";
 
   const dict = getDictionary(lang);
   const metadata = isExams
@@ -69,13 +78,24 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
                     ? "Oriens Academy ücretsiz akademik Danışmanlık ve ilk görüşme randevusu planlayın."
                     : "Schedule a complimentary initial academic consultation with Oriens Academy.",
               }
-            : {
-                title: lang === "tr" ? "İletişim | Oriens Academy" : "Contact Us | Oriens Academy",
-                description:
-                  lang === "tr"
-                    ? "Oriens Academy ile iletişime geçin. Sınav hazırlığı ve üniversite ders desteği hakkında sorularınızı iletin."
-                    : "Contact Oriens Academy for questions regarding exam preparation and university academic support.",
-              };
+            : isContact
+              ? {
+                  title: lang === "tr" ? "İletişim | Oriens Academy" : "Contact Us | Oriens Academy",
+                  description:
+                    lang === "tr"
+                      ? "Oriens Academy ile iletişime geçin."
+                      : "Contact Oriens Academy.",
+                }
+              : isAssessment ? {
+                  title: lang === "tr" ? "Ön Değerlendirme | Oriens Academy" : "Academic Assessment | Oriens Academy",
+                  description:
+                    lang === "tr"
+                      ? "Oriens Academy ön değerlendirme formu."
+                      : "Oriens Academy academic assessment form.",
+                } : {
+                  title: isPrivacy ? (lang === "tr" ? "Gizlilik Politikası | Oriens Academy" : "Privacy Policy | Oriens Academy") : (lang === "tr" ? "Kullanım Koşulları | Oriens Academy" : "Terms of Service | Oriens Academy"),
+                  description: isPrivacy ? (lang === "tr" ? "Oriens Academy gizlilik politikası." : "Oriens Academy privacy policy.") : (lang === "tr" ? "Oriens Academy kullanım koşulları." : "Oriens Academy terms of service."),
+                };
 
   return {
     title: metadata.title,
@@ -97,11 +117,13 @@ export default async function TopLevelHubPage({ params }: { params: Promise<Para
   const isAbout = examHub === aboutSegment(lang);
   const isBooking = examHub === bookingSegment(lang);
   const isContact = examHub === contactSegment(lang);
-  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact) notFound();
+  const isAssessment = examHub === assessmentSegment(lang);
+  const isPrivacy = examHub === privacySegment(lang);
+  const isTerms = examHub === termsSegment(lang);
+  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact && !isAssessment && !isPrivacy && !isTerms) notFound();
 
   return (
     <>
-      <Navbar />
       <main id="main-content">
         {isExams ? (
           <ExamHub />
@@ -113,8 +135,12 @@ export default async function TopLevelHubPage({ params }: { params: Promise<Para
           <AboutPage />
         ) : isBooking ? (
           <BookingFlow />
-        ) : (
+        ) : isContact ? (
           <ContactPage />
+        ) : isAssessment ? (
+          <AssessmentPage />
+        ) : (
+          <LegalPage kind={isPrivacy ? "privacy" : "terms"} />
         )}
       </main>
       <Footer />

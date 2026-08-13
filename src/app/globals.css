@@ -3,35 +3,45 @@
 @import "shadcn/tailwind.css";
 @import "katex/dist/katex.min.css";
 
+/* Session and locale navigation state is known before React hydrates. */
+html[data-oriens-loader-skip="1"] [data-initial-loader] {
+  display: none !important;
+}
+
 /*
-  Oriens Academy design tokens — sourced exactly from
-  design-system/oriens-academy/MASTER.md §3, §5, §7, §8.
-  Do not introduce new colors, radii, or shadows here without
-  updating MASTER.md first (MASTER.md is the source of truth).
+  Oriens Academy Global Design Tokens — Editorial Ivory & Sage Academic System
 */
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-soft: var(--background-soft);
   --color-foreground: var(--foreground);
+  --color-forest: var(--forest);
   --color-ink: var(--ink);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
 
   --font-sans: var(--font-inter);
-  --font-heading: var(--font-newsreader);
+  --font-heading: var(--font-dm-serif);
+  --font-display: var(--font-dm-serif);
+  --font-ui: var(--font-manrope);
+  --font-body: var(--font-inter);
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-sage-soft: var(--sage-soft);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-warm-accent: var(--warm-accent);
   --color-brand-accent: var(--brand-accent);
   --color-brand-accent-foreground: var(--brand-accent-foreground);
   --color-destructive: var(--destructive);
@@ -40,53 +50,49 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Radius scale — MASTER.md §7. Hard cap: nothing above 12px. */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
-  --radius-2xl: 12px;
-  --radius-3xl: 12px;
-  --radius-4xl: 12px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 22px;
+  --radius-3xl: 24px;
 }
 
 :root {
-  /* Primitive tokens — MASTER.md §3 */
-  --ink: #14181f; /* primary text/headings */
-  --secondary: #2b3a55; /* compass navy — secondary text, math/graph strokes */
-  --brand-accent: #a16207; /* bronze/gold — the one controlled accent */
-  --brand-accent-foreground: #ffffff;
-  --background: #faf9f6; /* warm paper */
-  --surface: #ffffff; /* cards, inputs, elevated panels */
-  --surface-muted: #f4f2ed; /* alternate section background */
-  --border: #e4e1d9;
-  --muted-foreground-token: #6b6558;
-  --destructive-token: #b42318;
+  /* Primitive & Semantic tokens — Editorial Ivory + Sage Academic Palette */
+  --background: #F6F8F3;
+  --background-soft: #F9FAF6;
+  --foreground: #10271B;
+  --forest: #0D2A1C;
+  --ink: #10271B;
+  --card: #FFFFFF;
+  --card-foreground: #10271B;
+  --surface: #FFFFFF;
+  --surface-muted: #F6F8F3;
+  --primary: #819586;
+  --primary-hover: #718678;
+  --primary-foreground: #FFFFFF;
+  --secondary: #A8B7AA;
+  --secondary-foreground: #FFFFFF;
+  --sage-soft: #E8EEE8;
+  --accent: #819586;
+  --accent-foreground: #FFFFFF;
+  --warm-accent: #C5B58A;
+  --brand-accent: #819586;
+  --brand-accent-foreground: #FFFFFF;
+  --muted: #EFF2ED;
+  --muted-foreground: #68756C;
+  --border: #DDE4DC;
+  --input: #D6DED6;
+  --ring: #819586;
+  --popover: #FFFFFF;
+  --popover-foreground: #10271B;
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
 
-  /* Semantic aliases consumed by shadcn/Base UI primitives */
-  --foreground: var(--ink);
-  --card: var(--surface);
-  --card-foreground: var(--ink);
-  --popover: var(--surface);
-  --popover-foreground: var(--ink);
-  --primary: var(--brand-accent);
-  --primary-foreground: var(--brand-accent-foreground);
-  --secondary-foreground: #ffffff;
-  --muted: var(--surface-muted);
-  --muted-foreground: var(--muted-foreground-token);
-  /*
-    NOTE: shadcn's "--accent" token is a subtle hover/tint background used by
-    generic UI (menu items, expanded states) — it is NOT the brand accent.
-    Mapping it to the warm-muted surface (not gold) prevents accidental large
-    gold fills, per MASTER.md §3's "never use it for large fills" rule.
-    The real brand accent lives at --brand-accent / --color-brand-accent.
-  */
-  --accent: var(--surface-muted);
-  --accent-foreground: var(--ink);
-  --destructive: var(--destructive-token);
-  --destructive-foreground: #ffffff;
-  --input: var(--border);
-  --ring: var(--ink);
+  --font-display: var(--font-dm-serif);
+  --font-ui: var(--font-manrope);
+  --font-body: var(--font-inter);
 }
 
 @layer base {
@@ -96,11 +102,15 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body), sans-serif;
+    color-scheme: light;
+    min-width: 320px;
   }
 
   html {
-    @apply font-sans;
+    font-family: var(--font-body), sans-serif;
     scroll-behavior: smooth;
+    background-color: #F6F8F3;
   }
 
   h1,
@@ -109,24 +119,70 @@
   h4,
   h5,
   h6 {
-    font-family: var(--font-heading);
+    font-family: var(--font-display), serif;
+    font-weight: 400;
+  }
+
+  p,
+  input,
+  textarea,
+  select,
+  table {
+    font-family: var(--font-body), sans-serif;
+  }
+
+  button,
+  nav,
+  .font-ui {
+    font-family: var(--font-ui), sans-serif;
   }
 
   ::selection {
-    background-color: var(--brand-accent);
-    color: var(--brand-accent-foreground);
+    background-color: #819586;
+    color: #FFFFFF;
   }
 }
 
 @layer utilities {
-  /* Tabular numerals for stat counters, prices, dates — MASTER.md §4 */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
 
-  /* Section anchor offset so the sticky navbar never covers content */
   .section-offset {
     scroll-margin-top: 6rem;
+  }
+
+  /* Editorial Card Soft Shadows */
+  .shadow-editorial {
+    box-shadow: 0 8px 30px rgba(16, 39, 27, 0.045);
+  }
+
+  .shadow-editorial-hover {
+    box-shadow: 0 14px 35px rgba(16, 39, 27, 0.075);
+  }
+
+  .public-container {
+    width: 100%;
+    max-width: 1240px;
+    margin-inline: auto;
+    padding-inline: clamp(1.125rem, 4vw, 3rem);
+  }
+
+  .editorial-card {
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--card);
+    box-shadow: 0 8px 30px rgba(16, 39, 27, 0.045);
+  }
+
+  .admin-shell h1,
+  .admin-shell h2,
+  .admin-shell h3,
+  .admin-shell h4,
+  .admin-shell h5,
+  .admin-shell h6 {
+    font-family: var(--font-ui), sans-serif;
+    font-weight: 600;
   }
 }
 

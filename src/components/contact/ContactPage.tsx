@@ -1,57 +1,50 @@
 "use client";
 
-import { CompassMark } from "@/components/brand/CompassMark";
-import { ButtonLink } from "@/components/ui/button";
+import { Mail, MessageCircle, Phone } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
+import { CONTACT } from "@/config/contact";
 import { ContactForm } from "./ContactForm";
-import { Calendar } from "lucide-react";
 
 export function ContactPage() {
   const locale = useLocale();
   const isTr = locale === "tr";
 
   return (
-    <section className="mx-auto max-w-4xl px-6 py-12 md:py-20">
-      {/* Header */}
-      <div className="mb-12 text-center">
-        <CompassMark size={36} className="mx-auto mb-4" />
-        <h1 className="text-3xl sm:text-4xl font-medium tracking-tight text-ink font-heading">
-          {isTr ? "İletişime Geçin" : "Contact Us"}
-        </h1>
-        <p className="mt-3 text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
-          {isTr
-            ? "Akademik hedefleriniz, sınav hazırlık süreçleriniz veya üniversite ders desteği hakkında sorularınızı bize iletin."
-            : "Reach out to us regarding your academic goals, exam preparation strategies, or university coursework support."}
-        </p>
-      </div>
+    <section className="bg-[#F6F8F3] px-4 py-10 sm:px-6 md:py-16">
+      <div className="mx-auto grid max-w-[1100px] overflow-hidden rounded-[28px] border border-[#D9E0D8] bg-white shadow-[0_24px_70px_rgba(16,40,30,.09)] lg:grid-cols-[minmax(0,.82fr)_minmax(0,1.18fr)]">
+        <div className="bg-gradient-to-br from-[#A7B7A8] to-[#819586] p-7 text-white sm:p-10 lg:p-12">
+          <p className="text-xs font-bold uppercase tracking-[.22em] text-white/70">
+            {isTr ? "BİRLİKTE PLANLAYALIM" : "PLAN YOUR NEXT STEP"}
+          </p>
+          <h1 className="mt-4 font-heading text-4xl font-normal leading-[1.02] tracking-[-.02em] sm:text-5xl">
+            {isTr
+              ? "Bir sonraki adımınızı konuşalım."
+              : "Let's talk about your next step."}
+          </h1>
+          <p className="mt-5 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">
+            {isTr
+              ? "Hedeflediğiniz sınavı, üniversiteyi veya hazırlık sürecinizi birlikte değerlendirelim. İlk tanışma görüşmesi ücretsizdir."
+              : "Tell us about your exam, university or academic goals. Your introductory consultation is free."}
+          </p>
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
-        {/* Contact Form */}
-        <div>
-          <ContactForm />
-        </div>
-
-        {/* Booking Alternative CTA Sidebar */}
-        <aside className="space-y-6">
-          <div className="border border-border bg-surface-muted p-6 text-left">
-            <Calendar className="size-8 text-brand-accent mb-3" />
-            <h3 className="font-heading font-medium text-lg text-ink">
-              {isTr ? "İlk Görüşmenizi Planlayın" : "Schedule a Consultation"}
-            </h3>
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-              {isTr
-                ? "Doğrudan çevrimiçi randevu takvimimiz üzerinden uygun bir saat seçerek ücretsiz akademik ilk görüşmenizi kurgulayabilirsiniz."
-                : "Select an available appointment time directly on our online booking calendar for a complimentary diagnostic consultation."}
-            </p>
-            <ButtonLink
-              href={isTr ? "/tr/randevu" : "/en/booking"}
-              className="mt-5 w-full justify-center text-xs"
-            >
-              {isTr ? "Çevrimiçi Randevu Takvimi" : "Online Booking Calendar"}
-            </ButtonLink>
+          <div className="mt-9 grid gap-3">
+            <a href={CONTACT.whatsappHref} target="_blank" rel="noreferrer" className="flex min-h-12 items-center gap-3 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/15">
+              <MessageCircle className="size-5" aria-hidden="true" /> WhatsApp · +90 544 293 90 40
+            </a>
+            <a href={CONTACT.phoneHref} className="flex min-h-12 items-center gap-3 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/15">
+              <Phone className="size-5" aria-hidden="true" /> {isTr ? "Telefon" : "Phone"} · {CONTACT.phoneDisplay}
+            </a>
+            <a href={CONTACT.emailHref} className="flex min-h-12 items-center gap-3 break-all rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/15">
+              <Mail className="size-5 shrink-0" aria-hidden="true" /> {isTr ? "E-posta" : "Email"} · {CONTACT.email}
+            </a>
           </div>
-        </aside>
+        </div>
+        <div className="bg-white">
+          <ContactForm embedded />
+        </div>
       </div>
     </section>
   );
 }
+
+export default ContactPage;

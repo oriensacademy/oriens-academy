@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, Calendar, Clock, AlertTriangle, CheckCircle2, Globe } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Clock, AlertTriangle, CheckCircle2, Globe, MessageCircle, Phone } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { CompassMark } from "@/components/brand/CompassMark";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -183,8 +183,34 @@ export function BookingFlow() {
     return { dateStr, timeStr };
   }
 
+  async function resetBooking() {
+    setCurrentStep(0);
+    setSupportType("exam_preparation");
+    setExam(null);
+    setNotes("");
+    setSelectedSlotId(null);
+    setFullName("");
+    setEmail("");
+    setPhone("");
+    setPrivacyConsent(false);
+    setMarketingConsent(false);
+    setTurnstileToken("");
+    setErrors({});
+    setSlotUnavailableMessage(null);
+    setBookingResult(null);
+    turnstileRef.current?.reset();
+    setLoadingSlots(true);
+    setSlots(await getPublicAvailability());
+    setLoadingSlots(false);
+  }
+
   if (bookingResult && bookingResult.success) {
     const slotDetails = bookingResult.startsAt ? formatSlotDateTime(bookingResult.startsAt) : null;
+    const isTr = locale === "tr";
+    const whatsappMessage = isTr
+      ? "Merhaba Oriens Academy, tanışma görüşmesi hakkında bilgi almak istiyorum."
+      : "Hello Oriens Academy, I would like to get information about an introductory consultation.";
+    const whatsappHref = `https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`;
 
     return (
       <section className="mx-auto max-w-3xl px-6 py-16 md:py-24">
@@ -195,10 +221,12 @@ export function BookingFlow() {
             </div>
 
             <h1 className="mt-6 text-2xl sm:text-3xl font-medium text-ink">
-              {bookingFlow.success.title}
+              {isTr ? "Talebiniz alındı." : "Request received."}
             </h1>
             <p className="mt-3 text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              {bookingFlow.success.body}
+              {isTr
+                ? "Bilgilerinizi aldık. Ekibimiz en kısa sürede sizinle iletişime geçecek."
+                : "We have your details. Our team will contact you as soon as possible."}
             </p>
 
             <div className="mt-8 border-y border-border py-6 text-left max-w-md mx-auto space-y-3 text-sm">
@@ -218,13 +246,22 @@ export function BookingFlow() {
               </div>
             </div>
 
-            <ButtonLink
-              href={locale === "tr" ? "/tr" : "/en"}
-              size="lg"
-              className="mt-8 px-8"
-            >
-              {bookingFlow.success.homeCta}
-            </ButtonLink>
+            <p className="mt-7 font-semibold text-ink">{isTr ? "Beklemeye vaktiniz yok mu?" : "Can’t wait?"}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{isTr ? "WhatsApp üzerinden bize hemen ulaşabilirsiniz." : "You can reach us immediately on WhatsApp."}</p>
+            <div className="mx-auto mt-7 grid max-w-lg gap-3 sm:grid-cols-2">
+              <ButtonLink href={whatsappHref} target="_blank" rel="noreferrer" size="lg" className="min-h-12">
+                <MessageCircle className="size-4" aria-hidden="true" />
+                {isTr ? "WhatsApp’tan Yaz" : "Message on WhatsApp"}
+              </ButtonLink>
+              <Button type="button" onClick={resetBooking} variant="outline" size="lg" className="min-h-12">
+                {isTr ? "Yeni Talep Oluştur" : "Create a New Request"}
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
+              <ButtonLink href="tel:+905442939040" variant="ghost" className="min-h-11 sm:col-span-2">
+                <Phone className="size-4" aria-hidden="true" />
+                {isTr ? "Bizi Ara" : "Call Us"}
+              </ButtonLink>
+            </div>
           </div>
         </Reveal>
       </section>

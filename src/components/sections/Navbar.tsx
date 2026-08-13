@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { CompassMark } from "@/components/brand/CompassMark";
-import { OriensWordmark } from "@/components/brand/OriensWordmark";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ButtonLink } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
 import { useScrolled } from "@/lib/use-scrolled";
 import { useCommonContent, useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
-import { isPrimaryNavigationActive, primaryNavigationPath } from "@/lib/routes";
+import { isPrimaryNavigationActive, localizedPath } from "@/lib/routes";
 
 const focusableSelector = [
   "a[href]",
@@ -33,6 +35,31 @@ export function Navbar() {
   const headerRef = useRef<HTMLElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
+  const headerTabs = useMemo(
+    () => [
+      { id: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
+      {
+        id: localizedPath("universitySupport", locale),
+        label: locale === "tr" ? "Üniversite Desteği" : "University Support",
+      },
+      { id: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" },
+      { id: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
+    ],
+    [locale],
+  );
+  const mobileItems = useMemo(() => [
+    { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
+    { href: localizedPath("universitySupport", locale), label: locale === "tr" ? "Üniversite Desteği" : "University Support" },
+    { href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" },
+    { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
+    { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
+  ], [locale]);
+  const normalizedPathname = pathname?.replace(/\/$/, "") || localizedPath("home", locale);
+  const activeTab = headerTabs.find((tab) =>
+    tab.id === localizedPath("exams", locale)
+      ? normalizedPathname === tab.id || normalizedPathname.startsWith(`${tab.id}/`)
+      : normalizedPathname === tab.id,
+  )?.id;
 
   useEffect(() => {
     if (!open) {
@@ -113,48 +140,43 @@ export function Navbar() {
         ref={headerRef}
         className={cn(
           "fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200",
-          scrolled ? "border-border bg-surface" : "border-transparent bg-transparent"
+          scrolled ? "border-border/80 bg-[#F6F8F3]/90 backdrop-blur-md shadow-[0_2px_12px_rgba(16,39,27,0.04)]" : "border-transparent bg-transparent"
         )}
       >
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-6 md:h-18 md:px-12">
-          <a href={`/${locale}`} className="flex min-h-11 items-center gap-2.5" aria-label={nav.homeAriaLabel}>
-            <CompassMark size={31} interactive />
-            <OriensWordmark />
-          </a>
+        <div className="mx-auto flex h-[72px] max-w-[1360px] items-center px-[clamp(24px,5vw,72px)] md:h-20">
+          <Link href={`/${locale}`} className="flex min-h-11 items-center" aria-label={nav.homeAriaLabel}>
+            <Image
+              src="/brand/oriens-logo-v2.png"
+              alt="Oriens Academy"
+              width={217}
+              height={80}
+              className="h-auto w-[116px] object-contain md:w-[155px]"
+              priority
+            />
+          </Link>
 
-          <nav aria-label={nav.primaryAriaLabel} className="hidden xl:block">
-            <ul className="flex items-center gap-6 2xl:gap-8">
-              {nav.items.map((item) => {
-                const active = isPrimaryNavigationActive(item.href, pathname, locale);
-                return <li key={item.href}>
-                  <a
-                    href={primaryNavigationPath(item.href, locale)}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "text-sm text-ink/80 decoration-brand-accent underline-offset-[6px] transition-colors duration-200 hover:text-ink hover:underline",
-                      active ? "font-semibold underline decoration-2" : "font-medium"
-                    )}
-                  >
-                    {item.label}
-                  </a>
-                </li>
-              })}
-            </ul>
+          <nav aria-label={nav.primaryAriaLabel} className="ml-12 hidden xl:block 2xl:ml-16">
+            <Tabs
+              tabs={headerTabs}
+              activeTab={activeTab}
+            />
           </nav>
 
-          <div className="hidden items-center gap-4 xl:flex">
-            <LanguageSwitch />
-            <ButtonLink href={`/${locale}#booking`} directional size="lg" className="h-11 px-5 text-[13px]">
-              {nav.ctaBook}
-              <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />
-            </ButtonLink>
+          <div className="ml-auto flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-3">
+              <LanguageSwitch />
+              <ButtonLink href={`/${locale}#consultation-form`} directional size="lg" className="hidden h-11 px-5 text-[13px] xl:flex">
+                {nav.ctaBook}
+                <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />
+              </ButtonLink>
+            </div>
           </div>
 
           <button
             ref={menuTriggerRef}
             type="button"
             onClick={() => setOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-md text-ink xl:hidden"
+            className="ml-1 flex h-11 w-11 items-center justify-center rounded-md text-ink xl:hidden"
             aria-label={nav.openMenu}
             aria-expanded={open}
           >
@@ -168,20 +190,25 @@ export function Navbar() {
           <motion.div
             ref={overlayRef}
             tabIndex={-1}
-            className="fixed inset-0 z-[90] flex flex-col bg-background xl:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className="fixed inset-y-0 right-0 z-[90] flex w-[min(88vw,380px)] flex-col border-l border-border bg-background shadow-[-20px_0_60px_rgba(16,39,27,0.16)] xl:hidden"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             role="dialog"
             aria-modal="true"
             aria-label={nav.menuDialogLabel}
           >
             <div className="flex h-16 items-center justify-between px-6">
-              <span className="flex items-center gap-2.5">
-                <CompassMark size={28} />
-                <OriensWordmark />
-              </span>
+              <Link href={`/${locale}`} onClick={() => setOpen(false)} className="flex items-center" aria-label={nav.homeAriaLabel}>
+                <Image
+                  src="/brand/oriens-logo-v2.png"
+                  alt="Oriens Academy"
+                  width={174}
+                  height={64}
+                  className="h-auto w-[116px] object-contain"
+                />
+              </Link>
               <button
                 ref={closeButtonRef}
                 type="button"
@@ -194,7 +221,7 @@ export function Navbar() {
             </div>
 
             <ButtonLink
-              href={`/${locale}#booking`}
+              href={`/${locale}#consultation-form`}
               onClick={() => setOpen(false)}
               directional
               size="lg"
@@ -206,11 +233,11 @@ export function Navbar() {
 
             <nav aria-label={nav.primaryAriaLabel} className="mt-10 flex-1 px-6">
               <ul className="flex flex-col gap-1">
-                {nav.items.map((item) => {
+                {mobileItems.map((item) => {
                   const active = isPrimaryNavigationActive(item.href, pathname, locale);
                   return <li key={item.href} className="border-b border-border">
-                    <a
-                      href={primaryNavigationPath(item.href, locale)}
+                    <Link
+                      href={item.href}
                       onClick={() => setOpen(false)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
@@ -219,7 +246,7 @@ export function Navbar() {
                       )}
                     >
                       {item.label}
-                    </a>
+                    </Link>
                   </li>
                 })}
               </ul>
