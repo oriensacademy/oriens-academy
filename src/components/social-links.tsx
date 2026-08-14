@@ -125,6 +125,45 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
   floatingButtonColor = "bg-muted",
 }) => {
   const [mobileDockOpen, setMobileDockOpen] = React.useState(false);
+  const [autoExpandedPlatform, setAutoExpandedPlatform] = React.useState<Platform | null>(null);
+
+  React.useEffect(() => {
+    if (links.length === 0 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const desktopQuery = window.matchMedia(showOnMobile ? "(min-width: 1024px)" : "(min-width: 768px)");
+    let openTimer: number | undefined;
+    let closeTimer: number | undefined;
+
+    const clearTimers = () => {
+      window.clearTimeout(openTimer);
+      window.clearTimeout(closeTimer);
+    };
+
+    const schedule = () => {
+      clearTimers();
+      setAutoExpandedPlatform(null);
+      if (document.hidden || !desktopQuery.matches) return;
+
+      const delay = 12_000 + Math.random() * 18_000;
+      openTimer = window.setTimeout(() => {
+        const platform = links[Math.floor(Math.random() * links.length)]?.platform;
+        if (!platform || document.hidden || !desktopQuery.matches) return;
+        setAutoExpandedPlatform(platform);
+        closeTimer = window.setTimeout(schedule, 3_800);
+      }, delay);
+    };
+
+    const handleActivityChange = () => schedule();
+    document.addEventListener("visibilitychange", handleActivityChange);
+    desktopQuery.addEventListener("change", handleActivityChange);
+    schedule();
+
+    return () => {
+      clearTimers();
+      document.removeEventListener("visibilitychange", handleActivityChange);
+      desktopQuery.removeEventListener("change", handleActivityChange);
+    };
+  }, [links, showOnMobile]);
 
   return (
     <>
@@ -141,8 +180,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
             const style = PLATFORM_STYLES[platform];
             if (!style) return null;
             const Icon = style.icon;
-            const closedWidth = value ? "w-56" : "w-44";
-            const closedOffset = value ? "ml-[-160px]" : "ml-[-128px]";
+            const isAutoExpanded = autoExpandedPlatform === platform;
 
             return (
               <li
@@ -155,7 +193,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                   target={external ? "_blank" : undefined}
                   rel={external ? "noreferrer" : undefined}
                   aria-label={value ? `${label ?? style.label}: ${value}` : (label ?? style.label)}
-                  className={`relative ${closedOffset} flex h-12 ${closedWidth} items-center justify-between overflow-hidden rounded-r-xl border border-[rgba(16,39,27,0.12)] bg-[#10271B] px-3.5 text-white shadow-[0_6px_18px_rgba(16,39,27,0.14)] transition-[margin,transform,background-color,box-shadow] duration-200 ease-out group-hover:ml-[-8px] group-hover:translate-x-[3px] group-hover:bg-[#819586] group-hover:shadow-[0_8px_22px_rgba(16,39,27,0.18)]`}
+                  className={`relative ml-[-208px] flex h-12 w-64 items-center justify-between overflow-hidden rounded-r-xl border border-[rgba(16,39,27,0.12)] bg-[#10271B] px-3.5 text-white shadow-[0_6px_18px_rgba(16,39,27,0.14)] transition-[margin,transform,background-color,box-shadow] duration-300 ease-out group-hover:ml-[-8px] group-hover:translate-x-[3px] group-hover:bg-[#819586] group-hover:shadow-[0_8px_22px_rgba(16,39,27,0.18)] motion-reduce:transition-none ${isAutoExpanded ? "!ml-[-8px] translate-x-[3px] bg-[#819586] shadow-[0_8px_22px_rgba(16,39,27,0.18)]" : ""}`}
                 >
                   {/* Label */}
                   {value ? (

@@ -54,6 +54,7 @@ export function CreateSlotModal({
   const [singleDate, setSingleDate] = useState(todayStr);
   const [singleStartTime, setSingleStartTime] = useState("13:00");
   const [singleEndTime, setSingleEndTime] = useState("14:00");
+  const [singleStatus, setSingleStatus] = useState<"available" | "blocked">("available");
 
   // Bulk Slot State
   const [nextWeekStr] = useState(() =>
@@ -77,7 +78,7 @@ export function CreateSlotModal({
     const startsAtIso = `${singleDate}T${singleStartTime}:00`;
     const endsAtIso = `${singleDate}T${singleEndTime}:00`;
 
-    const { error } = await createAdminAvailabilitySlot(startsAtIso, endsAtIso);
+    const { error } = await createAdminAvailabilitySlot(startsAtIso, endsAtIso, singleStatus);
 
     setSubmitting(false);
 
@@ -263,6 +264,18 @@ export function CreateSlotModal({
                   className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Dilim Türü</label>
+              <select
+                value={singleStatus}
+                onChange={(e) => setSingleStatus(e.target.value as "available" | "blocked")}
+                className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
+              >
+                <option value="available">Müsait — öğrenci rezervasyonuna açık</option>
+                <option value="blocked">Engelli — rezervasyona kapalı</option>
+              </select>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

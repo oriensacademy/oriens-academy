@@ -241,11 +241,11 @@ function NotificationsContent() {
                       className="cursor-pointer transition-colors hover:bg-background-soft/80"
                     >
                       <td className="px-4 py-3.5">
-                        <div className="font-mono text-xs font-semibold text-[#10271B]">
-                          {del.event_type}
+                        <div className="text-xs font-semibold text-[#10271B]">
+                          {isAdminEvent ? "Yönetici Bildirim E-postası" : "Öğrenci Onay E-postası"}
                         </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {isAdminEvent ? "Yönetici Bildirimi" : "Öğrenci Onay E-postası"}
+                        <div className="font-mono text-[10px] text-muted-foreground">
+                          {del.event_type}
                         </div>
                       </td>
 

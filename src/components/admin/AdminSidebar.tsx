@@ -7,7 +7,7 @@ import {
   LayoutDashboard,
   CalendarCheck,
   MessageSquare,
-  Clock,
+  Users,
   CreditCard,
   FileText,
   Bell,
@@ -41,17 +41,17 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     enabled: true,
   },
   {
+    label: "Öğrenciler",
+    labelEn: "Students",
+    href: "/admin/ogrenciler",
+    icon: Users,
+    enabled: true,
+  },
+  {
     label: "İletişim",
     labelEn: "Contacts",
     href: "/admin/iletisim",
     icon: MessageSquare,
-    enabled: true,
-  },
-  {
-    label: "Müsaitlik",
-    labelEn: "Availability",
-    href: "/admin/musaitlik",
-    icon: Clock,
     enabled: true,
   },
   {
@@ -152,6 +152,7 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               onClick={onNavigate}
               aria-current={isActive ? "page" : undefined}
               className={`relative flex items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-ui transition-[background-color,border-color,color] duration-200 ${

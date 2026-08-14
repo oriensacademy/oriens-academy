@@ -29,6 +29,47 @@ export interface ListBookingsResult {
   error: string | null;
 }
 
+export interface CreateManualBookingParams {
+  fullName: string;
+  email: string;
+  phone: string;
+  exam: string;
+  startsAt: string;
+  endsAt: string;
+  notes?: string;
+  status: BookingStatus;
+  privacyConsent: boolean;
+}
+
+export async function createManualAdminBooking(
+  params: CreateManualBookingParams
+): Promise<{ bookingId: string | null; error: string | null }> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.rpc("admin_create_booking", {
+    p_full_name: params.fullName,
+    p_email: params.email,
+    p_phone: params.phone,
+    p_exam: params.exam,
+    p_starts_at: params.startsAt,
+    p_ends_at: params.endsAt,
+    p_privacy_consent: params.privacyConsent,
+    p_notes: params.notes || "",
+    p_status: params.status,
+  });
+
+  if (error) return { bookingId: null, error: error.message };
+  const result = data as { success?: boolean; booking_id?: string; error_code?: string } | null;
+  if (!result?.success) {
+    return {
+      bookingId: null,
+      error: result?.error_code === "SLOT_UNAVAILABLE"
+        ? "Bu saat dilimi dolu veya engellenmiş. Lütfen başka bir saat seçin."
+        : "Randevu bilgileri geçersiz veya randevu zamanı geçmişte.",
+    };
+  }
+  return { bookingId: result.booking_id || null, error: null };
+}
+
 /**
  * Fetches bookings joined with availability_slots for administrative view.
  * Enforces server-side database RLS policy (requires public.is_admin()).
@@ -97,32 +138,18 @@ export async function updateAdminBookingStatus(
   const supabase = getSupabaseClient();
 
   try {
-    const updatePayload: { status: BookingStatus; notes?: string | null } = {
-      status: newStatus,
-    };
-    if (notes !== undefined) {
-      updatePayload.notes = notes;
-    }
-
-    const { error: updateErr } = await supabase
-      .from("bookings")
-      .update(updatePayload)
-      .eq("id", bookingId);
+    const { data, error: updateErr } = await supabase.rpc("admin_update_booking_status", {
+      p_booking_id: bookingId,
+      p_status: newStatus,
+      p_notes: notes || "",
+    });
 
     if (updateErr) {
       console.error("[Admin Bookings] Error updating status:", updateErr);
       return { success: false, error: updateErr.message };
     }
-
-    // Log admin audit event
-    const { data: userData } = await supabase.auth.getUser();
-    await supabase.from("audit_logs").insert({
-      actor_user_id: userData.user?.id || null,
-      action: "admin.booking.status_updated",
-      entity_type: "booking",
-      entity_id: bookingId,
-      metadata: { new_status: newStatus, notes },
-    });
+    const result = data as { success?: boolean; error_code?: string } | null;
+    if (!result?.success) return { success: false, error: result?.error_code || "Güncelleme başarısız." };
 
     return { success: true, error: null };
   } catch (err) {

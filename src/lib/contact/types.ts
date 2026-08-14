@@ -7,13 +7,14 @@ export type ContactRequestPayload = {
   locale: "tr" | "en";
   privacyConsent: boolean;
   turnstileToken?: string;
-  source?: "website" | "quick_contact" | "consultation";
+  source: "contact_form" | "quick_contact" | "consultation";
 };
 
 export type ContactSuccessResponse = {
   success: true;
   contactId: string;
   message: string;
+  deliveryStatus: "sent" | "partial";
 };
 
 export type ContactErrorResponse = {
@@ -21,8 +22,17 @@ export type ContactErrorResponse = {
   errorCode:
     | "INVALID_FULL_NAME"
     | "INVALID_EMAIL"
+    | "INVALID_PHONE"
+    | "INVALID_SUBJECT"
     | "INVALID_MESSAGE"
     | "PRIVACY_CONSENT_REQUIRED"
+    | "BOT_VERIFICATION_REQUIRED"
+    | "BOT_VERIFICATION_FAILED"
+    | "BOT_VERIFICATION_EXPIRED"
+    | "TEMPORARY_ERROR"
+    | "FORBIDDEN_ORIGIN"
+    | "RATE_LIMITED"
+    | "SERVER_CONFIG_ERROR"
     | "STORAGE_FAILED"
     | "NETWORK_ERROR"
     | "INTERNAL_ERROR";

@@ -11,10 +11,10 @@ export function SocialLinks() {
   if (pathname?.startsWith("/admin")) return null;
 
   const links: SocialLink[] = [
-    { platform: "instagram", href: CONTACT.instagramHref, label: "Instagram", external: true },
-    { platform: "whatsapp", href: CONTACT.whatsappHref, label: "WhatsApp", external: true },
+    { platform: "instagram", href: CONTACT.instagramHref, label: "Instagram", value: "@oriens.academy", external: true },
+    { platform: "whatsapp", href: CONTACT.whatsappHref, label: "WhatsApp", value: CONTACT.phoneDisplay, external: true },
     { platform: "phone", href: CONTACT.phoneHref, label: locale === "tr" ? "Telefon" : "Phone", value: CONTACT.phoneDisplay, external: false },
-    { platform: "mail", href: CONTACT.emailHref, label: locale === "tr" ? "E-posta" : "Email", external: false },
+    { platform: "mail", href: CONTACT.emailHref, label: locale === "tr" ? "E-posta" : "Email", value: CONTACT.email, external: false },
   ];
 
   return <OwnerSocialLinks links={links} showOnMobile floatingButtonColor="bg-[#10271B]" />;

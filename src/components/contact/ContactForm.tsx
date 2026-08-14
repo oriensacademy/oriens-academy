@@ -7,6 +7,7 @@ import { useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import Link from "next/link";
+import { Wave } from "@/components/ui/wave";
 
 export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const locale = useLocale();
@@ -24,6 +25,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const handleTurnstileVerify = useCallback((token: string) => {
@@ -45,6 +47,9 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
     }
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       nextErrors.email = isTr ? "Geçerli bir e-posta adresi girin." : "Enter a valid email address.";
+    }
+    if (!phone.trim() || phone.trim().length < 5) {
+      nextErrors.phone = isTr ? "Telefon alanı zorunludur." : "Phone is required.";
     }
     if (!message.trim() || message.trim().length < 5) {
       nextErrors.message = isTr ? "Mesaj alanı en az 5 karakter olmalıdır." : "Message must be at least 5 characters.";
@@ -72,15 +77,17 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
       const res = await submitContact({
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
-        phone: phone.trim() || undefined,
+        phone: phone.trim(),
         subject: subject.trim() || undefined,
         message: message.trim(),
         locale: locale as "tr" | "en",
         privacyConsent,
         turnstileToken,
+        source: "contact_form",
       });
 
       if (res.success) {
+        setSubmissionMessage(res.message);
         setSubmitted(true);
       } else {
         // Reset Turnstile widget so user can re-verify and retry
@@ -101,6 +108,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
     setTurnstileToken("");
     setErrors({});
     setSubmitted(false);
+    setSubmissionMessage("");
     turnstileRef.current?.reset();
   }
 
@@ -119,9 +127,9 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
           {isTr ? "Talebiniz alındı." : "Request received."}
         </h2>
         <p className="mt-3 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-          {isTr
+          {submissionMessage || (isTr
             ? "Bilgilerinizi aldık. Ekibimiz en kısa sürede sizinle iletişime geçecek."
-            : "We have your details. Our team will contact you as soon as possible."}
+            : "We have your details. Our team will contact you as soon as possible.")}
         </p>
         <p className="mt-6 font-semibold text-ink">{isTr ? "Beklemeye vaktiniz yok mu?" : "Can’t wait?"}</p>
         <p className="mt-1 text-sm text-muted-foreground">{isTr ? "WhatsApp üzerinden bize hemen ulaşabilirsiniz." : "You can reach us immediately on WhatsApp."}</p>
@@ -186,16 +194,19 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
 
         <div className="sm:col-span-1">
           <label htmlFor="phone" className="block text-sm font-medium text-ink">
-            {isTr ? "Telefon Numarası" : "Phone Number"} <span className="font-normal text-muted-foreground">({isTr ? "isteğe bağlı" : "optional"})</span>
+            {isTr ? "Telefon (zorunlu)" : "Phone (required)"} <span className="text-destructive">*</span>
           </label>
           <input
             id="phone"
             data-locale-field="contact-phone"
             type="tel"
+            required
+            autoComplete="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
           />
+          {errors.phone && <p className="mt-1 text-xs text-destructive">{errors.phone}</p>}
         </div>
 
         <div className="sm:col-span-1">
@@ -273,10 +284,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
         size="lg"
         className="mt-6 w-full sm:w-auto px-8 h-12 text-base"
       >
-        {isPending
-          ? isTr ? "Gönderiliyor..." : "Submitting..."
-          : isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request"}
-        <ArrowRight data-directional-arrow className="size-4 ml-2" />
+        {isPending ? <><Wave className="h-4 w-8 text-current" aria-label={isTr ? "Gönderiliyor" : "Sending"} /><span>{isTr ? "Gönderiliyor" : "Sending"}</span></> : <>{isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request"}<ArrowRight data-directional-arrow className="size-4 ml-2" /></>}
       </Button>
     </form>
   );

@@ -331,7 +331,7 @@ export function ContactDetailSheet({
                         <div className="font-semibold text-foreground flex items-center gap-1.5">
                           <span>
                             {isAdminEvent
-                              ? "Yönetici Bildirimi (Admin)"
+                              ? "Yönetici Bildirim E-postası (Admin)"
                               : "Öğrenci Onay E-postası (Student)"}
                           </span>
                         </div>

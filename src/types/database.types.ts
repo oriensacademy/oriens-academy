@@ -1109,6 +1109,7 @@ export type Database = {
           message: string
           phone: string | null
           privacy_consent: boolean
+          source: string
           status: string
           subject: string | null
           updated_at: string
@@ -1122,6 +1123,7 @@ export type Database = {
           message: string
           phone?: string | null
           privacy_consent?: boolean
+          source?: string
           status?: string
           subject?: string | null
           updated_at?: string
@@ -1135,6 +1137,7 @@ export type Database = {
           message?: string
           phone?: string | null
           privacy_consent?: boolean
+          source?: string
           status?: string
           subject?: string | null
           updated_at?: string
@@ -1341,6 +1344,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_booking: {
+        Args: {
+          p_email: string
+          p_ends_at: string
+          p_exam: string
+          p_full_name: string
+          p_notes?: string
+          p_phone: string
+          p_privacy_consent: boolean
+          p_starts_at: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      admin_update_booking_status: {
+        Args: { p_booking_id: string; p_notes?: string; p_status: string }
+        Returns: Json
+      }
       is_admin: { Args: never; Returns: boolean }
       reserve_booking_slot: {
         Args: {

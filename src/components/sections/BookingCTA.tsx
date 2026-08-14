@@ -9,12 +9,14 @@ import { ExamSelector, type ExamSelectorValue } from "@/components/forms/ExamSel
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import { useHomeContent, useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
+import { Wave } from "@/components/ui/wave";
 
 export function BookingCTA() {
   const { bookingCTA } = useHomeContent();
   const locale = useLocale();
   const isTr = locale === "tr";
   const [submitted, setSubmitted] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState("");
   const [exam, setExam] = useState<ExamSelectorValue>(null);
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -49,6 +51,7 @@ export function BookingCTA() {
     if (!name) nextErrors.name = bookingCTA.form.nameRequired;
     if (!email) nextErrors.email = bookingCTA.form.emailRequired;
     else if (!(form.elements.namedItem("email") as HTMLInputElement | null)?.validity.valid) nextErrors.email = bookingCTA.form.emailInvalid;
+    if (!phone || phone.length < 5) nextErrors.phone = isTr ? "Telefon alanı zorunludur." : "Phone is required.";
     if (!privacyConsent) nextErrors.privacy = isTr ? "Gizlilik onayı zorunludur." : "Privacy consent is required.";
     if (!turnstileToken) nextErrors.turnstile = isTr ? "Güvenlik doğrulamasını tamamlayın." : "Complete the security verification.";
 
@@ -66,7 +69,7 @@ export function BookingCTA() {
     const result = await submitContact({
       fullName: name,
       email: email.toLowerCase(),
-      phone: phone || undefined,
+      phone,
       subject: subject || undefined,
       message: message || (isTr ? "Tanışma görüşmesi talebi." : "Introductory consultation request."),
       locale,
@@ -77,6 +80,7 @@ export function BookingCTA() {
     setIsSubmitting(false);
 
     if (result.success) {
+      setSubmissionMessage(result.message);
       setSubmitted(true);
       return;
     }
@@ -102,6 +106,7 @@ export function BookingCTA() {
     setTurnstileToken("");
     setErrors({});
     setSubmitted(false);
+    setSubmissionMessage("");
     turnstileRef.current?.reset();
   }
 
@@ -131,7 +136,7 @@ export function BookingCTA() {
             <div aria-live="polite" className="flex h-full min-h-[360px] flex-col items-center justify-center rounded-2xl bg-[#F8FAF7] p-6 text-center sm:p-8">
               <div className="flex size-14 items-center justify-center rounded-full bg-brand-accent/10 text-brand-accent"><CheckCircle2 className="size-8" /></div>
               <p className="mt-5 font-heading text-xl text-ink">{isTr ? "Talebiniz alındı." : "Request received."}</p>
-              <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink/70">{isTr ? "Bilgilerinizi aldık. Ekibimiz en kısa sürede sizinle iletişime geçecek." : "We have your details. Our team will contact you as soon as possible."}</p>
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink/70">{submissionMessage || (isTr ? "Bilgilerinizi aldık. Ekibimiz en kısa sürede sizinle iletişime geçecek." : "We have your details. Our team will contact you as soon as possible.")}</p>
               <p className="mt-6 font-semibold text-ink">{isTr ? "Beklemeye vaktiniz yok mu?" : "Can’t wait?"}</p>
               <p className="mt-1 text-sm text-ink/65">{isTr ? "WhatsApp üzerinden bize hemen ulaşabilirsiniz." : "You can reach us immediately on WhatsApp."}</p>
               <div className="mt-6 grid w-full max-w-lg gap-3 sm:grid-cols-2">
@@ -153,13 +158,13 @@ export function BookingCTA() {
                 <div><label htmlFor="consultation-name" className="text-sm font-medium text-ink">{bookingCTA.form.name} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-name" data-locale-field="consultation-name" name="name" type="text" required onInput={() => clearError("name")} autoComplete="name" className={fieldClass} />{errors.name && <p className="mt-2 text-sm text-destructive">{errors.name}</p>}</div>
                 <div><label htmlFor="consultation-email" className="text-sm font-medium text-ink">{bookingCTA.form.email} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-email" data-locale-field="consultation-email" name="email" type="email" required onInput={() => clearError("email")} autoComplete="email" className={fieldClass} />{errors.email && <p className="mt-2 text-sm text-destructive">{errors.email}</p>}</div>
                 <div><label htmlFor="interest" className="text-sm font-medium text-ink">{bookingCTA.form.interestLabel}</label><select id="interest" data-locale-field="consultation-interest" name="interest" defaultValue={bookingCTA.form.interestOptions[0].value} className={fieldClass}>{bookingCTA.form.interestOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-                <div><label htmlFor="consultation-phone" className="text-sm font-medium text-ink">{isTr ? "Telefon" : "Phone"} <span className="font-normal text-muted-foreground">({isTr ? "isteğe bağlı" : "optional"})</span></label><input id="consultation-phone" data-locale-field="consultation-phone" name="phone" type="tel" autoComplete="tel" className={fieldClass} /></div>
+                <div><label htmlFor="consultation-phone" className="text-sm font-medium text-ink">{isTr ? "Telefon (zorunlu)" : "Phone (required)"}</label><input id="consultation-phone" data-locale-field="consultation-phone" name="phone" type="tel" required onInput={() => clearError("phone")} autoComplete="tel" className={fieldClass} />{errors.phone && <p className="mt-2 text-sm text-destructive">{errors.phone}</p>}</div>
                 <div className="sm:col-span-2"><ExamSelector value={exam} onChange={setExam} /></div>
                 <div className="sm:col-span-2"><label htmlFor="consultation-message" className="text-sm font-medium text-ink">{bookingCTA.form.messageLabel} <span className="font-normal text-muted-foreground">{bookingCTA.form.messageOptional}</span></label><textarea id="consultation-message" data-locale-field="consultation-message" name="message" rows={3} className={`${fieldClass} resize-y py-2.5`} /></div>
                 <div className="sm:col-span-2 border-t border-border pt-4"><label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink/75"><input type="checkbox" data-locale-field="consultation-privacy" checked={privacyConsent} onChange={(event) => { setPrivacyConsent(event.target.checked); clearError("privacy"); }} className="mt-1 size-4" /><span>{isTr ? "Tanışma görüşmesi talebimin yanıtlanması için iletişim bilgilerimin işlenmesini kabul ediyorum." : "I agree to the processing of my contact details for this consultation request."}</span></label>{errors.privacy && <p className="mt-2 text-sm text-destructive">{errors.privacy}</p>}</div>
                 <div className="sm:col-span-2"><TurnstileWidget ref={turnstileRef} action="consultation_submit" locale={locale} onVerify={handleTurnstileVerify} onExpire={handleTurnstileReset} onError={handleTurnstileReset} />{errors.turnstile && <p className="mt-2 text-sm text-destructive">{errors.turnstile}</p>}</div>
               </div>
-              <Button type="submit" disabled={isSubmitting} directional size="lg" className="mt-5 h-12 w-full text-base">{isSubmitting ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request")}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></Button>
+              <Button type="submit" disabled={isSubmitting} directional size="lg" className="mt-5 h-12 w-full text-base">{isSubmitting ? <><Wave className="h-4 w-8 text-current" aria-label={isTr ? "Gönderiliyor" : "Sending"} /><span>{isTr ? "Gönderiliyor" : "Sending"}</span></> : <>{isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request"}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></>}</Button>
             </form>
           )}
         </Reveal>

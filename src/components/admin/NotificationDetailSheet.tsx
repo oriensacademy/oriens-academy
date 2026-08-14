@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   ExternalLink,
   Tag,
+  Copy,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -26,8 +27,8 @@ export function NotificationDetailSheet({
 }: NotificationDetailSheetProps) {
   if (!delivery) return null;
 
-  const isContact = delivery.event_type.startsWith("contact");
-  const isBooking = delivery.event_type.startsWith("booking");
+  const isContact = delivery.entity_type === "contact_request";
+  const isBooking = delivery.entity_type === "booking";
   const isAdminEvent = delivery.event_type.includes("admin_notification");
 
   const targetLink = isContact
@@ -123,12 +124,17 @@ export function NotificationDetailSheet({
                 <div className="text-right">
                   <div className="text-[11px] text-muted-foreground">Tür (Type)</div>
                   <div className="text-xs font-semibold text-foreground">
-                    {isAdminEvent ? "Yönetici Bildirimi" : "Öğrenci Onay E-postası"}
+                    {isAdminEvent ? "Yönetici Bildirim E-postası" : "Öğrenci Onay E-postası"}
                   </div>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-border space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <a href={`mailto:${delivery.recipient}`} className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"><Mail className="size-3.5" />E-posta Gönder</a>
+                  <button type="button" onClick={() => navigator.clipboard.writeText(delivery.recipient)} className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"><Copy className="size-3.5" />E-postayı Kopyala</button>
+                  <Link href="/admin/ogrenciler" onClick={onClose} className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"><ExternalLink className="size-3.5" />Öğrenciyi Aç</Link>
+                </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Tag className="size-3 text-muted-foreground" />

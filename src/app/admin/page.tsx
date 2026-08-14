@@ -150,7 +150,7 @@ function DashboardContent() {
               label="Aktif Müsaitlik"
               count={metrics?.activeSlots || 0}
               subtext="Açık Seans Slotu"
-              href="/admin/musaitlik"
+              href="/admin/randevular"
             />
             <MetricCard
               label="Hatalı E-Posta"
@@ -192,7 +192,7 @@ function DashboardContent() {
           />
           <ModuleLinkCard
             title="Müsaitlik Takvimi"
-            href="/admin/musaitlik"
+            href="/admin/randevular"
             icon={Clock}
             description="Tekli ve toplu seans slotları oluşturun."
           />

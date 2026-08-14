@@ -85,7 +85,8 @@ export async function listAdminAvailabilitySlots(
  */
 export async function createAdminAvailabilitySlot(
   startsAt: string,
-  endsAt: string
+  endsAt: string,
+  status: Extract<SlotStatus, "available" | "blocked"> = "available"
 ): Promise<{ data: Tables<"availability_slots"> | null; error: string | null }> {
   const supabase = getSupabaseClient();
 
@@ -108,7 +109,7 @@ export async function createAdminAvailabilitySlot(
       .insert({
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
-        status: "available",
+        status,
         created_by: userData.user?.id || null,
       })
       .select()
@@ -125,10 +126,10 @@ export async function createAdminAvailabilitySlot(
     // Write audit log
     await supabase.from("audit_logs").insert({
       actor_user_id: userData.user?.id || null,
-      action: "admin.availability.slot_created",
+      action: "admin.availability.create",
       entity_type: "availability_slot",
       entity_id: data.id,
-      metadata: { starts_at: data.starts_at, ends_at: data.ends_at },
+      metadata: { starts_at: data.starts_at, ends_at: data.ends_at, status },
     });
 
     return { data, error: null };
@@ -180,7 +181,7 @@ export async function deleteAdminAvailabilitySlot(
     const { data: userData } = await supabase.auth.getUser();
     await supabase.from("audit_logs").insert({
       actor_user_id: userData.user?.id || null,
-      action: "admin.availability.slot_deleted",
+      action: "admin.availability.delete",
       entity_type: "availability_slot",
       entity_id: slotId,
       metadata: null,
@@ -276,10 +277,10 @@ export async function bulkCreateAdminAvailabilitySlots(
     // Audit log
     await supabase.from("audit_logs").insert({
       actor_user_id: userData.user?.id || null,
-      action: "admin.availability.bulk_slots_created",
+      action: "admin.availability.create",
       entity_type: "availability_slot",
       entity_id: null,
-      metadata: { created_count: createdCount, skipped_count: skippedCount },
+      metadata: { mode: "bulk", created_count: createdCount, skipped_count: skippedCount },
     });
 
     return { createdCount, skippedCount, error: null };

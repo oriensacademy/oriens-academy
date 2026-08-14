@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { BookingDetailSheet } from "@/components/admin/BookingDetailSheet";
+import { CreateBookingModal } from "@/components/admin/CreateBookingModal";
+import AdminAvailabilityPage from "../musaitlik/page";
 import type { BookingWithSlot, BookingStatus } from "@/lib/admin/bookings";
 import { listAdminBookings } from "@/lib/admin/bookings";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
@@ -17,10 +19,34 @@ import {
   ChevronRight,
   AlertCircle,
   Inbox,
+  List,
+  Clock,
+  Plus,
 } from "lucide-react";
 
 export default function AdminBookingsPage() {
-  return <BookingsContent />;
+  const [activeTab, setActiveTab] = useState<"list" | "availability">("list");
+
+  return (
+    <div className="space-y-5">
+      <div className="border-b border-border pb-5">
+        <div className="flex items-center gap-2">
+          <CalendarCheck className="size-6 text-[#819586]" />
+          <h1 className="text-xl font-bold tracking-tight text-[#10271B]">Randevular</h1>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">Randevuları ve uygunluk takvimini tek çalışma alanından yönetin.</p>
+      </div>
+      <div className="inline-flex w-full rounded-xl border border-border bg-white p-1 shadow-xs sm:w-auto">
+        <button type="button" onClick={() => setActiveTab("list")} className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold sm:flex-none ${activeTab === "list" ? "bg-[#10271B] text-white" : "text-muted-foreground hover:bg-muted"}`}>
+          <List className="size-4" /> Randevular
+        </button>
+        <button type="button" onClick={() => setActiveTab("availability")} className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold sm:flex-none ${activeTab === "availability" ? "bg-[#10271B] text-white" : "text-muted-foreground hover:bg-muted"}`}>
+          <Clock className="size-4" /> Takvim / Müsaitlik
+        </button>
+      </div>
+      {activeTab === "list" ? <BookingsContent /> : <AdminAvailabilityPage />}
+    </div>
+  );
 }
 
 const STATUS_OPTIONS: Array<{ value: BookingStatus | "all"; label: string }> = [
@@ -45,6 +71,7 @@ function BookingsContent() {
 
   // Selected Booking for Detail View
   const [selectedBooking, setSelectedBooking] = useState<BookingWithSlot | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -96,13 +123,13 @@ function BookingsContent() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* View Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
         <div>
           <div className="flex items-center gap-2">
             <CalendarCheck className="size-6 text-[#819586]" />
             <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              Randevu Yönetimi / Bookings
+              Randevu Listesi
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -110,15 +137,15 @@ function BookingsContent() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={fetchBookings}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted"
-        >
-          {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
-          <span>Yenile / Refresh</span>
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={fetchBookings} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted">
+            {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
+            <span>Yenile</span>
+          </button>
+          <button type="button" onClick={() => setCreateModalOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C]">
+            <Plus className="size-4 text-amber-400" /><span>Randevu Oluştur</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -221,7 +248,7 @@ function BookingsContent() {
 
       {/* Data Table (Desktop) */}
       {!loading && !errorMsg && bookings.length > 0 && (
-        <div className="rounded-xl border border-border bg-white shadow-xs overflow-hidden">
+        <div className="hidden rounded-xl border border-border bg-white shadow-xs overflow-hidden md:block">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -323,11 +350,43 @@ function BookingsContent() {
         </div>
       )}
 
+      {!loading && !errorMsg && bookings.length > 0 && (
+        <div className="grid gap-3 md:hidden">
+          {bookings.map((booking) => {
+            const startsAt = booking.availability_slots?.starts_at
+              ? new Date(booking.availability_slots.starts_at)
+              : null;
+            return (
+              <button
+                key={booking.id}
+                type="button"
+                onClick={() => setSelectedBooking(booking)}
+                className="rounded-xl border border-border bg-white p-4 text-left shadow-xs"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div><div className="font-semibold text-foreground">{booking.full_name}</div><div className="mt-0.5 text-[11px] text-muted-foreground">{booking.email}<br />{booking.phone || "Telefon yok"}</div></div>
+                  <StatusBadge status={booking.status as BookingStatus} />
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 text-[11px]">
+                  <div><span className="text-muted-foreground">Randevu</span><div className="font-semibold">{startsAt ? startsAt.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" }) : "Dilim yok"}</div></div>
+                  <div><span className="text-muted-foreground">Sınav / Konu</span><div className="font-semibold">{booking.exam_code || booking.custom_exam || "Danışmanlık"}</div></div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Booking Detail Sheet */}
       <BookingDetailSheet
         booking={selectedBooking}
         onClose={() => setSelectedBooking(null)}
         onStatusUpdated={handleStatusUpdated}
+      />
+      <CreateBookingModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreated={fetchBookings}
       />
     </div>
   );

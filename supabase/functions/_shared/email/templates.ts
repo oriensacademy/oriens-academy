@@ -22,7 +22,7 @@ export type ContactEmailData = {
   message: string;
   locale: "tr" | "en";
   createdAt: string;
-  source?: "website" | "quick_contact" | "consultation";
+  source?: "website" | "contact_form" | "quick_contact" | "consultation";
 };
 
 // ----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ function formatSupportLabel(type: string, locale: "tr" | "en"): string {
 }
 
 function formatDateTime(isoStr?: string | null, locale?: "tr" | "en"): string {
-  if (!isoStr) return "-";
+  if (!isoStr) return "";
   try {
     const d = new Date(isoStr);
     return d.toLocaleString(locale === "tr" ? "tr-TR" : "en-GB", {
@@ -67,6 +67,14 @@ function formatDateTime(isoStr?: string | null, locale?: "tr" | "en"): string {
   } catch {
     return isoStr;
   }
+}
+
+function joinText(lines: Array<string | null | undefined | false>): string {
+  return lines.filter((line) => line !== null && line !== undefined && line !== false).join("\n").trim();
+}
+
+function actionButton(label: string, href: string): string {
+  return `<div style="margin-top:22px;"><a href="${href}" style="display:inline-block;background-color:${PALETTE.primary};color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;padding:12px 18px;border-radius:8px;">${escapeHtml(label)}</a></div>`;
 }
 
 /**
@@ -162,7 +170,7 @@ export function renderAdminBookingEmail(data: BookingEmailData, adminLocale: "tr
     fieldRow(isTr ? "E-posta" : "Email", `<a href="mailto:${escapeHtml(data.email)}" style="color:${PALETTE.primary};">${escapeHtml(data.email)}</a>`),
     data.phone ? fieldRow(isTr ? "Telefon" : "Phone", escapeHtml(data.phone)) : "",
     fieldRow(isTr ? "Akademik Odak" : "Support Type", `${supportLabel}${examInfo ? ` (${examInfo})` : ""}`),
-    fieldRow(isTr ? "Talep Edilen Görüşme Saati" : "Requested Appointment Time", formattedTime),
+    formattedTime ? fieldRow(isTr ? "Talep Edilen Görüşme Saati" : "Requested Appointment Time", formattedTime) : "",
     fieldRow(isTr ? "Ziyaretçi Dili" : "Visitor Language", data.locale.toUpperCase()),
     data.notes ? fieldRow(isTr ? "Notlar" : "Notes", escapeHtml(data.notes)) : "",
   ].join("");
@@ -177,19 +185,17 @@ export function renderAdminBookingEmail(data: BookingEmailData, adminLocale: "tr
     footerNote: `${isTr ? "Rezervasyon No" : "Booking ID"}: ${data.bookingId}`,
   });
 
-  const text = `
-ORIENS ACADEMY - ${subject}
-
-${isTr ? "Ad Soyad" : "Name"}: ${data.fullName}
-${isTr ? "E-posta" : "Email"}: ${data.email}
-${isTr ? "Telefon" : "Phone"}: ${data.phone || "-"}
-${isTr ? "Akademik Odak" : "Support Type"}: ${supportLabel} ${examInfo ? `(${examInfo})` : ""}
-${isTr ? "Görüşme Saati" : "Appointment Time"}: ${formattedTime}
-${isTr ? "Dil" : "Language"}: ${data.locale.toUpperCase()}
-${isTr ? "Notlar" : "Notes"}: ${data.notes || "-"}
-
-${isTr ? "Rezervasyon No" : "Booking ID"}: ${data.bookingId}
-  `.trim();
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`, "",
+    `${isTr ? "Ad Soyad" : "Name"}: ${data.fullName}`,
+    `${isTr ? "E-posta" : "Email"}: ${data.email}`,
+    data.phone ? `${isTr ? "Telefon" : "Phone"}: ${data.phone}` : null,
+    `${isTr ? "Akademik Odak" : "Support Type"}: ${supportLabel}${examInfo ? ` (${examInfo})` : ""}`,
+    formattedTime ? `${isTr ? "Görüşme Saati" : "Appointment Time"}: ${formattedTime}` : null,
+    `${isTr ? "Dil" : "Language"}: ${data.locale.toUpperCase()}`,
+    data.notes ? `${isTr ? "Notlar" : "Notes"}: ${data.notes}` : null,
+    "", `${isTr ? "Rezervasyon No" : "Booking ID"}: ${data.bookingId}`,
+  ]);
 
   return { subject, html, text };
 }
@@ -201,7 +207,7 @@ export function renderStudentBookingEmail(data: BookingEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
     ? "Talebiniz Alındı | Oriens Academy"
-    : "We Have Received Your Request | Oriens Academy";
+    : "We Received Your Request | Oriens Academy";
   const safeName = escapeHtml(data.fullName);
   const examOrTopic = data.examCode?.toUpperCase() || data.customExam || formatSupportLabel(data.supportType, data.locale);
 
@@ -212,7 +218,7 @@ export function renderStudentBookingEmail(data: BookingEmailData) {
   const rows = [
     fieldRow(isTr ? "Ad Soyad" : "Name", safeName),
     fieldRow(isTr ? "E-posta" : "Email", escapeHtml(data.email)),
-    fieldRow(isTr ? "Telefon" : "Phone", escapeHtml(data.phone || "—")),
+    data.phone ? fieldRow(isTr ? "Telefon" : "Phone", escapeHtml(data.phone)) : "",
     fieldRow(isTr ? "İlgilendiğiniz sınav / konu" : "Exam / topic", escapeHtml(examOrTopic)),
   ].join("");
 
@@ -229,26 +235,16 @@ export function renderStudentBookingEmail(data: BookingEmailData) {
     bodyHtml,
   });
 
-  const text = `
-ORIENS ACADEMY - ${subject}
-
-${isTr ? `Merhaba ${data.fullName},` : `Hello ${data.fullName},`}
-
-${isTr
-  ? "Tanışma görüşmesi talebinizi başarıyla aldık.\n\nEkibimiz paylaştığınız iletişim bilgileri üzerinden en kısa sürede sizinle iletişime geçecektir."
-  : "We have successfully received your introductory consultation request.\n\nOur team will contact you as soon as possible using the contact information you provided."
-}
-
-${isTr ? "Talep Özeti" : "Request Summary"}
-${isTr ? "Ad Soyad" : "Name"}: ${data.fullName}
-${isTr ? "E-posta" : "Email"}: ${data.email}
-${isTr ? "Telefon" : "Phone"}: ${data.phone || "—"}
-${isTr ? "İlgilendiğiniz sınav / konu" : "Exam / topic"}: ${examOrTopic}
-
-Oriens Academy
-${isTr ? "E-posta" : "Email"}: oriensacademy@gmail.com
-${isTr ? "Telefon / WhatsApp" : "Phone / WhatsApp"}: +90 544 293 90 40
-  `.trim();
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`, "", isTr ? `Merhaba ${data.fullName},` : `Hello ${data.fullName},`, "",
+    isTr ? "Tanışma görüşmesi talebinizi başarıyla aldık.\n\nEkibimiz paylaştığınız iletişim bilgileri üzerinden en kısa sürede sizinle iletişime geçecektir." : "We have successfully received your introductory consultation request.\n\nOur team will contact you as soon as possible using the contact information you provided.",
+    "", isTr ? "Talep Özeti" : "Request Summary",
+    `${isTr ? "Ad Soyad" : "Name"}: ${data.fullName}`,
+    `${isTr ? "E-posta" : "Email"}: ${data.email}`,
+    data.phone ? `${isTr ? "Telefon" : "Phone"}: ${data.phone}` : null,
+    `${isTr ? "İlgilendiğiniz sınav / konu" : "Exam / topic"}: ${examOrTopic}`,
+    "", "Oriens Academy", `${isTr ? "E-posta" : "Email"}: oriensacademy@gmail.com`, `${isTr ? "Telefon / WhatsApp" : "Phone / WhatsApp"}: +90 544 293 90 40`,
+  ]);
 
   return { subject, html, text };
 }
@@ -260,47 +256,44 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
   const isTr = adminLocale === "tr";
   const isQuick = data.source === "quick_contact";
   const subject = isTr
-    ? `${isQuick ? "Yeni Hızlı İletişim Talebi" : "Yeni İletişim Talebi"} | Oriens Academy`
-    : `${isQuick ? "New Quick Contact Lead" : "New Contact Inquiry"} | Oriens Academy`;
+    ? "Yeni İletişim Talebi | Oriens Academy"
+    : "New Contact Request | Oriens Academy";
 
   const rows = [
-    fieldRow(isTr ? "Ad Soyad" : "Full Name", escapeHtml(data.fullName)),
+    !isQuick && data.fullName ? fieldRow(isTr ? "Ad Soyad" : "Full Name", escapeHtml(data.fullName)) : "",
     fieldRow(isTr ? "E-posta" : "Email", `<a href="mailto:${escapeHtml(data.email)}" style="color:${PALETTE.primary};">${escapeHtml(data.email)}</a>`),
     data.phone ? fieldRow(isTr ? "Telefon" : "Phone", escapeHtml(data.phone)) : "",
-    data.subject ? fieldRow(isTr ? "Konu" : "Subject", escapeHtml(data.subject)) : "",
+    data.subject ? fieldRow(isTr ? "Sınav / Konu" : "Exam / Topic", escapeHtml(data.subject)) : "",
     fieldRow(isTr ? "Ziyaretçi Dili" : "Visitor Language", data.locale.toUpperCase()),
-    fieldRow(isTr ? "Kaynak" : "Source", isQuick ? "quick_contact" : "website"),
   ].join("");
 
   const bodyHtml = `
+    <div style="margin-bottom:20px;">${isTr ? "Yeni bir iletişim talebi aldınız." : "You have received a new contact request."}</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
-    <div style="margin-top:16px;">
+    ${data.message ? `<div style="margin-top:16px;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${PALETTE.sage};">${isTr ? "Mesaj" : "Message"}</div>
       <div style="margin-top:6px;background-color:${PALETTE.bg};border:1px solid ${PALETTE.border};border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(data.message)}</div>
-    </div>`;
+    </div>` : ""}
+    ${actionButton(isTr ? "Yönetim Panelinde Görüntüle" : "View in Admin Panel", "https://oriens-academy.com/admin/iletisim")}`;
 
   const html = renderEmailShell({
     locale: adminLocale,
-    eyebrow: isTr ? "Yeni Talep" : "New Request",
-    title: subject,
+    eyebrow: "ORIENS ACADEMY",
+    title: isTr ? "Yeni İletişim Talebi" : "New Contact Request",
     bodyHtml,
-    footerNote: `Contact ID: ${data.contactId}`,
+    footerNote: isTr ? `Ziyaretçi dili: ${data.locale.toUpperCase()}` : `Visitor language: ${data.locale.toUpperCase()}`,
   });
 
-  const text = `
-ORIENS ACADEMY - ${subject}
-
-${isTr ? "Ad Soyad" : "Full Name"}: ${data.fullName}
-${isTr ? "E-posta" : "Email"}: ${data.email}
-${isTr ? "Telefon" : "Phone"}: ${data.phone || "-"}
-${isTr ? "Konu" : "Subject"}: ${data.subject || "-"}
-${isTr ? "Dil" : "Language"}: ${data.locale.toUpperCase()}
-
-${isTr ? "Mesaj" : "Message"}:
-${data.message}
-
-Contact ID: ${data.contactId}
-  `.trim();
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`, "", isTr ? "Yeni bir iletişim talebi aldınız." : "You have received a new contact request.", "",
+    !isQuick && data.fullName ? `${isTr ? "Ad Soyad" : "Full Name"}: ${data.fullName}` : null,
+    `${isTr ? "E-posta" : "Email"}: ${data.email}`,
+    data.phone ? `${isTr ? "Telefon" : "Phone"}: ${data.phone}` : null,
+    data.subject ? `${isTr ? "Sınav / Konu" : "Exam / Topic"}: ${data.subject}` : null,
+    data.message ? `\n${isTr ? "Mesaj" : "Message"}:\n${data.message}` : null,
+    "", `${isTr ? "Yönetim Panelinde Görüntüle" : "View in Admin Panel"}: https://oriens-academy.com/admin/iletisim`,
+    "", "Oriens Academy", "oriensacademy@gmail.com", "+90 544 293 90 40",
+  ]);
 
   return { subject, html, text };
 }
@@ -314,25 +307,24 @@ export function renderStudentContactEmail(data: ContactEmailData) {
   const isConsultation = data.source === "consultation";
   const subject = isTr
     ? "Talebiniz Alındı | Oriens Academy"
-    : "We Have Received Your Request | Oriens Academy";
+    : "We Received Your Request | Oriens Academy";
   const safeName = escapeHtml(data.fullName);
-  const safeSubject = escapeHtml(data.subject || (isTr ? "Genel iletişim talebi" : "General contact request"));
-  const safeMessage = escapeHtml(data.message).replace(/\n/g, "<br>");
 
   const intro = isTr
     ? `${isQuick ? "Merhaba" : `Merhaba <strong>${safeName}</strong>`},<br><br>${isConsultation ? "Tanışma görüşmesi" : "İletişim"} talebinizi başarıyla aldık.<br><br>Ekibimiz paylaştığınız iletişim bilgileri üzerinden en kısa sürede sizinle iletişime geçecektir.`
     : `${isQuick ? "Hello" : `Hello <strong>${safeName}</strong>`},<br><br>We have successfully received your ${isConsultation ? "introductory consultation" : "contact"} request.<br><br>Our team will contact you as soon as possible using the contact information you provided.`;
 
+  const rows = [
+    !isQuick && data.fullName ? fieldRow(isTr ? "Ad Soyad" : "Name", safeName) : "",
+    fieldRow(isTr ? "E-posta" : "Email", escapeHtml(data.email)),
+    data.phone ? fieldRow(isTr ? "Telefon" : "Phone", escapeHtml(data.phone)) : "",
+    data.subject ? fieldRow(isTr ? "Sınav / Konu" : "Exam / Topic", escapeHtml(data.subject)) : "",
+  ].join("");
+
   const bodyHtml = `
     <div>${intro}</div>
-    <div style="margin-top:20px;background-color:${PALETTE.bg};border-left:3px solid ${PALETTE.sage};border-radius:0 10px 10px 0;padding:16px 18px;font-size:14px;line-height:1.65;">
-      <strong style="color:${PALETTE.primary};">${isTr ? "Talep özeti" : "Request summary"}</strong><br>
-      ${isTr ? "Ad Soyad" : "Name"}: ${safeName}<br>
-      ${isTr ? "E-posta" : "Email"}: ${escapeHtml(data.email)}<br>
-      ${isTr ? "Telefon" : "Phone"}: ${escapeHtml(data.phone || "—")}<br>
-      ${isTr ? "İlgilendiğiniz sınav / konu" : "Exam / topic"}: ${safeSubject}<br><br>
-      ${safeMessage}
-    </div>`;
+    ${!isQuick && rows ? `<div style="margin-top:20px;background-color:${PALETTE.bg};border:1px solid ${PALETTE.border};border-radius:10px;padding:16px 18px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table></div>` : ""}
+    ${!isQuick && data.message ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${PALETTE.sage};">${isTr ? "Mesajınız" : "Your Message"}</div><div style="margin-top:6px;line-height:1.65;white-space:pre-wrap;">${escapeHtml(data.message)}</div></div>` : ""}`;
 
   const html = renderEmailShell({
     locale: data.locale,
@@ -341,27 +333,18 @@ export function renderStudentContactEmail(data: ContactEmailData) {
     bodyHtml,
   });
 
-  const text = `
-ORIENS ACADEMY - ${subject}
-
-${isTr ? (isQuick ? "Merhaba," : `Merhaba ${data.fullName},`) : (isQuick ? "Hello," : `Hello ${data.fullName},`)}
-
-${isTr
-  ? `${isConsultation ? "Tanışma görüşmesi" : "İletişim"} talebinizi başarıyla aldık.\n\nEkibimiz paylaştığınız iletişim bilgileri üzerinden en kısa sürede sizinle iletişime geçecektir.`
-  : `We have successfully received your ${isConsultation ? "introductory consultation" : "contact"} request.\n\nOur team will contact you as soon as possible using the contact information you provided.`
-}
-
-${isTr ? "Talep özeti" : "Request summary"}:
-${isTr ? "Ad Soyad" : "Name"}: ${data.fullName}
-${isTr ? "E-posta" : "Email"}: ${data.email}
-${isTr ? "Telefon" : "Phone"}: ${data.phone || "-"}
-${isTr ? "İlgilendiğiniz sınav / konu" : "Exam / topic"}: ${data.subject || "-"}
-${data.message}
-
-Oriens Academy
-${isTr ? "E-posta" : "Email"}: oriensacademy@gmail.com
-${isTr ? "Telefon / WhatsApp" : "Phone / WhatsApp"}: +90 544 293 90 40
-  `.trim();
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`, "",
+    isTr ? (isQuick ? "Merhaba," : `Merhaba ${data.fullName},`) : (isQuick ? "Hello," : `Hello ${data.fullName},`), "",
+    isTr ? `${isConsultation ? "Tanışma görüşmesi" : "İletişim"} talebinizi başarıyla aldık.\n\nEkibimiz paylaştığınız iletişim bilgileri üzerinden en kısa sürede sizinle iletişime geçecektir.` : `We have successfully received your ${isConsultation ? "introductory consultation" : "contact"} request.\n\nOur team will contact you as soon as possible using the contact information you provided.`,
+    !isQuick ? "" : null,
+    !isQuick && data.fullName ? `${isTr ? "Ad Soyad" : "Name"}: ${data.fullName}` : null,
+    !isQuick ? `${isTr ? "E-posta" : "Email"}: ${data.email}` : null,
+    !isQuick && data.phone ? `${isTr ? "Telefon" : "Phone"}: ${data.phone}` : null,
+    !isQuick && data.subject ? `${isTr ? "Sınav / Konu" : "Exam / Topic"}: ${data.subject}` : null,
+    !isQuick && data.message ? `\n${isTr ? "Mesajınız" : "Your Message"}:\n${data.message}` : null,
+    "", "Oriens Academy", `${isTr ? "E-posta" : "Email"}: oriensacademy@gmail.com`, `${isTr ? "Telefon / WhatsApp" : "Phone / WhatsApp"}: +90 544 293 90 40`,
+  ]);
 
   return { subject, html, text };
 }

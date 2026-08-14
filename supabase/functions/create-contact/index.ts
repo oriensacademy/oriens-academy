@@ -24,6 +24,8 @@ Deno.serve(async (req: Request) => {
     const requestedSource = String(payload.source ?? "website");
     const source = requestedSource === "quick_contact"
       ? "quick_contact"
+      : requestedSource === "contact_form"
+        ? "contact_form"
       : requestedSource === "consultation"
         ? "consultation"
         : "website";
@@ -84,7 +86,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!message || message.length < 5 || message.length > 2000) {
+    if (source !== "quick_contact" && (!message || message.length < 5 || message.length > 2000)) {
       return buildJsonResponse(
         { error_code: "INVALID_MESSAGE", message: "Message must be between 5 and 2000 characters." },
         400,
@@ -103,6 +105,14 @@ Deno.serve(async (req: Request) => {
     if (phone && phone.length > 30) {
       return buildJsonResponse(
         { error_code: "INVALID_PHONE", message: "Phone number exceeds maximum allowable length." },
+        400,
+        req
+      );
+    }
+
+    if ((source === "contact_form" || source === "consultation") && (!phone || phone.length < 5)) {
+      return buildJsonResponse(
+        { error_code: "INVALID_PHONE", message: "A valid phone number is required for the contact form." },
         400,
         req
       );
@@ -158,7 +168,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Complete both queued notification writes before the edge runtime can terminate.
-    await dispatchContactEmails(supabaseAdmin, {
+    const delivery = await dispatchContactEmails(supabaseAdmin, {
       contactId: contactRow.id,
       fullName,
       email,
@@ -170,6 +180,7 @@ Deno.serve(async (req: Request) => {
       createdAt: contactRow.created_at || nowIso,
     }).catch((err) => {
       console.error("[create-contact] Email dispatch background error:", err);
+      return { status: "partial" as const };
     });
 
     return buildJsonResponse(
@@ -177,6 +188,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         contactId: contactRow.id,
         message: "Contact request submitted successfully.",
+        delivery_status: delivery.status,
       },
       200,
       req

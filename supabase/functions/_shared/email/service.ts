@@ -11,6 +11,11 @@ import {
 
 const DEFAULT_SENDER = "Oriens Academy <notifications@notify.oriens-academy.com>";
 
+export type EmailDeliveryResult = {
+  status: "sent" | "failed";
+  errorCode?: string;
+};
+
 /**
  * Retrieves a private setting value from `site_settings` table using service role client.
  */
@@ -75,7 +80,7 @@ async function sendResendEmail(params: {
       status: "failed",
       lastErrorCode: "RECIPIENT_NOT_CONFIGURED",
     });
-    return;
+    return { status: "failed", errorCode: "RECIPIENT_NOT_CONFIGURED" } satisfies EmailDeliveryResult;
   }
 
   if (!resendApiKey) {
@@ -89,7 +94,7 @@ async function sendResendEmail(params: {
       status: "failed",
       lastErrorCode: "RESEND_API_KEY_MISSING",
     });
-    return;
+    return { status: "failed", errorCode: "RESEND_API_KEY_MISSING" } satisfies EmailDeliveryResult;
   }
 
   try {
@@ -126,7 +131,9 @@ async function sendResendEmail(params: {
         status: "sent",
         providerMessageId: json.id,
       });
+      return { status: "sent" } satisfies EmailDeliveryResult;
     } else {
+      const errorCode = json.name || json.message || "RESEND_ERROR";
       console.error(`[email/service] Resend API error:`, json);
       await logNotificationDelivery({
         supabaseAdmin,
@@ -135,8 +142,9 @@ async function sendResendEmail(params: {
         entityId,
         recipient: to,
         status: "failed",
-        lastErrorCode: json.name || json.message || "RESEND_ERROR",
+        lastErrorCode: errorCode,
       });
+      return { status: "failed", errorCode } satisfies EmailDeliveryResult;
     }
   } catch (err) {
     console.error(`[email/service] Unexpected network error sending email:`, err);
@@ -149,6 +157,7 @@ async function sendResendEmail(params: {
       status: "failed",
       lastErrorCode: "NETWORK_ERROR",
     });
+    return { status: "failed", errorCode: "NETWORK_ERROR" } satisfies EmailDeliveryResult;
   }
 }
 
@@ -257,9 +266,10 @@ export async function dispatchContactEmails(
     : configuredRecipient;
   const adminLocale = localeConfig?.locale ?? "tr";
 
-  // 1. Dispatch Admin Notification
+  // Attempt both independently so one provider failure never prevents the other.
   const adminTemplate = renderAdminContactEmail(contactData, adminLocale);
-  await sendResendEmail({
+  const studentTemplate = renderStudentContactEmail(contactData);
+  const [admin, student] = await Promise.all([sendResendEmail({
     supabaseAdmin,
     to: adminRecipient,
     replyTo: contactData.email,
@@ -274,11 +284,7 @@ export async function dispatchContactEmails(
     entityType: "contact_request",
     entityId: contactData.contactId,
     idempotencyKey: `${contactData.source === "quick_contact" ? "quick-contact" : contactData.source === "consultation" ? "consultation" : "contact"}-admin-${contactData.contactId}`,
-  });
-
-  // 2. Dispatch Student Acknowledgement
-  const studentTemplate = renderStudentContactEmail(contactData);
-  await sendResendEmail({
+  }), sendResendEmail({
     supabaseAdmin,
     to: contactData.email,
     subject: studentTemplate.subject,
@@ -292,5 +298,11 @@ export async function dispatchContactEmails(
     entityType: "contact_request",
     entityId: contactData.contactId,
     idempotencyKey: `${contactData.source === "quick_contact" ? "quick-contact" : contactData.source === "consultation" ? "consultation" : "contact"}-student-${contactData.contactId}`,
-  });
+  })]);
+
+  return {
+    admin,
+    student,
+    status: admin.status === "sent" && student.status === "sent" ? "sent" as const : "partial" as const,
+  };
 }
