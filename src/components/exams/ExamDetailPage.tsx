@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ButtonLink } from "@/components/ui/button";
 import { CompassMark } from "@/components/brand/CompassMark";
 import { Reveal } from "@/components/motion/Reveal";
 import { ExamDetailVisual } from "./ExamDetailVisual";
 import { ExamOverviewCarouselSection } from "./ExamOverviewCarouselSection";
-import { examRecords, type ExamRecord } from "@/content/exams";
+import type { ExamRecord } from "@/content/exams";
 import { useExamsContent, useLocale } from "@/content/locale-context";
-import { examDetailPath, localizedPath } from "@/lib/routes";
+import { localizedPath } from "@/lib/routes";
 import { OriensLottie } from "@/components/ui/OriensLottie";
 import { getExamOwnerVisual } from "@/data/exam-visuals";
 
@@ -19,7 +19,6 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
   const { examText, examDetailText, detailPage, categories } = useExamsContent();
   const summary = examText[exam.code];
   const detail = examDetailText[exam.code];
-  const related = exam.relatedExams.map((code) => examRecords.find((candidate) => candidate.code === code)).filter((candidate): candidate is ExamRecord => !!candidate);
   const ownerVisual = getExamOwnerVisual(exam.code);
 
   return (
@@ -49,7 +48,7 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
             </div>
             <div className="lg:col-span-5">
               {ownerVisual ? (
-                <div className="mx-auto w-full max-w-[220px] rounded-[2rem] border border-border bg-[#F6F8F3] p-3 sm:max-w-[260px] lg:max-w-[300px]">
+                <div className="mx-auto w-full max-w-[220px] sm:max-w-[260px] lg:max-w-[300px]">
                   <OriensLottie src={ownerVisual.animation} speed={ownerVisual.speed} ariaLabel={ownerVisual.label[locale]} />
                 </div>
               ) : (
@@ -94,38 +93,7 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
         </div>
       </section>
 
-      <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal className="grid gap-8 lg:grid-cols-12 lg:items-start">
-            <div className="lg:col-span-4"><CompassMark size={42} rotation={18} interactive /><p className="mt-6 text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{detailPage.supportEyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3vw,2.75rem)] leading-tight font-medium text-ink">{detailPage.supportTitle}</h2></div>
-            <div className="border-t border-ink pt-6 lg:col-span-8"><p className="max-w-[68ch] text-xl leading-[1.7] text-ink/75">{detail.oriensSupport}</p><ul className="mt-8 grid gap-3 sm:grid-cols-2">{[summary.audience, summary.purpose].map((item) => <li key={item} className="flex items-start gap-3 text-sm leading-relaxed text-ink/70"><Check className="mt-0.5 size-4 shrink-0 text-brand-accent" aria-hidden="true" />{item}</li>)}</ul></div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section className="border-y border-border bg-surface py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{detailPage.preparationEyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3vw,2.75rem)] leading-tight font-medium text-ink">{detailPage.preparationTitle}</h2></Reveal>
-          <div className="mt-12 grid border-t border-l border-border md:grid-cols-3">{detail.preparationAreas.map((area, index) => <Reveal key={area.title} className="border-r border-b border-border p-6 md:p-8" delay={index * 0.06} y={8}><span className="text-xs tabular-nums text-muted-foreground">0{index + 1}</span><h3 className="mt-8 text-2xl font-medium text-ink">{area.title}</h3><p className="mt-4 text-sm leading-[1.7] text-ink/70">{area.description}</p></Reveal>)}</div>
-          <Reveal className="mt-8 border-l-2 border-brand-accent py-2 pl-5"><p className="max-w-[75ch] text-sm leading-relaxed text-muted-foreground">{detailPage.officialNote}</p></Reveal>
-        </div>
-      </section>
-
-      <section className="overflow-hidden bg-surface-muted py-20 md:py-28">
-        <div className="mx-auto grid max-w-[1280px] items-center gap-12 px-6 md:px-12 lg:grid-cols-12">
-          <Reveal className="lg:col-span-5"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{detailPage.factsLabel}</p><h2 className="mt-4 text-[clamp(2rem,3vw,2.75rem)] leading-tight font-medium text-ink">{exam.code} · {summary.title}</h2><p className="mt-5 max-w-[50ch] text-base leading-relaxed text-ink/70">{summary.shortDescription}</p></Reveal>
-          <Reveal className="lg:col-span-7" delay={0.08}><ExamDetailVisual code={exam.code} variant={exam.visualVariant} label={detailPage.visualLabel(exam.code)} /></Reveal>
-        </div>
-      </section>
-
       <ExamOverviewCarouselSection exam={exam} />
-
-      <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{detailPage.relatedEyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3vw,2.75rem)] leading-tight font-medium text-ink">{detailPage.relatedTitle}</h2></Reveal>
-          <div className="mt-10 border-t border-ink">{related.map((relatedExam, index) => { const text = examText[relatedExam.code]; return <Reveal key={relatedExam.code} delay={index * 0.05} y={8}><Link href={examDetailPath(locale, relatedExam.slug)} className="group grid min-h-24 items-center gap-3 border-b border-border py-5 outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-inset sm:grid-cols-[5rem_1fr_auto] sm:px-4"><span className="font-heading text-3xl text-ink">{relatedExam.code}</span><span><span className="block font-heading text-lg text-secondary">{text.title}</span><span className="mt-1 block text-sm text-muted-foreground">{categories[relatedExam.primaryCategory].label}</span></span><ArrowUpRight className="size-5 text-brand-accent transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" /></Link></Reveal>; })}</div>
-        </div>
-      </section>
 
       <section className="border-y border-border bg-surface-muted py-20 md:py-28">
         <div className="mx-auto grid max-w-[1280px] gap-10 px-6 md:px-12 lg:grid-cols-12">

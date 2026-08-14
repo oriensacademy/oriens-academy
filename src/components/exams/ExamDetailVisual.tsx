@@ -26,9 +26,7 @@ export function ExamDetailVisual({ label, code }: { variant: ExamVisualVariant; 
   const visual = examVisuals[code];
 
   return (
-    <div role="img" aria-label={label} className="relative mx-auto w-full max-w-[560px] overflow-hidden rounded-[2rem] border border-[#DCE5DD] bg-[#FCFBF7] p-7 sm:p-10">
-      <div className="pointer-events-none absolute -right-20 -top-20 size-56 rounded-full border border-[#DCE5DD]" aria-hidden="true" />
-      <div className="pointer-events-none absolute -bottom-24 -left-16 size-64 rounded-full border border-[#D6B56D]/35" aria-hidden="true" />
+    <div role="img" aria-label={label} className="relative mx-auto w-full max-w-[560px] px-2 py-4 sm:px-5">
       <motion.div
         initial={reducedMotion ? false : { opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -40,7 +38,7 @@ export function ExamDetailVisual({ label, code }: { variant: ExamVisualVariant; 
           <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8FA294]">Oriens Academy</span>
           <span className="font-heading text-3xl text-[#10271B]">{code}</span>
         </div>
-        <div className="mt-8 flex min-h-48 items-center justify-center rounded-3xl border border-[#DCE5DD] bg-white text-[#10271B] sm:min-h-56">
+        <div className="mt-8 flex min-h-48 items-center justify-center text-[#10271B] sm:min-h-56">
           <AcademicIcon type={visual.type} size="42%" className="max-h-36 min-h-24 text-[#10271B]" />
         </div>
         <div className="mt-6 grid grid-cols-[1fr_auto] items-end gap-5 border-t border-[#DCE5DD] pt-5">

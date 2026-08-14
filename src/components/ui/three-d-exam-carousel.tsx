@@ -10,7 +10,8 @@ import {
 } from "motion/react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AcademicIcon, type AcademicIconType } from "@/components/academic/AcademicIcon";
 import { cn } from "@/lib/utils";
 
@@ -58,12 +59,11 @@ function useResponsiveFace() {
   return metrics;
 }
 
-function ExamCard({ card, examCode, expanded = false }: { card: ExamOverviewCard; examCode: string; expanded?: boolean }) {
+function ExamCard({ card, examCode }: { card: ExamOverviewCard; examCode: string }) {
   const iconType = card.iconType ?? iconByVisual[card.visual ?? "overview"];
   return (
     <article className={cn(
       "relative flex h-full flex-col overflow-hidden rounded-[26px] border p-6 text-left shadow-[0_20px_55px_rgba(16,39,27,0.14)]",
-      expanded && "min-h-[360px] p-7 sm:p-9",
       card.accent === "primary" && "border-[#294536] bg-[#10281E] text-white",
       card.accent === "secondary" && "border-[#A8B8A9] bg-[#E8EFE6] text-[#10281E]",
       card.accent === "accent" && "border-[#D6C58E] bg-[#F7F0DD] text-[#10281E]",
@@ -75,12 +75,53 @@ function ExamCard({ card, examCode, expanded = false }: { card: ExamOverviewCard
         <span className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-65">{card.eyebrow ?? `${examCode} overview`}</span>
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-current/15 bg-white/8"><AcademicIcon type={iconType} size={19} /></span>
       </div>
-      {card.value && <p className={cn("mt-7 font-heading text-[clamp(2.3rem,4vw,3.8rem)] leading-none tracking-[-0.035em]", expanded && "text-[clamp(3rem,8vw,5rem)]")}>{card.value}</p>}
-      <h3 className={cn("mt-7 font-heading text-2xl leading-[1.04] tracking-[-0.02em]", card.value && "mt-4", expanded && "text-3xl sm:text-4xl")}>{card.title}</h3>
-      <p className={cn("mt-3 line-clamp-4 text-[13px] leading-[1.65] opacity-72", expanded && "line-clamp-none text-base")}>{card.description}</p>
-      {card.bullets && card.bullets.length > 0 && <ul className={cn("mt-auto flex flex-wrap gap-2 pt-5", expanded && "mt-6")}>{card.bullets.map((bullet) => <li key={bullet} className="rounded-full border border-current/15 bg-white/10 px-2.5 py-1.5 text-[10px] font-semibold leading-none">{bullet}</li>)}</ul>}
+      {card.value && <p className="mt-7 font-heading text-[clamp(2.3rem,4vw,3.8rem)] leading-none tracking-[-0.035em]">{card.value}</p>}
+      <h3 className={cn("mt-7 font-heading text-2xl leading-[1.04] tracking-[-0.02em]", card.value && "mt-4")}>{card.title}</h3>
+      <p className="mt-3 line-clamp-4 text-[13px] leading-[1.65] opacity-72">{card.description}</p>
+      {card.bullets && card.bullets.length > 0 && <ul className="mt-auto flex flex-wrap gap-2 pt-5">{card.bullets.map((bullet) => <li key={bullet} className="rounded-full border border-current/15 bg-white/10 px-2.5 py-1.5 text-[10px] font-semibold leading-none">{bullet}</li>)}</ul>}
       <span className="mt-auto pt-5 text-[9px] font-bold uppercase tracking-[0.18em] opacity-45">Oriens Academy · {card.footerCode ?? examCode}</span>
     </article>
+  );
+}
+
+function ExamDetailSurface({ card, examCode, locale, closeRef, titleId, descriptionId, onClose }: {
+  card: ExamOverviewCard;
+  examCode: string;
+  locale: "tr" | "en";
+  closeRef: React.RefObject<HTMLButtonElement | null>;
+  titleId: string;
+  descriptionId: string;
+  onClose: () => void;
+}) {
+  const iconType = card.iconType ?? iconByVisual[card.visual ?? "overview"];
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
+      data-carousel-detail
+      className="relative max-h-[88vh] w-full max-w-[800px] overflow-y-auto overflow-x-hidden rounded-[24px] border border-[#D9E0D8] bg-[#FCFBF7] p-6 text-[#10281E] shadow-[0_28px_90px_rgba(16,40,30,0.24)] sm:max-h-[85vh] sm:p-9"
+    >
+      <button ref={closeRef} type="button" onClick={onClose} className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full border border-[#D9E0D8] bg-white text-[#10281E] outline-none transition-colors hover:bg-[#F1F4EE] focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2" aria-label={locale === "tr" ? "Detayı kapat" : "Close details"}>
+        <X className="size-4" />
+      </button>
+
+      <div className="flex items-center gap-3 pr-12">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#D9E0D8] bg-white text-[#294536]"><AcademicIcon type={iconType} size={20} /></span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6E7E73]">{card.eyebrow ?? `${examCode} overview`}</span>
+      </div>
+      {card.value && <p className="mt-7 font-heading text-[clamp(2rem,5vw,2.625rem)] leading-tight tracking-[-0.025em] text-[#294536]">{card.value}</p>}
+      <h2 id={titleId} className={cn("mt-7 max-w-[18ch] font-heading text-[clamp(1.75rem,4vw,2.625rem)] leading-[1.08] tracking-[-0.025em] text-[#10281E]", card.value && "mt-3")}>{card.title}</h2>
+      <p id={descriptionId} className="mt-5 max-w-[68ch] text-base leading-[1.75] text-[#3E5145] sm:text-lg">{card.description}</p>
+      {card.bullets && card.bullets.length > 0 && (
+        <ul className="mt-7 flex flex-wrap gap-2 border-t border-[#D9E0D8] pt-6">
+          {card.bullets.map((bullet) => <li key={bullet} className="rounded-full border border-[#CBD6CC] bg-white px-3 py-2 text-xs font-semibold leading-tight text-[#294536]">{bullet}</li>)}
+        </ul>
+      )}
+      <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.18em] text-[#819086]">Oriens Academy · {card.footerCode ?? examCode}</p>
+    </div>
   );
 }
 
@@ -88,11 +129,15 @@ export function ThreeDExamCarousel({ examCode, cards, locale }: ThreeDExamCarous
   const reducedMotion = useReducedMotion();
   const { width: faceWidth, height: faceHeight } = useResponsiveFace();
   const sectionRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [visible, setVisible] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selected, setSelected] = useState<ExamOverviewCard | null>(null);
+  const dialogTitleId = useId();
+  const dialogDescriptionId = useId();
   const rotation = useMotionValue(0);
   const angle = 360 / cards.length;
   const radius = Math.max(faceWidth * 1.12, (faceWidth / 2) / Math.tan(Math.PI / cards.length));
@@ -132,10 +177,28 @@ export function ThreeDExamCarousel({ examCode, cards, locale }: ThreeDExamCarous
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     requestAnimationFrame(() => closeRef.current?.focus());
-    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setSelected(null); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelected(null);
+        requestAnimationFrame(() => openerRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])');
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
     window.addEventListener("keydown", onKey);
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKey); };
   }, [selected]);
+
+  const closeDetail = () => {
+    setSelected(null);
+    requestAnimationFrame(() => openerRef.current?.focus());
+  };
 
   const step = (direction: -1 | 1) => {
     moveTo(rotation.get() - direction * angle);
@@ -182,7 +245,7 @@ export function ThreeDExamCarousel({ examCode, cards, locale }: ThreeDExamCarous
                 <ExamCard card={card} examCode={examCode} />
               </Link>
             ) : (
-              <motion.button key={card.id} type="button" onClick={() => setSelected(card)} className={className} style={style} tabIndex={index === activeIndex ? 0 : -1} aria-label={label}>
+              <motion.button key={card.id} type="button" onClick={(event) => { openerRef.current = event.currentTarget; setSelected(card); }} className={className} style={style} tabIndex={index === activeIndex ? 0 : -1} aria-label={label} aria-haspopup="dialog">
                 <ExamCard card={card} examCode={examCode} />
               </motion.button>
             );
@@ -196,14 +259,14 @@ export function ThreeDExamCarousel({ examCode, cards, locale }: ThreeDExamCarous
         <button type="button" onClick={() => step(1)} className="flex size-11 items-center justify-center rounded-full border border-border bg-card text-ink shadow-md outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-[#819586]" aria-label="Next exam"><ChevronRight className="size-4" /></button>
       </div>
 
-      <AnimatePresence>
-        {selected && <motion.div className="fixed inset-0 z-[120] flex items-center justify-center bg-[#10281E]/45 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }} role="dialog" aria-modal="true" aria-label={selected.title}>
-          <motion.div initial={reducedMotion ? false : { opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: 0.98 }} transition={{ duration: reducedMotion ? 0 : 0.28 }} className="relative w-full max-w-2xl">
-            <button ref={closeRef} type="button" onClick={() => setSelected(null)} className="absolute top-4 right-4 z-10 flex size-10 items-center justify-center rounded-full border border-current/15 bg-white/85 text-[#10281E] outline-none focus-visible:ring-2 focus-visible:ring-[#819586]" aria-label={locale === "tr" ? "Detayı kapat" : "Close details"}><X className="size-4" /></button>
-            <ExamCard card={selected} examCode={examCode} expanded />
+      {selected && createPortal(
+        <AnimatePresence>
+          <motion.div ref={dialogRef} className="fixed inset-0 z-[120] flex items-center justify-center bg-[#10281E]/45 p-3 backdrop-blur-sm sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.2 }} onMouseDown={(event) => { if (event.target === event.currentTarget) closeDetail(); }}>
+            <ExamDetailSurface card={selected} examCode={examCode} locale={locale} closeRef={closeRef} titleId={dialogTitleId} descriptionId={dialogDescriptionId} onClose={closeDetail} />
           </motion.div>
-        </motion.div>}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body,
+      )}
 
       <div className="sr-only"><h3>{locale === "tr" ? "Sınav bilgileri özeti" : "Exam facts summary"}</h3>{cards.map((card) => <article key={card.id}><h4>{card.title}</h4>{card.value && <p>{card.value}</p>}<p>{card.description}</p>{card.bullets && <ul>{card.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul>}</article>)}</div>
     </div>
