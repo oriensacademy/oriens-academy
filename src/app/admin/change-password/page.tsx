@@ -7,6 +7,7 @@ import { Lock, AlertCircle, ShieldCheck } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useAdminAuth } from "@/lib/admin/auth-context";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
+import { AdminAuthLoader } from "@/components/admin/AdminAuthLoader";
 
 function isStrongPassword(value: string): boolean {
   return (
@@ -37,13 +38,7 @@ export default function AdminChangePasswordPage() {
   }, [status, router]);
 
   if (status === "loading" || status === "unauthenticated" || status === "unauthorized") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F7F7F5] px-6 text-center antialiased">
-        <div className="rounded-xl border border-border bg-white p-8 text-[#819586] shadow-sm">
-          <AdminWaveStatus label="Doğrulanıyor…" className="text-sm font-medium" />
-        </div>
-      </div>
-    );
+    return <AdminAuthLoader />;
   }
 
   const handleSubmit = async (event: FormEvent) => {

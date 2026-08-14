@@ -8,15 +8,17 @@ import { useAdminAuth } from "@/lib/admin/auth-context";
 import { adminSignIn } from "@/lib/supabase/auth";
 import { Eye, EyeOff, Lock, Mail, AlertCircle, ShieldCheck } from "lucide-react";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
+import { AdminAuthLoader } from "@/components/admin/AdminAuthLoader";
 
 export default function AdminLoginPage() {
-  const { status, refreshSession } = useAdminAuth();
+  const { status } = useAdminAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Redirect if already authenticated as admin
@@ -25,6 +27,16 @@ export default function AdminLoginPage() {
       router.replace("/admin");
     }
   }, [status, router]);
+
+  useEffect(() => {
+    if (!isVerifying || status !== "unauthorized") return;
+    const timer = window.setTimeout(() => {
+      setIsVerifying(false);
+      setIsSubmitting(false);
+      setErrorMessage("Bu hesap etkin bir yönetici profiline sahip değil.");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [isVerifying, status]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -46,9 +58,9 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // Refresh auth context state & navigate to /admin
-      await refreshSession();
-      router.replace("/admin");
+      // SIGNED_IN is handled once by AdminAuthProvider. Its verified
+      // authenticated status drives the redirect effect above.
+      setIsVerifying(true);
     } catch (err) {
       console.error("[AdminLogin] Login error:", err);
       setErrorMessage("Giriş yapılırken beklenmeyen bir hata oluştu.");
@@ -56,15 +68,8 @@ export default function AdminLoginPage() {
     }
   };
 
-  if (status === "loading" || status === "authenticated") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 antialiased">
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-8 shadow-sm">
-          <Image src="/brand/oriens-logo-v2.png" alt="Oriens Academy" width={217} height={80} className="h-10 w-auto" priority />
-          <AdminWaveStatus label="Doğrulanıyor…" className="mt-2 text-xs font-semibold text-primary" />
-        </div>
-      </div>
-    );
+  if (status === "loading" || status === "authenticated" || isVerifying) {
+    return <AdminAuthLoader />;
   }
 
   return (

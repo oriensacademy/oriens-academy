@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, Calendar, Clock, AlertTriangle, CheckCircle2, Globe, MessageCircle, Phone } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { CompassMark } from "@/components/brand/CompassMark";
@@ -45,6 +45,16 @@ export function BookingFlow() {
   const [slotUnavailableMessage, setSlotUnavailableMessage] = useState<string | null>(null);
   const [bookingResult, setBookingResult] = useState<BookingResult | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.submit;
+      return copy;
+    });
+  }, []);
+  const handleTurnstileReset = useCallback(() => setTurnstileToken(""), []);
 
   // Detect browser timezone on client
   const [timeZone] = useState(() => {
@@ -563,16 +573,9 @@ export function BookingFlow() {
               ref={turnstileRef}
               action="booking_submit"
               locale={locale as "tr" | "en"}
-              onVerify={(token) => {
-                setTurnstileToken(token);
-                setErrors((prev) => {
-                  const copy = { ...prev };
-                  delete copy.submit;
-                  return copy;
-                });
-              }}
-              onExpire={() => setTurnstileToken("")}
-              onError={() => setTurnstileToken("")}
+              onVerify={handleTurnstileVerify}
+              onExpire={handleTurnstileReset}
+              onError={handleTurnstileReset}
             />
           </div>
         )}

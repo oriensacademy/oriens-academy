@@ -98,6 +98,8 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) {
   const pathname = usePathname();
+  const normalizedPathname =
+    pathname !== "/" ? pathname.replace(/\/+$/, "") : pathname;
 
   return (
     <aside
@@ -118,7 +120,10 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {ADMIN_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive =
+            normalizedPathname === item.href ||
+            (item.href !== "/admin" &&
+              normalizedPathname.startsWith(`${item.href}/`));
 
           if (!item.enabled) {
             return (
@@ -148,22 +153,23 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`relative flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-semibold font-ui transition-colors ${
+              aria-current={isActive ? "page" : undefined}
+              className={`relative flex items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-ui transition-[background-color,border-color,color] duration-200 ${
                 isActive
-                  ? "bg-[#E8EEE8] text-[#10271B] font-bold"
-                  : "text-[#68756C] hover:bg-[#F2F5EF] hover:text-[#10271B]"
+                  ? "border-[#D6DED5] bg-[#EEF2EC] font-semibold text-[#10271B]"
+                  : "border-transparent font-medium text-[#68756C] hover:bg-[#F2F5EF] hover:text-[#10271B]"
               }`}
             >
               <div className="flex items-center gap-3">
                 <Icon
                   className={`size-4 ${
-                    isActive ? "text-[#819586]" : "text-[#68756C]"
+                    isActive ? "text-[#10271B]" : "text-[#68756C]"
                   }`}
                 />
                 <span>{item.label}</span>
               </div>
               {isActive && (
-                <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-[#819586]" />
+                <div className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-[#819586]" />
               )}
             </Link>
           );

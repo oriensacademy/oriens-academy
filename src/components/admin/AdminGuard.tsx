@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/lib/admin/auth-context";
-import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
+import { AdminAuthLoader } from "@/components/admin/AdminAuthLoader";
 
 interface AdminGuardProps {
   children: ReactNode;
@@ -23,13 +23,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
   }, [status, mustChangePassword, router]);
 
   if (status === "loading" || status === "unauthenticated" || status === "unauthorized" || (status === "authenticated" && mustChangePassword)) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F7F7F5] px-6 text-center antialiased">
-        <div className="rounded-xl border border-border bg-white p-8 text-[#819586] shadow-sm">
-          <AdminWaveStatus label="Doğrulanıyor… / Verifying authorization…" className="text-sm font-medium" />
-        </div>
-      </div>
-    );
+    return <AdminAuthLoader />;
   }
 
   return <>{children}</>;

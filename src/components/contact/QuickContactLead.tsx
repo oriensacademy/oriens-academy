@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Send, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -22,6 +22,9 @@ export function QuickContactLead() {
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
   const turnstileRef = useRef<TurnstileWidgetRef>(null);
+
+  const handleTurnstileVerify = useCallback((newToken: string) => setToken(newToken), []);
+  const handleTurnstileReset = useCallback(() => setToken(""), []);
 
   useEffect(() => {
     if (sessionStorage.getItem(DISMISS_KEY)) return;
@@ -80,7 +83,7 @@ export function QuickContactLead() {
       <p className="mt-3 w-full text-xs leading-[1.55] text-[#68756C]">{isTr ? "E-posta adresinizi bırakın, ekibimiz sizinle iletişime geçsin." : "Leave your email and our team will get in touch."}</p>
       <div className="mt-4 flex w-full items-stretch gap-2"><input data-locale-field="quick-contact-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-label={isTr ? "E-posta adresi" : "Email address"} placeholder={isTr ? "E-posta adresiniz" : "Your email"} className="h-11 min-w-0 flex-1 rounded-lg border border-[#DDE4DC] px-3 text-sm outline-none focus:border-[#819586]" /><button disabled={pending} className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-[#10271B] text-white disabled:opacity-50" aria-label={isTr ? "Bana ulaşın" : "Contact me"}><Send className="size-4" /></button></div>
       <label className="mt-3 flex w-full min-w-0 items-start gap-1.5 text-[10px] leading-[1.35] text-[#68756C]"><input data-locale-field="quick-contact-consent" type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 shrink-0" /><span className="min-w-0 flex-1 break-words">{isTr ? "İletişim için verilerimin işlenmesini kabul ediyorum." : "I consent to processing my details for contact."} <Link href={`/${locale}/privacy`} className="font-bold underline underline-offset-2">{isTr ? "Gizlilik" : "Privacy"}</Link></span></label>
-      <TurnstileWidget ref={turnstileRef} action="quick_contact_submit" locale={locale} onVerify={setToken} onExpire={() => setToken("")} onError={() => setToken("")} className="origin-top-left scale-[.82]" />
+      <TurnstileWidget ref={turnstileRef} action="quick_contact_submit" locale={locale} onVerify={handleTurnstileVerify} onExpire={handleTurnstileReset} onError={handleTurnstileReset} className="origin-top-left scale-[.82]" />
       {message && <p role="alert" className="mt-2 text-[11px] text-red-700">{message}</p>}
     </form>}
   </motion.aside>}</AnimatePresence>;

@@ -111,6 +111,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         setError(null);
         setStatus("unauthenticated");
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        if (event === "SIGNED_IN") setStatus("loading");
         await verifyAndSetAdmin(newSession);
       }
     });

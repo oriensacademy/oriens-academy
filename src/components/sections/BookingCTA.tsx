@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, CheckCircle2, Mail, MessageCircle, Phone } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { CompassMark } from "@/components/brand/CompassMark";
@@ -23,6 +23,17 @@ export function BookingCTA() {
   const summaryRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const turnstileRef = useRef<TurnstileWidgetRef>(null);
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    setErrors((current) => {
+      if (!current.turnstile) return current;
+      const next = { ...current };
+      delete next.turnstile;
+      return next;
+    });
+  }, []);
+  const handleTurnstileReset = useCallback(() => setTurnstileToken(""), []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,7 +157,7 @@ export function BookingCTA() {
                 <div className="sm:col-span-2"><ExamSelector value={exam} onChange={setExam} /></div>
                 <div className="sm:col-span-2"><label htmlFor="consultation-message" className="text-sm font-medium text-ink">{bookingCTA.form.messageLabel} <span className="font-normal text-muted-foreground">{bookingCTA.form.messageOptional}</span></label><textarea id="consultation-message" data-locale-field="consultation-message" name="message" rows={3} className={`${fieldClass} resize-y py-2.5`} /></div>
                 <div className="sm:col-span-2 border-t border-border pt-4"><label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink/75"><input type="checkbox" data-locale-field="consultation-privacy" checked={privacyConsent} onChange={(event) => { setPrivacyConsent(event.target.checked); clearError("privacy"); }} className="mt-1 size-4" /><span>{isTr ? "Tanışma görüşmesi talebimin yanıtlanması için iletişim bilgilerimin işlenmesini kabul ediyorum." : "I agree to the processing of my contact details for this consultation request."}</span></label>{errors.privacy && <p className="mt-2 text-sm text-destructive">{errors.privacy}</p>}</div>
-                <div className="sm:col-span-2"><TurnstileWidget ref={turnstileRef} action="consultation_submit" locale={locale} onVerify={(token) => { setTurnstileToken(token); clearError("turnstile"); }} onExpire={() => setTurnstileToken("")} onError={() => setTurnstileToken("")} />{errors.turnstile && <p className="mt-2 text-sm text-destructive">{errors.turnstile}</p>}</div>
+                <div className="sm:col-span-2"><TurnstileWidget ref={turnstileRef} action="consultation_submit" locale={locale} onVerify={handleTurnstileVerify} onExpire={handleTurnstileReset} onError={handleTurnstileReset} />{errors.turnstile && <p className="mt-2 text-sm text-destructive">{errors.turnstile}</p>}</div>
               </div>
               <Button type="submit" disabled={isSubmitting} directional size="lg" className="mt-7 h-12 w-full text-base">{isSubmitting ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request")}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></Button>
             </form>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useTransition, type FormEvent } from "react";
+import { useCallback, useState, useRef, useTransition, type FormEvent } from "react";
 import { CheckCircle2, ArrowRight, MessageCircle, Phone } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { useLocale } from "@/content/locale-context";
@@ -25,6 +25,17 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const handleTurnstileVerify = useCallback((token: string) => {
+    setTurnstileToken(token);
+    setErrors((prev) => {
+      const copy = { ...prev };
+      delete copy.turnstile;
+      delete copy.submit;
+      return copy;
+    });
+  }, []);
+  const handleTurnstileReset = useCallback(() => setTurnstileToken(""), []);
 
   function validate(): boolean {
     const nextErrors: Record<string, string> = {};
@@ -246,17 +257,9 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
           ref={turnstileRef}
           action="contact_submit"
           locale={locale as "tr" | "en"}
-          onVerify={(token) => {
-            setTurnstileToken(token);
-            setErrors((prev) => {
-              const copy = { ...prev };
-              delete copy.turnstile;
-              delete copy.submit;
-              return copy;
-            });
-          }}
-          onExpire={() => setTurnstileToken("")}
-          onError={() => setTurnstileToken("")}
+          onVerify={handleTurnstileVerify}
+          onExpire={handleTurnstileReset}
+          onError={handleTurnstileReset}
         />
         {errors.turnstile && (
           <p className="mt-1 text-xs font-medium text-destructive">{errors.turnstile}</p>
