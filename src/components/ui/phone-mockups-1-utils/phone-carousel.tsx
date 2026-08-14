@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 export interface ImageItem {
@@ -31,16 +31,36 @@ export function PhoneCarousel({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const currentImage = images[currentIndex];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [inViewport, setInViewport] = useState(false);
+  const [tabVisible, setTabVisible] = useState(true);
 
   useEffect(() => {
-    if (slideCount < 2) return;
+    const node = containerRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setInViewport(entry.isIntersecting),
+      { rootMargin: "200px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => setTabVisible(!document.hidden);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    if (slideCount < 2 || !inViewport || !tabVisible) return;
 
     const timer = window.setTimeout(() => {
       setCurrentIndex((previousIndex) => (previousIndex + 1) % slideCount);
     }, autoPlayInterval);
 
     return () => window.clearTimeout(timer);
-  }, [autoPlayInterval, currentIndex, slideCount]);
+  }, [autoPlayInterval, currentIndex, slideCount, inViewport, tabVisible]);
 
   const handleManualNext = () => {
     setCurrentIndex((previousIndex) => (previousIndex + 1) % slideCount);
@@ -52,6 +72,7 @@ export function PhoneCarousel({
 
   return (
     <div
+      ref={containerRef}
       data-phone-carousel
       data-slide-count={slideCount}
       data-active-slide={currentIndex + 1}

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { PricingModal } from "@/components/admin/PricingModal";
 import type { PricingPackageRow } from "@/lib/admin/pricing";
 import {
@@ -25,13 +23,7 @@ import {
 } from "lucide-react";
 
 export default function AdminPricingPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <PricingContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <PricingContent />;
 }
 
 function PricingContent() {

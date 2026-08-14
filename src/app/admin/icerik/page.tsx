@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { TestimonialModal } from "@/components/admin/TestimonialModal";
 import type { TestimonialRow } from "@/lib/admin/content";
 import {
@@ -28,13 +26,7 @@ import {
 } from "lucide-react";
 
 export default function AdminContentPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <ContentContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <ContentContent />;
 }
 
 function ContentContent() {

@@ -1,16 +1,16 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { Atom, Dna, FlaskConical, Globe2, Landmark, Sigma } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
+import { AcademicIcon, type AcademicIconType } from "@/components/academic/AcademicIcon";
 
-const subjects = [
-  { tr: "Matematik", en: "Mathematics", Icon: Sigma, accent: "#819586", rotate: -3 },
-  { tr: "Fizik", en: "Physics", Icon: Atom, accent: "#D6B56D", rotate: 4 },
-  { tr: "Kimya", en: "Chemistry", Icon: FlaskConical, accent: "#819586", rotate: -4 },
-  { tr: "Biyoloji", en: "Biology", Icon: Dna, accent: "#D6B56D", rotate: 3 },
-  { tr: "Coğrafya", en: "Geography", Icon: Globe2, accent: "#819586", rotate: -3 },
-  { tr: "Tarih", en: "History", Icon: Landmark, accent: "#D6B56D", rotate: 3 },
+const subjects: Array<{ tr: string; en: string; type: AcademicIconType; accent: string }> = [
+  { tr: "Matematik", en: "Mathematics", type: "analysis", accent: "#819586" },
+  { tr: "Fizik", en: "Physics", type: "physics", accent: "#D6B56D" },
+  { tr: "Kimya", en: "Chemistry", type: "chemistry", accent: "#819586" },
+  { tr: "Biyoloji", en: "Biology", type: "biology", accent: "#D6B56D" },
+  { tr: "Coğrafya", en: "Geography", type: "geography", accent: "#819586" },
+  { tr: "Tarih", en: "History", type: "history", accent: "#D6B56D" },
 ];
 
 export function AcademicSubjectMotifs() {
@@ -24,7 +24,7 @@ export function AcademicSubjectMotifs() {
       role="list"
       aria-label={locale === "tr" ? "Akademik ders alanları" : "Academic subject areas"}
     >
-      {subjects.map(({ tr, en, Icon, accent, rotate }, index) => (
+      {subjects.map(({ tr, en, type, accent }, index) => (
         <motion.div
           key={en}
           role="listitem"
@@ -35,14 +35,12 @@ export function AcademicSubjectMotifs() {
           transition={{ duration: reduced ? 0 : 0.26, delay: reduced ? 0 : index * 0.035, ease: [0.22, 1, 0.36, 1] }}
           className="group flex min-h-[116px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#DDE5DC] bg-[#F6F8F3] px-3 py-4 text-center transition-colors duration-300 hover:bg-[#EFF3EE] sm:min-h-[124px]"
         >
-          <motion.span
-            animate={reduced ? undefined : { rotate: [0, rotate, 0] }}
-            transition={{ duration: 4.8 + index * 0.25, repeat: Infinity, repeatDelay: 1.8, ease: "easeInOut" }}
+          <span
             className="flex size-12 items-center justify-center rounded-full border border-[#D6DED6] bg-white text-[#10271B] shadow-[0_7px_18px_rgba(16,39,27,.06)] transition-all duration-300 group-hover:border-[#819586] group-hover:shadow-[0_10px_24px_rgba(16,39,27,.11)]"
             style={{ color: accent }}
           >
-            <Icon className="size-6 stroke-[1.65] transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />
-          </motion.span>
+            <AcademicIcon type={type} size={25} className="transition-transform duration-300 group-hover:-translate-y-0.5" />
+          </span>
           <p className="mt-3 truncate text-[10px] font-bold tracking-[0.12em] text-[#405249] uppercase sm:text-[11px]">
             {locale === "tr" ? tr : en}
           </p>

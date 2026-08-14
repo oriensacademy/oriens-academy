@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, GraduationCap, Route } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
@@ -10,8 +11,17 @@ import { studyDestinations } from "@/data/study-destinations";
 import { localizedPath } from "@/lib/routes";
 import { DestinationExamPanel } from "./DestinationExamPanel";
 import { DestinationSelector } from "./DestinationSelector";
-import { StudyDestinationGlobe } from "./StudyDestinationGlobe";
 import type { StudyRegion } from "./globe-types";
+
+const StudyDestinationGlobe = dynamic(
+  () => import("./StudyDestinationGlobe").then((mod) => mod.StudyDestinationGlobe),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="mx-auto aspect-square w-full max-w-[620px] animate-pulse rounded-full border border-[#DDE4DC] bg-[#EEF2EC]" />
+    ),
+  }
+);
 
 function relationshipLabel(relationship: string, isTr: boolean) {
   const labels: Record<string, [string, string]> = {

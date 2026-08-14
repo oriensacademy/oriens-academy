@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { useAdminAuth } from "@/lib/admin/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { SiteSettingRow } from "@/lib/admin/settings";
@@ -26,13 +24,7 @@ import {
 } from "lucide-react";
 
 export default function AdminSettingsPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <SettingsContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <SettingsContent />;
 }
 
 function SettingsContent() {

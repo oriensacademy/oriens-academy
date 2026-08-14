@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { CountingNumber } from "@/components/ui/counting-number";
 import { useAdminAuth } from "@/lib/admin/auth-context";
@@ -28,13 +26,7 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <DashboardContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <DashboardContent />;
 }
 
 function DashboardContent() {

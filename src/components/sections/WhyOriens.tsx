@@ -2,7 +2,7 @@
 
 import { Reveal } from "@/components/motion/Reveal";
 import { StaggerGroup, StaggerItem } from "@/components/motion/Stagger";
-import { SineWave } from "@/components/math/SineWave";
+import { AcademicIcon } from "@/components/academic/AcademicIcon";
 import { useHomeContent } from "@/content/locale-context";
 
 export function WhyOriens() {
@@ -23,8 +23,8 @@ export function WhyOriens() {
           </Reveal>
         </div>
 
-        <Reveal delay={0.15} className="mt-10 hidden max-w-xs opacity-70 md:block">
-          <SineWave domain={{ xMin: -8, xMax: 8, yMin: -2, yMax: 2, width: 260, height: 60, padding: 6 }} />
+        <Reveal delay={0.15} className="mt-10 hidden max-w-xs text-[#819586] md:block">
+          <AcademicIcon type="planning" size={72} />
         </Reveal>
 
         <StaggerGroup className="mt-8 grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">

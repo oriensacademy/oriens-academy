@@ -14,7 +14,7 @@ export const universitySupport = {
       "Oriens guides university students through the content and rhythm of their own course—clarifying concepts, structuring problem solving and turning study into a process that can be reviewed.",
     primaryCta: "Book a Consultation",
     secondaryCta: "Explore Support Areas",
-    visualLabel: "An academic coordinate study showing a function, its tangent and structured notes",
+    visualLabel: "Academic support illustration for university learning, planning and feedback",
     visualNote: "Concept · application · feedback",
   },
   audience: {
@@ -100,10 +100,10 @@ export const universitySupport = {
     eyebrow: "Academic depth",
     title: "Difficulty at one point does not make the entire subject inaccessible.",
     description:
-      "As a tangent approaches a function locally, individual support concentrates on the exact point of difficulty. It then reconnects that point to the larger conceptual structure.",
-    caption: "Shown: f(x) = 0.35x² − 1 and the tangent at x₀ = 1.2, where f′(x₀) = 0.84.",
-    labels: { function: "function", tangent: "tangent", point: "focus point" },
-    ariaLabel: "Graph of f of x equals zero point three five x squared minus one and its tangent at x equals one point two",
+      "Individual support identifies the exact point of difficulty, then rebuilds understanding through explanation, controlled application and feedback.",
+    caption: "Concept analysis, an application plan and feedback progress within one academic support system.",
+    labels: { function: "analysis", tangent: "application", point: "feedback" },
+    ariaLabel: "University academic support illustration showing analysis, application and feedback stages",
   },
   approach: {
     eyebrow: "Study approach",

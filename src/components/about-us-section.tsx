@@ -12,7 +12,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { motion, useInView, useScroll, useTransform } from "motion/react";
 import { CompassMark } from "@/components/brand/CompassMark";
 import type { AboutContent } from "@/content/about";
 import { ButtonLink } from "@/components/ui/button";

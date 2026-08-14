@@ -9,32 +9,29 @@ import {
   examCategoryOrder,
   examRecords,
   examsInPrimaryCategory,
+  type ExamCode,
 } from "@/content/exams";
 import { useExamsContent, useLocale } from "@/content/locale-context";
 import { examDetailPath } from "@/lib/routes";
 import { OriensLottie } from "@/components/ui/OriensLottie";
 import { CONTACT } from "@/config/contact";
-import { ThreeDPhotoCarousel, type ThreeDCarouselCard } from "@/components/ui/3d-carousel";
+import { ThreeDExamCarousel, type ExamOverviewCard } from "@/components/ui/three-d-exam-carousel";
+import type { AcademicIconType } from "@/components/academic/AcademicIcon";
 
-function academicCard(
-  code: string,
-  title: string,
-  description: string,
-  ctaLabel: string,
-  href: string,
-  background: string,
-): ThreeDCarouselCard {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><rect width="640" height="640" rx="48" fill="${background}"/><path d="M80 104h480M80 536h480" stroke="#D6B56D" stroke-width="4" stroke-dasharray="12 14"/><text x="72" y="330" fill="#10271B" font-family="Georgia,serif" font-size="142">${code}</text><text x="78" y="500" fill="#10271B" font-family="Arial,sans-serif" font-size="18" letter-spacing="5">ORIENS ACADEMY</text></svg>`;
-  return {
-    src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
-    alt: `${code} — ${title}`,
-    href,
-    code,
-    title,
-    description,
-    ctaLabel,
-  };
-}
+const examIconTypes: Record<ExamCode, AcademicIconType> = {
+  IB: "global-study",
+  AP: "assessment",
+  SAT: "assessment",
+  ESAT: "physics",
+  TARA: "critical-reasoning",
+  TMUA: "critical-reasoning",
+  IGCSE: "reading",
+  GRE: "analysis",
+  GMAT: "planning",
+  UKCAT: "critical-reasoning",
+  IMAT: "biology",
+  OMPT: "analysis",
+};
 
 export function ExamHub() {
   const locale = useLocale();
@@ -42,16 +39,21 @@ export function ExamHub() {
   const featured = examRecords.filter((exam) => exam.featured);
   const primaryFeature = featured[0];
   const secondaryFeatures = featured.slice(1);
-  const galleryCards = examRecords.map((exam, index) => {
+  const galleryCards: ExamOverviewCard[] = examRecords.map((exam, index) => {
     const text = examText[exam.code];
-    return academicCard(
-      exam.code,
-      text.title,
-      text.shortDescription,
-      text.ctaLabel,
-      examDetailPath(locale, exam.slug),
-      index % 2 === 0 ? "#E6EDE5" : "#F7F1E2",
-    );
+    return {
+      id: exam.code,
+      eyebrow: "Oriens Academy",
+      title: text.title,
+      value: exam.code,
+      description: text.shortDescription,
+      bullets: text.subjects.slice(0, 2),
+      iconType: examIconTypes[exam.code],
+      accent: index % 4 === 0 ? "primary" : index % 4 === 1 ? "secondary" : index % 4 === 2 ? "accent" : "muted",
+      href: examDetailPath(locale, exam.slug),
+      linkLabel: text.ctaLabel,
+      footerCode: exam.code,
+    };
   });
 
   return (
@@ -82,16 +84,16 @@ export function ExamHub() {
         </div>
       </section>
 
-      <section className="overflow-hidden border-b border-border bg-[#10271B] py-14 text-white md:py-20" aria-labelledby="academic-gallery-title">
+      <section className="overflow-hidden border-b border-border bg-surface-muted py-14 md:py-20" aria-labelledby="academic-gallery-title">
         <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <p className="text-xs font-medium tracking-[0.24em] text-[#D6B56D] uppercase">{page.featuredEyebrow}</p>
-          <h2 id="academic-gallery-title" className="mt-4 max-w-2xl text-[clamp(2rem,3vw,2.75rem)] leading-tight">
+          <p className="text-xs font-medium tracking-[0.24em] text-brand-accent uppercase">{page.featuredEyebrow}</p>
+          <h2 id="academic-gallery-title" className="mt-4 max-w-2xl text-[clamp(2rem,3vw,2.75rem)] leading-tight text-ink">
             {locale === "tr" ? "Hazırlık alanlarını keşfedin." : "Explore preparation pathways."}
           </h2>
-          <div className="mt-8 rounded-[2rem] border border-white/15 bg-white/5">
-            <ThreeDPhotoCarousel cards={galleryCards} closeLabel={locale === "tr" ? "Kapat" : "Close"} />
-          </div>
-          <p className="mt-4 text-sm text-white/60">{locale === "tr" ? "Kartları sürükleyerek döndürün; ayrıntı için seçin." : "Drag to rotate the cards; select one for detail."}</p>
+          <p className="mt-4 max-w-[62ch] text-sm leading-relaxed text-muted-foreground">{locale === "tr" ? "Kartları sürükleyerek döndürün; öndeki sınav kartından ayrıntı sayfasına geçin." : "Drag to rotate the cards, then open the front exam card for details."}</p>
+        </div>
+        <div className="relative left-1/2 mt-2 w-screen -translate-x-1/2">
+          <ThreeDExamCarousel examCode="EXAMS" cards={galleryCards} locale={locale} />
         </div>
       </section>
 

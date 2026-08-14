@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { ContactDetailSheet } from "@/components/admin/ContactDetailSheet";
 import type { ContactRequestRow, ContactStatus } from "@/lib/admin/contacts";
 import { listAdminContactRequests } from "@/lib/admin/contacts";
@@ -22,13 +20,7 @@ import {
 } from "lucide-react";
 
 export default function AdminContactsPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <ContactsContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <ContactsContent />;
 }
 
 const STATUS_OPTIONS: Array<{ value: ContactStatus | "all"; label: string }> = [

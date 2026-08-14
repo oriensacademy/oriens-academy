@@ -77,7 +77,7 @@ export function ExamOverviewCarouselSection({ exam }: { exam: ExamRecord }) {
   ];
 
   return (
-    <section id="exam-overview-gallery" className="border-y border-border bg-surface-muted py-20 md:py-28">
+    <section id="exam-overview-gallery" className="overflow-x-clip border-y border-border bg-surface-muted py-20 md:py-28">
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
         <Reveal className="grid gap-5 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-6">

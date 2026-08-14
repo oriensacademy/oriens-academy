@@ -8,18 +8,10 @@ import {
   useMotionValueEvent,
   useReducedMotion,
 } from "motion/react";
-import {
-  BookOpen,
-  Brain,
-  ChartNoAxesColumnIncreasing,
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  GraduationCap,
-  ListChecks,
-  X,
-} from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AcademicIcon, type AcademicIconType } from "@/components/academic/AcademicIcon";
 import { cn } from "@/lib/utils";
 
 export interface ExamOverviewCard {
@@ -29,9 +21,12 @@ export interface ExamOverviewCard {
   value?: string;
   description: string;
   bullets?: string[];
-  icon?: React.ReactNode;
+  iconType?: AcademicIconType;
   visual?: "overview" | "facts" | "content" | "preparation" | "audience" | "context";
   accent?: "primary" | "secondary" | "accent" | "muted";
+  href?: string;
+  linkLabel?: string;
+  footerCode?: string;
 }
 
 interface ThreeDExamCarouselProps {
@@ -41,12 +36,12 @@ interface ThreeDExamCarouselProps {
 }
 
 const iconByVisual = {
-  overview: Compass,
-  facts: ChartNoAxesColumnIncreasing,
-  content: BookOpen,
-  preparation: ListChecks,
-  audience: Brain,
-  context: GraduationCap,
+  overview: "target",
+  facts: "analysis",
+  content: "reading",
+  preparation: "planning",
+  audience: "critical-reasoning",
+  context: "university",
 } as const;
 
 function useResponsiveFace() {
@@ -64,7 +59,7 @@ function useResponsiveFace() {
 }
 
 function ExamCard({ card, examCode, expanded = false }: { card: ExamOverviewCard; examCode: string; expanded?: boolean }) {
-  const Icon = iconByVisual[card.visual ?? "overview"];
+  const iconType = card.iconType ?? iconByVisual[card.visual ?? "overview"];
   return (
     <article className={cn(
       "relative flex h-full flex-col overflow-hidden rounded-[26px] border p-6 text-left shadow-[0_20px_55px_rgba(16,39,27,0.14)]",
@@ -78,13 +73,13 @@ function ExamCard({ card, examCode, expanded = false }: { card: ExamOverviewCard
       <div className="pointer-events-none absolute -right-6 -bottom-10 size-36 rounded-full border border-current/10" aria-hidden="true" />
       <div className="flex items-start justify-between gap-4">
         <span className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-65">{card.eyebrow ?? `${examCode} overview`}</span>
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-current/15 bg-white/8"><Icon className="size-4.5" strokeWidth={1.6} aria-hidden="true" /></span>
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-current/15 bg-white/8"><AcademicIcon type={iconType} size={19} /></span>
       </div>
       {card.value && <p className={cn("mt-7 font-heading text-[clamp(2.3rem,4vw,3.8rem)] leading-none tracking-[-0.035em]", expanded && "text-[clamp(3rem,8vw,5rem)]")}>{card.value}</p>}
       <h3 className={cn("mt-7 font-heading text-2xl leading-[1.04] tracking-[-0.02em]", card.value && "mt-4", expanded && "text-3xl sm:text-4xl")}>{card.title}</h3>
       <p className={cn("mt-3 line-clamp-4 text-[13px] leading-[1.65] opacity-72", expanded && "line-clamp-none text-base")}>{card.description}</p>
       {card.bullets && card.bullets.length > 0 && <ul className={cn("mt-auto flex flex-wrap gap-2 pt-5", expanded && "mt-6")}>{card.bullets.map((bullet) => <li key={bullet} className="rounded-full border border-current/15 bg-white/10 px-2.5 py-1.5 text-[10px] font-semibold leading-none">{bullet}</li>)}</ul>}
-      <span className="mt-auto pt-5 text-[9px] font-bold uppercase tracking-[0.18em] opacity-45">Oriens Academy · {examCode}</span>
+      <span className="mt-auto pt-5 text-[9px] font-bold uppercase tracking-[0.18em] opacity-45">Oriens Academy · {card.footerCode ?? examCode}</span>
     </article>
   );
 }
@@ -177,22 +172,28 @@ export function ThreeDExamCarousel({ examCode, cards, locale }: ThreeDExamCarous
         }}
       >
         <motion.div className="absolute left-1/2 top-1/2" style={{ width: faceWidth, height: faceHeight, marginLeft: -faceWidth / 2, marginTop: -faceHeight / 2, transformStyle: "preserve-3d", rotateY: rotation, z: -radius, willChange: visible && !reducedMotion ? "transform" : "auto" }}>
-          {faces.map(({ card, transform }, index) => <motion.button
-            key={card.id}
-            type="button"
-            onClick={() => setSelected(card)}
-            className="absolute inset-0 cursor-grab rounded-[26px] text-left outline-none focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-4 active:cursor-grabbing"
-            style={{ transform, backfaceVisibility: "hidden", pointerEvents: index === activeIndex ? "auto" : "none" }}
-            tabIndex={index === activeIndex ? 0 : -1}
-            aria-label={`${index + 1}/${cards.length}: ${card.title}`}
-          ><ExamCard card={card} examCode={examCode} /></motion.button>)}
+          {faces.map(({ card, transform }, index) => {
+            const className = "absolute inset-0 cursor-grab rounded-[26px] text-left outline-none focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-4 active:cursor-grabbing";
+            const style = { transform, backfaceVisibility: "hidden" as const, pointerEvents: index === activeIndex ? "auto" as const : "none" as const };
+            const label = card.linkLabel ?? `${index + 1}/${cards.length}: ${card.title}`;
+
+            return card.href ? (
+              <Link key={card.id} href={card.href} className={className} style={style} tabIndex={index === activeIndex ? 0 : -1} aria-label={label}>
+                <ExamCard card={card} examCode={examCode} />
+              </Link>
+            ) : (
+              <motion.button key={card.id} type="button" onClick={() => setSelected(card)} className={className} style={style} tabIndex={index === activeIndex ? 0 : -1} aria-label={label}>
+                <ExamCard card={card} examCode={examCode} />
+              </motion.button>
+            );
+          })}
         </motion.div>
       </motion.div>
 
       <div className="absolute inset-x-0 bottom-5 z-30 flex items-center justify-center gap-3">
-        <button type="button" onClick={() => step(-1)} className="flex size-11 items-center justify-center rounded-full border border-border bg-card text-ink shadow-md outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-[#819586]" aria-label={locale === "tr" ? "Önceki kart" : "Previous card"}><ChevronLeft className="size-4" /></button>
+        <button type="button" onClick={() => step(-1)} className="flex size-11 items-center justify-center rounded-full border border-border bg-card text-ink shadow-md outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-[#819586]" aria-label="Previous exam"><ChevronLeft className="size-4" /></button>
         <span className="min-w-16 rounded-full border border-border bg-card px-3 py-2 text-center text-[10px] font-bold tabular-nums tracking-[0.14em] text-muted-foreground" aria-live="polite">{String(activeIndex + 1).padStart(2, "0")} / {String(cards.length).padStart(2, "0")}</span>
-        <button type="button" onClick={() => step(1)} className="flex size-11 items-center justify-center rounded-full border border-border bg-card text-ink shadow-md outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-[#819586]" aria-label={locale === "tr" ? "Sonraki kart" : "Next card"}><ChevronRight className="size-4" /></button>
+        <button type="button" onClick={() => step(1)} className="flex size-11 items-center justify-center rounded-full border border-border bg-card text-ink shadow-md outline-none hover:bg-surface-muted focus-visible:ring-2 focus-visible:ring-[#819586]" aria-label="Next exam"><ChevronRight className="size-4" /></button>
       </div>
 
       <AnimatePresence>

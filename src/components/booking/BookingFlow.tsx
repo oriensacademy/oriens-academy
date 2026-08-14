@@ -371,7 +371,7 @@ export function BookingFlow() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={bookingFlow.step1.notesPlaceholder}
-                className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+                className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
               />
             </div>
           </div>
@@ -466,7 +466,7 @@ export function BookingFlow() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+                  className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
                 />
                 {errors.fullName && <p className="mt-1 text-xs text-destructive">{errors.fullName}</p>}
               </div>
@@ -481,7 +481,7 @@ export function BookingFlow() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+                  className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
                 />
                 {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
               </div>
@@ -495,7 +495,7 @@ export function BookingFlow() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+                  className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
                 />
               </div>
 

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { CreateSlotModal } from "@/components/admin/CreateSlotModal";
 import type { AvailabilitySlotWithBooking, SlotStatus } from "@/lib/admin/availability";
 import {
@@ -26,13 +24,7 @@ import {
 } from "lucide-react";
 
 export default function AdminAvailabilityPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <AvailabilityContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <AvailabilityContent />;
 }
 
 function AvailabilityContent() {

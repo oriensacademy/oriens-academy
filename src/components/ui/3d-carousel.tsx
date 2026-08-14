@@ -8,7 +8,7 @@ import {
   useAnimation,
   useMotionValue,
   useTransform,
-} from "framer-motion"
+} from "motion/react"
 
 export const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect
@@ -102,7 +102,7 @@ const Carousel = memo(
       <div
         className="flex h-full items-center justify-center bg-mauve-dark-2"
         style={{
-          perspective: "1000px",
+          perspective: isScreenSizeSm ? "600px" : "1000px",
           transformStyle: "preserve-3d",
           willChange: "transform",
         }}

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { NotificationDetailSheet } from "@/components/admin/NotificationDetailSheet";
 import type { NotificationDeliveryRow, DeliveryStatus } from "@/lib/admin/notifications";
 import { listAdminNotifications } from "@/lib/admin/notifications";
@@ -24,13 +22,7 @@ import {
 } from "lucide-react";
 
 export default function AdminNotificationsPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <NotificationsContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <NotificationsContent />;
 }
 
 function NotificationsContent() {

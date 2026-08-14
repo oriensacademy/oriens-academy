@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Search, Loader2, Info, X, GraduationCap, BookOpen, Award, Globe, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/content/locale-context";

@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { AuditDetailSheet } from "@/components/admin/AuditDetailSheet";
 import type { AuditLogRow } from "@/lib/admin/audit";
 import { listAdminAuditLogs } from "@/lib/admin/audit";
@@ -24,13 +22,7 @@ import {
 } from "lucide-react";
 
 export default function AdminAuditPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <AuditContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <AuditContent />;
 }
 
 const ENTITY_OPTIONS = [

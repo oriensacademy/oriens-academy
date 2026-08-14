@@ -1,7 +1,7 @@
 "use client";
 
 import { Reveal } from "@/components/motion/Reveal";
-import { VectorAnimation } from "@/components/math/VectorAnimation";
+import { AcademicIcon } from "@/components/academic/AcademicIcon";
 import { GradientCard } from "@/components/gradient-card";
 import { useHomeContent, useLocale } from "@/content/locale-context";
 
@@ -48,13 +48,8 @@ export function UniversitySupport() {
         </div>
 
         <Reveal delay={0.15} className="flex items-center">
-          <div className="w-full border border-border bg-surface p-6">
-            <VectorAnimation
-              from={{ x: -0.5, y: -0.5 }}
-              to={{ x: 4.2, y: 3.6 }}
-              domain={{ xMin: -1, xMax: 5, yMin: -1, yMax: 5, width: 340, height: 300, padding: 28 }}
-              showMagnitude={false}
-            />
+          <div className="flex w-full flex-col items-center border border-border bg-surface p-8 text-[#10271B]">
+            <AcademicIcon type="university" size={150} />
             <p className="mt-4 text-sm text-muted-foreground">{universitySupport.visualCaption}</p>
           </div>
         </Reveal>

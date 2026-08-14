@@ -14,7 +14,7 @@ export const universitySupport = {
       "Oriens, üniversite öğrencilerine dersin kendi içeriği ve takvimi üzerinden bireysel akademik yol gösterir; kavramları netleştirir, problem çözme sürecini yapılandırır ve çalışmayı takip edilebilir hâle getirir.",
     primaryCta: "Ücretsiz Görüşme Planla",
     secondaryCta: "Destek Alanlarını İncele",
-    visualLabel: "Bir fonksiyon, teğeti ve çalışma notlarından oluşan akademik koordinat çizimi",
+    visualLabel: "Üniversite öğrenimi, planlama ve geri bildirim için akademik destek çizimi",
     visualNote: "Kavram · uygulama · geri bildirim",
   },
   audience: {
@@ -100,10 +100,10 @@ export const universitySupport = {
     eyebrow: "Akademik derinlik",
     title: "Bir noktadaki zorluk, bütün konunun anlaşılmaz olduğu anlamına gelmez.",
     description:
-      "Bir fonksiyona yerel olarak yaklaşan teğet gibi, bireysel destek de öğrencinin tam olarak zorlandığı noktaya odaklanır. Ardından o noktanın büyük kavramsal yapı içindeki yeri yeniden kurulur.",
-    caption: "Gösterim: f(x) = 0,35x² − 1 ve x₀ = 1,2 noktasındaki teğet; f′(x₀) = 0,84.",
-    labels: { function: "fonksiyon", tangent: "teğet", point: "odak noktası" },
-    ariaLabel: "f(x) eşittir 0,35 x kare eksi 1 fonksiyonu ve x eşittir 1,2 noktasındaki teğet grafiği",
+      "Bireysel destek, öğrencinin zorlandığı noktayı belirler; kavramı açıklama, kontrollü uygulama ve geri bildirim adımlarıyla yeniden yapılandırır.",
+    caption: "Kavram analizi, uygulama planı ve geri bildirim aynı akademik destek sistemi içinde ilerler.",
+    labels: { function: "analiz", tangent: "uygulama", point: "geri bildirim" },
+    ariaLabel: "Analiz, uygulama ve geri bildirim aşamalarını gösteren üniversite akademik destek çizimi",
   },
   approach: {
     eyebrow: "Çalışma yaklaşımı",

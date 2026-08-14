@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { AdminGuard } from "@/components/admin/AdminGuard";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { BookingDetailSheet } from "@/components/admin/BookingDetailSheet";
 import type { BookingWithSlot, BookingStatus } from "@/lib/admin/bookings";
 import { listAdminBookings } from "@/lib/admin/bookings";
@@ -22,13 +20,7 @@ import {
 } from "lucide-react";
 
 export default function AdminBookingsPage() {
-  return (
-    <AdminGuard>
-      <AdminShell>
-        <BookingsContent />
-      </AdminShell>
-    </AdminGuard>
-  );
+  return <BookingsContent />;
 }
 
 const STATUS_OPTIONS: Array<{ value: BookingStatus | "all"; label: string }> = [

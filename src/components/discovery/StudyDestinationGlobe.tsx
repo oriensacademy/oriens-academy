@@ -227,9 +227,14 @@ export function StudyDestinationGlobe({
 
   useEffect(() => {
     let frame = 0;
+    let paused = false;
     let previous = performance.now();
     frameStatsRef.current = { started: previous, frames: 0 };
     const tick = (time: number) => {
+      if (document.hidden) {
+        paused = true;
+        return;
+      }
       const delta = Math.min(40, time - previous);
       previous = time;
       let changed = false;
@@ -246,6 +251,7 @@ export function StudyDestinationGlobe({
         }
       } else if (
         isVisibleRef.current &&
+        !document.hidden &&
         !reducedMotion &&
         !isPointerOverRef.current &&
         !isDraggingRef.current &&
@@ -264,8 +270,20 @@ export function StudyDestinationGlobe({
       }
       frame = requestAnimationFrame(tick);
     };
+    const handleVisibilityChange = () => {
+      if (!document.hidden && paused) {
+        paused = false;
+        previous = performance.now();
+        dirtyRef.current = true;
+        frame = requestAnimationFrame(tick);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [draw, reducedMotion]);
 
   useEffect(() => () => {

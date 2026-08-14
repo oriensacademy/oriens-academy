@@ -2,7 +2,7 @@
 
 import { Reveal } from "@/components/motion/Reveal";
 import { CompassMark } from "@/components/brand/CompassMark";
-import { TangentAnimation } from "@/components/math/TangentAnimation";
+import { AcademicIcon } from "@/components/academic/AcademicIcon";
 import { useHomeContent } from "@/content/locale-context";
 
 export function InstructorAbout() {
@@ -51,10 +51,7 @@ export function InstructorAbout() {
           </Reveal>
 
           <Reveal delay={0.26} className="mt-10 hidden max-w-[200px] sm:block">
-            <TangentAnimation
-              domain={{ xMin: -3, xMax: 3, yMin: -2, yMax: 3, width: 200, height: 140, padding: 14 }}
-              at={1.1}
-            />
+            <AcademicIcon type="feedback" size={76} className="text-[#819586]" />
             <p className="mt-2 text-xs text-muted-foreground">{instructorAbout.tangentCaption}</p>
           </Reveal>
         </div>

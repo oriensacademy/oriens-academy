@@ -67,8 +67,18 @@ export async function submitBooking(
     });
 
     if (error) {
-      // Try fallback direct HTTP fetch if functions SDK encounters gateway mismatch
-      return await submitBookingFallback(payload);
+      // Do NOT retry with the same payload: turnstileToken is single-use, and
+      // the original request may have already reached and been processed by
+      // the server. Resubmitting here would fail Turnstile verification with
+      // a confusing "token already used" error, or risk a duplicate booking
+      // attempt. Let the caller surface this and have the user retry with a
+      // fresh token.
+      console.warn("[booking/api] Error submitting booking:", error);
+      return {
+        success: false,
+        errorCode: "NETWORK_ERROR",
+        message: "Network error occurred while connecting to the booking service.",
+      };
     }
 
     if (data && data.success) {
@@ -88,54 +98,7 @@ export async function submitBooking(
       message: data?.message || "Slot reservation could not be completed.",
     };
   } catch (err) {
-    console.warn("[booking/api] Error submitting booking, attempting fallback fetch...", err);
-    return await submitBookingFallback(payload);
-  }
-}
-
-async function submitBookingFallback(
-  payload: BookingRequestPayload
-): Promise<BookingResult> {
-  if (!SUPABASE_URL || SUPABASE_URL.includes("placeholder")) {
-    return {
-      success: false,
-      errorCode: "NETWORK_ERROR",
-      message: "Supabase environment configuration is missing.",
-    };
-  }
-
-  try {
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/create-booking`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey:
-          process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-          "",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const json = await res.json();
-
-    if (res.ok && json.success) {
-      return {
-        success: true,
-        bookingId: json.bookingId,
-        slotId: json.slotId,
-        startsAt: json.startsAt,
-        endsAt: json.endsAt,
-        status: json.status,
-      };
-    }
-
-    return {
-      success: false,
-      errorCode: json.error_code || "RESERVATION_FAILED",
-      message: json.message || "Slot reservation could not be completed.",
-    };
-  } catch {
+    console.warn("[booking/api] Unexpected error submitting booking:", err);
     return {
       success: false,
       errorCode: "NETWORK_ERROR",

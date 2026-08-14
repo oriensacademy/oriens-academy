@@ -163,7 +163,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
             required
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+            className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
           />
           {errors.fullName && <p className="mt-1 text-xs text-destructive">{errors.fullName}</p>}
         </div>
@@ -179,7 +179,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+            className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
           />
           {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
         </div>
@@ -194,7 +194,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+            className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
           />
         </div>
 
@@ -208,7 +208,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink"
+            className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
           />
         </div>
 
@@ -224,7 +224,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={isTr ? "Sormak istediğiniz soruları veya destek almak istediğiniz konuları yazabilirsiniz..." : "Share details about your academic inquiries or goals..."}
-            className="mt-2 w-full border border-border bg-background p-3 text-sm outline-none transition-colors focus:border-ink resize-y"
+            className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink resize-y"
           />
           {errors.message && <p className="mt-1 text-xs text-destructive">{errors.message}</p>}
         </div>
