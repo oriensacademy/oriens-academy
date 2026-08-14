@@ -16,9 +16,24 @@ import { OriensLottie } from "@/components/ui/OriensLottie";
 import { CONTACT } from "@/config/contact";
 import { ThreeDPhotoCarousel, type ThreeDCarouselCard } from "@/components/ui/3d-carousel";
 
-function academicCard(code: string, label: string, background: string): ThreeDCarouselCard {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><rect width="640" height="640" rx="48" fill="${background}"/><path d="M80 104h480M80 536h480" stroke="#D6B56D" stroke-width="4" stroke-dasharray="12 14"/><text x="72" y="330" fill="#10271B" font-family="Georgia,serif" font-size="142">${code}</text><text x="78" y="390" fill="#405A49" font-family="Arial,sans-serif" font-size="24">${label}</text><text x="78" y="500" fill="#10271B" font-family="Arial,sans-serif" font-size="18" letter-spacing="5">ORIENS ACADEMY</text></svg>`;
-  return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, alt: `${code} — ${label}` };
+function academicCard(
+  code: string,
+  title: string,
+  description: string,
+  ctaLabel: string,
+  href: string,
+  background: string,
+): ThreeDCarouselCard {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640"><rect width="640" height="640" rx="48" fill="${background}"/><path d="M80 104h480M80 536h480" stroke="#D6B56D" stroke-width="4" stroke-dasharray="12 14"/><text x="72" y="330" fill="#10271B" font-family="Georgia,serif" font-size="142">${code}</text><text x="78" y="500" fill="#10271B" font-family="Arial,sans-serif" font-size="18" letter-spacing="5">ORIENS ACADEMY</text></svg>`;
+  return {
+    src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    alt: `${code} — ${title}`,
+    href,
+    code,
+    title,
+    description,
+    ctaLabel,
+  };
 }
 
 export function ExamHub() {
@@ -27,9 +42,17 @@ export function ExamHub() {
   const featured = examRecords.filter((exam) => exam.featured);
   const primaryFeature = featured[0];
   const secondaryFeatures = featured.slice(1);
-  const galleryCards = featured.slice(0, 8).map((exam, index) =>
-    academicCard(exam.code, examText[exam.code].title, index % 2 === 0 ? "#E6EDE5" : "#F7F1E2")
-  );
+  const galleryCards = examRecords.map((exam, index) => {
+    const text = examText[exam.code];
+    return academicCard(
+      exam.code,
+      text.title,
+      text.shortDescription,
+      text.ctaLabel,
+      examDetailPath(locale, exam.slug),
+      index % 2 === 0 ? "#E6EDE5" : "#F7F1E2",
+    );
+  });
 
   return (
     <>
@@ -66,7 +89,7 @@ export function ExamHub() {
             {locale === "tr" ? "Hazırlık alanlarını keşfedin." : "Explore preparation pathways."}
           </h2>
           <div className="mt-8 rounded-[2rem] border border-white/15 bg-white/5">
-            <ThreeDPhotoCarousel cards={galleryCards} />
+            <ThreeDPhotoCarousel cards={galleryCards} closeLabel={locale === "tr" ? "Kapat" : "Close"} />
           </div>
           <p className="mt-4 text-sm text-white/60">{locale === "tr" ? "Kartları sürükleyerek döndürün; ayrıntı için seçin." : "Drag to rotate the cards; select one for detail."}</p>
         </div>

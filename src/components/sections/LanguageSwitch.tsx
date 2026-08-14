@@ -21,10 +21,16 @@ export function LanguageSwitch({ className }: { className?: string }) {
       role="group"
       aria-label={nav.languageAriaLabel}
       className={cn(
-        "relative inline-grid grid-cols-2 items-center rounded-full border border-[#D8E0D8] bg-white p-1 text-xs font-semibold font-ui shadow-[0_2px_8px_rgba(16,39,27,0.04)]",
+        "relative inline-grid h-10 w-24 shrink-0 grid-cols-2 items-center overflow-hidden rounded-full border border-[#DDE5DC] bg-white p-1 text-xs font-semibold font-ui shadow-[0_2px_8px_rgba(16,39,27,0.04)]",
         className
       )}
     >
+      <motion.span
+        aria-hidden="true"
+        className="pointer-events-none absolute top-1 left-1 z-0 h-8 w-[calc(50%_-_4px)] rounded-full bg-[#EEF2EC] shadow-[0_1px_3px_rgba(16,39,27,0.08)]"
+        animate={{ x: locale === "tr" ? "0%" : "100%" }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      />
       {locales.map((target) => {
         const active = locale === target;
         const href = pathForLocale(pathname, target);
@@ -44,25 +50,21 @@ export function LanguageSwitch({ className }: { className?: string }) {
               beginLanguageTransition(href);
             }}
             className={cn(
-              "relative z-10 flex h-8 min-w-10 items-center justify-center rounded-full px-2.5 text-[11px] font-bold tracking-wider uppercase transition-colors duration-200 select-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2",
+              "relative z-10 flex h-8 w-full items-center justify-center rounded-full text-[11px] font-bold tracking-wider uppercase transition-colors duration-200 select-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-inset",
               active ? "text-[#10281E]" : "text-[#667085] hover:text-[#10281E]"
             )}
           >
-            {active && (
-              <motion.div
-                layoutId="activeLangPill"
-                className="absolute inset-0 -z-10 rounded-full bg-[#E9EFE9] shadow-xs"
-                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-              />
-            )}
-            {transitionActive && !active ? (
-              <Wave className="h-4 w-7 text-[#819586] motion-reduce:hidden" aria-label={target === "tr" ? "Dil yükleniyor" : "Loading language"} />
-            ) : (
-              <span>{target.toUpperCase()}</span>
-            )}
+            <span className={cn("transition-opacity duration-150", transitionActive && "opacity-0")}>
+              {target.toUpperCase()}
+            </span>
           </Link>
         );
       })}
+      {transitionActive && (
+        <span className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center" aria-live="polite">
+          <Wave className="h-4 w-7 text-[#819586]" aria-label={locale === "tr" ? "Dil yükleniyor" : "Loading language"} />
+        </span>
+      )}
     </div>
   );
 }

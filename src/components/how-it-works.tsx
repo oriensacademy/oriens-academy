@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { LazyMotion, domAnimation, m } from "motion/react";
 
 interface CardProps {
@@ -62,19 +61,19 @@ const Card = ({
 
   return (
     <div
-      className={`relative w-full md:w-[280px] transition-transform duration-300 hover:z-30 hover:scale-105 ${rotate} ${className}`}
+      className={`relative w-full transition-transform duration-300 hover:z-30 hover:scale-105 ${rotate} ${className}`}
     >
       <div className="bg-white p-2 rounded-[25px] shadow-[0_12px_30px_rgba(16,39,27,.09)] border border-[#DDE4DC]">
-        <Pin className={`w-8 h-8 ${textColor} z-20 mb-6 mx-auto`} />
+        <Pin className={`w-7 h-7 ${textColor} z-20 mb-3 mx-auto`} />
         <div
-          className={`${bgColor} border ${borderColor} rounded-[15px] p-[15px] h-full flex flex-col relative overflow-hidden`}
+          className={`${bgColor} border ${borderColor} rounded-[15px] p-3.5 min-h-[145px] h-full flex flex-col relative overflow-hidden`}
         >
           <span
-            className={`${textColor} text-4xl font-heading mb-5`}
+            className={`${textColor} text-3xl font-heading mb-3`}
           >
             {number}
           </span>
-          <h3 className="text-2xl font-heading text-[#10271B] leading-none mb-[10px]">
+          <h3 className="text-xl font-heading text-[#10271B] leading-[1.05] mb-[10px]">
             {title}
           </h3>
           <p className="text-[#68756C] text-sm/5 tracking-tight">
@@ -109,17 +108,11 @@ export interface HowItWorksProps {
 }
 
 const DEFAULT_CARD_POSITIONS: StepPosition[] = [
-  { className: "md:absolute md:top-0 md:left-[15%]", rotate: "rotate-8" },
-  {
-    className: "md:absolute md:top-[120px] md:right-[15%]",
-    rotate: "-rotate-8",
-  },
-  { className: "md:absolute md:top-[450px] md:left-[15%]", rotate: "rotate-8" },
-  {
-    className: "md:absolute md:top-[570px] md:right-[10%]",
-    rotate: "-rotate-8",
-  },
-  { className: "md:absolute md:top-[850px] md:left-[15%]", rotate: "rotate-8" },
+  { className: "lg:-translate-y-4", rotate: "-rotate-2" },
+  { className: "lg:translate-y-4", rotate: "rotate-2" },
+  { className: "lg:-translate-y-3", rotate: "-rotate-1" },
+  { className: "lg:translate-y-4", rotate: "rotate-2" },
+  { className: "lg:-translate-y-4", rotate: "-rotate-2" },
 ];
 
 export default function HowItWorks({
@@ -163,17 +156,11 @@ export default function HowItWorks({
   const data = features && features.length > 0 ? features : defaultFeatures;
   const positions = stepPositions || DEFAULT_CARD_POSITIONS;
 
-  let height = 1130;
-  if (data.length === 1) height = 400;
-  else if (data.length === 2) height = 450;
-  else if (data.length === 3) height = 800;
-  else if (data.length === 4) height = 900;
-  else height = 1130;
-
   return (
     <LazyMotion features={domAnimation}>
       <div
-        className={`bg-white dark:bg-black max-md:pt-10 max-md:pb-25 md:py-20 px-8 relative ${className}`}
+        data-process-layout="horizontal-desktop"
+        className={`relative bg-white px-0 py-3 dark:bg-black md:py-4 ${className}`}
       >
         <div
           className="absolute inset-0 pointer-events-none opacity-[0.08] dark:opacity-[0.15]"
@@ -196,28 +183,16 @@ export default function HowItWorks({
 
         <div className="max-w-6xl mx-auto relative z-10">
           <div
-            className="relative w-full max-w-[1000px] mx-auto flex flex-col space-y-8 md:space-y-0 md:block h-auto md:h-[var(--md-height)]"
-            style={{ "--md-height": `${height}px` } as React.CSSProperties}
+            className="relative mx-auto grid w-full max-w-[1160px] grid-cols-1 gap-7 md:grid-cols-3 md:gap-5 lg:grid-cols-5 lg:gap-4 lg:py-6"
           >
             {data.length > 1 && (
               <svg
-                className="absolute top-0 left-0 w-full h-full pointer-events-none hidden md:block z-0"
-                viewBox={`0 0 1000 ${height}`}
+                className="pointer-events-none absolute inset-x-[7%] top-1/2 z-0 hidden h-[180px] w-[86%] -translate-y-1/2 lg:block"
+                viewBox="0 0 1000 180"
                 preserveAspectRatio="none"
               >
                 {(() => {
-                  const pathD = data.reduce((acc, _, index) => {
-                    if (index >= data.length - 1) return acc;
-                    if (index === 0)
-                      return "M 290 150 C 500 150, 550 270, 710 270"; // 1 -> 2
-                    if (index === 1)
-                      return acc + " C 850 270, 500 350, 290 450"; // 2 -> 3
-                    if (index === 2)
-                      return acc + " C 290 600, 550 720, 750 720"; // 3 -> 4
-                    if (index === 3)
-                      return acc + " C 950 720, 500 800, 290 850"; // 4 -> 5
-                    return acc;
-                  }, "");
+                  const pathD = "M 90 72 C 170 35, 230 142, 310 108 S 450 42, 510 76 S 650 142, 710 104 S 850 38, 920 72";
                   return (
                     <m.path
                       d={pathD}

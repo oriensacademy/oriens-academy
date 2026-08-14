@@ -1,7 +1,8 @@
 import { ProgramSourceAdapter, AdapterContext, DiscoveredProgramLink, ExtractedProgramRecord } from "../adapter-interface";
-import { canonicalizeUrl } from "../../source-discovery/domain-normalizer";
+import { canonicalizeUrl, isWithinOfficialDomainBoundary } from "../../source-discovery/domain-normalizer";
 import { normalizeDegreeLevel, extractDegreeTitle, normalizeDuration, normalizeStudyMode } from "../degree-normalizer";
 import { mapProgramToFieldOfStudy } from "../field-mapper";
+import { classifyProgramPage, isPotentialProgramDetailLink } from "../program-page-classifier";
 
 export class CambridgeProgramAdapter implements ProgramSourceAdapter {
   name = "CambridgeProgramAdapter";
@@ -10,8 +11,7 @@ export class CambridgeProgramAdapter implements ProgramSourceAdapter {
     return domain.includes("cam.ac.uk");
   }
 
-  async discoverProgramLinks(sourceUrl: string, html: string, _ctx: AdapterContext): Promise<DiscoveredProgramLink[]> {
-    const baseUrl = sourceUrl;
+  async discoverProgramLinks(html: string, baseUrl: string, _ctx: AdapterContext): Promise<DiscoveredProgramLink[]> {
     const discovered: DiscoveredProgramLink[] = [];
     const seen = new Set<string>();
 
@@ -26,7 +26,7 @@ export class CambridgeProgramAdapter implements ProgramSourceAdapter {
         try {
           const resolved = new URL(href, baseUrl).toString();
           const can = canonicalizeUrl(resolved);
-          if (!seen.has(can) && !resolved.endsWith("/courses") && !resolved.endsWith("/courses/")) {
+          if (!seen.has(can) && isWithinOfficialDomainBoundary(resolved, _ctx.officialDomain) && isPotentialProgramDetailLink(resolved, text)) {
             seen.add(can);
             discovered.push({
               url: resolved,
@@ -51,6 +51,9 @@ export class CambridgeProgramAdapter implements ProgramSourceAdapter {
     }
 
     if (!name || name.length < 3 || name.toLowerCase() === "courses") return null;
+
+    const classification = classifyProgramPage({ html, url: pageUrl, title: name });
+    if (classification.decision !== "VALID" && classification.decision !== "LIKELY_VALID") return null;
 
     const isPostgrad = pageUrl.includes("/postgraduate/");
     const degreeTitle = extractDegreeTitle(name) || extractDegreeTitle(html) || (isPostgrad ? "MPhil" : "BA");
@@ -84,6 +87,7 @@ export class CambridgeProgramAdapter implements ProgramSourceAdapter {
         degreeTitle,
         degreeLevel,
         pageUrl,
+        pageClassification: classification,
         extractedAt: new Date().toISOString(),
       },
     };

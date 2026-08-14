@@ -19,6 +19,16 @@ function findResult(body, type, title) {
   return body.groups[groupName].find((item) => item.title === title);
 }
 
+function firstResult(body, type) {
+  const groupName = {
+    UNIVERSITY: "universities",
+    PROGRAM: "programs",
+    COUNTRY: "countries",
+    QUALIFICATION: "qualifications",
+  }[type];
+  return body.groups[groupName][0];
+}
+
 const exactCases = [
   ["Oxford", "UNIVERSITY", "University of Oxford"],
   ["Cambridge", "UNIVERSITY", "University of Cambridge"],
@@ -61,6 +71,7 @@ for (const [query, type, title] of exactCases) {
   assert.ok(body.totalCount > 0, `${query}: must not be empty`);
   const result = findResult(body, type, title);
   assert.ok(result, `${query}: missing ${title}`);
+  assert.equal(firstResult(body, type)?.title, title, `${query}: canonical entity must rank first`);
   assert.match(result.id, /^[0-9a-f-]{36}$/i, `${query}: must expose a real database UUID`);
   report.exact.push({ query, id: result.id, title, layer: result.matchLayer });
   report.performance.push({ query, durationMs });
@@ -72,6 +83,7 @@ for (const [query, title, layer] of typoCases) {
   assert.equal(body.query, query);
   const result = findResult(body, "UNIVERSITY", title);
   assert.ok(result, `${query}: missing ${title}`);
+  assert.equal(firstResult(body, "UNIVERSITY")?.title, title, `${query}: canonical university must rank first`);
   assert.equal(result.matchLayer, layer, `${query}: wrong retrieval layer`);
   report.typos.push({ query, id: result.id, title, layer: result.matchLayer });
 }
@@ -87,12 +99,16 @@ for (const [query, countryCount, qualificationCount, expectedTitle] of naturalCa
     ...body.groups.qualifications,
   ].map((item) => item.title);
   assert.ok(entityTitles.includes(expectedTitle), `${query}: missing recognized database entity ${expectedTitle}`);
-  assert.equal(body.groups.programs.length, 0, `${query}: must not fabricate program/admission results`);
+  for (const program of body.groups.programs) {
+    assert.match(program.id, /^[0-9a-f-]{36}$/i, `${query}: program must expose a real database UUID`);
+  }
   report.natural.push({
     query,
     intent: body.intent,
     parsedQuery: body.parsedQuery,
-    status: "QUERY_PARSED_SUCCESSFULLY_DATA_NOT_AVAILABLE",
+    status: body.groups.programs.length > 0
+      ? "QUERY_PARSED_WITH_DATABASE_PROGRAM_RESULTS"
+      : "QUERY_PARSED_SUCCESSFULLY_DATA_NOT_AVAILABLE",
   });
 }
 

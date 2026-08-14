@@ -2,7 +2,6 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import Image from "next/image";
 import { Wave } from "@/components/ui/wave";
 import { LANGUAGE_TRANSITION_STORAGE_KEY } from "./LanguageTransitionProvider";
 import { LoaderRevealProvider } from "./loader-context";
@@ -66,16 +65,13 @@ export function CompassLoader({ children }: { children: React.ReactNode }) {
           <motion.div
             key="oriens-loader"
             data-initial-loader
-            className="fixed inset-0 z-100 flex flex-col items-center justify-center gap-5 bg-background"
+            className="fixed inset-0 z-100 flex items-center justify-center bg-background"
             exit={{ opacity: 0 }}
             transition={{ duration: skipExit ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
             role="status"
             aria-label="Oriens Academy loading"
           >
-            <motion.div initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: .3 }}>
-              <Image src="/brand/oriens-icon.png" alt="" width={80} height={80} priority className="size-20 object-contain" />
-            </motion.div>
-            <Wave className="h-5 w-14 text-[#819586] motion-reduce:hidden" aria-label="Oriens Academy loading" />
+            <Wave className="h-6 w-16 text-[#819586]" aria-label="Oriens Academy loading" />
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,6 +1,7 @@
 "use client"
 
 import { memo, useEffect, useLayoutEffect, useState } from "react"
+import Link from "next/link"
 import {
   AnimatePresence,
   motion,
@@ -58,7 +59,15 @@ export function useMediaQuery(
   return matches
 }
 
-export type ThreeDCarouselCard = { src: string; alt: string }
+export type ThreeDCarouselCard = {
+  src: string
+  alt: string
+  href: string
+  code: string
+  title: string
+  description: string
+  ctaLabel: string
+}
 
 const duration = 0.15
 const transition = { duration, ease: [0.32, 0.72, 0, 1] as const, filter: "blur(4px)" }
@@ -79,9 +88,9 @@ const Carousel = memo(
     const isScreenSizeSm = useMediaQuery("(max-width: 640px)", {
       initializeWithValue: false,
     })
-    const cylinderWidth = isScreenSizeSm ? 1100 : 1800
     const faceCount = cards.length
-    const faceWidth = cylinderWidth / faceCount
+    const faceWidth = isScreenSizeSm ? 168 : 230
+    const cylinderWidth = faceWidth * Math.max(faceCount, 8)
     const radius = cylinderWidth / (2 * Math.PI)
     const rotation = useMotionValue(0)
     const transform = useTransform(
@@ -136,6 +145,15 @@ const Carousel = memo(
                 }deg) translateZ(${radius}px)`,
               }}
               onClick={() => handleClick(card, i)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  handleClick(card, i)
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`${card.code}: ${card.title}`}
             >
               <motion.img
                 src={card.src}
@@ -157,7 +175,15 @@ const Carousel = memo(
 
 Carousel.displayName = "Carousel"
 
-function ThreeDPhotoCarousel({ cards, className }: { cards: ThreeDCarouselCard[]; className?: string }) {
+function ThreeDPhotoCarousel({
+  cards,
+  className,
+  closeLabel = "Close",
+}: {
+  cards: ThreeDCarouselCard[]
+  className?: string
+  closeLabel?: string
+}) {
   const [activeImg, setActiveImg] = useState<ThreeDCarouselCard | null>(null)
   const [isCarouselActive, setIsCarouselActive] = useState(true)
   const controls = useAnimation()
@@ -184,30 +210,43 @@ function ThreeDPhotoCarousel({ cards, className }: { cards: ThreeDCarouselCard[]
             layoutId={`img-container-${activeImg.src}`}
             layout="position"
             onClick={handleClose}
-            className="fixed inset-0 bg-black bg-opacity-10 flex items-center justify-center z-50 m-5 md:m-36 lg:mx-[19rem] rounded-3xl"
+            className="fixed inset-4 z-[100] flex items-center justify-center rounded-3xl bg-black/45 p-4 backdrop-blur-sm md:inset-12"
             style={{ willChange: "opacity" }}
             transition={transitionOverlay}
           >
-            <motion.img
-              layoutId={`img-${activeImg.src}`}
-              src={activeImg.src}
-              alt={activeImg.alt}
-              className="max-w-full max-h-full rounded-lg shadow-lg"
-              initial={{ scale: 0.5 }} // Start with a smaller scale
-              animate={{ scale: 1 }} // Animate to full scale
-              transition={{
-                delay: 0.5,
-                duration: 0.5,
-                ease: [0.25, 0.1, 0.25, 1] as const,
-              }} // Clean ease-out curve
-              style={{
-                willChange: "transform",
-              }}
-            />
+            <motion.article
+              onClick={(event) => event.stopPropagation()}
+              className="grid w-full max-w-3xl overflow-hidden rounded-2xl border border-white/15 bg-[#F6F8F3] text-[#10271B] shadow-2xl sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
+              initial={{ scale: 0.96 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as const }}
+            >
+              <motion.img
+                layoutId={`img-${activeImg.src}`}
+                src={activeImg.src}
+                alt={activeImg.alt}
+                className="aspect-square h-full w-full object-cover"
+                style={{ willChange: "transform" }}
+              />
+              <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
+                <p className="font-heading text-4xl leading-none sm:text-5xl">{activeImg.code}</p>
+                <h3 className="mt-3 font-heading text-xl leading-tight">{activeImg.title}</h3>
+                <p className="mt-4 text-sm leading-relaxed text-[#405A49]">{activeImg.description}</p>
+                <Link
+                  href={activeImg.href}
+                  className="mt-6 inline-flex min-h-11 items-center justify-between gap-3 border-b border-[#10271B] py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#10271B] focus-visible:ring-offset-4"
+                >
+                  {activeImg.ctaLabel}<span aria-hidden="true">↗</span>
+                </Link>
+                <button type="button" onClick={handleClose} className="mt-4 self-start text-xs text-[#405A49] underline underline-offset-4">
+                  {closeLabel}
+                </button>
+              </div>
+            </motion.article>
           </motion.div>
         )}
       </AnimatePresence>
-      <div className={`relative h-[360px] w-full overflow-hidden sm:h-[440px] ${className ?? ""}`}>
+      <div className={`relative h-[330px] w-full overflow-hidden sm:h-[440px] ${className ?? ""}`}>
         <Carousel
           handleClick={handleClick}
           controls={controls}

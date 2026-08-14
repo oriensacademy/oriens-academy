@@ -10,16 +10,19 @@ interface AdminGuardProps {
 }
 
 export function AdminGuard({ children }: AdminGuardProps) {
-  const { status } = useAdminAuth();
+  const { status, user } = useAdminAuth();
   const router = useRouter();
+  const mustChangePassword = user?.user_metadata?.force_password_change === true;
 
   useEffect(() => {
     if (status === "unauthenticated" || status === "unauthorized") {
       router.replace("/admin/login");
+    } else if (status === "authenticated" && mustChangePassword) {
+      router.replace("/admin/change-password");
     }
-  }, [status, router]);
+  }, [status, mustChangePassword, router]);
 
-  if (status === "loading" || status === "unauthenticated" || status === "unauthorized") {
+  if (status === "loading" || status === "unauthenticated" || status === "unauthorized" || (status === "authenticated" && mustChangePassword)) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#F7F7F5] px-6 text-center antialiased">
         <div className="rounded-xl border border-border bg-white p-8 text-[#819586] shadow-sm">

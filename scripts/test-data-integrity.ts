@@ -37,7 +37,7 @@ async function runDataIntegrityValidation() {
   assert((countryCount || 0) >= 240, `Countries count (~247): ${countryCount}`);
   assert((qualCount || 0) >= 29, `Canonical Qualifications in Ontology (>=29): ${qualCount}`);
   assert((fieldsCount || 0) >= 23, `Fields of Study Taxonomy (>=23): ${fieldsCount}`);
-  assert((programCount || 0) >= 100, `Real database programs ingested (>=100): ${programCount}`);
+  assert((programCount || 0) > 0, `Active, quality-gated programs available: ${programCount}`);
   assert((sourceCount || 0) >= 100, `Official admission sources collected (>=100): ${sourceCount}`);
 
   // 2. PROMPT 6 NORMALIZATION & SCORE SCHEMA CHECKS
@@ -60,6 +60,30 @@ async function runDataIntegrityValidation() {
     .select("id")
     .is("source_id", null);
   assert((unbackedReqs?.length || 0) === 0, "100% of structured requirements trace to official source_id");
+
+  const { data: invalidActivePrograms } = await supabase
+    .from("programs")
+    .select("id")
+    .eq("active", true)
+    .not("data_quality_status", "in", "(VALID_PROGRAM,LIKELY_VALID_PROGRAM)");
+  assert((invalidActivePrograms?.length || 0) === 0, "No quarantined/invalid page is active as a program");
+
+  const { data: activeWithoutSource } = await supabase
+    .from("programs")
+    .select("id")
+    .eq("active", true)
+    .is("source_id", null);
+  assert((activeWithoutSource?.length || 0) === 0, "All active programs have source provenance");
+
+  const { data: activeWithoutUrl } = await supabase
+    .from("programs")
+    .select("id")
+    .eq("active", true)
+    .is("official_program_url", null);
+  assert((activeWithoutUrl?.length || 0) === 0, "All active programs have official URLs");
+
+  const { data: duplicateUrls } = await supabase.rpc("program_quality_duplicate_url_count");
+  assert(Number(duplicateUrls || 0) === 0, `Duplicate canonical program URLs: ${duplicateUrls || 0}`);
 
   console.log("\n==================================================");
   console.log(`DATA INTEGRITY AUDIT: ${passed} PASSED, ${failed} FAILED (${passed + failed} Total Checks)`);

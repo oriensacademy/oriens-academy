@@ -37,6 +37,7 @@ export function Navbar() {
   const wasOpenRef = useRef(false);
   const headerTabs = useMemo(
     () => [
+      { id: localizedPath("home", locale), label: locale === "tr" ? "Ana Sayfa" : "Home" },
       { id: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
       {
         id: localizedPath("universitySupport", locale),
@@ -48,17 +49,15 @@ export function Navbar() {
     [locale],
   );
   const mobileItems = useMemo(() => [
+    { href: localizedPath("home", locale), label: locale === "tr" ? "Ana Sayfa" : "Home" },
     { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
     { href: localizedPath("universitySupport", locale), label: locale === "tr" ? "Üniversite Desteği" : "University Support" },
     { href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" },
     { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
   ], [locale]);
-  const normalizedPathname = pathname?.replace(/\/$/, "") || localizedPath("home", locale);
   const activeTab = headerTabs.find((tab) =>
-    tab.id === localizedPath("exams", locale)
-      ? normalizedPathname === tab.id || normalizedPathname.startsWith(`${tab.id}/`)
-      : normalizedPathname === tab.id,
+    isPrimaryNavigationActive(tab.id, pathname, locale),
   )?.id;
 
   useEffect(() => {
@@ -144,7 +143,7 @@ export function Navbar() {
         )}
       >
         <div className="mx-auto flex h-[72px] max-w-[1360px] items-center px-[clamp(24px,5vw,72px)] md:h-20">
-          <Link href={`/${locale}`} className="flex min-h-11 items-center" aria-label={nav.homeAriaLabel}>
+          <Link href={localizedPath("home", locale)} className="relative z-10 flex min-h-11 shrink-0 items-center" aria-label={nav.homeAriaLabel}>
             <Image
               src="/brand/oriens-logo-v2.png"
               alt="Oriens Academy"
@@ -200,7 +199,7 @@ export function Navbar() {
             aria-label={nav.menuDialogLabel}
           >
             <div className="flex h-16 items-center justify-between px-6">
-              <Link href={`/${locale}`} onClick={() => setOpen(false)} className="flex items-center" aria-label={nav.homeAriaLabel}>
+              <Link href={localizedPath("home", locale)} onClick={() => setOpen(false)} className="flex items-center" aria-label={nav.homeAriaLabel}>
                 <Image
                   src="/brand/oriens-logo-v2.png"
                   alt="Oriens Academy"

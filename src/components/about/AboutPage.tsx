@@ -9,11 +9,11 @@ import { ButtonLink } from "@/components/ui/button";
 import { examRecords } from "@/content/exams";
 import { useAboutContent, useLocale } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
-import { GuidanceRouteVisual } from "./GuidanceRouteVisual";
 import { CONTACT } from "@/config/contact";
 import { CircularTestimonials, type CircularTestimonial } from "@/components/ui/circular-testimonials";
 import { getPublicTestimonials, type TestimonialRow } from "@/lib/admin/content";
-import AboutUsSection from "@/components/about-us-section";
+import About from "@/components/about";
+import { OriensLottie } from "@/components/ui/OriensLottie";
 
 const number = (index: number) => String(index + 1).padStart(2, "0");
 
@@ -54,8 +54,7 @@ export function AboutPage() {
 
           <div className="mt-9 grid min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-12 lg:grid-cols-12 lg:gap-14">
             <Reveal className="min-w-0 lg:col-span-7" y={10}>
-              <p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.hero.eyebrow}</p>
-              <h1 className="mt-5 max-w-[13ch] text-[clamp(2.8rem,6.2vw,5.8rem)] leading-[0.98] font-medium tracking-[-0.035em] text-ink">{content.hero.title}</h1>
+              <h1 className="max-w-[13ch] text-[clamp(2.8rem,6.2vw,5.8rem)] leading-[0.98] font-medium tracking-[-0.035em] text-ink">{content.hero.title}</h1>
               <p className="mt-7 max-w-[62ch] text-lg leading-[1.75] text-ink/72">{content.hero.description}</p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <ButtonLink href={bookingHref} directional size="lg" className="h-12 px-5">{content.hero.primaryCta}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
@@ -63,13 +62,23 @@ export function AboutPage() {
               </div>
             </Reveal>
             <Reveal className="min-w-0 lg:col-span-5" delay={0.12}>
-              <GuidanceRouteVisual ariaLabel={content.hero.visualLabel} steps={content.hero.visualSteps} compact />
+              <div className="mx-auto max-w-[440px] rounded-[2rem] border border-border bg-white/70 p-5 shadow-[0_20px_60px_rgba(16,39,27,.08)]">
+                <OriensLottie src="/animations/learning.lottie" aspectRatio="learning" speed={0.9} ariaLabel={content.hero.visualLabel} />
+              </div>
             </Reveal>
           </div>
         </div>
       </section>
 
-      <AboutUsSection content={content} bookingHref={bookingHref} />
+      <About
+        eyebrow={content.story.eyebrow}
+        title={content.story.title}
+        description={content.story.paragraphs[0]}
+        items={[
+          ...content.principles.items.map((item) => ({ title: item.title, description: item.description })),
+          { title: content.team.title, description: content.team.members[0]?.bio ?? content.team.fallbackBody },
+        ]}
+      />
 
       <section className="border-y border-border bg-surface-muted py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-6 md:px-12">
@@ -94,7 +103,7 @@ export function AboutPage() {
       <section className="overflow-hidden border-y border-border bg-surface py-20 md:py-28">
         <div className="mx-auto grid min-w-0 max-w-[1280px] items-center gap-12 px-6 md:px-12 lg:grid-cols-12 lg:gap-16">
           <Reveal className="lg:col-span-5"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.brandMoment.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.brandMoment.title}</h2><p className="mt-6 max-w-[60ch] text-base leading-[1.8] text-ink/70">{content.brandMoment.body}</p></Reveal>
-          <Reveal className="min-w-0 lg:col-span-7" delay={0.1}><GuidanceRouteVisual ariaLabel={content.hero.visualLabel} steps={content.brandMoment.steps} /></Reveal>
+          <Reveal className="min-w-0 lg:col-span-7" delay={0.1}><div className="mx-auto max-w-[520px] rounded-[2rem] border border-border bg-[#F6F8F3] p-5"><OriensLottie src="/animations/exams-preparation.lottie" aspectRatio="learning" speed={0.85} ariaLabel={content.hero.visualLabel} /></div></Reveal>
         </div>
       </section>
 

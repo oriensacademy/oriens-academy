@@ -199,6 +199,9 @@ export type Database = {
           created_at: string
           degree_level: string
           degree_title: string | null
+          data_quality_reason: string | null
+          data_quality_signals: Json
+          data_quality_status: string
           duration: string | null
           duration_unit: string | null
           duration_value: number | null
@@ -211,6 +214,7 @@ export type Database = {
           name: string
           normalized_name: string
           official_program_url: string | null
+          reviewed_at: string | null
           slug: string
           source_id: string | null
           study_mode: string | null
@@ -225,6 +229,9 @@ export type Database = {
           created_at?: string
           degree_level?: string
           degree_title?: string | null
+          data_quality_reason?: string | null
+          data_quality_signals?: Json
+          data_quality_status?: string
           duration?: string | null
           duration_unit?: string | null
           duration_value?: number | null
@@ -237,6 +244,7 @@ export type Database = {
           name: string
           normalized_name: string
           official_program_url?: string | null
+          reviewed_at?: string | null
           slug: string
           source_id?: string | null
           study_mode?: string | null
@@ -251,6 +259,9 @@ export type Database = {
           created_at?: string
           degree_level?: string
           degree_title?: string | null
+          data_quality_reason?: string | null
+          data_quality_signals?: Json
+          data_quality_status?: string
           duration?: string | null
           duration_unit?: string | null
           duration_value?: number | null
@@ -263,6 +274,7 @@ export type Database = {
           name?: string
           normalized_name?: string
           official_program_url?: string | null
+          reviewed_at?: string | null
           slug?: string
           source_id?: string | null
           study_mode?: string | null
@@ -296,6 +308,47 @@ export type Database = {
             columns: ["source_id"]
             isOneToOne: false
             referencedRelation: "admission_sources"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      program_quality_audits: {
+        Row: {
+          audited_at: string
+          classification: string
+          evidence: Json
+          id: string
+          previous_active: boolean
+          program_id: string
+          reason: string
+          run_label: string
+        }
+        Insert: {
+          audited_at?: string
+          classification: string
+          evidence?: Json
+          id?: string
+          previous_active: boolean
+          program_id: string
+          reason: string
+          run_label: string
+        }
+        Update: {
+          audited_at?: string
+          classification?: string
+          evidence?: Json
+          id?: string
+          previous_active?: boolean
+          program_id?: string
+          reason?: string
+          run_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_quality_audits_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "programs"
             referencedColumns: ["id"]
           }
         ]
@@ -895,6 +948,7 @@ export type Database = {
           language: string
           normalized_alias: string
           priority: number
+          source: string
           updated_at: string
         }
         Insert: {
@@ -906,6 +960,7 @@ export type Database = {
           language?: string
           normalized_alias: string
           priority?: number
+          source?: string
           updated_at?: string
         }
         Update: {
@@ -917,6 +972,7 @@ export type Database = {
           language?: string
           normalized_alias?: string
           priority?: number
+          source?: string
           updated_at?: string
         }
         Relationships: []

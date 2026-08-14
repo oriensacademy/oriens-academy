@@ -34,7 +34,7 @@ export function normalizeDegreeLevel(
   }
   if (
     text.includes("msc") ||
-    text.includes("ma ") ||
+    /\bma(?:\s|$)/.test(text) ||
     text.includes("master of science") ||
     text.includes("master of arts") ||
     text.includes("postgraduate") ||
@@ -49,7 +49,7 @@ export function normalizeDegreeLevel(
   // Undergraduate Bachelor's
   if (
     text.includes("bsc") ||
-    text.includes("ba ") ||
+    /\bba(?:\s|$)/.test(text) ||
     text.includes("beng") ||
     text.includes("mbbs") ||
     text.includes("mb bchir") ||

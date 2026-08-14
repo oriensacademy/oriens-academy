@@ -34,7 +34,7 @@ export function MarketingBadges() {
               whileHover={reducedMotion ? undefined : { y: -5, rotate: 0, scale: 1.015 }}
               animate={pressed && !reducedMotion ? { scale: 1.035, rotate: 0, y: -4 } : { scale: 1 }}
               transition={{ duration: reducedMotion ? 0 : .22 }}
-              className="absolute flex min-h-[58px] max-w-[88vw] items-center justify-center rounded-full border border-[#C9D7C9] bg-white/95 px-7 text-center font-heading text-[clamp(1rem,2.2vw,1.4rem)] font-medium text-[#10271B] shadow-[0_9px_24px_rgba(16,39,27,.09)] outline-none hover:shadow-[0_15px_35px_rgba(16,39,27,.16)] focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-4 sm:min-h-[68px]"
+              className="absolute flex min-h-[58px] max-w-[88vw] items-center justify-center rounded-full border border-[#C9D7C9] bg-white/95 px-7 text-center font-sans text-[clamp(1rem,2.2vw,1.4rem)] font-semibold tracking-[-0.02em] text-[#10271B] shadow-[0_9px_24px_rgba(16,39,27,.09)] outline-none hover:shadow-[0_15px_35px_rgba(16,39,27,.16)] focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-4 sm:min-h-[68px]"
               style={{
                 width: `min(${item.width}px, 88vw)`,
                 left: `${item.x}%`,
@@ -53,7 +53,7 @@ export function MarketingBadges() {
       <AnimatePresence mode="wait" initial={false}>
         {active && (
           <motion.div key={active.id} initial={reducedMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={reducedMotion ? undefined : { opacity: 0, y: -6 }} className="mx-auto mt-2 max-w-3xl rounded-2xl border border-[#DDE4DC] bg-white p-6 text-center shadow-sm sm:p-8">
-            <p className="font-heading text-xl text-[#10271B]">“{isTr ? active.tr : active.en}”</p>
+            <p className="font-sans text-xl font-semibold tracking-[-0.02em] text-[#10271B]">“{isTr ? active.tr : active.en}”</p>
             <p className="mt-3 text-sm leading-7 text-[#68756C] sm:text-base">{isTr ? "Hedeflerinizi, mevcut seviyenizi ve planladığınız rotayı ücretsiz tanışma görüşmesinde birlikte netleştirebiliriz." : "We can clarify your goals, current level and intended route together during a free introductory consultation."}</p>
           </motion.div>
         )}

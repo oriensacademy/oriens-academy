@@ -1,7 +1,8 @@
 import { ProgramSourceAdapter, AdapterContext, DiscoveredProgramLink, ExtractedProgramRecord } from "../adapter-interface";
-import { canonicalizeUrl } from "../../source-discovery/domain-normalizer";
+import { canonicalizeUrl, isWithinOfficialDomainBoundary } from "../../source-discovery/domain-normalizer";
 import { normalizeDuration, normalizeStudyMode } from "../degree-normalizer";
 import { mapProgramToFieldOfStudy } from "../field-mapper";
+import { classifyProgramPage, isPotentialProgramDetailLink } from "../program-page-classifier";
 
 export class BocconiProgramAdapter implements ProgramSourceAdapter {
   name = "BocconiProgramAdapter";
@@ -25,7 +26,7 @@ export class BocconiProgramAdapter implements ProgramSourceAdapter {
         try {
           const resolved = new URL(href, baseUrl).toString();
           const can = canonicalizeUrl(resolved);
-          if (!seen.has(can)) {
+          if (!seen.has(can) && isWithinOfficialDomainBoundary(resolved, ctx.officialDomain) && isPotentialProgramDetailLink(resolved, text)) {
             seen.add(can);
             discovered.push({
               url: resolved,
@@ -51,7 +52,10 @@ export class BocconiProgramAdapter implements ProgramSourceAdapter {
 
     if (!name || name.length < 3) return null;
 
-    const isMaster = pageUrl.includes("/master") || name.toLowerCase().includes("master");
+    const classification = classifyProgramPage({ html, url: pageUrl, title: name });
+    if (classification.decision !== "VALID" && classification.decision !== "LIKELY_VALID") return null;
+
+    const isMaster = pageUrl.includes("/master") || pageUrl.includes("/lauree-magistrali/") || name.toLowerCase().includes("master");
     const isPhd = pageUrl.includes("/phd") || name.toLowerCase().includes("phd");
     const degreeTitle = isPhd ? "PhD" : isMaster ? "MSc" : "BSc";
     const degreeLevel = isPhd ? "PHD" : isMaster ? "POSTGRADUATE_TAUGHT" : "UNDERGRADUATE";
@@ -86,6 +90,7 @@ export class BocconiProgramAdapter implements ProgramSourceAdapter {
         degreeTitle,
         degreeLevel,
         pageUrl,
+        pageClassification: classification,
         extractedAt: new Date().toISOString(),
       },
     };

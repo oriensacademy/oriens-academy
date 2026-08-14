@@ -28,7 +28,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
   const locale = useLocale();
   const exams = useExamsContent();
   const isTr = locale === "tr";
-  const [selectedRegion, setSelectedRegion] = useState<StudyRegion | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<StudyRegion | null>(() => studyDestinations[0] ?? null);
   const universities = selectedRegion?.countries.flatMap((country) => country.universities) ?? [];
   const visibleUniversities = compact ? universities.slice(0, 3) : universities;
   const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
@@ -67,7 +67,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
         <div className={`mt-8 grid items-center gap-8 lg:grid-cols-12 ${compact ? "lg:gap-8" : "lg:gap-12"}`}>
           <Reveal className="order-1 min-w-0 lg:col-span-7" y={8}>
             <div className="relative rounded-[2rem] border border-[#DDE4DC] bg-white/45 p-2 sm:p-4">
-              <StudyDestinationGlobe locale={locale} region={selectedRegion} regions={studyDestinations} onSelect={setSelectedRegion} compact={compact} />
+              <StudyDestinationGlobe locale={locale} region={selectedRegion} regions={studyDestinations} compact={compact} />
               <div className="absolute right-4 bottom-4 hidden items-center gap-2 rounded-full border border-[#DDE4DC] bg-white/85 px-3 py-1.5 text-[11px] text-[#68756C] backdrop-blur-sm sm:flex">
                 <Route className="size-3.5 text-[#819586]" aria-hidden="true" />
                 {isTr ? "Sürükleyerek keşfedin" : "Drag to explore"}

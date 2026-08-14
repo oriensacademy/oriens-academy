@@ -41,11 +41,11 @@ const palette = [
 ];
 
 const positions: StepPosition[] = [
-  { className: "md:absolute md:top-0 md:left-[10%]", rotate: "-rotate-2" },
-  { className: "md:absolute md:top-[120px] md:right-[10%]", rotate: "rotate-2" },
-  { className: "md:absolute md:top-[430px] md:left-[10%]", rotate: "-rotate-1" },
-  { className: "md:absolute md:top-[560px] md:right-[10%]", rotate: "rotate-2" },
-  { className: "md:absolute md:top-[850px] md:left-[16%]", rotate: "-rotate-2" },
+  { className: "lg:-translate-y-4", rotate: "-rotate-2" },
+  { className: "lg:translate-y-4", rotate: "rotate-2" },
+  { className: "lg:-translate-y-3", rotate: "-rotate-1" },
+  { className: "lg:translate-y-4", rotate: "rotate-2" },
+  { className: "lg:-translate-y-4", rotate: "-rotate-2" },
 ];
 
 export function StudentJourney() {
@@ -54,20 +54,20 @@ export function StudentJourney() {
   const features: Step[] = content.steps.map(([title, description], index) => ({ title, description, colors: palette[index] }));
 
   return (
-    <section id="how-it-works" className="section-offset overflow-hidden border-y border-border bg-white py-20 md:py-28">
+    <section id="how-it-works" className="section-offset overflow-hidden border-y border-border bg-white py-10 md:py-10">
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-        <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(340px,.72fr)] lg:gap-16">
+        <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(240px,.6fr)] lg:gap-10">
           <Reveal className="max-w-3xl">
             <p className="text-xs font-bold tracking-[.24em] text-brand-accent uppercase">{content.eyebrow}</p>
-            <h2 className="mt-4 font-heading text-[clamp(2rem,4vw,3.6rem)] leading-[1.08] text-ink">{content.title}</h2>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground md:text-lg">{content.body}</p>
+            <h2 className="mt-3 font-heading text-[clamp(2rem,3.2vw,2.8rem)] leading-[1.05] text-ink">{content.title}</h2>
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">{content.body}</p>
           </Reveal>
-          <Reveal delay={0.08} className="mx-auto w-full max-w-[460px]">
+          <Reveal delay={0.08} className="mx-auto w-full max-w-[240px]">
             <OriensLottie src="/animations/learning.lottie" aspectRatio="learning" speed={0.9} ariaLabel={locale === "tr" ? "Kişiselleştirilmiş öğrenme ve akademik destek animasyonu" : "Personalized learning and academic support animation"} />
           </Reveal>
         </div>
 
-        <Reveal delay={0.12} className="mt-8">
+        <Reveal delay={0.12} className="mt-0">
           <HowItWorks features={features} stepPositions={positions} className="!bg-transparent !px-0" />
         </Reveal>
       </div>

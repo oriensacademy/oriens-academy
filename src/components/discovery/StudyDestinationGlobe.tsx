@@ -50,18 +50,15 @@ export function StudyDestinationGlobe({
   locale,
   region,
   regions,
-  onSelect,
   compact = false,
 }: {
   locale: Locale;
   region: StudyRegion | null;
   regions: StudyRegion[];
-  onSelect: (region: StudyRegion) => void;
   compact?: boolean;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const markerRefs = useRef(new Map<StudyRegion["id"], HTMLButtonElement>());
   const featuresRef = useRef<CountryFeature[]>([]);
   const sizeRef = useRef(compact ? 430 : 560);
   const rotationRef = useRef<Rotation>([-18, -12]);
@@ -163,20 +160,13 @@ export function StudyDestinationGlobe({
 
     for (const candidate of regions) {
       const point = currentProjection([candidate.focus.lng, candidate.focus.lat]);
-      const marker = markerRefs.current.get(candidate.id);
       const onFront = geoDistance([candidate.focus.lng, candidate.focus.lat], visibleCenter) <= Math.PI / 2;
       if (!point || !onFront) {
-        if (marker) marker.hidden = true;
         continue;
-      }
-      if (marker) {
-        marker.hidden = false;
-        marker.style.left = `${point[0]}px`;
-        marker.style.top = `${point[1]}px`;
       }
       const active = candidate.id === regionRef.current?.id;
       context.beginPath();
-      context.arc(point[0], point[1], active ? 7 : 5.5, 0, Math.PI * 2);
+      context.arc(point[0], point[1], active ? 5 : 3.5, 0, Math.PI * 2);
       context.fillStyle = active ? "#10271B" : "#FFFFFF";
       context.fill();
       context.strokeStyle = active ? "#FFFFFF" : "#819586";
@@ -251,6 +241,7 @@ export function StudyDestinationGlobe({
         changed = true;
         if (progress >= 1) {
           cameraRef.current = null;
+          resumeAfterRef.current = time + 2000;
           rootRef.current?.setAttribute("data-focus-complete", camera.id);
         }
       } else if (
@@ -258,7 +249,6 @@ export function StudyDestinationGlobe({
         !reducedMotion &&
         !isPointerOverRef.current &&
         !isDraggingRef.current &&
-        !regionRef.current &&
         time >= resumeAfterRef.current
       ) {
         rotationRef.current = [rotationRef.current[0] + delta * 0.0038, rotationRef.current[1]];
@@ -296,10 +286,10 @@ export function StudyDestinationGlobe({
 
   function scheduleResume() {
     if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    if (regionRef.current || isDraggingRef.current) return;
+    if (isDraggingRef.current) return;
     resumeAfterRef.current = Number.POSITIVE_INFINITY;
     resumeTimerRef.current = setTimeout(() => {
-      if (!isPointerOverRef.current && !isDraggingRef.current && !regionRef.current) resumeAfterRef.current = performance.now();
+      if (!isPointerOverRef.current && !isDraggingRef.current) resumeAfterRef.current = performance.now();
     }, 2000);
   }
 
@@ -340,18 +330,9 @@ export function StudyDestinationGlobe({
   }
 
   function handlePointerUp(event: ReactPointerEvent<HTMLCanvasElement>) {
-    const drag = dragRef.current;
     try { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
     isDraggingRef.current = false;
     dragRef.current = null;
-    if (drag && !drag.moved) {
-      const feature = featureAt(canvasCoordinate(event));
-      const selected = feature ? regionForFeature(feature, regions) : null;
-      if (selected) {
-        rootRef.current?.setAttribute("data-last-selection-source", "polygon");
-        onSelect(selected);
-      }
-    }
     if (!isPointerOverRef.current) scheduleResume();
   }
 
@@ -389,31 +370,13 @@ export function StudyDestinationGlobe({
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label={isTr ? "Sürüklenebilir ve tıklanabilir dünya ülkeleri haritası" : "Draggable and clickable world countries globe"}
+        aria-label={isTr ? "Sürüklenebilir dünya bölgeleri görseli" : "Draggable world regions visual"}
         className="relative z-0 size-full cursor-grab touch-pan-y select-none active:cursor-grabbing"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       />
-      {regions.map((candidate) => (
-        <button
-          key={candidate.id}
-          ref={(node) => {
-            if (node) markerRefs.current.set(candidate.id, node);
-            else markerRefs.current.delete(candidate.id);
-          }}
-          type="button"
-          hidden
-          data-globe-marker={candidate.id}
-          aria-label={locale === "tr" ? `${candidate.labelTr} bölgesini seç` : `Select ${candidate.labelEn}`}
-          onClick={() => {
-            rootRef.current?.setAttribute("data-last-selection-source", "marker");
-            onSelect(candidate);
-          }}
-          className="absolute z-10 size-11 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-transparent outline-none pointer-events-auto focus-visible:ring-2 focus-visible:ring-[#10271B] focus-visible:ring-offset-2"
-        />
-      ))}
       <p className="pointer-events-none absolute bottom-4 left-1/2 min-h-7 -translate-x-1/2 rounded-full border border-[#DDE4DC] bg-white/90 px-3 py-1 text-center text-[11px] font-semibold text-[#405249] opacity-0 shadow-sm transition-opacity data-[visible=true]:opacity-100" data-visible={Boolean(hoveredName)} aria-live="polite">
         {hoveredName ?? ""}
       </p>

@@ -1,8 +1,17 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { safeFetchUrl } from "../source-discovery/ssrf-fetcher";
-import { normalizeDomain } from "../source-discovery/domain-normalizer";
+import { canonicalizeUrl, isWithinOfficialDomainBoundary, normalizeDomain } from "../source-discovery/domain-normalizer";
 import { AdapterRegistry } from "./adapter-registry";
 import { ExtractedProgramRecord, AdapterContext } from "./adapter-interface";
+import { classifyProgramPage } from "./program-page-classifier";
+
+const PROGRAM_SOURCE_TYPES = [
+  "PROGRAM_CATALOG",
+  "UNDERGRADUATE_PROGRAMS",
+  "POSTGRADUATE_PROGRAMS",
+  "PHD_PROGRAMS",
+  "MBA_PROGRAMS",
+] as const;
 
 export interface ProgramIngestionRunResult {
   runId: string;
@@ -12,6 +21,9 @@ export interface ProgramIngestionRunResult {
   programsInserted: number;
   programsUpdated: number;
   programsSkipped: number;
+  programsNeedsReview: number;
+  invalidPagesRejected: number;
+  duplicatesPrevented: number;
   programsFailed: number;
   admissionRequirementsInserted: 0;
   failures: Array<{ universityId: string; sourceUrl: string; reason: string }>;
@@ -40,6 +52,12 @@ export class ProgramIngestionEngine {
     inserted: number;
     updated: number;
     skipped: number;
+    fetched: number;
+    valid: number;
+    likelyValid: number;
+    needsReview: number;
+    rejected: number;
+    duplicatesPrevented: number;
     failed: number;
   }> {
     // 1. Fetch university name
@@ -62,19 +80,17 @@ export class ProgramIngestionEngine {
 
     if (!sources || sources.length === 0) {
       console.log(`[ProgramIngestionEngine] SKIP — NO VERIFIED PROGRAM SOURCE for ${univ.name}`);
-      return { discovered: 0, inserted: 0, updated: 0, skipped: 0, failed: 0 };
+      return { discovered: 0, inserted: 0, updated: 0, skipped: 0, fetched: 0, valid: 0, likelyValid: 0, needsReview: 0, rejected: 0, duplicatesPrevented: 0, failed: 0 };
     }
 
-    // Filter out non-program sources (e.g. entry requirements)
+    // Program ingestion is allowlisted. MAIN_WEBSITE, OTHER, admissions and
+    // informational sources must never be treated as catalogs.
     const catalogSources = sources.filter(
-      (s) =>
-        s.source_type !== "ENTRY_REQUIREMENTS" &&
-        s.source_type !== "ENGLISH_LANGUAGE_REQUIREMENTS" &&
-        s.source_type !== "COUNTRY_REQUIREMENTS"
+      (s) => PROGRAM_SOURCE_TYPES.includes(s.source_type) && s.is_official === true
     );
 
     if (catalogSources.length === 0) {
-      return { discovered: 0, inserted: 0, updated: 0, skipped: 0, failed: 0 };
+      return { discovered: 0, inserted: 0, updated: 0, skipped: 0, fetched: 0, valid: 0, likelyValid: 0, needsReview: 0, rejected: 0, duplicatesPrevented: 0, failed: 0 };
     }
 
     console.log(`[ProgramIngestionEngine] Ingesting programs for: ${univ.name} (${catalogSources.length} verified sources)`);
@@ -83,6 +99,12 @@ export class ProgramIngestionEngine {
     let totalInserted = 0;
     let totalUpdated = 0;
     let totalSkipped = 0;
+    let totalFetched = 0;
+    let totalValid = 0;
+    let totalLikelyValid = 0;
+    let totalNeedsReview = 0;
+    let totalRejected = 0;
+    let totalDuplicatesPrevented = 0;
     let totalFailed = 0;
 
     for (const source of catalogSources) {
@@ -109,7 +131,9 @@ export class ProgramIngestionEngine {
       totalDiscovered += links.length;
 
       // Extract and ingest each program page (cap at 10 pages per source)
-      const targetLinks = links.slice(0, 10);
+      const targetLinks = [...links]
+        .sort((left, right) => canonicalizeUrl(left.url).localeCompare(canonicalizeUrl(right.url)))
+        .slice(0, 10);
       const batchSize = 5;
 
       for (let i = 0; i < targetLinks.length; i += batchSize) {
@@ -123,6 +147,24 @@ export class ProgramIngestionEngine {
                 totalSkipped++;
                 return;
               }
+              totalFetched++;
+
+              if (!isWithinOfficialDomainBoundary(progRes.finalUrl, ctx.officialDomain)) {
+                totalRejected++;
+                return;
+              }
+
+              const classification = classifyProgramPage({ html: progRes.body, url: progRes.finalUrl });
+              if (classification.decision === "INVALID") {
+                totalRejected++;
+                return;
+              }
+              if (classification.decision === "NEEDS_REVIEW") {
+                totalNeedsReview++;
+                return;
+              }
+              if (classification.decision === "VALID") totalValid++;
+              else totalLikelyValid++;
 
               const extracted = await adapter.extractProgram(progRes.body, progRes.finalUrl, ctx);
               if (!extracted) {
@@ -134,9 +176,11 @@ export class ProgramIngestionEngine {
               const upsertRes = await this.upsertProgram(extracted, source.id);
               if (upsertRes.status === "INSERTED") totalInserted++;
               else if (upsertRes.status === "UPDATED") totalUpdated++;
+              else if (upsertRes.status === "DUPLICATE_PREVENTED") totalDuplicatesPrevented++;
               else totalSkipped++;
             } catch (err) {
               totalFailed++;
+              console.error(`[ProgramIngestionEngine] Failed ${link.url}:`, err instanceof Error ? err.message : err);
             }
           })
         );
@@ -150,6 +194,12 @@ export class ProgramIngestionEngine {
       inserted: totalInserted,
       updated: totalUpdated,
       skipped: totalSkipped,
+      fetched: totalFetched,
+      valid: totalValid,
+      likelyValid: totalLikelyValid,
+      needsReview: totalNeedsReview,
+      rejected: totalRejected,
+      duplicatesPrevented: totalDuplicatesPrevented,
       failed: totalFailed,
     };
   }
@@ -160,33 +210,47 @@ export class ProgramIngestionEngine {
   private async upsertProgram(
     extracted: ExtractedProgramRecord,
     registrySourceId: string
-  ): Promise<{ id: string; status: "INSERTED" | "UPDATED" | "SKIPPED" }> {
+  ): Promise<{ id: string; status: "INSERTED" | "UPDATED" | "SKIPPED" | "DUPLICATE_PREVENTED" }> {
+    const canonicalProgramUrl = canonicalizeUrl(extracted.officialProgramUrl);
+    const evidenceClassification = extracted.rawEvidence?.pageClassification as { decision?: string } | undefined;
+    if (!evidenceClassification || !["VALID", "LIKELY_VALID"].includes(evidenceClassification.decision || "")) {
+      return { id: "", status: "SKIPPED" };
+    }
     // 0. Ensure an official admission_sources row exists for source provenance FK
     let dbSourceId: string | null = null;
     const { data: sourceRow } = await this.supabase
       .from("admission_sources")
       .select("id")
-      .eq("url", extracted.officialProgramUrl)
+      .eq("url", canonicalProgramUrl)
       .maybeSingle();
 
     if (sourceRow) {
       dbSourceId = sourceRow.id;
+      const { error: sourceUpdateError } = await this.supabase.from("admission_sources").update({
+        active: true,
+        verified_at: new Date().toISOString(),
+        retrieved_at: new Date().toISOString(),
+      }).eq("id", sourceRow.id);
+      if (sourceUpdateError) throw new Error(`UPDATE_PROGRAM_SOURCE_FAILED: ${sourceUpdateError.message}`);
     } else {
-      const { data: newSource } = await this.supabase
+      const { data: newSource, error: sourceInsertError } = await this.supabase
         .from("admission_sources")
         .insert({
-          url: extracted.officialProgramUrl,
-          canonical_url: extracted.officialProgramUrl,
+          url: canonicalProgramUrl,
+          title: extracted.name,
+          page_title: extracted.name,
+          canonical_url: canonicalProgramUrl,
           source_type: "OFFICIAL_PROGRAM_PAGE",
           university_id: extracted.universityId,
           is_official: true,
-          verified: true,
-          publisher_type: "OFFICIAL_UNIVERSITY",
-          last_retrieved_at: new Date().toISOString(),
+          verified_at: new Date().toISOString(),
+          retrieved_at: new Date().toISOString(),
+          retrieval_metadata: { registrySourceId },
         })
         .select("id")
         .single();
-      dbSourceId = newSource?.id || null;
+      if (sourceInsertError || !newSource) throw new Error(`INSERT_PROGRAM_SOURCE_FAILED: ${sourceInsertError?.message || "missing row"}`);
+      dbSourceId = newSource.id;
     }
 
     // 1. Check existing by official_program_url
@@ -194,7 +258,7 @@ export class ProgramIngestionEngine {
       .from("programs")
       .select("id")
       .eq("university_id", extracted.universityId)
-      .eq("official_program_url", extracted.officialProgramUrl)
+      .eq("official_program_url", canonicalProgramUrl)
       .maybeSingle();
 
     if (existingUrl) {
@@ -210,11 +274,16 @@ export class ProgramIngestionEngine {
           duration_value: extracted.durationValue,
           duration_unit: extracted.durationUnit,
           source_id: dbSourceId,
+          active: true,
+          data_quality_status: evidenceClassification.decision === "VALID" ? "VALID_PROGRAM" : "LIKELY_VALID_PROGRAM",
+          data_quality_reason: "Passed deterministic positive-evidence program-page validation",
+          data_quality_signals: extracted.rawEvidence?.pageClassification || {},
+          reviewed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingUrl.id);
 
-      return { id: existingUrl.id, status: "UPDATED" };
+      return { id: existingUrl.id, status: "DUPLICATE_PREVENTED" };
     }
 
     // 2. Check existing by (university_id, normalized_name, degree_level)
@@ -230,14 +299,19 @@ export class ProgramIngestionEngine {
       await this.supabase
         .from("programs")
         .update({
-          official_program_url: extracted.officialProgramUrl,
+          official_program_url: canonicalProgramUrl,
           degree_title: extracted.degreeTitle,
           source_id: dbSourceId,
+          active: true,
+          data_quality_status: evidenceClassification.decision === "VALID" ? "VALID_PROGRAM" : "LIKELY_VALID_PROGRAM",
+          data_quality_reason: "Passed deterministic positive-evidence program-page validation",
+          data_quality_signals: extracted.rawEvidence?.pageClassification || {},
+          reviewed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("id", existingName.id);
 
-      return { id: existingName.id, status: "UPDATED" };
+      return { id: existingName.id, status: "DUPLICATE_PREVENTED" };
     }
 
     // 3. Insert New Program
@@ -247,7 +321,7 @@ export class ProgramIngestionEngine {
         university_id: extracted.universityId,
         name: extracted.name,
         normalized_name: extracted.normalizedName,
-        slug: `${extracted.slug}-${Math.floor(1000 + Math.random() * 9000)}`,
+        slug: `${extracted.slug}-${stableUrlSuffix(canonicalProgramUrl)}`,
         degree_level: extracted.degreeLevel,
         degree_title: extracted.degreeTitle,
         field_of_study_id: extracted.fieldOfStudyId,
@@ -256,9 +330,13 @@ export class ProgramIngestionEngine {
         language: extracted.language,
         duration_value: extracted.durationValue,
         duration_unit: extracted.durationUnit,
-        official_program_url: extracted.officialProgramUrl,
+        official_program_url: canonicalProgramUrl,
         source_id: dbSourceId,
         active: true,
+        data_quality_status: evidenceClassification.decision === "VALID" ? "VALID_PROGRAM" : "LIKELY_VALID_PROGRAM",
+        data_quality_reason: "Passed deterministic positive-evidence program-page validation",
+        data_quality_signals: extracted.rawEvidence?.pageClassification || {},
+        reviewed_at: new Date().toISOString(),
       })
       .select("id")
       .single();
@@ -274,7 +352,7 @@ export class ProgramIngestionEngine {
           program_id: inserted.id,
           source_type: "OFFICIAL_URL",
           external_id: extracted.externalId,
-          source_url: extracted.officialProgramUrl,
+          source_url: canonicalProgramUrl,
           metadata: extracted.rawEvidence,
         },
         { onConflict: "program_id,source_type,external_id" }
@@ -354,6 +432,9 @@ export class ProgramIngestionEngine {
     let totalInserted = 0;
     let totalUpdated = 0;
     let totalSkipped = 0;
+    let totalNeedsReview = 0;
+    let totalRejected = 0;
+    let totalDuplicatesPrevented = 0;
     let totalFailed = 0;
     const failures: Array<{ universityId: string; sourceUrl: string; reason: string }> = [];
 
@@ -364,6 +445,9 @@ export class ProgramIngestionEngine {
         totalInserted += res.inserted;
         totalUpdated += res.updated;
         totalSkipped += res.skipped;
+        totalNeedsReview += res.needsReview;
+        totalRejected += res.rejected;
+        totalDuplicatesPrevented += res.duplicatesPrevented;
         totalFailed += res.failed;
       } catch (err) {
         failures.push({ universityId: u.id, sourceUrl: u.name, reason: (err as Error).message });
@@ -380,7 +464,7 @@ export class ProgramIngestionEngine {
       records_updated: totalUpdated,
       records_skipped: totalSkipped,
       records_failed: totalFailed,
-      error_summary: { failures },
+      error_summary: { failures, needsReview: totalNeedsReview, invalidRejected: totalRejected, duplicatesPrevented: totalDuplicatesPrevented },
     }).eq("id", runId);
 
     return {
@@ -391,9 +475,21 @@ export class ProgramIngestionEngine {
       programsInserted: totalInserted,
       programsUpdated: totalUpdated,
       programsSkipped: totalSkipped,
+      programsNeedsReview: totalNeedsReview,
+      invalidPagesRejected: totalRejected,
+      duplicatesPrevented: totalDuplicatesPrevented,
       programsFailed: totalFailed,
       admissionRequirementsInserted: 0,
       failures,
     };
   }
+}
+
+function stableUrlSuffix(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36).slice(0, 8);
 }

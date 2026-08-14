@@ -6,8 +6,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { useCommonContent, useLocale } from "@/content/locale-context";
-import { primaryNavigationPath } from "@/lib/routes";
+import { localizedPath, primaryNavigationPath } from "@/lib/routes";
 import { CONTACT } from "@/config/contact";
+import { FooterSection } from "@/components/ui/footer-section";
 
 export function Footer() {
   const { nav, footer } = useCommonContent();
@@ -21,11 +22,10 @@ export function Footer() {
   ];
 
   return (
-    <footer id="footer" className="border-t border-border pt-12 pb-10">
-      <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-[1.15fr_.75fr_1.2fr_auto]">
-          <div className="max-w-xs">
-            <Link href={`/${locale}`} className="flex items-center" aria-label={nav.homeAriaLabel}>
+    <FooterSection
+      brand={
+        <>
+            <Link href={localizedPath("home", locale)} className="relative z-10 flex items-center" aria-label={nav.homeAriaLabel}>
               <Image
                 src="/brand/oriens-logo-v2.png"
                 alt="Oriens Academy"
@@ -35,9 +35,10 @@ export function Footer() {
               />
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{footer.tagline}</p>
-          </div>
-
-          <nav aria-label={nav.footerAriaLabel} className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-1">
+        </>
+      }
+      navigation={
+        <nav aria-label={nav.footerAriaLabel} className="grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-1">
             {nav.items.map((item) => (
               <Link
                 key={item.href}
@@ -47,9 +48,10 @@ export function Footer() {
                 {item.label}
               </Link>
             ))}
-          </nav>
-
-          <div>
+        </nav>
+      }
+      contact={
+        <>
             <h2 className="text-xs font-bold tracking-[0.18em] text-ink uppercase">{isTr ? "İletişim" : "Contact"}</h2>
             <ul className="mt-4 space-y-3">
               {contacts.map((item) => <li key={item.label}>
@@ -59,15 +61,16 @@ export function Footer() {
                 </a>
               </li>)}
             </ul>
-          </div>
-
-          <div className="flex flex-col items-start gap-3">
+        </>
+      }
+      language={
+        <div className="flex flex-col items-start gap-3">
             <span className="text-xs font-bold tracking-[0.18em] text-ink uppercase">{isTr ? "Dil" : "Language"}</span>
             <LanguageSwitch />
-          </div>
         </div>
-
-        <div className="mt-9 flex flex-col gap-4 border-t border-border pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      }
+      legal={
+        <div className="flex flex-col gap-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
             &copy; {new Date().getFullYear()} Oriens Academy. {footer.copyright}
           </p>
@@ -83,7 +86,7 @@ export function Footer() {
             ))}
           </div>
         </div>
-      </div>
-    </footer>
+      }
+    />
   );
 }

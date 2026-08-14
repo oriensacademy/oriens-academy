@@ -18,9 +18,10 @@ interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
 const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
   ({ className, tabs, activeTab, ...props }, ref) => {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-    const [activeIndex, setActiveIndex] = useState(() =>
-      Math.max(0, tabs.findIndex((tab) => tab.id === activeTab)),
-    );
+    const [activeIndex, setActiveIndex] = useState<number | null>(() => {
+      const index = tabs.findIndex((tab) => tab.id === activeTab);
+      return index >= 0 ? index : null;
+    });
     const [hoverStyle, setHoverStyle] = useState<React.CSSProperties>({});
     const [activeStyle, setActiveStyle] = useState({ left: "0px", width: "0px" });
     const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
@@ -37,15 +38,17 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
 
     useEffect(() => {
       const nextIndex = tabs.findIndex((tab) => tab.id === activeTab);
-      if (nextIndex >= 0) setActiveIndex(nextIndex);
+      setActiveIndex(nextIndex >= 0 ? nextIndex : null);
     }, [activeTab, tabs]);
 
     useEffect(() => {
       const updateIndicator = () => {
-        const activeElement = tabRefs.current[activeIndex];
+        const activeElement = activeIndex === null ? null : tabRefs.current[activeIndex];
         if (activeElement) {
           const { offsetLeft, offsetWidth } = activeElement;
           setActiveStyle({ left: `${offsetLeft}px`, width: `${offsetWidth}px` });
+        } else {
+          setActiveStyle({ left: "0px", width: "0px" });
         }
       };
       const frame = requestAnimationFrame(updateIndicator);

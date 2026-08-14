@@ -1,8 +1,8 @@
-import { examUniversityRelations } from "@/data/exam-university-map";
-import type { ExamCode } from "@/content/exams";
+import { examMapProfiles, examUniversityRelations } from "@/data/exam-university-map";
+import { examRecords, type ExamCode } from "@/content/exams";
 import type { StudyCountry, StudyRegion, StudyUniversity } from "@/components/discovery/globe-types";
 
-type RegionSeed = Omit<StudyRegion, "countries" | "examIds"> & { countryNames: string[] };
+type RegionSeed = Omit<StudyRegion, "countries" | "examIds"> & { countryNames: string[]; countryCodes: string[] };
 
 const regionSeeds: RegionSeed[] = [
   {
@@ -11,6 +11,7 @@ const regionSeeds: RegionSeed[] = [
     labelEn: "United Kingdom",
     focus: { lat: 52.6, lng: -1.8, altitude: 1.25 },
     countryNames: ["United Kingdom"],
+    countryCodes: ["GBR"],
   },
   {
     id: "europe",
@@ -18,6 +19,7 @@ const regionSeeds: RegionSeed[] = [
     labelEn: "Europe",
     focus: { lat: 47.5, lng: 8.5, altitude: 1.08 },
     countryNames: ["France", "Italy", "Netherlands", "Switzerland"],
+    countryCodes: ["FRA", "ITA", "NLD", "CHE"],
   },
   {
     id: "us",
@@ -25,6 +27,7 @@ const regionSeeds: RegionSeed[] = [
     labelEn: "United States",
     focus: { lat: 40.2, lng: -82, altitude: 1.08 },
     countryNames: ["United States"],
+    countryCodes: ["USA"],
   },
   {
     id: "canada",
@@ -32,6 +35,7 @@ const regionSeeds: RegionSeed[] = [
     labelEn: "Canada",
     focus: { lat: 56, lng: -106, altitude: 1.08 },
     countryNames: ["Canada"],
+    countryCodes: ["CAN"],
   },
   {
     id: "other",
@@ -39,6 +43,7 @@ const regionSeeds: RegionSeed[] = [
     labelEn: "Other Destinations",
     focus: { lat: 24, lng: 35, altitude: 0.98 },
     countryNames: [],
+    countryCodes: [],
   },
 ];
 
@@ -99,13 +104,20 @@ function createCountries(countryNames: string[]): StudyCountry[] {
   });
 }
 
-export const studyDestinations: StudyRegion[] = regionSeeds.map(({ countryNames, ...region }) => {
+const supportedExamCodes = new Set<ExamCode>(examRecords.map((exam) => exam.code));
+
+export const studyDestinations: StudyRegion[] = regionSeeds.map(({ countryNames, countryCodes, ...region }) => {
   const countries = createCountries(countryNames);
-  const examIds = Array.from(
-    new Set(countries.flatMap((country) => country.universities.flatMap((university) => university.examRelations.map((item) => item.examId))))
+  const directExamIds = countries.flatMap((country) =>
+    country.universities.flatMap((university) => university.examRelations.map((item) => item.examId))
   );
+  const mappedExamIds = examMapProfiles
+    .filter((profile) => profile.countries.some((countryCode) => countryCodes.includes(countryCode)))
+    .map((profile) => profile.examCode)
+    .filter((examCode): examCode is ExamCode => supportedExamCodes.has(examCode as ExamCode));
+  const examIds = Array.from(new Set<ExamCode>([...directExamIds, ...mappedExamIds]));
   return { ...region, countries, examIds };
-});
+}).filter((region) => region.examIds.length > 0);
 
 export const studyRouteOrigin = {
   label: "Istanbul",

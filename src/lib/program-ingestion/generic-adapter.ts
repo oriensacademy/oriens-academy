@@ -2,6 +2,7 @@ import { ProgramSourceAdapter, AdapterContext, DiscoveredProgramLink, ExtractedP
 import { canonicalizeUrl, isWithinOfficialDomainBoundary } from "../source-discovery/domain-normalizer";
 import { normalizeDegreeLevel, extractDegreeTitle, normalizeDuration, normalizeStudyMode } from "./degree-normalizer";
 import { mapProgramToFieldOfStudy } from "./field-mapper";
+import { classifyProgramPage, extractProgramPageTitle, isPotentialProgramDetailLink } from "./program-page-classifier";
 
 export class GenericHtmlProgramAdapter implements ProgramSourceAdapter {
   name = "GenericHtmlProgramAdapter";
@@ -37,7 +38,7 @@ export class GenericHtmlProgramAdapter implements ProgramSourceAdapter {
         if (isWithinOfficialDomainBoundary(resolved, ctx.officialDomain)) {
           const isMatch = programKeywords.some((kw) => lowerUrl.includes(kw));
 
-          if (isMatch) {
+          if (isMatch && isPotentialProgramDetailLink(resolved, rawAnchor)) {
             const canUrl = canonicalizeUrl(resolved);
             if (!seenUrls.has(canUrl)) {
               seenUrls.add(canUrl);
@@ -58,23 +59,13 @@ export class GenericHtmlProgramAdapter implements ProgramSourceAdapter {
   }
 
   async extractProgram(html: string, pageUrl: string, ctx: AdapterContext): Promise<ExtractedProgramRecord | null> {
-    // Extract Page Title or H1
-    let title: string | null = null;
-    const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    if (h1Match && h1Match[1]) {
-      title = h1Match[1].replace(/<[^>]+>/g, "").trim().replace(/\s+/g, " ");
-    } else {
-      const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-      if (titleMatch && titleMatch[1]) {
-        title = titleMatch[1].replace(/<[^>]+>/g, "").trim().replace(/\s+/g, " ");
-        // Strip university name suffix if present
-        title = title.split("|")[0].split("-")[0].trim();
-      }
-    }
-
-    if (!title || title.length < 3 || title.toLowerCase().includes("page not found") || title.toLowerCase().includes("courses")) {
+    const title = extractProgramPageTitle(html);
+    if (!title || title.length < 3 || title.toLowerCase().includes("page not found")) {
       return null;
     }
+
+    const classification = classifyProgramPage({ html, url: pageUrl, title });
+    if (classification.decision !== "VALID" && classification.decision !== "LIKELY_VALID") return null;
 
     const degreeTitle = extractDegreeTitle(title) || extractDegreeTitle(html);
     const degreeLevel = normalizeDegreeLevel(degreeTitle, title, html);
@@ -112,6 +103,7 @@ export class GenericHtmlProgramAdapter implements ProgramSourceAdapter {
         degreeLevel,
         fieldConfidence: fieldRes.confidence,
         pageUrl,
+        pageClassification: classification,
         extractedAt: new Date().toISOString(),
       },
     };

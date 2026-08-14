@@ -382,6 +382,15 @@ function AccountSecuritySection() {
       if (error) {
         setSecurityMsg({ type: "error", text: error.message || "Şifre güncellenemedi." });
       } else {
+        if (user?.id) {
+          await supabase.from("audit_logs").insert({
+            actor_user_id: user.id,
+            action: "admin.password_change_completed",
+            entity_type: "admin_auth",
+            entity_id: user.id,
+            metadata: { trigger: "voluntary_settings_change" },
+          });
+        }
         setSecurityMsg({ type: "success", text: "Şifreniz başarıyla değiştirildi." });
         setCurrentPassword("");
         setNewPassword("");

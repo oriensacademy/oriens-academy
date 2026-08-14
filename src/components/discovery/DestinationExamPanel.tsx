@@ -33,18 +33,6 @@ export function DestinationExamPanel({
           >
             {isTr ? "Haritadan bir bölge seçin." : "Choose a destination."}
           </motion.div>
-        ) : region.examIds.length === 0 ? (
-          <motion.div
-            key={region.id}
-            initial={{ opacity: 0, y: reducedMotion ? 0 : 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="rounded-2xl border border-[#DDE4DC] bg-white p-6 text-sm leading-7 text-[#68756C]"
-          >
-            {isTr
-              ? "Üniversite ve sınav eşleşmeleri içerik doğrulaması tamamlandıkça burada gösterilecektir."
-              : "University and exam relationships will appear here as verified programme data is added."}
-          </motion.div>
         ) : (
           <motion.div
             key={region.id}
@@ -96,4 +84,3 @@ export function DestinationExamPanel({
     </div>
   );
 }
-

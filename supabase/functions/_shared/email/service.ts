@@ -39,6 +39,7 @@ async function getPrivateSiteSetting<T>(
 async function sendResendEmail(params: {
   supabaseAdmin: SupabaseClient;
   to: string;
+  replyTo?: string;
   subject: string;
   html: string;
   text: string;
@@ -50,6 +51,7 @@ async function sendResendEmail(params: {
   const {
     supabaseAdmin,
     to,
+    replyTo,
     subject,
     html,
     text,
@@ -105,6 +107,7 @@ async function sendResendEmail(params: {
       body: JSON.stringify({
         from: fromAddress,
         to: [to],
+        ...(replyTo ? { reply_to: [replyTo] } : {}),
         subject,
         html,
         text,
@@ -206,6 +209,7 @@ export async function dispatchBookingEmails(
   await sendResendEmail({
     supabaseAdmin,
     to: adminRecipient,
+    replyTo: bookingData.email,
     subject: adminTemplate.subject,
     html: adminTemplate.html,
     text: adminTemplate.text,
@@ -258,6 +262,7 @@ export async function dispatchContactEmails(
   await sendResendEmail({
     supabaseAdmin,
     to: adminRecipient,
+    replyTo: contactData.email,
     subject: adminTemplate.subject,
     html: adminTemplate.html,
     text: adminTemplate.text,

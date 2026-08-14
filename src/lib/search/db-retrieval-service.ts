@@ -88,8 +88,19 @@ export async function retrieveSearchResultsFromDatabase(
     ...parsedQuery.universities.map((entity) => entity.matchedTerm),
     ...parsedQuery.countries.map((entity) => entity.matchedTerm),
     ...parsedQuery.qualifications.map((entity) => entity.code || entity.matchedTerm),
+    ...parsedQuery.fieldsOfStudy.map((entity) => entity.matchedTerm),
+    ...parsedQuery.programs.map((entity) => entity.matchedTerm),
   ];
-  const searchTerms = [...new Set([normalized, ...recognizedTerms.map(normalizeQuery)].filter(Boolean))];
+  const normalizedRecognizedTerms = recognizedTerms.map(normalizeQuery).filter(Boolean);
+  const residualTerm = normalizedRecognizedTerms
+    .reduce((remaining, term) => remaining.replace(new RegExp(`(?:^|\\s)${escapeRegExp(term)}(?=\\s|$)`, "g"), " "), normalized)
+    .replace(/\s+/g, " ")
+    .trim();
+  const searchTerms = [...new Set([
+    normalized,
+    ...normalizedRecognizedTerms,
+    residualTerm,
+  ].filter(Boolean))];
 
   // Each RPC is bounded and ranked inside PostgreSQL. Recognized entity terms
   // are queried separately so natural-language input can still return its real
@@ -109,9 +120,14 @@ export async function retrieveSearchResultsFromDatabase(
   }
 
   const rowsByEntity = new Map<string, DatabaseSearchRow>();
-  for (const response of responses) {
+  const matchedTermsByEntity = new Map<string, Set<string>>();
+  for (let responseIndex = 0; responseIndex < responses.length; responseIndex++) {
+    const response = responses[responseIndex];
     for (const row of (response.data || []) as DatabaseSearchRow[]) {
       const key = `${row.entity_type}:${row.entity_id}`;
+      const matchedTerms = matchedTermsByEntity.get(key) || new Set<string>();
+      matchedTerms.add(searchTerms[responseIndex]);
+      matchedTermsByEntity.set(key, matchedTerms);
       const previous = rowsByEntity.get(key);
       if (!previous
         || row.match_layer < previous.match_layer
@@ -123,8 +139,21 @@ export async function retrieveSearchResultsFromDatabase(
 
   const hasStructuredEntity = parsedQuery.countries.length > 0 || parsedQuery.qualifications.length > 0;
   const hasUniversityEntity = parsedQuery.universities.length > 0;
+  const explicitUniversity = residualTerm
+    ? [...rowsByEntity.values()]
+      .filter((row) => row.entity_type === "UNIVERSITY" && matchedTermsByEntity.get(`UNIVERSITY:${row.entity_id}`)?.has(residualTerm))
+      .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score))[0]
+    : undefined;
+  const countryIso2 = parsedQuery.countries[0]?.iso2;
+  const fieldTerms = new Set(parsedQuery.fieldsOfStudy.map((entity) => normalizeQuery(entity.matchedTerm)));
   const rows = [...rowsByEntity.values()]
     .filter((row) => {
+      if (row.entity_type === "PROGRAM") {
+        const rowTerms = matchedTermsByEntity.get(`PROGRAM:${row.entity_id}`);
+        if (fieldTerms.size > 0 && ![...fieldTerms].some((term) => rowTerms?.has(term))) return false;
+        if (explicitUniversity && !row.subtitle?.toLowerCase().startsWith(explicitUniversity.title.toLowerCase())) return false;
+        if (countryIso2 && row.country_iso2 !== countryIso2) return false;
+      }
       if (row.entity_type !== "UNIVERSITY") return true;
       // Country/qualification/admission language must not be presented as an
       // unrelated university-name fuzzy match. University candidates remain
@@ -171,4 +200,8 @@ export async function retrieveSearchResultsFromDatabase(
       + grouped.countries.length
       + grouped.qualifications.length,
   };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
+import { renderAdminPasswordRecoveryEmail } from "../_shared/email/templates.ts";
 
 const RESET_ACTION = "admin_password_reset";
 const RESET_COOLDOWN_MS = 10 * 60 * 1000;
@@ -73,31 +74,6 @@ function maskEmail(email: string): string {
   return `${local.slice(0, 1)}***@${domain}`;
 }
 
-function renderPasswordEmail(email: string, password: string, locale: Locale) {
-  const isTr = locale === "tr";
-  const subject = isTr
-    ? "Oriens Academy | Yeni Yönetici Şifreniz"
-    : "Oriens Academy | Your New Administrator Password";
-  const title = isTr ? "Yeni Yönetici Şifreniz" : "Your New Administrator Password";
-  const intro = isTr
-    ? "Yönetim paneli hesabınız için yeni bir giriş şifresi oluşturuldu."
-    : "A new sign-in password has been generated for your administrator account.";
-  const emailLabel = isTr ? "E-posta" : "Email";
-  const passwordLabel = isTr ? "Geçici şifre" : "Temporary password";
-  const instruction = isTr
-    ? "Bu şifreyle yönetim paneline giriş yapabilirsiniz. Giriş yaptıktan sonra Ayarlar → Şifre Değiştir alanından yeni bir şifre belirleyebilirsiniz."
-    : "You can use this password to sign in to the administration panel. After signing in, you may change it from Settings → Change Password.";
-  const warning = isTr
-    ? "Bu işlemi siz başlatmadıysanız Oriens Academy sistem yöneticisiyle iletişime geçin."
-    : "If you did not request this reset, contact the Oriens Academy system administrator.";
-
-  return {
-    subject,
-    text: `Oriens Academy\n\n${title}\n\n${intro}\n\n${emailLabel}: ${email}\n${passwordLabel}: ${password}\n\n${instruction}\n\n${warning}\n\nOriens Academy`,
-    html: `<!doctype html><html><body style="margin:0;background:#f5f2e9;font-family:Arial,sans-serif;color:#10281e"><div style="max-width:600px;margin:0 auto;padding:40px 20px"><div style="background:#fff;border:1px solid #dfe6df;border-radius:18px;padding:32px"><div style="font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#667085">Oriens Academy</div><h1 style="font-family:Georgia,serif;font-size:30px;font-weight:400;margin:16px 0">${title}</h1><p style="line-height:1.65">${intro}</p><div style="margin:24px 0;padding:18px;background:#e9efe9;border-radius:12px"><div style="font-size:13px;color:#667085">${emailLabel}</div><div style="font-weight:700;margin-top:4px">${email}</div><div style="font-size:13px;color:#667085;margin-top:18px">${passwordLabel}</div><div style="font-family:Consolas,monospace;font-size:22px;font-weight:700;letter-spacing:.08em;margin-top:6px">${password}</div></div><p style="line-height:1.65">${instruction}</p><p style="line-height:1.65;color:#667085">${warning}</p></div></div></body></html>`,
-  };
-}
-
 async function recordAudit(
   client: SupabaseClient,
   userId: string,
@@ -147,7 +123,7 @@ async function sendCredentialEmail(params: {
   apiKey: string;
   from: string;
 }): Promise<boolean> {
-  const template = renderPasswordEmail(params.to, params.password, params.locale);
+  const template = renderAdminPasswordRecoveryEmail(params.to, params.password, params.locale);
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -267,6 +243,7 @@ Deno.serve(async (req: Request) => {
   const temporaryPassword = generateTemporaryPassword();
   const { error: updateError } = await client.auth.admin.updateUserById(adminUser.id, {
     password: temporaryPassword,
+    user_metadata: { ...adminUser.user_metadata, force_password_change: true },
   });
   if (updateError) {
     console.error("[admin-password-reset] Password update failed.");

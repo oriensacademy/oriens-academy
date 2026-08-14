@@ -6,6 +6,61 @@ import { createStudentProfile } from "../../qualification-normalization/student-
 import { SupabaseClient } from "@supabase/supabase-js";
 
 describe("Deterministic Student Eligibility Engine Tests", () => {
+  it("queries the real admission_sources.url field and maps it to provenance", async () => {
+    let relationalSelect = "";
+    const sourceUrl = "https://example.edu/program/requirements";
+    const mockSupabase = {
+      from: () => ({
+        select: (query: string) => {
+          relationalSelect = query;
+          return {
+            eq: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    id: "req-source-url",
+                    requirement_type: "PERSONAL_STATEMENT",
+                    requirement_status: "REQUIRED",
+                    source_id: "source-1",
+                    qualifications: null,
+                    admission_sources: { url: sourceUrl },
+                  },
+                ],
+                error: null,
+              }),
+          };
+        },
+      }),
+    } as unknown as SupabaseClient;
+
+    const evaluator = new EligibilityEvaluator(mockSupabase);
+    const result = await evaluator.evaluateProgramEligibility("prog-source-url", createStudentProfile({}));
+
+    expect(relationalSelect).toContain("admission_sources(url)");
+    expect(relationalSelect).not.toContain("admission_sources(official_url)");
+    expect(result.checks[0].provenance.officialUrl).toBe(sourceUrl);
+  });
+
+  it("throws a controlled error when the requirements query fails", async () => {
+    const mockSupabase = {
+      from: () => ({
+        select: () => ({
+          eq: () =>
+            Promise.resolve({
+              data: null,
+              error: { code: "TEST_DB_ERROR", message: "controlled test failure" },
+            }),
+        }),
+      }),
+    } as unknown as SupabaseClient;
+
+    const evaluator = new EligibilityEvaluator(mockSupabase);
+
+    await expect(
+      evaluator.evaluateProgramEligibility("prog-query-error", createStudentProfile({}))
+    ).rejects.toThrow("Unable to load eligibility requirements");
+  });
+
   it("should return DATA_UNAVAILABLE when database has no requirements for program", async () => {
     const mockSupabase = {
       from: () => ({

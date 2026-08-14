@@ -77,6 +77,12 @@ interface Counters {
   aliases: number;
 }
 
+interface AliasCandidate {
+  alias: string;
+  priority: number;
+  source: "OPENALEX_ACRONYM" | "OPENALEX_ALTERNATE_NAME";
+}
+
 function normalize(value: string) {
   return value
     .normalize("NFKD")
@@ -179,11 +185,25 @@ function safeAliases(institution: OpenAlexInstitution) {
     .filter((value) => /^[A-Z0-9][A-Z0-9.&-]{1,14}$/.test(value));
   const alternatives = (institution.display_name_alternatives || [])
     .filter((value) => value.trim().length >= 4 && value.trim().length <= 160);
-  const byNormalizedValue = new Map<string, string>();
-  for (const value of [...acronyms, ...alternatives]) {
+  const byNormalizedValue = new Map<string, AliasCandidate>();
+  for (const value of acronyms) {
     const normalizedValue = normalize(value);
     if (normalizedValue && normalizedValue !== canonical && !byNormalizedValue.has(normalizedValue)) {
-      byNormalizedValue.set(normalizedValue, value.trim());
+      byNormalizedValue.set(normalizedValue, {
+        alias: value.trim(),
+        priority: 40,
+        source: "OPENALEX_ACRONYM",
+      });
+    }
+  }
+  for (const value of alternatives) {
+    const normalizedValue = normalize(value);
+    if (normalizedValue && normalizedValue !== canonical && !byNormalizedValue.has(normalizedValue)) {
+      byNormalizedValue.set(normalizedValue, {
+        alias: value.trim(),
+        priority: 60,
+        source: "OPENALEX_ALTERNATE_NAME",
+      });
     }
   }
   return Array.from(byNormalizedValue.values()).slice(0, 20);
@@ -221,7 +241,7 @@ async function run() {
     page += 1;
 
     const universityRows: Record<string, unknown>[] = [];
-    const pageAliases = new Map<string, string[]>();
+    const pageAliases = new Map<string, AliasCandidate[]>();
 
     for (const institution of pageRows) {
       const countryId = institution.country_code ? countryIds.get(institution.country_code) : undefined;
@@ -284,13 +304,14 @@ async function run() {
       if (error) throw new Error(`University identity lookup failed: ${error.message}`);
 
       const aliasRows = (resolved || []).flatMap((university) =>
-        (pageAliases.get(university.external_id) || []).map((alias) => ({
+        (pageAliases.get(university.external_id) || []).map((candidate) => ({
           entity_type: "UNIVERSITY",
           entity_id: university.id,
-          alias,
-          normalized_alias: normalize(alias),
+          alias: candidate.alias,
+          normalized_alias: normalize(candidate.alias),
           language: "und",
-          priority: /^[A-Z0-9][A-Z0-9.&-]{1,14}$/.test(alias) ? 90 : 60,
+          priority: candidate.priority,
+          source: candidate.source,
         })),
       );
 
@@ -298,7 +319,10 @@ async function run() {
         const batch = aliasRows.slice(index, index + WRITE_BATCH_SIZE);
         const { error: aliasError } = await supabase
           .from("search_aliases")
-          .upsert(batch, { onConflict: "entity_type,entity_id,normalized_alias" });
+          .upsert(batch, {
+            onConflict: "entity_type,entity_id,normalized_alias",
+            ignoreDuplicates: true,
+          });
         if (aliasError) throw new Error(`Alias upsert failed: ${aliasError.message}`);
         counters.aliases += batch.length;
       }

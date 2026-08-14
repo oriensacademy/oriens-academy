@@ -57,10 +57,18 @@ export class EligibilityEvaluator {
     // 1. Fetch requirements & requirement groups for the program
     const { data: requirements, error: reqErr } = await this.supabase
       .from("admission_requirements")
-      .select("*, qualifications(code, name), admission_sources(official_url)")
+      .select("*, qualifications(code, name), admission_sources(url)")
       .eq("program_id", programId);
 
-    if (reqErr || !requirements || requirements.length === 0) {
+    if (reqErr) {
+      console.error("[EligibilityEvaluator] Admission requirements query failed", {
+        code: reqErr.code,
+        message: reqErr.message,
+      });
+      throw new Error("Unable to load eligibility requirements", { cause: reqErr });
+    }
+
+    if (!requirements || requirements.length === 0) {
       return {
         programId,
         status: "DATA_UNAVAILABLE",
@@ -109,7 +117,7 @@ export class EligibilityEvaluator {
         rawSourceText: req.raw_source_text,
         retrievedAt: req.retrieved_at,
         admissionCycle: req.admission_cycle || selectedCycle,
-        officialUrl: sourceObj?.official_url || "https://oriens-academy.com",
+        officialUrl: sourceObj?.url,
       };
 
       let checkState: CheckState = "UNKNOWN";

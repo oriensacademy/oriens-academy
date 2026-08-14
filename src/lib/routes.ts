@@ -87,16 +87,22 @@ function normalizedPath(pathname: string): string {
  * active state of the exam hub.
  */
 export function isPrimaryNavigationActive(
-  anchor: string,
+  destination: string,
   pathname: string,
   locale: Locale
 ): boolean {
-  const route = primaryNavigationRoutes[anchor];
-  if (!route) return false;
-
   const current = normalizedPath(pathname);
-  const target = localizedPath(route, locale);
-  return route === "exams" ? current === target || current.startsWith(`${target}/`) : current === target;
+  const route = primaryNavigationRoutes[destination];
+  const target = normalizedPath(route ? localizedPath(route, locale) : destination);
+  const home = localizedPath("home", locale);
+  const exams = localizedPath("exams", locale);
+
+  if (target === home) return current === home;
+  if (target !== exams && !Object.values(localizedSegments).some(
+    (segments) => target === `/${locale}/${segments[locale]}`,
+  )) return false;
+
+  return target === exams ? current === target || current.startsWith(`${target}/`) : current === target;
 }
 
 export function examDetailPath(locale: Locale, slug: string): string {
