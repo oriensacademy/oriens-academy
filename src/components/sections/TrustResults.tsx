@@ -7,7 +7,7 @@ import { useHomeContent } from "@/content/locale-context";
 export function TrustResults() {
   const { trustResults } = useHomeContent();
   return (
-    <section id="trust" className="section-offset border-t border-border py-16 md:py-20">
+    <section id="trust" className="section-offset border-t border-border pt-16 pb-8 md:pt-20 md:pb-10">
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
         <Reveal>
           <p className="text-center text-xs font-medium tracking-[0.24em] text-muted-foreground uppercase">

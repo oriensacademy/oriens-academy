@@ -179,13 +179,13 @@ export function BookingFlow() {
 
   function formatSlotDateTime(isoString: string) {
     const d = new Date(isoString);
-    const dateStr = d.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US", {
+    const dateStr = d.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-GB", {
       weekday: "short",
       month: "short",
       day: "numeric",
       year: "numeric",
     });
-    const timeStr = d.toLocaleTimeString(locale === "tr" ? "tr-TR" : "en-US", {
+    const timeStr = d.toLocaleTimeString(locale === "tr" ? "tr-TR" : "en-GB", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
@@ -363,7 +363,10 @@ export function BookingFlow() {
 
             <div className="pt-4 border-t border-border">
               <label htmlFor="notes" className="block text-sm font-medium text-ink">
-                {bookingFlow.step1.notesLabel} <span className="font-normal text-muted-foreground">(isteğe bağlı)</span>
+                {bookingFlow.step1.notesLabel}{" "}
+                <span className="font-normal text-muted-foreground">
+                  ({locale === "tr" ? "isteğe bağlı" : "optional"})
+                </span>
               </label>
               <textarea
                 id="notes"

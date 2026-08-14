@@ -43,9 +43,9 @@ export function PricingPage() {
     if (!row || !row.name_tr) return fallback;
     return {
       ...fallback,
-      title: locale === "tr" ? row.name_tr : row.name_en || row.name_tr,
-      description: locale === "tr" ? row.description_tr || "" : row.description_en || row.description_tr || "",
-      badge: locale === "tr" ? row.badge_tr || undefined : row.badge_en || row.badge_tr || undefined,
+      title: locale === "tr" ? row.name_tr : row.name_en || fallback.title,
+      description: locale === "tr" ? row.description_tr || fallback.description : row.description_en || fallback.description,
+      badge: locale === "tr" ? row.badge_tr || fallback.badge : row.badge_en || fallback.badge,
     };
   }
 

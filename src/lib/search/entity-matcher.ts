@@ -20,7 +20,7 @@ const PREDEFINED_COUNTRIES: PredefinedEntity[] = [
     iso2: "GB",
     iso3: "GBR",
     canonicalSlug: "united-kingdom",
-    aliases: ["uk", "britain", "great britain", "england", "scotland", "wales", "united kingdom"],
+    aliases: ["uk", "britain", "great britain", "england", "scotland", "wales", "united kingdom", "ingiltere", "birlesik krallik"],
   },
   {
     name: "United States",
@@ -28,7 +28,15 @@ const PREDEFINED_COUNTRIES: PredefinedEntity[] = [
     iso2: "US",
     iso3: "USA",
     canonicalSlug: "united-states",
-    aliases: ["usa", "us", "america", "united states", "united states of america"],
+    aliases: ["usa", "us", "america", "united states", "united states of america", "amerika", "abd"],
+  },
+  {
+    name: "Canada",
+    type: "COUNTRY",
+    iso2: "CA",
+    iso3: "CAN",
+    canonicalSlug: "canada",
+    aliases: ["canada", "kanada"],
   },
   {
     name: "Italy",
@@ -36,7 +44,7 @@ const PREDEFINED_COUNTRIES: PredefinedEntity[] = [
     iso2: "IT",
     iso3: "ITA",
     canonicalSlug: "italy",
-    aliases: ["italy", "italia", "italian republic"],
+    aliases: ["italy", "italia", "italian republic", "italya"],
   },
   {
     name: "Netherlands",
@@ -44,7 +52,7 @@ const PREDEFINED_COUNTRIES: PredefinedEntity[] = [
     iso2: "NL",
     iso3: "NLD",
     canonicalSlug: "netherlands",
-    aliases: ["netherlands", "holland", "dutch"],
+    aliases: ["netherlands", "holland", "dutch", "hollanda"],
   },
   {
     name: "Switzerland",
@@ -52,7 +60,7 @@ const PREDEFINED_COUNTRIES: PredefinedEntity[] = [
     iso2: "CH",
     iso3: "CHE",
     canonicalSlug: "switzerland",
-    aliases: ["switzerland", "swiss", "swiss confederation"],
+    aliases: ["switzerland", "swiss", "swiss confederation", "isvicre"],
   },
   {
     name: "France",
@@ -60,7 +68,7 @@ const PREDEFINED_COUNTRIES: PredefinedEntity[] = [
     iso2: "FR",
     iso3: "FRA",
     canonicalSlug: "france",
-    aliases: ["france", "french republic"],
+    aliases: ["france", "french republic", "fransa"],
   },
 ];
 

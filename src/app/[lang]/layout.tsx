@@ -43,7 +43,7 @@ export async function generateMetadata({
       description: site.description,
       url: `${BASE_URL}/${lang}`,
       siteName: "Oriens Academy",
-      locale: lang === "tr" ? "tr_TR" : "en_US",
+      locale: lang === "tr" ? "tr_TR" : "en_GB",
       type: "website",
     },
   };

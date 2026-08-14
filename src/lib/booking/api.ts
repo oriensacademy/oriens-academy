@@ -60,6 +60,12 @@ async function getPublicAvailabilityFallback(): Promise<PublicAvailabilitySlot[]
 export async function submitBooking(
   payload: BookingRequestPayload
 ): Promise<BookingResult> {
+  const networkMessage = payload.locale === "tr"
+    ? "Randevu hizmetine bağlanırken bir ağ hatası oluştu."
+    : "A network error occurred while connecting to the booking service.";
+  const fallbackMessage = payload.locale === "tr"
+    ? "Randevu saati ayırtılamadı."
+    : "Slot reservation could not be completed.";
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.functions.invoke("create-booking", {
@@ -77,7 +83,7 @@ export async function submitBooking(
       return {
         success: false,
         errorCode: "NETWORK_ERROR",
-        message: "Network error occurred while connecting to the booking service.",
+        message: networkMessage,
       };
     }
 
@@ -95,14 +101,14 @@ export async function submitBooking(
     return {
       success: false,
       errorCode: data?.error_code || "RESERVATION_FAILED",
-      message: data?.message || "Slot reservation could not be completed.",
+      message: fallbackMessage,
     };
   } catch (err) {
     console.warn("[booking/api] Unexpected error submitting booking:", err);
     return {
       success: false,
       errorCode: "NETWORK_ERROR",
-      message: "Network error occurred while connecting to the booking service.",
+      message: networkMessage,
     };
   }
 }

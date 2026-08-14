@@ -36,13 +36,13 @@ export function Hero() {
         <div className="absolute bottom-1/4 right-1/4 size-80 rounded-full bg-[#C5B58A] blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-14 px-6 md:px-12 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] lg:gap-8 xl:gap-12">
-        <div className="min-w-0 max-w-[760px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1440px] grid-cols-1 items-center gap-14 px-6 md:px-12 lg:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)] lg:items-start lg:gap-8 xl:gap-12">
+        <div className="min-w-0 max-w-[760px] lg:pt-6">
           <motion.div
             initial="hidden"
             animate={state}
             variants={item}
-            transition={{ duration: skip ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: skip ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="flex min-h-7 flex-wrap items-center gap-x-2 text-[12px] font-semibold tracking-[0.18em] text-[#68756C] uppercase font-ui"
           >
             <span>{hero.eyebrow}</span><span aria-hidden="true">·</span><span className="inline-flex items-center whitespace-nowrap">{locale === "tr" ? "Şimdi sırada" : "Prepare for"} <TextRotate texts={["IB", "SAT", "AP", "ESAT", "TMUA", "IGCSE"]} rotationInterval={2500} splitBy="characters" mainClassName="ml-1 inline-flex min-w-[6.5ch] overflow-hidden text-[#819586]" /></span>
@@ -52,7 +52,7 @@ export function Hero() {
             initial="hidden"
             animate={state}
             variants={item}
-            transition={{ duration: skip ? 0 : 0.6, delay: skip ? 0 : 0.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: skip ? 0 : 0.45, delay: skip ? 0 : 0.05, ease: [0.22, 1, 0.36, 1] }}
             className="mt-5 max-w-[740px] text-balance font-heading text-[clamp(2.8rem,12vw,4rem)] leading-[1.04] font-normal tracking-[-0.02em] text-foreground md:text-[clamp(3rem,6.5vw,3.75rem)] md:leading-[1.02] lg:text-[clamp(3.4rem,4.3vw,5.1rem)] lg:leading-[1.01]"
           >
             <TextReveal preset="fade-in-blur" per="word" delay={.05} speedReveal={1.5} speedSegment={1.2} trigger={state === "visible"}>{hero.headline}</TextReveal>
@@ -62,7 +62,7 @@ export function Hero() {
             initial="hidden"
             animate={state}
             variants={item}
-            transition={{ duration: skip ? 0 : 0.6, delay: skip ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: skip ? 0 : 0.45, delay: skip ? 0 : 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="mt-6 max-w-[620px] text-[1.0625rem] leading-[1.7] text-[#455249] font-body md:text-lg"
           >
             {hero.body}
@@ -72,7 +72,7 @@ export function Hero() {
             initial="hidden"
             animate={state}
             variants={item}
-            transition={{ duration: skip ? 0 : 0.6, delay: skip ? 0 : 0.34, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: skip ? 0 : 0.45, delay: skip ? 0 : 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="mt-7"
           >
             <GooeySearchBar />
@@ -82,7 +82,7 @@ export function Hero() {
             initial="hidden"
             animate={state}
             variants={item}
-            transition={{ duration: skip ? 0 : 0.6, delay: skip ? 0 : 0.4, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: skip ? 0 : 0.45, delay: skip ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
             className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3"
           >
             <ButtonLink
@@ -109,7 +109,7 @@ export function Hero() {
           initial="hidden"
           animate={state}
           variants={item}
-          transition={{ duration: skip ? 0 : 0.7, delay: skip ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: skip ? 0 : 0.5, delay: skip ? 0 : 0.1, ease: [0.22, 1, 0.36, 1] }}
           className="mx-auto w-full max-w-[380px] lg:max-w-[420px]"
         >
           <PhoneMockupBasic />

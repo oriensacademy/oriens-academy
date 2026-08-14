@@ -100,9 +100,21 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: metadata.title,
     description: metadata.description,
+    openGraph: {
+      title: metadata.title,
+      description: metadata.description,
+      url: localizedPath(route, lang),
+      locale: lang === "tr" ? "tr_TR" : "en_GB",
+      alternateLocale: lang === "tr" ? ["en_GB"] : ["tr_TR"],
+      type: "website",
+    },
     alternates: {
       canonical: localizedPath(route, lang),
-      languages: { tr: localizedPath(route, "tr"), en: localizedPath(route, "en") },
+      languages: {
+        tr: localizedPath(route, "tr"),
+        en: localizedPath(route, "en"),
+        "x-default": localizedPath(route, "tr"),
+      },
     },
   };
 }

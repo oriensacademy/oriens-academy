@@ -43,7 +43,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{if(sessionStorage.getItem("oriens-loader-seen")==="1"||sessionStorage.getItem("oriens-language-transition")){document.documentElement.dataset.oriensLoaderSkip="1"}}catch(e){}`,
+            __html: `try{document.documentElement.lang=location.pathname.split("/")[1]==="en"?"en":"tr";if(sessionStorage.getItem("oriens-loader-seen")==="1"||sessionStorage.getItem("oriens-language-transition")){document.documentElement.dataset.oriensLoaderSkip="1"}}catch(e){}`,
           }}
         />
       </head>

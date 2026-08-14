@@ -5,12 +5,54 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useLocale } from "@/content/locale-context";
 
 const concerns = [
-  { id: "start", tr: "Nereden başlamalıyım?", en: "Where should I start?", width: 330, x: 12, y: 10, rotate: -2.2 },
-  { id: "exam", tr: "Hangi sınava hazırlanmalıyım?", en: "Which exam should I prepare for?", width: 390, x: 45, y: 58, rotate: 1.5 },
-  { id: "study", tr: "Nasıl çalışacağım?", en: "How should I study?", width: 300, x: 20, y: 113, rotate: -1.4 },
-  { id: "university", tr: "Hangi üniversite bana uygun?", en: "Which university suits my goals?", width: 430, x: 40, y: 158, rotate: 1.1 },
-  { id: "programme", tr: "Programım nasıl olacak?", en: "What will my study plan look like?", width: 340, x: 25, y: 211, rotate: -1.2 },
-  { id: "process", tr: "Süreç nasıl ilerliyor?", en: "How does the process work?", width: 260, x: 55, y: 252, rotate: 1.8 },
+  {
+    id: "start",
+    tr: "Nereden başlamalıyım?",
+    en: "Where should I start?",
+    answerTr: "Mevcut seviyenizi, hedef ülke/üniversiteyi ve zaman planınızı birlikte değerlendirerek ilk adımı belirliyoruz.",
+    answerEn: "We assess your current level, target country or university, and timeline together to define your first step.",
+    width: 330, x: 12, y: 10, rotate: -2.2,
+  },
+  {
+    id: "exam",
+    tr: "Hangi sınava hazırlanmalıyım?",
+    en: "Which exam should I prepare for?",
+    answerTr: "Hedeflediğiniz ülke, üniversite, bölüm ve başvuru dönemine göre hangi sınavların gerekli veya uygun olduğunu birlikte netleştiriyoruz.",
+    answerEn: "We work out which exams are required or suitable for you based on your target country, university, programme and application cycle.",
+    width: 390, x: 45, y: 58, rotate: 1.5,
+  },
+  {
+    id: "study",
+    tr: "Nasıl çalışacağım?",
+    en: "How should I study?",
+    answerTr: "Seviyenize ve sınav tarihine göre konu çalışması, soru pratiği, zaman yönetimi ve deneme analizini içeren kişisel bir çalışma düzeni oluşturuyoruz.",
+    answerEn: "We build a personal study plan around your level and exam date, covering topic study, practice questions, time management and mock analysis.",
+    width: 300, x: 20, y: 113, rotate: -1.4,
+  },
+  {
+    id: "university",
+    tr: "Hangi üniversite bana uygun?",
+    en: "Which university suits my goals?",
+    answerTr: "Akademik profiliniz, hedef bölümünüz, ülke tercihiniz ve sınav sonuçlarınız doğrultusunda değerlendirebileceğiniz üniversite rotalarını birlikte inceliyoruz.",
+    answerEn: "We review the university routes worth considering based on your academic profile, target programme, country preference and exam results.",
+    width: 430, x: 40, y: 158, rotate: 1.1,
+  },
+  {
+    id: "programme",
+    tr: "Programım nasıl olacak?",
+    en: "What will my study plan look like?",
+    answerTr: "Ders sıklığı ve çalışma planı; mevcut seviyeniz, sınav tarihi, okul programınız ve ihtiyaç duyduğunuz konulara göre kişiselleştirilir.",
+    answerEn: "Lesson frequency and your study plan are personalised around your current level, exam date, school schedule and the topics you need most.",
+    width: 340, x: 25, y: 211, rotate: -1.2,
+  },
+  {
+    id: "process",
+    tr: "Süreç nasıl ilerliyor?",
+    en: "How does the process work?",
+    answerTr: "Tanışma ve hedef analizinin ardından çalışma planı oluşturulur; dersler, geri bildirimler ve ilerleme değerlendirmeleriyle süreç düzenli olarak güncellenir.",
+    answerEn: "After an introductory session and goal analysis, we build your study plan; lessons, feedback and progress reviews keep it updated throughout.",
+    width: 260, x: 55, y: 252, rotate: 1.8,
+  },
 ] as const;
 
 export function MarketingBadges() {
@@ -53,8 +95,8 @@ export function MarketingBadges() {
       <AnimatePresence mode="wait" initial={false}>
         {active && (
           <motion.div key={active.id} initial={reducedMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={reducedMotion ? undefined : { opacity: 0, y: -6 }} className="mx-auto mt-2 max-w-3xl rounded-2xl border border-[#DDE4DC] bg-white p-6 text-center shadow-sm sm:p-8">
-            <p className="font-sans text-xl font-semibold tracking-[-0.02em] text-[#10271B]">“{isTr ? active.tr : active.en}”</p>
-            <p className="mt-3 text-sm leading-7 text-[#68756C] sm:text-base">{isTr ? "Hedeflerinizi, mevcut seviyenizi ve planladığınız rotayı ücretsiz tanışma görüşmesinde birlikte netleştirebiliriz." : "We can clarify your goals, current level and intended route together during a free introductory consultation."}</p>
+            <p className="font-sans text-xl font-semibold tracking-[-0.02em] text-[#10271B]">&ldquo;{isTr ? active.tr : active.en}&rdquo;</p>
+            <p className="mt-3 text-sm leading-7 text-[#68756C] sm:text-base">{isTr ? active.answerTr : active.answerEn}</p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -40,7 +40,7 @@ export function CreativePricing({
   tiers,
 }: CreativePricingProps) {
   const Heading = headingLevel;
-  const money = (value: number) => new Intl.NumberFormat("tr-TR", {
+  const money = (value: number) => new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", {
     style: "currency",
     currency: "TRY",
     currencyDisplay: "narrowSymbol",

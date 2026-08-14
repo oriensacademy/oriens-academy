@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { AcademicIcon, type AcademicIconType } from "@/components/academic/AcademicIcon";
 import type { ExamCode, ExamVisualVariant } from "@/content/exams";
+import { useLocale } from "@/content/locale-context";
 
 const examVisuals: Record<ExamCode, { type: AcademicIconType; tr: string; en: string }> = {
   IB: { type: "global-study", tr: "Küresel müfredat", en: "Global curriculum" },
@@ -21,6 +22,7 @@ const examVisuals: Record<ExamCode, { type: AcademicIconType; tr: string; en: st
 
 export function ExamDetailVisual({ label, code }: { variant: ExamVisualVariant; label: string; code: ExamCode }) {
   const reducedMotion = Boolean(useReducedMotion());
+  const locale = useLocale();
   const visual = examVisuals[code];
 
   return (
@@ -42,8 +44,10 @@ export function ExamDetailVisual({ label, code }: { variant: ExamVisualVariant; 
           <AcademicIcon type={visual.type} size="42%" className="max-h-36 min-h-24 text-[#10271B]" />
         </div>
         <div className="mt-6 grid grid-cols-[1fr_auto] items-end gap-5 border-t border-[#DCE5DD] pt-5">
-          <p className="font-heading text-xl leading-tight text-[#172033]">{visual.tr}</p>
-          <p className="max-w-32 text-right text-[10px] uppercase tracking-[0.14em] text-[#8FA294]">{visual.en}</p>
+          <p className="font-heading text-xl leading-tight text-[#172033]">{visual[locale]}</p>
+          <p className="max-w-32 text-right text-[10px] uppercase tracking-[0.14em] text-[#8FA294]">
+            {locale === "tr" ? "Akademik odak" : "Academic focus"}
+          </p>
         </div>
       </motion.div>
     </div>

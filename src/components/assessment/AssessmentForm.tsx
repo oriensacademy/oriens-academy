@@ -37,7 +37,8 @@ export function AssessmentForm() {
 
     try {
       const supabase = getSupabaseClient();
-      const payloadMessage = `
+      const payloadMessage = isTr
+        ? `
 [Ön Değerlendirme Formu]
 Hedef Sınav: ${targetExam}
 Okul / Sınıf: ${schoolGrade || "-"}
@@ -45,14 +46,24 @@ Hedef Ülke/Üniversite: ${targetUniversity || "-"}
 Hedef Tarih: ${targetDate || "-"}
 Telefon: ${phone || "-"}
 Notlar / Hedef: ${notes || "-"}
-      `.trim();
+        `.trim()
+        : `
+[Academic Assessment Form]
+Target Exam: ${targetExam}
+School / Grade: ${schoolGrade || "-"}
+Target Country / University: ${targetUniversity || "-"}
+Target Date: ${targetDate || "-"}
+Phone: ${phone || "-"}
+Notes / Goals: ${notes || "-"}
+        `.trim();
 
       const { error } = await supabase.from("contact_requests").insert({
         full_name: fullName.trim(),
         email: email.trim(),
         phone: phone.trim() || null,
-        subject: `Ön Değerlendirme — ${targetExam}`,
+        subject: `${isTr ? "Ön Değerlendirme" : "Academic Assessment"} — ${targetExam}`,
         message: payloadMessage,
+        locale,
         status: "new",
       });
 
@@ -146,6 +157,7 @@ Notlar / Hedef: ${notes || "-"}
             <option value="SAT">Digital SAT</option>
             <option value="AP">AP (Advanced Placement)</option>
             <option value="ESAT">ESAT (Engineering & Science)</option>
+            <option value="TARA">TARA</option>
             <option value="TMUA">TMUA Mathematics</option>
             <option value="IGCSE">IGCSE / GCSE</option>
             <option value="GRE">GRE</option>

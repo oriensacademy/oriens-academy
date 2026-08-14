@@ -13,7 +13,7 @@ export function SocialLinks() {
   const links: SocialLink[] = [
     { platform: "instagram", href: CONTACT.instagramHref, label: "Instagram", external: true },
     { platform: "whatsapp", href: CONTACT.whatsappHref, label: "WhatsApp", external: true },
-    { platform: "phone", href: CONTACT.phoneHref, label: locale === "tr" ? "Telefon" : "Phone", external: false },
+    { platform: "phone", href: CONTACT.phoneHref, label: locale === "tr" ? "Telefon" : "Phone", value: CONTACT.phoneDisplay, external: false },
     { platform: "mail", href: CONTACT.emailHref, label: locale === "tr" ? "E-posta" : "Email", external: false },
   ];
 

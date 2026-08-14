@@ -55,7 +55,7 @@ function formatDateTime(isoStr?: string | null, locale?: "tr" | "en"): string {
   if (!isoStr) return "-";
   try {
     const d = new Date(isoStr);
-    return d.toLocaleString(locale === "tr" ? "tr-TR" : "en-US", {
+    return d.toLocaleString(locale === "tr" ? "tr-TR" : "en-GB", {
       weekday: "short",
       year: "numeric",
       month: "short",
@@ -87,14 +87,15 @@ function fieldRow(label: string, value: string): string {
  * All styling is inline; no external stylesheet dependency.
  */
 function renderEmailShell(opts: {
+  locale: "tr" | "en";
   eyebrow: string;
   title: string;
   bodyHtml: string;
   footerNote?: string;
 }): string {
-  const { eyebrow, title, bodyHtml, footerNote } = opts;
+  const { locale, eyebrow, title, bodyHtml, footerNote } = opts;
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${locale}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -169,6 +170,7 @@ export function renderAdminBookingEmail(data: BookingEmailData, adminLocale: "tr
   const bodyHtml = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`;
 
   const html = renderEmailShell({
+    locale: adminLocale,
     eyebrow: isTr ? "Yeni Talep" : "New Request",
     title: subject,
     bodyHtml,
@@ -221,6 +223,7 @@ export function renderStudentBookingEmail(data: BookingEmailData) {
     </div>`;
 
   const html = renderEmailShell({
+    locale: data.locale,
     eyebrow: isTr ? "Görüşme Talebi" : "Consultation Request",
     title: isTr ? "Talebiniz Alındı" : "Request Received",
     bodyHtml,
@@ -277,6 +280,7 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
     </div>`;
 
   const html = renderEmailShell({
+    locale: adminLocale,
     eyebrow: isTr ? "Yeni Talep" : "New Request",
     title: subject,
     bodyHtml,
@@ -286,13 +290,13 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
   const text = `
 ORIENS ACADEMY - ${subject}
 
-Ad Soyad: ${data.fullName}
-E-posta: ${data.email}
-Telefon: ${data.phone || "-"}
-Konu: ${data.subject || "-"}
-Dil: ${data.locale.toUpperCase()}
+${isTr ? "Ad Soyad" : "Full Name"}: ${data.fullName}
+${isTr ? "E-posta" : "Email"}: ${data.email}
+${isTr ? "Telefon" : "Phone"}: ${data.phone || "-"}
+${isTr ? "Konu" : "Subject"}: ${data.subject || "-"}
+${isTr ? "Dil" : "Language"}: ${data.locale.toUpperCase()}
 
-Mesaj:
+${isTr ? "Mesaj" : "Message"}:
 ${data.message}
 
 Contact ID: ${data.contactId}
@@ -331,6 +335,7 @@ export function renderStudentContactEmail(data: ContactEmailData) {
     </div>`;
 
   const html = renderEmailShell({
+    locale: data.locale,
     eyebrow: isTr ? "İletişim Talebi" : "Contact Request",
     title: isTr ? "Talebiniz Alındı" : "Request Received",
     bodyHtml,
@@ -401,6 +406,7 @@ export function renderAdminPasswordRecoveryEmail(
     <div style="margin-top:12px;color:${PALETTE.sage};font-size:13px;">${warning}</div>`;
 
   const html = renderEmailShell({
+    locale,
     eyebrow: isTr ? "Hesap Kurtarma" : "Account Recovery",
     title: isTr ? "Yeni Yönetici Şifreniz" : "Your New Administrator Password",
     bodyHtml,

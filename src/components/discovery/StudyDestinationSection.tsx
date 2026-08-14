@@ -3,12 +3,12 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowRight, ExternalLink, GraduationCap, Route } from "lucide-react";
+import { ArrowRight, GraduationCap, Route } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { useExamsContent, useLocale } from "@/content/locale-context";
 import { studyDestinations } from "@/data/study-destinations";
-import { localizedPath } from "@/lib/routes";
+import { examDetailPath, localizedPath } from "@/lib/routes";
 import { DestinationExamPanel } from "./DestinationExamPanel";
 import { DestinationSelector } from "./DestinationSelector";
 import type { StudyRegion } from "./globe-types";
@@ -113,8 +113,8 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
               </div>
               <p className="max-w-[48ch] text-xs leading-5 text-[#68756C]">
                 {isTr
-                  ? "Koşullar programa ve döneme göre değişir; bağlantılar resmî kaynaklara gider."
-                  : "Conditions vary by programme and cycle; links open the official sources."}
+                  ? "Koşullar programa ve döneme göre değişir."
+                  : "Conditions vary by programme and cycle."}
               </p>
             </div>
 
@@ -132,14 +132,11 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
                     {university.examRelations.map((relation) => (
                       <Link
                         key={`${university.id}-${relation.examId}`}
-                        href={relation.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={examDetailPath(locale, relation.examId.toLowerCase())}
                         className="inline-flex min-h-8 items-center gap-1 rounded-full border border-[#DDE4DC] px-2.5 py-1 text-[11px] font-semibold text-[#10271B] outline-none hover:border-[#819586] focus-visible:ring-2 focus-visible:ring-[#819586]"
-                        aria-label={`${relation.examId}: ${relationshipLabel(relation.relationship, isTr)} — ${isTr ? "resmî kaynak" : "official source"}`}
+                        aria-label={`${relation.examId}: ${relationshipLabel(relation.relationship, isTr)}`}
                       >
                         {relation.examId} · {relationshipLabel(relation.relationship, isTr)}
-                        <ExternalLink className="size-3" aria-hidden="true" />
                       </Link>
                     ))}
                   </div>

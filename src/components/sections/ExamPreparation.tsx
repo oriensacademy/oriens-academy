@@ -15,7 +15,7 @@ export function ExamPreparation() {
   const { examPreparation } = useHomeContent();
   const locale = useLocale();
   return (
-    <section id="exam-preparation" className="section-offset bg-surface-muted py-20 md:py-28">
+    <section id="exam-preparation" className="section-offset bg-surface-muted pt-10 pb-20 md:pt-14 md:pb-28">
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
         <div className="flex flex-col items-start gap-10 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">

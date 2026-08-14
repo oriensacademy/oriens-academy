@@ -30,6 +30,8 @@ export interface SocialLink {
   platform: Platform;
   href: string;
   label?: string;
+  /** Secondary line shown alongside the label, e.g. a phone number. */
+  value?: string;
   external?: boolean;
 }
 
@@ -135,10 +137,12 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
         } flex-col fixed top-[35%] left-0 z-40`}
       >
         <ul className="space-y-2.5">
-          {links.map(({ platform, href, label, external = true }) => {
+          {links.map(({ platform, href, label, value, external = true }) => {
             const style = PLATFORM_STYLES[platform];
             if (!style) return null;
             const Icon = style.icon;
+            const closedWidth = value ? "w-56" : "w-44";
+            const closedOffset = value ? "ml-[-160px]" : "ml-[-128px]";
 
             return (
               <li
@@ -150,13 +154,24 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                   data-social-platform={platform}
                   target={external ? "_blank" : undefined}
                   rel={external ? "noreferrer" : undefined}
-                  aria-label={label ?? style.label}
-                  className="relative ml-[-128px] flex h-12 w-44 items-center justify-between overflow-hidden rounded-r-xl border border-[rgba(16,39,27,0.12)] bg-[#10271B] px-3.5 text-white shadow-[0_6px_18px_rgba(16,39,27,0.14)] transition-[margin,transform,background-color,box-shadow] duration-200 ease-out group-hover:ml-[-8px] group-hover:translate-x-[3px] group-hover:bg-[#819586] group-hover:shadow-[0_8px_22px_rgba(16,39,27,0.18)]"
+                  aria-label={value ? `${label ?? style.label}: ${value}` : (label ?? style.label)}
+                  className={`relative ${closedOffset} flex h-12 ${closedWidth} items-center justify-between overflow-hidden rounded-r-xl border border-[rgba(16,39,27,0.12)] bg-[#10271B] px-3.5 text-white shadow-[0_6px_18px_rgba(16,39,27,0.14)] transition-[margin,transform,background-color,box-shadow] duration-200 ease-out group-hover:ml-[-8px] group-hover:translate-x-[3px] group-hover:bg-[#819586] group-hover:shadow-[0_8px_22px_rgba(16,39,27,0.18)]`}
                 >
                   {/* Label */}
-                  <span className="relative z-10 text-sm font-semibold tracking-wide text-white">
-                    {label ?? style.label}
-                  </span>
+                  {value ? (
+                    <span className="relative z-10 flex flex-col leading-tight">
+                      <span className="text-[10px] font-semibold tracking-wide text-white/75 uppercase">
+                        {label ?? style.label}
+                      </span>
+                      <span className="text-sm font-semibold tracking-wide whitespace-nowrap text-white">
+                        {value}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="relative z-10 text-sm font-semibold tracking-wide text-white">
+                      {label ?? style.label}
+                    </span>
+                  )}
 
                   {/* Icon */}
                   <Icon

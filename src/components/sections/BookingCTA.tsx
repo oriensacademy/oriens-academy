@@ -111,24 +111,24 @@ export function BookingCTA() {
     : "Hello Oriens Academy, I would like to get information about an introductory consultation.";
 
   return (
-    <section id="consultation-form" className="section-offset relative overflow-hidden border-t border-border bg-[#F6F8F3] py-20 md:py-28">
+    <section id="consultation-form" className="section-offset relative overflow-hidden border-t border-border bg-[#F6F8F3] py-14 md:py-16">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_24%,rgba(129,149,134,.16),transparent_38%),radial-gradient(circle_at_82%_72%,rgba(197,181,138,.13),transparent_34%)]" aria-hidden="true" />
       <div className="relative mx-auto grid w-[calc(100%-2rem)] max-w-[1100px] overflow-hidden rounded-[28px] border border-[#DDE4DC] bg-white shadow-[0_22px_65px_rgba(16,39,27,.09)] lg:grid-cols-[.82fr_1.18fr]">
-        <div className="bg-[linear-gradient(145deg,#A7B7A8,#819586)] p-7 text-[#10271B] sm:p-10 lg:p-12">
+        <div className="bg-[linear-gradient(145deg,#A7B7A8,#819586)] p-7 text-[#10271B] sm:p-8 lg:p-10">
           <Reveal><CompassMark size={36} interactive /></Reveal>
-          <Reveal delay={0.06}><p className="mt-8 text-xs font-bold tracking-[.22em] uppercase">{isTr ? "BİRLİKTE PLANLAYALIM" : "PLAN YOUR NEXT STEP"}</p></Reveal>
-          <Reveal delay={0.1}><h2 className="mt-4 font-heading text-[clamp(2rem,3.5vw,3.25rem)] leading-[1.04]">{isTr ? "Bir sonraki adımınızı konuşalım." : "Let's talk about your next step."}</h2></Reveal>
-          <Reveal delay={0.14}><p className="mt-5 max-w-md text-base leading-7 text-[#10271B]/80">{isTr ? "Hedeflediğiniz sınavı, üniversiteyi veya hazırlık sürecinizi birlikte değerlendirelim. İlk tanışma görüşmesi ücretsizdir." : "Tell us about your exam, university or academic goals. Your introductory consultation is free."}</p></Reveal>
-          <Reveal delay={0.18} className="mt-9 space-y-3">
-            <a href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="flex min-h-12 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · +90 544 293 90 40</a>
-            <a href="tel:+905442939040" className="flex min-h-12 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Phone className="size-4" />{isTr ? "Telefon" : "Phone"} · +90 544 293 90 40</a>
-            <a href="mailto:oriensacademy@gmail.com" className="flex min-h-12 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Mail className="size-4" />oriensacademy@gmail.com</a>
+          <Reveal delay={0.06}><p className="mt-6 text-xs font-bold tracking-[.22em] uppercase">{isTr ? "BİRLİKTE PLANLAYALIM" : "PLAN YOUR NEXT STEP"}</p></Reveal>
+          <Reveal delay={0.1}><h2 className="mt-3 font-heading text-[clamp(2rem,3.5vw,3.25rem)] leading-[1.04]">{isTr ? "Bir sonraki adımınızı konuşalım." : "Let's talk about your next step."}</h2></Reveal>
+          <Reveal delay={0.14}><p className="mt-4 max-w-md text-base leading-7 text-[#10271B]/80">{isTr ? "Hedeflediğiniz sınavı, üniversiteyi veya hazırlık sürecinizi birlikte değerlendirelim. İlk tanışma görüşmesi ücretsizdir." : "Tell us about your exam, university or academic goals. Your introductory consultation is free."}</p></Reveal>
+          <Reveal delay={0.18} className="mt-6 space-y-2">
+            <a href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · +90 544 293 90 40</a>
+            <a href="tel:+905442939040" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Phone className="size-4" />{isTr ? "Telefon" : "Phone"} · +90 544 293 90 40</a>
+            <a href="mailto:oriensacademy@gmail.com" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Mail className="size-4" />oriensacademy@gmail.com</a>
           </Reveal>
         </div>
 
-        <Reveal delay={0.1} className="min-w-0 p-5 sm:p-8 lg:p-10">
+        <Reveal delay={0.1} className="min-w-0 p-5 sm:p-7 lg:p-8">
           {submitted ? (
-            <div aria-live="polite" className="flex h-full min-h-[420px] flex-col items-center justify-center rounded-2xl bg-[#F8FAF7] p-6 text-center sm:p-10">
+            <div aria-live="polite" className="flex h-full min-h-[360px] flex-col items-center justify-center rounded-2xl bg-[#F8FAF7] p-6 text-center sm:p-8">
               <div className="flex size-14 items-center justify-center rounded-full bg-brand-accent/10 text-brand-accent"><CheckCircle2 className="size-8" /></div>
               <p className="mt-5 font-heading text-xl text-ink">{isTr ? "Talebiniz alındı." : "Request received."}</p>
               <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink/70">{isTr ? "Bilgilerinizi aldık. Ekibimiz en kısa sürede sizinle iletişime geçecek." : "We have your details. Our team will contact you as soon as possible."}</p>
@@ -142,14 +142,14 @@ export function BookingCTA() {
             </div>
           ) : (
             <form ref={formRef} onSubmit={handleSubmit} noValidate aria-label={bookingCTA.headline} data-form-id="consultation-request" className="min-w-0">
-              <div className="mb-7"><p className="text-xs font-bold tracking-[.18em] text-[#819586] uppercase">{isTr ? "ÜCRETSİZ TANIŞMA GÖRÜŞMESİ" : "FREE INTRODUCTORY CONSULTATION"}</p><h3 className="mt-3 font-heading text-2xl text-[#10271B]">{isTr ? "Görüşme talebinizi iletin" : "Send your consultation request"}</h3></div>
+              <div className="mb-5"><p className="text-xs font-bold tracking-[.18em] text-[#819586] uppercase">{isTr ? "ÜCRETSİZ TANIŞMA GÖRÜŞMESİ" : "FREE INTRODUCTORY CONSULTATION"}</p><h3 className="mt-2 font-heading text-2xl text-[#10271B]">{isTr ? "Görüşme talebinizi iletin" : "Send your consultation request"}</h3></div>
               {errors.submit && <div role="alert" className="mb-6 border-l-2 border-destructive bg-destructive/5 p-4 text-sm font-semibold text-destructive">{errors.submit}</div>}
               {Object.keys(errors).some((key) => key !== "submit") && (
                 <div ref={summaryRef} tabIndex={-1} role="alert" className="mb-6 border-l-2 border-destructive bg-destructive/5 p-4 outline-none focus-visible:ring-3 focus-visible:ring-destructive/20">
                   <p className="text-sm font-semibold text-destructive">{bookingCTA.form.errorSummary}</p>
                 </div>
               )}
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label htmlFor="consultation-name" className="text-sm font-medium text-ink">{bookingCTA.form.name} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-name" data-locale-field="consultation-name" name="name" type="text" required onInput={() => clearError("name")} autoComplete="name" className={fieldClass} />{errors.name && <p className="mt-2 text-sm text-destructive">{errors.name}</p>}</div>
                 <div><label htmlFor="consultation-email" className="text-sm font-medium text-ink">{bookingCTA.form.email} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-email" data-locale-field="consultation-email" name="email" type="email" required onInput={() => clearError("email")} autoComplete="email" className={fieldClass} />{errors.email && <p className="mt-2 text-sm text-destructive">{errors.email}</p>}</div>
                 <div><label htmlFor="interest" className="text-sm font-medium text-ink">{bookingCTA.form.interestLabel}</label><select id="interest" data-locale-field="consultation-interest" name="interest" defaultValue={bookingCTA.form.interestOptions[0].value} className={fieldClass}>{bookingCTA.form.interestOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
@@ -159,7 +159,7 @@ export function BookingCTA() {
                 <div className="sm:col-span-2 border-t border-border pt-4"><label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink/75"><input type="checkbox" data-locale-field="consultation-privacy" checked={privacyConsent} onChange={(event) => { setPrivacyConsent(event.target.checked); clearError("privacy"); }} className="mt-1 size-4" /><span>{isTr ? "Tanışma görüşmesi talebimin yanıtlanması için iletişim bilgilerimin işlenmesini kabul ediyorum." : "I agree to the processing of my contact details for this consultation request."}</span></label>{errors.privacy && <p className="mt-2 text-sm text-destructive">{errors.privacy}</p>}</div>
                 <div className="sm:col-span-2"><TurnstileWidget ref={turnstileRef} action="consultation_submit" locale={locale} onVerify={handleTurnstileVerify} onExpire={handleTurnstileReset} onError={handleTurnstileReset} />{errors.turnstile && <p className="mt-2 text-sm text-destructive">{errors.turnstile}</p>}</div>
               </div>
-              <Button type="submit" disabled={isSubmitting} directional size="lg" className="mt-7 h-12 w-full text-base">{isSubmitting ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request")}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></Button>
+              <Button type="submit" disabled={isSubmitting} directional size="lg" className="mt-5 h-12 w-full text-base">{isSubmitting ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request")}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></Button>
             </form>
           )}
         </Reveal>

@@ -29,11 +29,20 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: detail.seoTitle,
     description: detail.seoDescription,
+    openGraph: {
+      title: detail.seoTitle,
+      description: detail.seoDescription,
+      url: examDetailPath(lang, exam.slug),
+      locale: lang === "tr" ? "tr_TR" : "en_GB",
+      alternateLocale: lang === "tr" ? ["en_GB"] : ["tr_TR"],
+      type: "website",
+    },
     alternates: {
       canonical: examDetailPath(lang, exam.slug),
       languages: {
         tr: examDetailPath("tr", exam.slug),
         en: examDetailPath("en", exam.slug),
+        "x-default": examDetailPath("tr", exam.slug),
       },
     },
   };

@@ -86,7 +86,11 @@ export async function retrieveSearchResultsFromDatabase(
 
   const recognizedTerms = [
     ...parsedQuery.universities.map((entity) => entity.matchedTerm),
-    ...parsedQuery.countries.map((entity) => entity.matchedTerm),
+    // Country matches may be recognized via a Turkish alias or a fuzzy match
+    // (e.g. "amerika" -> United States) whose raw text won't appear in the
+    // database's English-language rows. Search on the canonical English name
+    // too so the recognized country still resolves to a real result.
+    ...parsedQuery.countries.flatMap((entity) => [entity.matchedTerm, entity.name]),
     ...parsedQuery.qualifications.map((entity) => entity.code || entity.matchedTerm),
     ...parsedQuery.fieldsOfStudy.map((entity) => entity.matchedTerm),
     ...parsedQuery.programs.map((entity) => entity.matchedTerm),

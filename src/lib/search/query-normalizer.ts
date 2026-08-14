@@ -13,6 +13,9 @@ export function normalizeQuery(input: string): string {
       .replace(/[\u0300-\u036f]/g, "")
       // Convert to lower case
       .toLowerCase()
+      // Fold Turkish dotless i (has no NFKD decomposition, unlike the other
+      // Turkish letters above which are already stripped to their ASCII base)
+      .replace(/ı/g, "i")
       // Replace smart quotes/apostrophes with standard apostrophe
       .replace(/[\u2018\u2019`’]/g, "'")
       // Replace hyphen-like characters with standard hyphen

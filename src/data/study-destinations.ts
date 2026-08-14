@@ -25,7 +25,7 @@ const regionSeeds: RegionSeed[] = [
     id: "us",
     labelTr: "Amerika Birleşik Devletleri",
     labelEn: "United States",
-    focus: { lat: 40.2, lng: -82, altitude: 1.08 },
+    focus: { lat: 39, lng: -98, altitude: 1.08 },
     countryNames: ["United States"],
     countryCodes: ["USA"],
   },

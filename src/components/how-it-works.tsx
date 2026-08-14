@@ -102,7 +102,7 @@ export interface StepPosition {
 }
 
 export interface HowItWorksProps {
-  features?: Step[];
+  features: Step[];
   className?: string;
   stepPositions?: StepPosition[];
 }
@@ -120,40 +120,7 @@ export default function HowItWorks({
   className,
   stepPositions,
 }: HowItWorksProps) {
-  const defaultFeatures: Step[] = [
-    {
-      title: "Create Account",
-      description:
-        "Sign up in minutes. Enter your details and verify your email to get started.",
-      colorTheme: "orange",
-    },
-    {
-      title: "Verify Identity",
-      description:
-        "Complete your profile verification to ensure secure transactions and compliance.",
-      colorTheme: "blue",
-    },
-    {
-      title: "Select Plan",
-      description:
-        "Choose from a variety of investment plans tailored to your financial goals.",
-      colorTheme: "purple",
-    },
-    {
-      title: "Analyze & Invest",
-      description:
-        "Review returns and make your first investment with confidence.",
-      colorTheme: "orange",
-    },
-    {
-      title: "Track Growth",
-      description:
-        "Monitor your portfolio in real-time and watch your wealth grow over time.",
-      colorTheme: "blue",
-    },
-  ];
-
-  const data = features && features.length > 0 ? features : defaultFeatures;
+  const data = features;
   const positions = stepPositions || DEFAULT_CARD_POSITIONS;
 
   return (

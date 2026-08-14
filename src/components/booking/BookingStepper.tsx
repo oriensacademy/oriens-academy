@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { useLocale } from "@/content/locale-context";
 
 export type StepItem = {
   title: string;
@@ -18,11 +19,14 @@ export function BookingStepper({
   currentStep,
   onStepClick,
 }: BookingStepperProps) {
+  const locale = useLocale();
+  const isTr = locale === "tr";
+
   return (
-    <nav aria-label="Booking process progress" className="w-full">
+    <nav aria-label={isTr ? "Randevu süreci ilerlemesi" : "Booking process progress"} className="w-full">
       {/* Screen reader summary */}
       <p className="sr-only">
-        Step {currentStep + 1} of {steps.length}: {steps[currentStep]?.title}
+        {isTr ? `Adım ${currentStep + 1} / ${steps.length}` : `Step ${currentStep + 1} of ${steps.length}`}: {steps[currentStep]?.title}
       </p>
 
       <ol className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">

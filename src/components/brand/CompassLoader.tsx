@@ -69,9 +69,9 @@ export function CompassLoader({ children }: { children: React.ReactNode }) {
             exit={{ opacity: 0 }}
             transition={{ duration: skipExit ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
             role="status"
-            aria-label="Oriens Academy loading"
+            aria-label="Oriens Academy"
           >
-            <Wave className="h-6 w-16 text-[#819586]" aria-label="Oriens Academy loading" />
+            <Wave className="h-6 w-16 text-[#819586]" aria-label="Oriens Academy" />
           </motion.div>
         )}
       </AnimatePresence>

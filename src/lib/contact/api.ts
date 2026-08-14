@@ -8,6 +8,12 @@ import type { ContactRequestPayload, ContactResult } from "./types";
 export async function submitContact(
   payload: ContactRequestPayload
 ): Promise<ContactResult> {
+  const networkMessage = payload.locale === "tr"
+    ? "İletişim hizmetine bağlanırken bir ağ hatası oluştu."
+    : "A network error occurred while connecting to the contact service.";
+  const fallbackMessage = payload.locale === "tr"
+    ? "İletişim talebi gönderilemedi."
+    : "Contact request could not be submitted.";
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.functions.invoke("create-contact", {
@@ -24,7 +30,7 @@ export async function submitContact(
       return {
         success: false,
         errorCode: "NETWORK_ERROR",
-        message: "Network error occurred while connecting to the contact service.",
+        message: networkMessage,
       };
     }
 
@@ -39,14 +45,14 @@ export async function submitContact(
     return {
       success: false,
       errorCode: data?.error_code || "STORAGE_FAILED",
-      message: data?.message || "Contact request could not be submitted.",
+      message: fallbackMessage,
     };
   } catch (err) {
     console.warn("[contact/api] Unexpected error submitting contact:", err);
     return {
       success: false,
       errorCode: "NETWORK_ERROR",
-      message: "Network error occurred while connecting to the contact service.",
+      message: networkMessage,
     };
   }
 }
