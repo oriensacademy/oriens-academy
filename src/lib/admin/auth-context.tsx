@@ -111,7 +111,9 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         setError(null);
         setStatus("unauthenticated");
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-        if (event === "SIGNED_IN") setStatus("loading");
+        // Supabase may emit SIGNED_IN again when an already-authenticated tab
+        // regains focus. Keep the verified admin tree mounted while silently
+        // revalidating so open drawers, modals, filters, and form state survive.
         await verifyAndSetAdmin(newSession);
       }
     });

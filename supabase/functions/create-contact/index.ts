@@ -68,6 +68,8 @@ Deno.serve(async (req: Request) => {
     const message = String(payload.message ?? "").trim();
     const locale = String(payload.locale ?? "en").trim() === "tr" ? "tr" : "en";
     const privacyConsent = payload.privacyConsent === true;
+    const packageId = source === "consultation" ? String(payload.packageId ?? "").trim() : "";
+    const allowedPackageIds = new Set(["single", "package5", "package10", "package20", "package30"]);
 
     // Server-side validations
     if (!fullName || fullName.length < 2 || fullName.length > 100) {
@@ -126,6 +128,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    if (packageId && !allowedPackageIds.has(packageId)) {
+      return buildJsonResponse(
+        { error_code: "INVALID_PACKAGE", message: "The selected pricing package is invalid." },
+        400,
+        req
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -140,6 +150,38 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const nowIso = new Date().toISOString();
+    let selectedPackage: {
+      id: string;
+      name: string;
+      price: number | null;
+      currency: string;
+      lessons: number | null;
+    } | null = null;
+
+    if (packageId) {
+      const { data: packageRow, error: packageError } = await supabaseAdmin
+        .from("pricing_packages")
+        .select("id,name_tr,name_en,lesson_count,currency,current_total,price_amount,active")
+        .eq("id", packageId)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (packageError || !packageRow) {
+        return buildJsonResponse(
+          { error_code: "INVALID_PACKAGE", message: "The selected pricing package is unavailable." },
+          400,
+          req
+        );
+      }
+
+      selectedPackage = {
+        id: packageRow.id,
+        name: (locale === "tr" ? packageRow.name_tr : packageRow.name_en) || packageRow.name_tr || packageRow.name_en || packageRow.id,
+        price: packageRow.current_total ?? packageRow.price_amount ?? null,
+        currency: packageRow.currency || "TRY",
+        lessons: packageRow.lesson_count ?? null,
+      };
+    }
 
     // Insert contact request (status = 'new')
     const { data: contactRow, error: insertError } = await supabaseAdmin
@@ -154,6 +196,13 @@ Deno.serve(async (req: Request) => {
         status: "new",
         privacy_consent: privacyConsent,
         source,
+        metadata: selectedPackage ? {
+          package_id: selectedPackage.id,
+          package_name: selectedPackage.name,
+          package_price: selectedPackage.price,
+          package_currency: selectedPackage.currency,
+          package_lessons: selectedPackage.lessons,
+        } : {},
       })
       .select("id, created_at")
       .single();
@@ -178,6 +227,7 @@ Deno.serve(async (req: Request) => {
       locale,
       source,
       createdAt: contactRow.created_at || nowIso,
+      package: selectedPackage,
     }).catch((err) => {
       console.error("[create-contact] Email dispatch background error:", err);
       return { status: "partial" as const };

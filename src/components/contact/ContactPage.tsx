@@ -34,8 +34,8 @@ export function ContactPage() {
             <a href={CONTACT.phoneHref} className="flex min-h-12 items-center gap-3 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/15">
               <Phone className="size-5" aria-hidden="true" /> {isTr ? "Telefon" : "Phone"} · {CONTACT.phoneDisplay}
             </a>
-            <a href={CONTACT.emailHref} className="flex min-h-12 items-center gap-3 break-all rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold transition-colors hover:bg-white/15">
-              <Mail className="size-5 shrink-0" aria-hidden="true" /> {isTr ? "E-posta" : "Email"} · {CONTACT.email}
+            <a href={CONTACT.emailHref} className="flex min-h-12 min-w-0 items-center gap-3 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold transition-colors hover:bg-white/15">
+              <Mail className="size-5 shrink-0" aria-hidden="true" /><span className="min-w-0 break-all">{isTr ? "E-posta" : "Email"} · {CONTACT.email}</span>
             </a>
           </div>
         </div>

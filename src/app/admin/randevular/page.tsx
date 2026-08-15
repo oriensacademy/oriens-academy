@@ -50,12 +50,12 @@ export default function AdminBookingsPage() {
 }
 
 const STATUS_OPTIONS: Array<{ value: BookingStatus | "all"; label: string }> = [
-  { value: "all", label: "Tüm Durumlar / All Statuses" },
-  { value: "pending", label: "Bekliyor (Pending)" },
-  { value: "confirmed", label: "Onaylandı (Confirmed)" },
-  { value: "completed", label: "Tamamlandı (Completed)" },
-  { value: "cancelled", label: "İptal Edildi (Cancelled)" },
-  { value: "no_show", label: "Gelmedi (No Show)" },
+  { value: "all", label: "Tüm Durumlar" },
+  { value: "pending", label: "Bekliyor" },
+  { value: "confirmed", label: "Onaylandı" },
+  { value: "completed", label: "Tamamlandı" },
+  { value: "cancelled", label: "İptal Edildi" },
+  { value: "no_show", label: "Gelmedi" },
 ];
 
 function BookingsContent() {
@@ -238,7 +238,7 @@ function BookingsContent() {
             <Inbox className="size-6" />
           </div>
           <h3 className="mt-3 text-sm font-bold text-foreground">
-            Randevu Bulunamadı / No Bookings
+            Randevu Bulunamadı
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
             Filtreleme kriterlerine uyan kayıt bulunmuyor. Filtreleri değiştirerek tekrar arayabilirsiniz.
@@ -253,7 +253,7 @@ function BookingsContent() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-3">Öğrenci / Client</th>
+                  <th className="px-4 py-3">Öğrenci</th>
                   <th className="px-4 py-3">Randevu Zamanı</th>
                   <th className="px-4 py-3">Sınav / Ders</th>
                   <th className="px-4 py-3">Durum</th>

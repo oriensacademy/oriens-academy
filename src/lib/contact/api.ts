@@ -4,7 +4,7 @@ import type { ContactRequestPayload, ContactResult } from "./types";
 type ContactErrorCode = Extract<ContactResult, { success: false }>["errorCode"];
 
 const knownErrorCodes = new Set<ContactErrorCode>([
-  "INVALID_FULL_NAME", "INVALID_EMAIL", "INVALID_PHONE", "INVALID_SUBJECT", "INVALID_MESSAGE",
+  "INVALID_FULL_NAME", "INVALID_EMAIL", "INVALID_PHONE", "INVALID_SUBJECT", "INVALID_MESSAGE", "INVALID_PACKAGE",
   "PRIVACY_CONSENT_REQUIRED", "BOT_VERIFICATION_REQUIRED", "BOT_VERIFICATION_FAILED",
   "BOT_VERIFICATION_EXPIRED", "TEMPORARY_ERROR", "FORBIDDEN_ORIGIN", "RATE_LIMITED",
   "SERVER_CONFIG_ERROR", "STORAGE_FAILED", "NETWORK_ERROR", "INTERNAL_ERROR",
@@ -18,6 +18,7 @@ function messageForError(code: ContactErrorCode, locale: "tr" | "en"): string {
     case "INVALID_PHONE": return isTr ? "Telefon alanı zorunludur. Lütfen geçerli bir telefon numarası girin." : "Phone is required. Please enter a valid phone number.";
     case "INVALID_SUBJECT": return isTr ? "Konu alanı çok uzun." : "The subject is too long.";
     case "INVALID_MESSAGE": return isTr ? "Mesajınız 5–2000 karakter arasında olmalıdır." : "Your message must be between 5 and 2,000 characters.";
+    case "INVALID_PACKAGE": return isTr ? "Seçilen ders paketi artık kullanılamıyor. Lütfen paketleri yeniden inceleyin." : "The selected lesson package is no longer available. Please review the packages again.";
     case "PRIVACY_CONSENT_REQUIRED": return isTr ? "Devam etmek için gizlilik onayını kabul edin." : "Please accept the privacy consent to continue.";
     case "BOT_VERIFICATION_REQUIRED": return isTr ? "Lütfen güvenlik doğrulamasını tamamlayın." : "Please complete the security verification.";
     case "BOT_VERIFICATION_FAILED": return isTr ? "Güvenlik doğrulaması başarısız oldu. Lütfen yeniden deneyin." : "Security verification failed. Please try again.";

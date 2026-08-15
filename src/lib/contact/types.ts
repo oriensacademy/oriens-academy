@@ -8,6 +8,7 @@ export type ContactRequestPayload = {
   privacyConsent: boolean;
   turnstileToken?: string;
   source: "contact_form" | "quick_contact" | "consultation";
+  packageId?: string;
 };
 
 export type ContactSuccessResponse = {
@@ -25,6 +26,7 @@ export type ContactErrorResponse = {
     | "INVALID_PHONE"
     | "INVALID_SUBJECT"
     | "INVALID_MESSAGE"
+    | "INVALID_PACKAGE"
     | "PRIVACY_CONSENT_REQUIRED"
     | "BOT_VERIFICATION_REQUIRED"
     | "BOT_VERIFICATION_FAILED"

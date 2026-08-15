@@ -23,6 +23,7 @@
 
 # misc
 .DS_Store
+Thumbs.db
 *.pem
 
 # debug
@@ -31,6 +32,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .next-dev.*.log
+*.log
+
+# local editor / AI-agent workspaces (durable project references belong in docs/)
+/.claude/
+/.ai/
+/.cursor/
+/.windsurf/
+/.antigravity/
+/.gemini/
+/.agent/
+/scratch/
 
 # env files (can opt-in for committing if needed)
 .env*

@@ -1,5 +1,9 @@
 import { writeFile } from "node:fs/promises";
 
+const adminEmail = process.env.ORIENS_LOCAL_ADMIN_EMAIL;
+const adminPassword = process.env.ORIENS_LOCAL_ADMIN_PASSWORD;
+if (!adminEmail || !adminPassword) throw new Error("Explicit local admin QA credentials are required.");
+
 const endpoint = "http://127.0.0.1:9223";
 const pageInfo = await fetch(`${endpoint}/json/new?http://localhost:3000/admin/login/`, { method: "PUT" }).then((response) => response.json());
 const socket = new WebSocket(pageInfo.webSocketDebuggerUrl);
@@ -57,7 +61,7 @@ const initial = await evaluate(`({email:document.querySelector('#admin-email')?.
 
 const invalid = await evaluate(`(async()=>{
   const set=(el,value)=>{const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));};
-  set(document.querySelector('#admin-email'),'admin@oriens.local');
+  set(document.querySelector('#admin-email'),${JSON.stringify(adminEmail)});
   set(document.querySelector('#admin-password'),'WrongPassword#1');
   document.querySelector('form').requestSubmit();
   await new Promise(r=>setTimeout(r,1500));
@@ -66,12 +70,12 @@ const invalid = await evaluate(`(async()=>{
 
 const valid = await evaluate(`(async()=>{
   const set=(el,value)=>{const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));};
-  set(document.querySelector('#admin-email'),'admin@oriens.local');
-  set(document.querySelector('#admin-password'),'OriensAdmin#2026');
+  set(document.querySelector('#admin-email'),${JSON.stringify(adminEmail)});
+  set(document.querySelector('#admin-password'),${JSON.stringify(adminPassword)});
   document.querySelector('form').requestSubmit();
   for(let i=0;i<30;i++){await new Promise(r=>setTimeout(r,350));if(location.pathname==='/admin/')break;}
   await new Promise(r=>setTimeout(r,900));
-  return {path:location.pathname,h1:document.querySelector('h1')?.textContent?.trim()||'',email:document.body.innerText.includes('admin@oriens.local'),profile:document.body.innerText.includes('Oriens Local Administrator')};
+  return {path:location.pathname,h1:document.querySelector('h1')?.textContent?.trim()||'',email:document.body.innerText.includes(${JSON.stringify(adminEmail)}),profile:document.body.innerText.includes('Oriens Local Administrator')};
 })()`);
 
 const dashboardCapture = await send("Page.captureScreenshot", { format: "png", fromSurface: true });
@@ -79,7 +83,7 @@ await writeFile("test-results/local-admin-dashboard-1440.png", Buffer.from(dashb
 
 await send("Page.reload", { ignoreCache: false });
 await pause(1800);
-const refresh = await evaluate(`({path:location.pathname,authenticated:document.body.innerText.includes('admin@oriens.local'),h1:document.querySelector('h1')?.textContent?.trim()||''})`);
+const refresh = await evaluate(`({path:location.pathname,authenticated:document.body.innerText.includes(${JSON.stringify(adminEmail)}),h1:document.querySelector('h1')?.textContent?.trim()||''})`);
 
 const routes = ["/admin/", "/admin/randevular/", "/admin/iletisim/", "/admin/musaitlik/", "/admin/fiyatlandirma/", "/admin/icerik/", "/admin/bildirimler/", "/admin/denetim/", "/admin/ayarlar/"];
 const routeResults = [];

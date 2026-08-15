@@ -201,7 +201,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                       <span className="text-[10px] font-semibold tracking-wide text-white/75 uppercase">
                         {label ?? style.label}
                       </span>
-                      <span className="text-sm font-semibold tracking-wide whitespace-nowrap text-white">
+                      <span className="text-[13px] font-semibold tracking-normal whitespace-nowrap text-white">
                         {value}
                       </span>
                     </span>

@@ -1,5 +1,9 @@
 import { writeFile } from "node:fs/promises";
 
+const qaEmail = process.env.QA_TEST_EMAIL;
+const qaPhone = process.env.QA_TEST_PHONE || "+15555550123";
+if (!qaEmail) throw new Error("QA_TEST_EMAIL is required for submission QA.");
+
 const page = await fetch("http://127.0.0.1:9223/json/new?http://localhost:3000/tr/randevu/", { method: "PUT" }).then((response) => response.json());
 const socket = new WebSocket(page.webSocketDebuggerUrl);
 const pending = new Map();
@@ -28,7 +32,7 @@ const result = await evaluate(`(async()=>{
   for(let i=0;i<20;i++){if([...document.querySelectorAll('button')].some(node=>node.querySelector('svg.lucide-clock')))break;await wait(250);}
   const slot=[...document.querySelectorAll('button')].find(node=>node.querySelector('svg.lucide-clock'));slot?.click();await wait(200);button('Devam Et')?.click();await wait(250);
   const set=(el,value)=>{if(!el)return false;const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}));return true;};
-  set(document.querySelector('#fullName'),'Oriens Booking Browser Test TR');set(document.querySelector('#email'),'mertomeroglu7@gmail.com');set(document.querySelector('#phone'),'+905442939040');
+  set(document.querySelector('#fullName'),'Oriens Booking Browser Test TR');set(document.querySelector('#email'),${JSON.stringify(qaEmail)});set(document.querySelector('#phone'),${JSON.stringify(qaPhone)});
   const consent=document.querySelector('input[type="checkbox"]');if(consent&&!consent.checked)consent.click();await wait(150);button('Devam Et')?.click();await wait(500);
   await wait(1800);button('Randevu Talebini Onayla ve Gönder')?.click();
   for(let i=0;i<45;i++){await wait(300);if(document.body.innerText.includes('Talebiniz alındı.'))break;}

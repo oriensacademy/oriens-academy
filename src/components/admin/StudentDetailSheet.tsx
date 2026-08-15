@@ -2,6 +2,7 @@
 
 import { X, Mail, Phone, MessageCircle, CalendarPlus, MessageSquareText, CalendarCheck, Send } from "lucide-react";
 import type { StudentProfile } from "@/lib/admin/students";
+import { formatPackagePrice, getContactPackageContext } from "@/lib/contact/package-context";
 
 interface StudentDetailSheetProps {
   student: StudentProfile | null;
@@ -12,6 +13,10 @@ interface StudentDetailSheetProps {
 export function StudentDetailSheet({ student, onClose, onCreateBooking }: StudentDetailSheetProps) {
   if (!student) return null;
   const whatsappPhone = student.phone?.replace(/\D/g, "").replace(/^0/, "90") || "";
+  const packageContexts = student.contacts
+    .map((contact) => getContactPackageContext(contact.metadata))
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+  const latestPackage = packageContexts[0] || null;
   const timeline = [
     ...student.contacts.map((contact) => ({
       id: `contact-${contact.id}`,
@@ -44,6 +49,17 @@ export function StudentDetailSheet({ student, onClose, onCreateBooking }: Studen
             <Info label="İlgi Alanı" value={student.interests.join(", ") || "—"} />
             <Info label="İlişki" value={contextLabel(student.context)} />
           </div>
+
+          {latestPackage && (
+            <div className="rounded-xl border border-[#DDE4DC] bg-[#F6F8F3] p-4">
+              <div className="text-[10px] font-bold uppercase tracking-wide text-[#819586]">İlgilenilen Paket</div>
+              <div className="mt-1 text-sm font-bold text-[#10271B]">{latestPackage.name}</div>
+              <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
+                {latestPackage.lessons !== null && <span>{latestPackage.lessons} ders</span>}
+                {formatPackagePrice(latestPackage) && <span>{formatPackagePrice(latestPackage)}</span>}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Action href={`mailto:${student.email}`} icon={Mail} label="E-posta" />

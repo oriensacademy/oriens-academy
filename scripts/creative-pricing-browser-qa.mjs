@@ -1,5 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 
+const adminEmail = process.env.ORIENS_LOCAL_ADMIN_EMAIL;
+const adminPassword = process.env.ORIENS_LOCAL_ADMIN_PASSWORD;
+const localPublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+if (!adminEmail || !adminPassword || !localPublishableKey) {
+  throw new Error("Explicit local admin QA credentials and Supabase publishable key are required.");
+}
+
 const endpoint = "http://127.0.0.1:9223";
 const target = await fetch(`${endpoint}/json/new?http://localhost:3000/tr/ucretler/`, { method: "PUT" }).then((response) => response.json());
 const socket = new WebSocket(target.webSocketDebuggerUrl);
@@ -126,8 +133,8 @@ await navigate("/admin/login/", 1440, 900);
 const adminLogin = await evaluate(`(async () => {
   if (!document.querySelector('#admin-email')) return { alreadyAuthenticated: true, path: location.pathname };
   const set = (element, value) => { const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(element, value); element.dispatchEvent(new Event('input', { bubbles: true })); };
-  set(document.querySelector('#admin-email'), 'admin@oriens.local');
-  set(document.querySelector('#admin-password'), 'OriensAdmin#2026');
+  set(document.querySelector('#admin-email'), ${JSON.stringify(adminEmail)});
+  set(document.querySelector('#admin-password'), ${JSON.stringify(adminPassword)});
   document.querySelector('form').requestSubmit();
   for (let i = 0; i < 30; i += 1) { await new Promise((resolve) => setTimeout(resolve, 250)); if (location.pathname === '/admin/') break; }
   return { alreadyAuthenticated: false, path: location.pathname };
@@ -166,11 +173,11 @@ async function editPackage20(description) {
 
 const qaDescription = `QA public sync ${Date.now()}`;
 const adminSave = await editPackage20(qaDescription);
-const dbAfterSave = await fetch("http://127.0.0.1:54321/rest/v1/pricing_packages?id=eq.package20&select=description_en", { headers: { apikey: "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" } }).then((response) => response.json());
+const dbAfterSave = await fetch("http://127.0.0.1:54321/rest/v1/pricing_packages?id=eq.package20&select=description_en", { headers: { apikey: localPublishableKey } }).then((response) => response.json());
 await navigate("/en/pricing/", 1440, 900);
 const publicSync = await evaluate(`document.querySelector('[data-package-id="package20"]')?.innerText.includes(${JSON.stringify(qaDescription)}) || false`);
 const adminRestore = await editPackage20("A structured path for ongoing progress");
-const dbAfterRestore = await fetch("http://127.0.0.1:54321/rest/v1/pricing_packages?id=eq.package20&select=description_en", { headers: { apikey: "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" } }).then((response) => response.json());
+const dbAfterRestore = await fetch("http://127.0.0.1:54321/rest/v1/pricing_packages?id=eq.package20&select=description_en", { headers: { apikey: localPublishableKey } }).then((response) => response.json());
 await navigate("/en/pricing/", 1440, 900);
 const publicRestore = await evaluate(`document.querySelector('[data-package-id="package20"]')?.innerText.includes('A structured path for ongoing progress') || false`);
 

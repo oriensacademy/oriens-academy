@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
+import { formatPackagePrice, getContactPackageContext } from "@/lib/contact/package-context";
 
 interface ContactDetailSheetProps {
   contact: ContactRequestRow | null;
@@ -98,6 +99,7 @@ export function ContactDetailSheet({
   }, [contact]);
 
   if (!contact) return null;
+  const packageContext = getContactPackageContext(contact.metadata);
 
   const currentStatusInfo = STATUS_CONFIG[contact.status as ContactStatus] || {
     label: contact.status,
@@ -212,11 +214,11 @@ export function ContactDetailSheet({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 pt-2 border-t border-border">
                 {/* Email Action */}
                 <div className="flex items-center justify-between rounded-lg border border-border bg-white p-2.5">
-                  <div className="flex items-center gap-2 truncate pr-2">
+                  <div className="flex min-w-0 items-center gap-2 pr-2">
                     <Mail className="size-4 text-[#10271B] shrink-0" />
                     <a
                       href={`mailto:${contact.email}`}
-                      className="text-xs font-semibold text-[#10271B] hover:underline truncate"
+                      className="min-w-0 break-all text-xs font-semibold text-[#10271B] hover:underline"
                     >
                       {contact.email}
                     </a>
@@ -279,6 +281,17 @@ export function ContactDetailSheet({
               {contact.message}
             </div>
           </div>
+
+          {packageContext && (
+            <div className="rounded-xl border border-[#DDE4DC] bg-[#F6F8F3] p-4">
+              <div className="text-[11px] font-bold uppercase tracking-[.12em] text-[#819586]">İlgilenilen Paket</div>
+              <div className="mt-1 text-sm font-bold text-[#10271B]">{packageContext.name}</div>
+              <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                {packageContext.lessons !== null && <span>{packageContext.lessons} ders</span>}
+                {formatPackagePrice(packageContext) && <span>{formatPackagePrice(packageContext)}</span>}
+              </div>
+            </div>
+          )}
 
           {/* Submission Context & Metadata */}
           <div className="grid grid-cols-2 gap-3 text-xs">

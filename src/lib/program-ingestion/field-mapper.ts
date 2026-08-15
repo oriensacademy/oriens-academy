@@ -20,7 +20,8 @@ export async function mapProgramToFieldOfStudy(
     const supabaseKey =
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-      "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
+      "";
+    if (!supabaseKey) throw new Error("A Supabase key is required to map fields of study.");
     const client = supabaseClient || createClient(supabaseUrl, supabaseKey);
 
     const { data } = await client.from("fields_of_study").select("id, name, slug, aliases").eq("active", true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, CheckCircle2, Mail, MessageCircle, Phone } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { CompassMark } from "@/components/brand/CompassMark";
@@ -10,6 +10,9 @@ import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/
 import { useHomeContent, useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
 import { Wave } from "@/components/ui/wave";
+import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+
+const CONSULTATION_PACKAGE_IDS = new Set(["single", "package5", "package10", "package20", "package30"]);
 
 export function BookingCTA() {
   const { bookingCTA } = useHomeContent();
@@ -22,9 +25,20 @@ export function BookingCTA() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<PublicPricingPackage | null>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const turnstileRef = useRef<TurnstileWidgetRef>(null);
+
+  useEffect(() => {
+    const packageId = new URLSearchParams(window.location.search).get("package");
+    if (!packageId || !CONSULTATION_PACKAGE_IDS.has(packageId)) return;
+    setSelectedPackageId(packageId);
+    getPublicPricingPackages().then((packages) => {
+      setSelectedPackage(packages.find((item) => item.id === packageId) || null);
+    });
+  }, []);
 
   const handleTurnstileVerify = useCallback((token: string) => {
     setTurnstileToken(token);
@@ -76,6 +90,7 @@ export function BookingCTA() {
       privacyConsent,
       turnstileToken,
       source: "consultation",
+      packageId: selectedPackageId || undefined,
     });
     setIsSubmitting(false);
 
@@ -127,7 +142,7 @@ export function BookingCTA() {
           <Reveal delay={0.18} className="mt-6 space-y-2">
             <a href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · +90 544 293 90 40</a>
             <a href="tel:+905442939040" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Phone className="size-4" />{isTr ? "Telefon" : "Phone"} · +90 544 293 90 40</a>
-            <a href="mailto:oriensacademy@gmail.com" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Mail className="size-4" />oriensacademy@gmail.com</a>
+            <a href="mailto:oriensacademy@gmail.com" className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 py-2 text-sm font-semibold"><Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">oriensacademy@gmail.com</span></a>
           </Reveal>
         </div>
 
@@ -148,6 +163,15 @@ export function BookingCTA() {
           ) : (
             <form ref={formRef} onSubmit={handleSubmit} noValidate aria-label={bookingCTA.headline} data-form-id="consultation-request" className="min-w-0">
               <div className="mb-5"><p className="text-xs font-bold tracking-[.18em] text-[#819586] uppercase">{isTr ? "ÜCRETSİZ TANIŞMA GÖRÜŞMESİ" : "FREE INTRODUCTORY CONSULTATION"}</p><h3 className="mt-2 font-heading text-2xl text-[#10271B]">{isTr ? "Görüşme talebinizi iletin" : "Send your consultation request"}</h3></div>
+              {selectedPackage && (
+                <div className="mb-5 rounded-xl border border-[#DDE4DC] bg-[#F6F8F3] px-4 py-3 text-sm text-[#10271B]">
+                  <span className="text-[11px] font-bold uppercase tracking-[.12em] text-[#819586]">{isTr ? "Seçilen paket" : "Selected package"}</span>
+                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+                    <strong>{isTr ? selectedPackage.name_tr : selectedPackage.name_en || selectedPackage.name_tr}</strong>
+                    <span className="font-semibold">{new Intl.NumberFormat(isTr ? "tr-TR" : "en-GB", { style: "currency", currency: selectedPackage.currency, maximumFractionDigits: 0 }).format(selectedPackage.current_total ?? selectedPackage.price_amount ?? 0)}</span>
+                  </div>
+                </div>
+              )}
               {errors.submit && <div role="alert" className="mb-6 border-l-2 border-destructive bg-destructive/5 p-4 text-sm font-semibold text-destructive">{errors.submit}</div>}
               {Object.keys(errors).some((key) => key !== "submit") && (
                 <div ref={summaryRef} tabIndex={-1} role="alert" className="mb-6 border-l-2 border-destructive bg-destructive/5 p-4 outline-none focus-visible:ring-3 focus-visible:ring-destructive/20">

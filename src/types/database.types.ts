@@ -1107,6 +1107,7 @@ export type Database = {
           id: string
           locale: string
           message: string
+          metadata: Json
           phone: string | null
           privacy_consent: boolean
           source: string
@@ -1121,6 +1122,7 @@ export type Database = {
           id?: string
           locale?: string
           message: string
+          metadata?: Json
           phone?: string | null
           privacy_consent?: boolean
           source?: string
@@ -1135,6 +1137,7 @@ export type Database = {
           id?: string
           locale?: string
           message?: string
+          metadata?: Json
           phone?: string | null
           privacy_consent?: boolean
           source?: string

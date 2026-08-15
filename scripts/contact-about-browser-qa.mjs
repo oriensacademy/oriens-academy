@@ -1,5 +1,9 @@
 import { writeFile } from "node:fs/promises";
 
+const qaEmail = process.env.QA_TEST_EMAIL;
+const qaPhone = process.env.QA_TEST_PHONE || "+15555550123";
+if (!qaEmail) throw new Error("QA_TEST_EMAIL is required for submission QA.");
+
 const endpoint = "http://127.0.0.1:9223";
 const pageInfo = await fetch(`${endpoint}/json/new?http://localhost:3000/tr/`, { method: "PUT" }).then((response) => response.json());
 const socket = new WebSocket(pageInfo.webSocketDebuggerUrl);
@@ -69,12 +73,12 @@ async function submitForm({ route, width, height, formSelector, values, expected
   })()`);
 }
 
-const trHome = await submitForm({ route: "/tr/", width: 390, height: 844, formSelector: 'form[data-form-id="consultation-request"]', values: { '#consultation-name': 'Oriens Browser Test TR', '#consultation-email': 'mertomeroglu7@gmail.com', '#consultation-phone': '+905442939040', '#consultation-message': 'Yerel kontrollü tarayıcı testi.' }, expectedSuccess: 'Talebiniz alındı.' });
+const trHome = await submitForm({ route: "/tr/", width: 390, height: 844, formSelector: 'form[data-form-id="consultation-request"]', values: { '#consultation-name': 'Oriens Browser Test TR', '#consultation-email': qaEmail, '#consultation-phone': qaPhone, '#consultation-message': 'Yerel kontrollü tarayıcı testi.' }, expectedSuccess: 'Talebiniz alındı.' });
 const trShot = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
 await writeFile("test-results/contact-success-tr-390.png", Buffer.from(trShot.data, "base64"));
 const trReset = await evaluate(`(async()=>{const button=[...document.querySelectorAll('button')].find(b=>(b.textContent||'').includes('Yeni Talep Oluştur'));button?.click();await new Promise(r=>setTimeout(r,250));return{form:!!document.querySelector('form[data-form-id="consultation-request"]'),name:document.querySelector('#consultation-name')?.value||'',success:document.body.innerText.includes('Talebiniz alındı.')};})()`);
 
-const enContact = await submitForm({ route: "/en/contact/", width: 430, height: 932, formSelector: "form", values: { '#fullName': 'Oriens Browser Test EN', '#email': 'mertomeroglu7@gmail.com', '#phone': '+905442939040', '#subject': 'SAT browser test', '#message': 'Controlled local browser submission.' }, expectedSuccess: 'Request received.' });
+const enContact = await submitForm({ route: "/en/contact/", width: 430, height: 932, formSelector: "form", values: { '#fullName': 'Oriens Browser Test EN', '#email': qaEmail, '#phone': qaPhone, '#subject': 'SAT browser test', '#message': 'Controlled local browser submission.' }, expectedSuccess: 'Request received.' });
 const enShot = await send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
 await writeFile("test-results/contact-success-en-430.png", Buffer.from(enShot.data, "base64"));
 const enReset = await evaluate(`(async()=>{const button=[...document.querySelectorAll('button')].find(b=>(b.textContent||'').includes('Create a New Request'));button?.click();await new Promise(r=>setTimeout(r,250));return{form:!!document.querySelector('form'),name:document.querySelector('#fullName')?.value||'',success:document.body.innerText.includes('Request received.')};})()`);

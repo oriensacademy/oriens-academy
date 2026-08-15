@@ -1,8 +1,12 @@
 $ErrorActionPreference = "Stop"
 
-$AdminEmail = "admin@oriens.local"
-$AdminPassword = "OriensAdmin#2026"
+$AdminEmail = $env:ORIENS_LOCAL_ADMIN_EMAIL
+$AdminPassword = $env:ORIENS_LOCAL_ADMIN_PASSWORD
 $DisplayName = "Oriens Local Administrator"
+
+if ([string]::IsNullOrWhiteSpace($AdminEmail) -or [string]::IsNullOrWhiteSpace($AdminPassword)) {
+  throw "Set ORIENS_LOCAL_ADMIN_EMAIL and ORIENS_LOCAL_ADMIN_PASSWORD before creating the local administrator."
+}
 
 $strictPreference = $ErrorActionPreference
 $ErrorActionPreference = "Continue"

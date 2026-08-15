@@ -99,7 +99,7 @@ export function AdminHeader() {
             </span>
             <div className="hidden min-w-0 sm:block">
               <p className="max-w-40 truncate text-xs font-semibold leading-4 text-[#172033] lg:max-w-52">{displayName}</p>
-              <p className="hidden max-w-48 truncate text-[10px] leading-4 text-[#667085] md:block lg:max-w-56">{email}</p>
+              <p className="hidden max-w-56 break-all text-[10px] leading-4 text-[#667085] md:block">{email}</p>
             </div>
             <span className="rounded-full bg-[#EEF2EC] px-2 py-0.5 text-[10px] font-semibold text-[#10271B]">
               Admin

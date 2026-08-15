@@ -177,15 +177,6 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
         })}
       </nav>
 
-      {/* Footer info */}
-      <div className="border-t border-[#DDE4DC] p-4 text-[11px] text-[#68756C] font-ui">
-        <div className="flex items-center justify-between">
-          <span>Oriens Admin v0.1</span>
-          <span className="rounded bg-[#E8EEE8] px-1.5 py-0.5 text-[10px] font-semibold text-[#10271B] border border-[#DDE4DC]">
-            Operational
-          </span>
-        </div>
-      </div>
     </aside>
   );
 }

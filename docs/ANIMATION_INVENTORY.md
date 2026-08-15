@@ -4,11 +4,11 @@ Verified locally on 2026-08-13. Each public copy is byte-identical to its owner-
 
 | FILE | SOURCE | PUBLIC PATH | DIMENSIONS | FPS / DURATION | PURPOSE | PAGE | SECTION | AUTOPLAY | LOOP | MOBILE SIZE | REDUCED MOTION | STATUS |
 |---|---|---|---|---|---|---|---|---:|---:|---|---|---|
-| `Science.lottie` | `C:\Users\merto\Desktop\Science.lottie` | `/animations/science.lottie` | 512×512 | 30 / 5s | Broad STEM and science preparation | TR/EN ESAT detail | Detail introduction | YES | YES | 194–220px | Paused at frame zero | PASS |
-| `learning.lottie` | `C:\Users\merto\Desktop\learning.lottie` | `/animations/learning.lottie` | 750×500 | 24 / 5.71s | Learning process, feedback and support | TR/EN home | How Oriens Works | YES | YES | 312–382px wide, 3:2 ratio | Paused at frame zero | PASS |
-| `Green calculator.lottie` | `C:\Users\merto\Desktop\Green calculator.lottie` | `/animations/green-calculator.lottie` | 480×480 | 60 / 2s | Quantitative and mathematical reasoning | TR/EN TMUA and OMPT detail | Detail introduction | YES | YES | 194–220px | Paused at frame zero | PASS |
-| `Erlenmeyer flask.lottie` | `C:\Users\merto\Desktop\Erlenmeyer flask.lottie` | `/animations/erlenmeyer-flask.lottie` | 1050×1050 | 60 / 3s | Chemistry and science preparation | TR/EN IMAT detail | Detail introduction | YES | YES | 194–220px | Paused at frame zero | PASS |
-| `Exams Preparation..lottie` | `C:\Users\merto\Desktop\Exams Preparation..lottie` | `/animations/exams-preparation.lottie` | 512×512 | 60 / 6s | Main exam-preparation overview | TR/EN Exams hub | Hero | YES | YES | 286–340px | Paused at frame zero | PASS |
+| `Science.lottie` | `docs/references/owner-assets/Science.lottie` | `/animations/science.lottie` | 512×512 | 30 / 5s | Broad STEM and science preparation | TR/EN ESAT detail | Detail introduction | YES | YES | 194–220px | Paused at frame zero | PASS |
+| `learning.lottie` | `docs/references/owner-assets/learning.lottie` | `/animations/learning.lottie` | 750×500 | 24 / 5.71s | Learning process, feedback and support | TR/EN home | How Oriens Works | YES | YES | 312–382px wide, 3:2 ratio | Paused at frame zero | PASS |
+| `Green calculator.lottie` | `docs/references/owner-assets/Green calculator.lottie` | `/animations/green-calculator.lottie` | 480×480 | 60 / 2s | Quantitative and mathematical reasoning | TR/EN TMUA and OMPT detail | Detail introduction | YES | YES | 194–220px | Paused at frame zero | PASS |
+| `Erlenmeyer flask.lottie` | `docs/references/owner-assets/Erlenmeyer flask.lottie` | `/animations/erlenmeyer-flask.lottie` | 1050×1050 | 60 / 3s | Chemistry and science preparation | TR/EN IMAT detail | Detail introduction | YES | YES | 194–220px | Paused at frame zero | PASS |
+| `Exams Preparation..lottie` | `docs/references/owner-assets/Exams Preparation..lottie` | `/animations/exams-preparation.lottie` | 512×512 | 60 / 6s | Main exam-preparation overview | TR/EN Exams hub | Hero | YES | YES | 286–340px | Paused at frame zero | PASS |
 
 ## Runtime policy
 

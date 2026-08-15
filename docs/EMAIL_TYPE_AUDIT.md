@@ -1,6 +1,6 @@
 # Oriens Academy — Transactional Email Type Audit
 
-Audit date: 2026-08-13. Target test inbox requested by the owner: `mertomeroglu7@gmail.com`.
+Audit date: 2026-08-13. The original controlled inbox has been removed from repository documentation; use `QA_TEST_EMAIL` for future non-production delivery checks.
 
 No synthetic message was sent in this localhost-only phase. The revised templates live inside Supabase Edge Functions; delivering them requires deploying those local changes or copying production email credentials into the local environment. Neither action was authorized. Remote secret *names* are configured, but their values were not exposed. No production or synthetic database rows were created, so no cleanup was necessary.
 
@@ -27,7 +27,7 @@ No synthetic message was sent in this localhost-only phase. The revised template
 
 ## Authorized post-deployment test matrix
 
-When deployment is explicitly approved, submit one synthetic request for each TR/EN path below to `mertomeroglu7@gmail.com`, verify the Resend/provider log and `notification_deliveries`, and then delete only the identified synthetic records:
+When deployment is explicitly approved, submit one synthetic request for each TR/EN path below to the controlled `QA_TEST_EMAIL`, verify the Resend/provider log and `notification_deliveries`, and then delete only the identified synthetic records:
 
 1. TR booking and EN booking.
 2. TR full contact and EN full contact.

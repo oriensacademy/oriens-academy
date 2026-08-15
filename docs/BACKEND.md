@@ -19,7 +19,7 @@ Oriens Academy uses a Next.js runtime backed by Supabase:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Oriens Academy Frontend                  │
-│                     (Static Export Bundle)                  │
+│                    (Netlify Next.js Runtime)                │
 └──────────────┬───────────────────────────────▲──────────────┘
                │                               │
        Direct Browser Reads             Public Select Only

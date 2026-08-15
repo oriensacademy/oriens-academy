@@ -34,7 +34,7 @@ Transactional email (Triggered by Supabase Edge Functions)
 
 ## 2. Netlify Next.js Runtime Configuration
 
-Configured in [`netlify.toml`](file:///C:/Users/merto/Desktop/oriens-academy.com/netlify.toml) and [`next.config.ts`](file:///C:/Users/merto/Desktop/oriens-academy.com/next.config.ts):
+Configured in repository-root `netlify.toml` and `next.config.ts`:
 
 | Setting | Value | Purpose |
 |---|---|---|
@@ -49,7 +49,7 @@ Configured in [`netlify.toml`](file:///C:/Users/merto/Desktop/oriens-academy.com
 
 ## 3. Verified Supabase CORS Integration
 
-Supabase Edge Functions (`booking-availability`, `create-booking`, `create-contact`) use the shared CORS helper in [`supabase/functions/_shared/cors.ts`](file:///C:/Users/merto/Desktop/oriens-academy.com/supabase/functions/_shared/cors.ts):
+Supabase Edge Functions (`booking-availability`, `create-booking`, `create-contact`) use the shared CORS helper in `supabase/functions/_shared/cors.ts`:
 
 ### Allowed Origins Set:
 - `https://oriens-academy.com`

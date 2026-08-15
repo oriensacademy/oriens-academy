@@ -3,7 +3,8 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321';
-const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH';
+const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
+if (!key) throw new Error('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required.');
 const supabase = createClient(url, key);
 
 async function checkCounts() {

@@ -55,9 +55,9 @@ export function Footer() {
             <h2 className="text-xs font-bold tracking-[0.18em] text-ink uppercase">{isTr ? "İletişim" : "Contact"}</h2>
             <ul className="mt-4 space-y-3">
               {contacts.map((item) => <li key={item.label}>
-                <a href={item.href} target={item.external ? "_blank" : undefined} rel={item.external ? "noreferrer" : undefined} className="group flex items-center gap-3 rounded-lg text-sm text-ink/75 outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4">
+                <a href={item.href} target={item.external ? "_blank" : undefined} rel={item.external ? "noreferrer" : undefined} className="group flex min-w-0 items-center gap-3 rounded-lg text-sm text-ink/75 outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4">
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#D6DED6] bg-[#EFF3EE] text-[#10271B] transition-colors duration-200 group-hover:bg-[#10271B] group-hover:text-white"><item.icon className="size-[18px]" aria-hidden="true" /></span>
-                  <span><span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{item.label}</span><span>{item.value}</span></span>
+                  <span className="min-w-0"><span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">{item.label}</span><span className={item.href.startsWith("mailto:") ? "block break-all" : undefined}>{item.value}</span></span>
                 </a>
               </li>)}
             </ul>

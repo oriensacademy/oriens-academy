@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createAdminAvailabilitySlot,
   bulkCreateAdminAvailabilitySlots,
@@ -23,13 +23,13 @@ interface CreateSlotModalProps {
 }
 
 const DAYS_OF_WEEK = [
-  { id: 1, label: "Pazartesi / Mon" },
-  { id: 2, label: "Salı / Tue" },
-  { id: 3, label: "Çarşamba / Wed" },
-  { id: 4, label: "Perşembe / Thu" },
-  { id: 5, label: "Cuma / Fri" },
-  { id: 6, label: "Cumartesi / Sat" },
-  { id: 0, label: "Pazar / Sun" },
+  { id: 1, label: "Pazartesi" },
+  { id: 2, label: "Salı" },
+  { id: 3, label: "Çarşamba" },
+  { id: 4, label: "Perşembe" },
+  { id: 5, label: "Cuma" },
+  { id: 6, label: "Cumartesi" },
+  { id: 0, label: "Pazar" },
 ];
 
 const DEFAULT_TIME_SLOTS = [
@@ -38,6 +38,7 @@ const DEFAULT_TIME_SLOTS = [
   { startTime: "14:00", endTime: "15:00" },
   { startTime: "15:00", endTime: "16:00" },
 ];
+const AVAILABILITY_DRAFT_KEY = "oriens_admin_draft_availability";
 
 export function CreateSlotModal({
   isOpen,
@@ -66,6 +67,52 @@ export function CreateSlotModal({
   const [timeSlots, setTimeSlots] = useState<
     Array<{ startTime: string; endTime: string }>
   >(DEFAULT_TIME_SLOTS);
+  const [draftReady, setDraftReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(AVAILABILITY_DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw) as Partial<{
+          mode: "single" | "bulk";
+          singleDate: string;
+          singleStartTime: string;
+          singleEndTime: string;
+          singleStatus: "available" | "blocked";
+          bulkStartDate: string;
+          bulkEndDate: string;
+          selectedDays: number[];
+          timeSlots: Array<{ startTime: string; endTime: string }>;
+        }>;
+        if (draft.mode) setMode(draft.mode);
+        if (draft.singleDate) setSingleDate(draft.singleDate);
+        if (draft.singleStartTime) setSingleStartTime(draft.singleStartTime);
+        if (draft.singleEndTime) setSingleEndTime(draft.singleEndTime);
+        if (draft.singleStatus) setSingleStatus(draft.singleStatus);
+        if (draft.bulkStartDate) setBulkStartDate(draft.bulkStartDate);
+        if (draft.bulkEndDate) setBulkEndDate(draft.bulkEndDate);
+        if (draft.selectedDays?.length) setSelectedDays(draft.selectedDays);
+        if (draft.timeSlots?.length) setTimeSlots(draft.timeSlots);
+      }
+    } catch {
+      sessionStorage.removeItem(AVAILABILITY_DRAFT_KEY);
+    } finally {
+      setDraftReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    sessionStorage.setItem(AVAILABILITY_DRAFT_KEY, JSON.stringify({
+      mode, singleDate, singleStartTime, singleEndTime, singleStatus,
+      bulkStartDate, bulkEndDate, selectedDays, timeSlots,
+    }));
+  }, [draftReady, mode, singleDate, singleStartTime, singleEndTime, singleStatus, bulkStartDate, bulkEndDate, selectedDays, timeSlots]);
+
+  const clearDraftAndClose = () => {
+    sessionStorage.removeItem(AVAILABILITY_DRAFT_KEY);
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -86,6 +133,7 @@ export function CreateSlotModal({
       setErrorMsg(error);
     } else {
       setSuccessMsg("Müsaitlik zaman dilimi başarıyla eklendi.");
+      sessionStorage.removeItem(AVAILABILITY_DRAFT_KEY);
       setTimeout(() => {
         onCreated();
         onClose();
@@ -117,6 +165,7 @@ export function CreateSlotModal({
           skippedCount > 0 ? `, ${skippedCount} çakışan dilim atlandı` : ""
         }.`
       );
+      sessionStorage.removeItem(AVAILABILITY_DRAFT_KEY);
       setTimeout(() => {
         onCreated();
         onClose();
@@ -166,12 +215,12 @@ export function CreateSlotModal({
           <div className="flex items-center gap-2">
             <Clock className="size-5 text-[#819586]" />
             <h2 className="text-sm font-bold text-foreground">
-              Müsaitlik Dilimi Ekle / Add Availability Slot
+              Müsaitlik Dilimi Ekle
             </h2>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={clearDraftAndClose}
             className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
           >
             <X className="size-4" />
@@ -190,7 +239,7 @@ export function CreateSlotModal({
             }`}
           >
             <Plus className="size-3.5 text-[#819586]" />
-            <span>Tekli Dilim / Single Slot</span>
+            <span>Tekli Dilim</span>
           </button>
           <button
             type="button"
@@ -202,7 +251,7 @@ export function CreateSlotModal({
             }`}
           >
             <Layers className="size-3.5 text-[#10271B]" />
-            <span>Toplu Oluştur / Bulk Generation</span>
+            <span>Toplu Oluştur</span>
           </button>
         </div>
 
@@ -226,7 +275,7 @@ export function CreateSlotModal({
           <form onSubmit={handleSingleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Tarih / Date
+                Tarih
               </label>
               <input
                 type="date"
@@ -281,7 +330,7 @@ export function CreateSlotModal({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={clearDraftAndClose}
                 className="rounded-lg border border-input bg-white px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
               >
                 İptal
@@ -368,7 +417,7 @@ export function CreateSlotModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-semibold text-muted-foreground">
-                  Saat Dilimleri / Daily Time Slots
+                  Saat Dilimleri
                 </label>
                 <button
                   type="button"
@@ -412,7 +461,7 @@ export function CreateSlotModal({
             <div className="flex justify-end gap-2 pt-3 border-t border-border">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={clearDraftAndClose}
                 className="rounded-lg border border-input bg-white px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
               >
                 İptal

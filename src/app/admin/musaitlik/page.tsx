@@ -44,6 +44,22 @@ function AvailabilityContent() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  const showThisWeek = () => {
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    setStartDate(start.toISOString().split("T")[0]);
+    setEndDate(end.toISOString().split("T")[0]);
+  };
+
+  const showThisMonth = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    setStartDate(start.toISOString().split("T")[0]);
+    setEndDate(end.toISOString().split("T")[0]);
+  };
+
   const fetchSlots = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
@@ -125,7 +141,7 @@ function AvailabilityContent() {
           <div className="flex items-center gap-2">
             <Clock className="size-6 text-[#819586]" />
             <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              Müsaitlik Takvimi / Availability Schedule
+              Müsaitlik Takvimi
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -150,7 +166,7 @@ function AvailabilityContent() {
             className="inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C]"
           >
             <Plus className="size-4 text-amber-400" />
-            <span>Müsaitlik Ekle / Add Slot</span>
+            <span>Müsaitlik Ekle</span>
           </button>
         </div>
       </div>
@@ -169,10 +185,10 @@ function AvailabilityContent() {
             onChange={(e) => setStatusFilter(e.target.value as SlotStatus | "all")}
             className="rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
           >
-            <option value="all">Tüm Durumlar (All)</option>
-            <option value="available">Müsait (Available)</option>
-            <option value="booked">Rezerve Edildi (Booked)</option>
-            <option value="blocked">Engellendi (Blocked)</option>
+            <option value="all">Tüm Durumlar</option>
+            <option value="available">Müsait</option>
+            <option value="booked">Rezerve Edildi</option>
+            <option value="blocked">Engellendi</option>
           </select>
 
           {/* Start Date */}
@@ -192,6 +208,18 @@ function AvailabilityContent() {
             className="rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
             title="Bitiş Tarihi"
           />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={showThisWeek} className="rounded-md border border-border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-muted">Bu Hafta</button>
+          <button type="button" onClick={showThisMonth} className="rounded-md border border-border px-2.5 py-1.5 text-[11px] font-semibold hover:bg-muted">Bu Ay</button>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground" aria-label="Müsaitlik durum açıklaması">
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-emerald-500" />Müsait</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-blue-500" />Rezerve</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-gray-500" />Engelli</span>
         </div>
       </div>
 
@@ -228,12 +256,12 @@ function AvailabilityContent() {
 
       {/* Empty State */}
       {!loading && !errorMsg && dateKeys.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-input bg-white p-12 text-center">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-input bg-white p-8 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Inbox className="size-6" />
           </div>
           <h3 className="mt-3 text-sm font-bold text-foreground">
-            Müsaitlik Dilimi Bulunamadı / No Availability Slots
+            Müsaitlik Dilimi Bulunamadı
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
             Seçilen tarih aralığında tanımlı zaman dilimi yok. Sağ üstteki &quot;Müsaitlik Ekle&quot; butonuna tıklayarak yeni zaman dilimleri oluşturabilirsiniz.

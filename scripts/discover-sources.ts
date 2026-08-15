@@ -30,7 +30,8 @@ async function main() {
   const limitArg = parseInt(args.find((a) => a.startsWith("--limit="))?.split("=")[1] || "10", 10);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+  if (!supabaseKey) throw new Error("A Supabase key is required for source discovery.");
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   let targetUniversities: Array<{

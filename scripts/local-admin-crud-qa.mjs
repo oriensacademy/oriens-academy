@@ -2,9 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321";
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const adminEmail = process.env.ORIENS_LOCAL_ADMIN_EMAIL;
+const adminPassword = process.env.ORIENS_LOCAL_ADMIN_PASSWORD;
 
-if (!key || !/^http:\/\/(127\.0\.0\.1|localhost):54321$/.test(url)) {
-  throw new Error("Safety stop: expected the local Supabase API and publishable key.");
+if (!key || !adminEmail || !adminPassword || !/^http:\/\/(127\.0\.0\.1|localhost):54321$/.test(url)) {
+  throw new Error("Safety stop: expected local Supabase and explicit local admin QA credentials.");
 }
 
 const supabase = createClient(url, key, {
@@ -12,8 +14,8 @@ const supabase = createClient(url, key, {
 });
 
 const { error: signInError } = await supabase.auth.signInWithPassword({
-  email: "admin@oriens.local",
-  password: "OriensAdmin#2026",
+  email: adminEmail,
+  password: adminPassword,
 });
 if (signInError) throw signInError;
 
