@@ -14,7 +14,6 @@ import { useScrolled } from "@/lib/use-scrolled";
 import { useCommonContent, useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 import { isPrimaryNavigationActive, localizedPath } from "@/lib/routes";
-import { getPricingNavigationVisibility } from "@/lib/public-settings";
 import { useAccount } from "@/lib/auth/account-context";
 import { unifiedLoginPath } from "@/lib/routes";
 import { Wave } from "@/components/ui/wave";
@@ -35,7 +34,8 @@ export function Navbar() {
   const { accountType, isInitializing } = useAccount();
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
-  const [showPricing, setShowPricing] = useState(true);
+  const isStudent = accountType === "student";
+  const showPricing = isStudent;
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -68,22 +68,6 @@ export function Navbar() {
   const activeTab = headerTabs.find((tab) =>
     isPrimaryNavigationActive(tab.id, pathname, locale),
   )?.id;
-
-  useEffect(() => {
-    let active = true;
-    const refresh = () => getPricingNavigationVisibility().then((visible) => {
-      if (active) setShowPricing(visible);
-    });
-    void refresh();
-    const handleVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      active = false;
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, []);
 
   useEffect(() => {
     if (!open) {

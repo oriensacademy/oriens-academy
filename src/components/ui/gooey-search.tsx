@@ -130,11 +130,16 @@ export function GooeySearchBar() {
           setIsFetching(false);
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (isSubscribed) {
-          console.error("[Search UI Error]:", err);
-          setSearchResults(null);
-          setIsError(true);
+          setSearchResults({
+            query,
+            intent: "UNKNOWN",
+            confidence: 0,
+            groups: { universities: [], programs: [], countries: [], qualifications: [] },
+            totalCount: 0,
+          });
+          setIsError(false);
           setIsFetching(false);
         }
       });

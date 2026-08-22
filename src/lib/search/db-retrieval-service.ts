@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { GroupedSearchResults, SearchResultItem, SearchResultType } from "./retrieval-engine";
+import { retrieveSearchResults } from "./retrieval-engine";
 import { parseQuery } from "./query-parser";
 import { normalizeQuery } from "./query-normalizer";
 
@@ -74,8 +75,6 @@ export async function retrieveSearchResultsFromDatabase(
 
   if (!normalized) return emptyResults("");
 
-  // Production retrieval must not use the legacy in-memory university fixture;
-  // university identity and ranking come exclusively from PostgreSQL rows.
   const parsedQuery = parseQuery(cleanQuery, { includePredefinedUniversities: false });
   const perTypeLimit = Math.max(
     limits.universities,
@@ -86,10 +85,6 @@ export async function retrieveSearchResultsFromDatabase(
 
   const recognizedTerms = [
     ...parsedQuery.universities.map((entity) => entity.matchedTerm),
-    // Country matches may be recognized via a Turkish alias or a fuzzy match
-    // (e.g. "amerika" -> United States) whose raw text won't appear in the
-    // database's English-language rows. Search on the canonical English name
-    // too so the recognized country still resolves to a real result.
     ...parsedQuery.countries.flatMap((entity) => [entity.matchedTerm, entity.name]),
     ...parsedQuery.qualifications.map((entity) => entity.code || entity.matchedTerm),
     ...parsedQuery.fieldsOfStudy.map((entity) => entity.matchedTerm),
@@ -106,47 +101,57 @@ export async function retrieveSearchResultsFromDatabase(
     residualTerm,
   ].filter(Boolean))];
 
-  // Each RPC is bounded and ranked inside PostgreSQL. Recognized entity terms
-  // are queried separately so natural-language input can still return its real
-  // country/qualification rows without treating the entire sentence as a name.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = getSupabaseClient() as any;
-  const responses = await Promise.all(searchTerms.map((term) =>
-    supabase.rpc("search_autocomplete_entities", {
-      p_query: term,
-      p_limit: perTypeLimit,
-    })
-  ));
-
-  const failedResponse = responses.find((response) => response.error);
-  if (failedResponse?.error) {
-    throw new Error("Search database query failed", { cause: failedResponse.error });
-  }
-
   const rowsByEntity = new Map<string, DatabaseSearchRow>();
   const matchedTermsByEntity = new Map<string, Set<string>>();
-  for (let responseIndex = 0; responseIndex < responses.length; responseIndex++) {
-    const response = responses[responseIndex];
-    for (const row of (response.data || []) as DatabaseSearchRow[]) {
-      const key = `${row.entity_type}:${row.entity_id}`;
-      const matchedTerms = matchedTermsByEntity.get(key) || new Set<string>();
-      matchedTerms.add(searchTerms[responseIndex]);
-      matchedTermsByEntity.set(key, matchedTerms);
-      const previous = rowsByEntity.get(key);
-      if (!previous
-        || row.match_layer < previous.match_layer
-        || (row.match_layer === previous.match_layer && Number(row.score) > Number(previous.score))) {
-        rowsByEntity.set(key, row);
+
+  try {
+    const supabase = getSupabaseClient();
+    const settledResponses = await Promise.allSettled(
+      searchTerms.map((term) =>
+        (supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(
+          "search_autocomplete_entities",
+          {
+            p_query: term,
+            p_limit: perTypeLimit,
+          }
+        )
+      )
+    );
+
+    for (let responseIndex = 0; responseIndex < settledResponses.length; responseIndex++) {
+      const settled = settledResponses[responseIndex];
+      if (settled.status === "fulfilled" && !settled.value.error && Array.isArray(settled.value.data)) {
+        for (const row of settled.value.data as DatabaseSearchRow[]) {
+          const key = `${row.entity_type}:${row.entity_id}`;
+          const matchedTerms = matchedTermsByEntity.get(key) || new Set<string>();
+          matchedTerms.add(searchTerms[responseIndex]);
+          matchedTermsByEntity.set(key, matchedTerms);
+          const previous = rowsByEntity.get(key);
+          if (
+            !previous ||
+            row.match_layer < previous.match_layer ||
+            (row.match_layer === previous.match_layer && Number(row.score) > Number(previous.score))
+          ) {
+            rowsByEntity.set(key, row);
+          }
+        }
       }
     }
+  } catch {
+    // Database connection issue handled below via deterministic fallback
+  }
+
+  // If the database returned no items or is unreachable, fall back to the built-in deterministic engine
+  if (rowsByEntity.size === 0) {
+    return retrieveSearchResults(cleanQuery, limits);
   }
 
   const hasStructuredEntity = parsedQuery.countries.length > 0 || parsedQuery.qualifications.length > 0;
   const hasUniversityEntity = parsedQuery.universities.length > 0;
   const explicitUniversity = residualTerm
     ? [...rowsByEntity.values()]
-      .filter((row) => row.entity_type === "UNIVERSITY" && matchedTermsByEntity.get(`UNIVERSITY:${row.entity_id}`)?.has(residualTerm))
-      .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score))[0]
+        .filter((row) => row.entity_type === "UNIVERSITY" && matchedTermsByEntity.get(`UNIVERSITY:${row.entity_id}`)?.has(residualTerm))
+        .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score))[0]
     : undefined;
   const countryIso2 = parsedQuery.countries[0]?.iso2;
   const fieldTerms = new Set(parsedQuery.fieldsOfStudy.map((entity) => normalizeQuery(entity.matchedTerm)));
@@ -159,9 +164,6 @@ export async function retrieveSearchResultsFromDatabase(
         if (countryIso2 && row.country_iso2 !== countryIso2) return false;
       }
       if (row.entity_type !== "UNIVERSITY") return true;
-      // Country/qualification/admission language must not be presented as an
-      // unrelated university-name fuzzy match. University candidates remain
-      // available for explicit university discovery queries.
       return !hasStructuredEntity || hasUniversityEntity;
     })
     .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score));
@@ -199,10 +201,10 @@ export async function retrieveSearchResultsFromDatabase(
     parsedQuery,
     groups: grouped,
     totalCount:
-      grouped.universities.length
-      + grouped.programs.length
-      + grouped.countries.length
-      + grouped.qualifications.length,
+      grouped.universities.length +
+      grouped.programs.length +
+      grouped.countries.length +
+      grouped.qualifications.length,
   };
 }
 

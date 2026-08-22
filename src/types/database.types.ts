@@ -1225,6 +1225,120 @@ export type Database = {
         Update: { id?: string; student_user_id?: string; lesson_id?: string | null; title?: string; description?: string; due_date?: string | null; status?: string; submission_text?: string | null; submitted_at?: string | null; teacher_feedback?: string | null; assignment_file_url?: string | null; created_at?: string; updated_at?: string }
         Relationships: []
       }
+      discount_coupons: {
+        Row: {
+          id: string
+          code: string
+          name: string | null
+          discount_type: string
+          discount_value: number
+          currency: string
+          minimum_order_amount: number | null
+          maximum_discount_amount: number | null
+          max_total_uses: number | null
+          max_uses_per_student: number | null
+          used_count: number
+          valid_from: string | null
+          valid_until: string | null
+          active: boolean
+          first_purchase_only: boolean
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          code: string
+          name?: string | null
+          discount_type: string
+          discount_value: number
+          currency?: string
+          minimum_order_amount?: number | null
+          maximum_discount_amount?: number | null
+          max_total_uses?: number | null
+          max_uses_per_student?: number | null
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+          active?: boolean
+          first_purchase_only?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          code?: string
+          name?: string | null
+          discount_type?: string
+          discount_value?: number
+          currency?: string
+          minimum_order_amount?: number | null
+          maximum_discount_amount?: number | null
+          max_total_uses?: number | null
+          max_uses_per_student?: number | null
+          used_count?: number
+          valid_from?: string | null
+          valid_until?: string | null
+          active?: boolean
+          first_purchase_only?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Relationships: []
+      }
+      discount_coupon_packages: {
+        Row: {
+          id: string
+          coupon_id: string
+          package_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          coupon_id: string
+          package_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          coupon_id?: string
+          package_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      discount_coupon_redemptions: {
+        Row: {
+          id: string
+          coupon_id: string
+          student_user_id: string
+          payment_transaction_id: string
+          package_purchase_id: string | null
+          discount_amount: number
+          redeemed_at: string
+        }
+        Insert: {
+          id?: string
+          coupon_id: string
+          student_user_id: string
+          payment_transaction_id: string
+          package_purchase_id?: string | null
+          discount_amount: number
+          redeemed_at?: string
+        }
+        Update: {
+          id?: string
+          coupon_id?: string
+          student_user_id?: string
+          payment_transaction_id?: string
+          package_purchase_id?: string | null
+          discount_amount?: number
+          redeemed_at?: string
+        }
+        Relationships: []
+      }
       payment_transactions: {
         Row: {
           id: string
@@ -1539,6 +1653,28 @@ export type Database = {
       }
       admin_review_bank_transfer: {
         Args: { p_payment_id: string; p_decision: string }
+        Returns: Json
+      }
+      validate_checkout_coupon: {
+        Args: { p_code: string; p_package_id: string; p_student_user_id?: string | null }
+        Returns: Json
+      }
+      create_student_checkout: {
+        Args: {
+          p_package_id: string
+          p_payment_method: string
+          p_student_user_id?: string | null
+          p_coupon_code?: string | null
+          p_payer_name?: string | null
+          p_payer_email?: string | null
+          p_payer_phone?: string | null
+          p_locale?: string | null
+          p_idempotency_key?: string | null
+          p_provider?: string | null
+          p_provider_transaction_id?: string | null
+          p_status?: string | null
+          p_paid_at?: string | null
+        }
         Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }

@@ -7,7 +7,7 @@ export type StudentLessonRow = Tables<"student_lessons">;
 export type StudentHomeworkRow = Tables<"student_homework">;
 export type StudentBooking = Pick<Tables<"bookings">, "id" | "status" | "exam_code" | "custom_exam" | "created_at"> & { availability_slots: { starts_at: string; ends_at: string } | null };
 export type StudentPurchase = Tables<"student_package_purchases"> & { pricing_packages: { name_tr: string | null; name_en: string | null } | null };
-export type StudentPayment = Pick<Tables<"payment_transactions">, "id" | "package_id" | "amount" | "currency" | "payment_method" | "status" | "created_at">;
+export type StudentPayment = Pick<Tables<"payment_transactions">, "id" | "package_id" | "amount" | "currency" | "payment_method" | "status" | "created_at" | "public_reference" | "metadata">;
 
 export interface StudentPortalData {
   profile: StudentProfileRow; bookings: StudentBooking[]; lessons: StudentLessonRow[];
@@ -23,7 +23,7 @@ export async function getStudentPortalData(userId: string): Promise<{ data: Stud
     supabase.from("student_lessons").select("*").eq("student_user_id", userId).order("lesson_date", { ascending: false }),
     supabase.from("student_homework").select("*").eq("student_user_id", userId).order("due_date", { ascending: true, nullsFirst: false }),
     supabase.from("student_package_purchases").select("*,pricing_packages(name_tr,name_en)").eq("student_user_id", userId).order("created_at", { ascending: false }),
-    supabase.from("payment_transactions").select("id,package_id,amount,currency,payment_method,status,created_at").eq("student_user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("payment_transactions").select("id,package_id,amount,currency,payment_method,status,created_at,public_reference,metadata").eq("student_user_id", userId).order("created_at", { ascending: false }),
     getPublicBankTransferDetails(),
   ]);
   const firstError = profile.error || bookings.error || lessons.error || homework.error || purchases.error || payments.error;

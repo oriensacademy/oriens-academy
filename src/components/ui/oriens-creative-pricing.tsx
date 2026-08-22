@@ -159,17 +159,29 @@ export function CreativePricing({
                   ))}
                 </ul>
 
-                <div className="space-y-2"><Link
-                  href={tier.ctaHref}
-                  className={cn(
-                    "inline-flex h-12 w-full items-center justify-center rounded-xl border px-4 text-center font-ui text-sm font-semibold outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2 motion-reduce:transition-none",
-                    tier.popular
-                      ? "border-[#819586] bg-[#819586] text-white hover:bg-[#718678]"
-                      : "border-[#CAD5CB] bg-[#F7F9F6] text-[#10271B] hover:bg-[#EDF2EC]",
-                  )}
-                >
-                  {tier.ctaLabel}
-                </Link>{tier.purchaseHref && tier.purchaseLabel ? <Link href={tier.purchaseHref} className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-ink bg-ink px-4 text-center font-ui text-sm font-semibold text-white outline-none transition-colors hover:bg-forest focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">{tier.purchaseLabel}</Link> : null}</div>
+                <div className="space-y-2.5">
+                  {tier.purchaseHref && tier.purchaseLabel ? (
+                    <Link
+                      href={tier.purchaseHref}
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#10271B] bg-[#10271B] px-4 text-center font-ui text-sm font-semibold text-white shadow-sm outline-none transition-colors hover:bg-[#203D2D] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    >
+                      {tier.purchaseLabel}
+                    </Link>
+                  ) : null}
+                  <Link
+                    href={tier.ctaHref}
+                    className={cn(
+                      "inline-flex h-11 w-full items-center justify-center rounded-xl border px-4 text-center font-ui text-xs font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2 motion-reduce:transition-none",
+                      tier.purchaseHref && tier.purchaseLabel
+                        ? "border-[#DDE4DC] bg-white text-[#405447] hover:bg-[#F2F6F1] hover:text-[#10271B]"
+                        : tier.popular
+                          ? "border-[#819586] bg-[#819586] text-white hover:bg-[#718678]"
+                          : "border-[#CAD5CB] bg-[#F7F9F6] text-[#10271B] hover:bg-[#EDF2EC]"
+                    )}
+                  >
+                    {tier.ctaLabel}
+                  </Link>
+                </div>
               </article>
             </div>
           ))}

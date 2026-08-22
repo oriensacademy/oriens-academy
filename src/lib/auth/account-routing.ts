@@ -16,7 +16,7 @@ export function destinationForAccount(accountType: AccountType, locale: Locale, 
   const target = safeReturnPath(requested ?? null);
   if (accountType === "admin") return target && /^\/admin(?:\/|$)/.test(target) ? target : "/admin";
   if (accountType === "student") {
-    const allowed = target && /^\/(?:tr\/hesabim|en\/account)(?:\/|\?|#|$)/.test(target);
+    const allowed = target && /^\/(?:tr\/(?:hesabim|ucretler|odeme)|en\/(?:account|pricing|checkout|payment))(?:\/|\?|#|$)/.test(target);
     return allowed ? target : localizedPath("studentAccount", locale);
   }
   return unifiedLoginPath(locale);

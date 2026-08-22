@@ -23,12 +23,14 @@ export interface StudentProfile {
   context: "student_account" | "booking" | "quick_contact" | "contact_only";
   active: boolean;
   targetExam: string | null;
+  targetExams: string[];
+  targetCountry: string | null;
+  targetCountries: string[];
   activePackage: { id: string; name: string; lessonCount: number; lessonsUsed: number } | null;
   nextAppointment: string | null;
   pendingHomework: number;
   school: string | null;
   targetUniversity: string | null;
-  targetCountry: string | null;
   preferredLanguage: string;
 }
 
@@ -61,15 +63,49 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
   const phoneMap = new Map<string, StudentProfile>();
 
   (profilesResult.data || []).forEach((account) => {
-    const email = normalizeEmail(account.email); const phone = normalizePhone(account.phone);
+    const email = normalizeEmail(account.email);
+    const phone = normalizePhone(account.phone);
+    const accountRecord = account as unknown as Record<string, unknown>;
+    const rawExams = accountRecord.target_exams;
+    const rawCountries = accountRecord.target_countries;
+    const targetExams: string[] = Array.isArray(rawExams) && rawExams.length > 0
+      ? rawExams
+      : account.target_exam ? [account.target_exam] : [];
+    const targetCountries: string[] = Array.isArray(rawCountries) && rawCountries.length > 0
+      ? rawCountries
+      : account.target_country ? [account.target_country] : [];
+
     const profile: StudentProfile = {
-      id: `account-${account.id}`, userId: account.id, fullName: account.full_name, email: account.email, phone: account.phone,
-      emails: email ? [email] : [], phones: phone ? [phone] : [], interests: account.target_exam ? [account.target_exam] : [],
-      contacts: [], bookings: [], deliveries: [], latestActivity: account.updated_at, latestContact: null, latestAppointment: null, context: "student_account",
-      active: account.active, targetExam: account.target_exam, activePackage: null, nextAppointment: null, pendingHomework: 0,
-      school: account.school, targetUniversity: account.target_university, targetCountry: account.target_country, preferredLanguage: account.preferred_language,
+      id: `account-${account.id}`,
+      userId: account.id,
+      fullName: account.full_name,
+      email: account.email,
+      phone: account.phone,
+      emails: email ? [email] : [],
+      phones: phone ? [phone] : [],
+      interests: targetExams.length > 0 ? targetExams : (account.target_exam ? [account.target_exam] : []),
+      contacts: [],
+      bookings: [],
+      deliveries: [],
+      latestActivity: account.updated_at,
+      latestContact: null,
+      latestAppointment: null,
+      context: "student_account",
+      active: account.active,
+      targetExam: account.target_exam || (targetExams[0] || null),
+      targetExams,
+      targetCountry: account.target_country || (targetCountries[0] || null),
+      targetCountries,
+      activePackage: null,
+      nextAppointment: null,
+      pendingHomework: 0,
+      school: account.school,
+      targetUniversity: account.target_university,
+      preferredLanguage: account.preferred_language,
     };
-    profiles.push(profile); if (email) emailMap.set(email, profile); if (phone) phoneMap.set(phone, profile);
+    profiles.push(profile);
+    if (email) emailMap.set(email, profile);
+    if (phone) phoneMap.set(phone, profile);
   });
 
   const getProfile = (record: { id: string; full_name: string; email: string; phone: string | null; created_at: string }) => {
@@ -87,13 +123,27 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
         fullName: record.full_name,
         email: record.email,
         phone: record.phone,
-        emails: [], phones: [], interests: [], contacts: [], bookings: [], deliveries: [],
+        emails: [],
+        phones: [],
+        interests: [],
+        contacts: [],
+        bookings: [],
+        deliveries: [],
         latestActivity: record.created_at,
         latestContact: null,
         latestAppointment: null,
         context: "contact_only",
-        active: false, targetExam: null, activePackage: null, nextAppointment: null, pendingHomework: 0,
-        school: null, targetUniversity: null, targetCountry: null, preferredLanguage: "tr",
+        active: false,
+        targetExam: null,
+        targetExams: [],
+        targetCountry: null,
+        targetCountries: [],
+        activePackage: null,
+        nextAppointment: null,
+        pendingHomework: 0,
+        school: null,
+        targetUniversity: null,
+        preferredLanguage: "tr",
       };
       profiles.push(profile);
     }

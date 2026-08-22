@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CalendarDays, Compass, GraduationCap, Mail, Target } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, BookOpen, CalendarDays, Compass, GraduationCap, Mail, ShieldAlert, Target } from "lucide-react";
 import { CompassMark } from "@/components/brand/CompassMark";
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ButtonLink } from "@/components/ui/button";
 import { CreativePricing, type PricingTier } from "@/components/ui/creative-pricing";
 import { useLocale, usePricingContent } from "@/content/locale-context";
-import { localizedPath } from "@/lib/routes";
+import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { useAccount } from "@/lib/auth/account-context";
+import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { CONTACT } from "@/config/contact";
 
 function indexOf(position: number) {
@@ -20,14 +23,28 @@ function indexOf(position: number) {
 export function PricingPage() {
   const locale = useLocale();
   const content = usePricingContent();
+  const router = useRouter();
+  const { accountType, isInitializing } = useAccount();
   const [dbPackages, setDbPackages] = useState<PublicPricingPackage[]>([]);
   const [pricingLoaded, setPricingLoaded] = useState(false);
-  const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
+  const redirectedRef = useRef(false);
 
   useEffect(() => {
-    getPublicPricingPackages().then((rows) => setDbPackages(rows)).finally(() => setPricingLoaded(true));
-  }, []);
+    if (isInitializing || redirectedRef.current) return;
+    if (accountType !== "student" && accountType !== "admin") {
+      redirectedRef.current = true;
+      const target = localizedPath("pricing", locale);
+      router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(target)}`);
+    }
+  }, [accountType, isInitializing, locale, router]);
 
+  useEffect(() => {
+    if (accountType === "student" || accountType === "admin") {
+      getPublicPricingPackages().then((rows) => setDbPackages(rows)).finally(() => setPricingLoaded(true));
+    }
+  }, [accountType]);
+
+  const bookingHref = localizedPath("booking", locale);
   const ownerPackageIds = new Set(["single", "package5", "package10", "package20", "package30"]);
   const activePackages = dbPackages
     .filter((row) => ownerPackageIds.has(row.id) && row.active)
@@ -74,14 +91,31 @@ export function PricingPage() {
       color: item.id === "package10" ? "gold" : item.id === "package30" ? "forest" : item.id === "package20" ? "ivory" : "sage",
       ctaLabel: locale === "tr" ? "Görüşme Planla" : "Book a Consultation",
       ctaHref: `${localizedPath("home", locale)}?package=${encodeURIComponent(item.id)}#consultation-form`,
-      purchaseLabel: item.purchase_mode === "purchasable" ? (locale === "tr" ? "Paketi Satın Al" : "Buy Package") : undefined,
+      purchaseLabel: item.purchase_mode === "purchasable" ? (locale === "tr" ? "Eğitim Satın Al" : "Purchase Package") : undefined,
       purchaseHref: item.purchase_mode === "purchasable" ? `${localizedPath("payment", locale)}?package=${encodeURIComponent(item.id)}` : undefined,
     };
   });
 
+  if (isInitializing || (accountType !== "student" && accountType !== "admin")) {
+    return <AccountWaveLoader />;
+  }
+
   return (
     <>
       <section id="packages" className="section-offset relative overflow-hidden border-b border-border bg-[#F6F8F3] pt-24 pb-16 md:pt-28 md:pb-24">
+        {accountType === "admin" && (
+          <div className="mx-auto max-w-[1380px] px-6 mb-6">
+            <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
+              <span className="flex items-center gap-2 font-medium">
+                <ShieldAlert className="size-4 text-amber-700" />
+                {locale === "tr" ? "Yönetici Önizleme Modu: Öğrenci paket fiyatlarını görüntülüyorsunuz." : "Admin Preview Mode: Viewing student package pricing."}
+              </span>
+              <Link href="/admin/fiyatlandirma" className="rounded-lg bg-ink px-3 py-1.5 font-semibold text-white hover:bg-forest">
+                {locale === "tr" ? "Fiyatlandırma Yönetimi" : "Manage Pricing"}
+              </Link>
+            </div>
+          </div>
+        )}
         <div className="relative mx-auto max-w-[1380px] px-6 md:px-8">
           <nav aria-label={content.breadcrumb.ariaLabel}>
             <ol className="flex min-h-11 flex-wrap items-center gap-2 text-sm text-muted-foreground">

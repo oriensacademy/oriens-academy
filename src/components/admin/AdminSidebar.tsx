@@ -63,6 +63,13 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     enabled: true,
   },
   {
+    label: "İndirim Kuponları",
+    labelEn: "Coupons",
+    href: "/admin/indirim-kuponlari",
+    icon: FileText,
+    enabled: true,
+  },
+  {
     label: "Ödemeler",
     labelEn: "Payments",
     href: "/admin/odemeler",

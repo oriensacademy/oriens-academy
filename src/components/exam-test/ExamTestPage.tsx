@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, Info } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ExamCode } from "@/content/exams";
 import { examRecords } from "@/content/exams";
 import { useLocale } from "@/content/locale-context";
@@ -64,8 +64,6 @@ export function ExamTestPage() {
 
             {stage === "result" && result && <ExamTestResults locale={locale} result={result} onRetry={start} onChangeExam={() => { setStage("select"); setResult(null); }} />}
           </div>
-
-          <aside className="mt-5 flex items-start gap-2 rounded-xl border border-border bg-surface-muted px-4 py-3 text-xs leading-5 text-muted-foreground"><Info className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" /><p>{copy.notice}</p></aside>
         </div>
       </div>
     </section>
