@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { useAdminAuth } from "@/lib/admin/auth-context";
+import { useEffect, useRef, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useAccount } from "@/lib/auth/account-context";
+import { loginPathWithReturn } from "@/lib/auth/account-routing";
+import { changePasswordPath, localizedPath } from "@/lib/routes";
 import { AdminAuthLoader } from "@/components/admin/AdminAuthLoader";
 
 interface AdminGuardProps {
@@ -10,19 +12,28 @@ interface AdminGuardProps {
 }
 
 export function AdminGuard({ children }: AdminGuardProps) {
-  const { status, user } = useAdminAuth();
+  const { accountType, user, studentProfile, isInitializing } = useAccount();
   const router = useRouter();
+  const pathname = usePathname();
+  const navigatedRef = useRef(false);
   const mustChangePassword = user?.user_metadata?.force_password_change === true;
+  const studentLocale = studentProfile?.preferred_language === "en" ? "en" : "tr";
 
   useEffect(() => {
-    if (status === "unauthenticated" || status === "unauthorized") {
-      router.replace("/admin/login");
-    } else if (status === "authenticated" && mustChangePassword) {
-      router.replace("/admin/change-password");
+    if (isInitializing || navigatedRef.current) return;
+    if (accountType === "unauthenticated" || accountType === "unknown") {
+      navigatedRef.current = true;
+      router.replace(loginPathWithReturn("tr", pathname));
+    } else if (accountType === "student") {
+      navigatedRef.current = true;
+      router.replace(localizedPath("studentAccount", studentLocale));
+    } else if (accountType === "admin" && mustChangePassword) {
+      navigatedRef.current = true;
+      router.replace(changePasswordPath("tr"));
     }
-  }, [status, mustChangePassword, router]);
+  }, [accountType, isInitializing, mustChangePassword, pathname, router, studentLocale]);
 
-  if (status === "loading" || status === "unauthenticated" || status === "unauthorized" || (status === "authenticated" && mustChangePassword)) {
+  if (isInitializing || accountType !== "admin" || mustChangePassword) {
     return <AdminAuthLoader />;
   }
 

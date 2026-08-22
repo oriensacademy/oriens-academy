@@ -15,6 +15,9 @@ import { useCommonContent, useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 import { isPrimaryNavigationActive, localizedPath } from "@/lib/routes";
 import { getPricingNavigationVisibility } from "@/lib/public-settings";
+import { useAccount } from "@/lib/auth/account-context";
+import { unifiedLoginPath } from "@/lib/routes";
+import { Wave } from "@/components/ui/wave";
 
 const focusableSelector = [
   "a[href]",
@@ -29,6 +32,7 @@ export function Navbar() {
   const { nav } = useCommonContent();
   const locale = useLocale();
   const pathname = usePathname();
+  const { accountType, isInitializing } = useAccount();
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
   const [showPricing, setShowPricing] = useState(true);
@@ -50,6 +54,8 @@ export function Navbar() {
     ],
     [locale, showPricing],
   );
+  const accountHref = accountType === "admin" ? "/admin" : accountType === "student" ? localizedPath("studentAccount", locale) : unifiedLoginPath(locale);
+  const accountLabel = accountType === "student" ? (locale === "tr" ? "Hesabım" : "My Account") : accountType === "admin" ? (locale === "tr" ? "Hesap" : "Account") : (locale === "tr" ? "Oturum Aç" : "Sign In");
   const mobileItems = useMemo(() => [
     { href: localizedPath("home", locale), label: locale === "tr" ? "Ana Sayfa" : "Home" },
     { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
@@ -57,8 +63,8 @@ export function Navbar() {
     ...(showPricing ? [{ href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
     { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
-    { href: localizedPath("studentAccount", locale), label: locale === "tr" ? "Hesabım" : "My Account" },
-  ], [locale, showPricing]);
+    { href: accountHref, label: accountLabel },
+  ], [accountHref, accountLabel, locale, showPricing]);
   const activeTab = headerTabs.find((tab) =>
     isPrimaryNavigationActive(tab.id, pathname, locale),
   )?.id;
@@ -183,7 +189,7 @@ export function Navbar() {
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <div className="flex items-center gap-3">
               <LanguageSwitch />
-              <Link href={localizedPath("studentAccount", locale)} className="flex size-11 items-center justify-center rounded-full border border-border text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={locale === "tr" ? "Öğrenci hesabım" : "My student account"}><UserRound className="size-4" /></Link>
+              {isInitializing ? <span className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border" aria-label="Oriens Academy"><Wave className="h-4 w-8 text-primary" aria-label="Oriens Academy" /></span> : <Link href={accountHref} className={cn("flex min-h-11 items-center justify-center gap-2 rounded-full border border-border px-3 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",accountType === "admin"&&"size-11 px-0")} aria-label={accountLabel}><UserRound className="size-4" />{accountType !== "admin" && <span className="hidden sm:inline">{accountLabel}</span>}</Link>}
               <ButtonLink href={`/${locale}#consultation-form`} directional size="lg" className="hidden h-11 px-5 text-[13px] xl:flex">
                 {nav.ctaBook}
                 <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />

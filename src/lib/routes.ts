@@ -12,6 +12,9 @@ export type LocalizedRouteId =
   | "examTest"
   | "payment"
   | "studentAccount"
+  | "login"
+  | "forgotPassword"
+  | "changePassword"
   | "privacy"
   | "terms";
 
@@ -27,6 +30,9 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   examTest: { tr: "kendini-dene", en: "test-yourself" },
   payment: { tr: "odeme", en: "payment" },
   studentAccount: { tr: "hesabim", en: "account" },
+  login: { tr: "giris", en: "login" },
+  forgotPassword: { tr: "sifremi-unuttum", en: "forgot-password" },
+  changePassword: { tr: "sifre-degistir", en: "change-password" },
   privacy: { tr: "privacy", en: "privacy" },
   terms: { tr: "terms", en: "terms" },
 };
@@ -66,6 +72,12 @@ export function assessmentSegment(locale: Locale): string {
 export function examTestSegment(locale: Locale): string { return localizedSegments.examTest[locale]; }
 export function paymentSegment(locale: Locale): string { return localizedSegments.payment[locale]; }
 export function studentAccountSegment(locale: Locale): string { return localizedSegments.studentAccount[locale]; }
+export function unifiedLoginSegment(locale: Locale): string { return localizedSegments.login[locale]; }
+export function unifiedLoginPath(locale: Locale): string { return localizedPath("login", locale); }
+export function forgotPasswordSegment(locale: Locale): string { return localizedSegments.forgotPassword[locale]; }
+export function forgotPasswordPath(locale: Locale): string { return localizedPath("forgotPassword", locale); }
+export function changePasswordSegment(locale: Locale): string { return localizedSegments.changePassword[locale]; }
+export function changePasswordPath(locale: Locale): string { return localizedPath("changePassword", locale); }
 export function studentAuthRootSegment(locale: Locale): string { return locale === "tr" ? "ogrenci" : "student"; }
 export function studentLoginSegment(locale: Locale): string { return locale === "tr" ? "giris" : "login"; }
 export function studentRegisterSegment(locale: Locale): string { return locale === "tr" ? "kayit" : "register"; }
@@ -131,7 +143,9 @@ export function examDetailPath(locale: Locale, slug: string): string {
 
 export function pathForLocale(pathname: string, target: Locale): string {
   const cleanPath = pathname.replace(/\/$/, "") || "/";
-  if (/^\/(?:tr\/ogrenci\/giris|en\/student\/login)$/.test(cleanPath)) return studentLoginPath(target);
+  if (/^\/(?:tr\/ogrenci\/giris|en\/student\/login|tr\/giris|en\/login)$/.test(cleanPath)) return unifiedLoginPath(target);
+  if (/^\/(?:tr\/sifremi-unuttum|en\/forgot-password)$/.test(cleanPath)) return forgotPasswordPath(target);
+  if (/^\/(?:tr\/sifre-degistir|en\/change-password)$/.test(cleanPath)) return changePasswordPath(target);
   if (/^\/(?:tr\/ogrenci\/kayit|en\/student\/register)$/.test(cleanPath)) return studentRegisterPath(target);
   if (/^\/(?:tr\/odeme\/sonuc|en\/payment\/result)$/.test(cleanPath)) return paymentResultPath(target);
   const detailMatch = cleanPath.match(/^\/(?:tr\/sinavlar|en\/exams)\/([^/]+)$/);

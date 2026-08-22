@@ -345,24 +345,24 @@ export function renderStudentContactEmail(data: ContactEmailData) {
 }
 
 // ----------------------------------------------------------------------------
-// 5. ADMIN PASSWORD RECOVERY EMAIL TEMPLATE
+// 5. ACCOUNT PASSWORD RECOVERY EMAIL TEMPLATE
 // ----------------------------------------------------------------------------
-export function renderAdminPasswordRecoveryEmail(
+export function renderAccountPasswordRecoveryEmail(
   email: string,
   temporaryPassword: string,
   locale: "tr" | "en" = "tr"
 ) {
   const isTr = locale === "tr";
   const subject = isTr
-    ? "Oriens Academy | Geçici Yönetici Şifresi"
-    : "Oriens Academy | Temporary Admin Password";
+    ? "Oriens Academy | Geçici Giriş Şifresi"
+    : "Oriens Academy | Temporary Sign-In Password";
 
   const intro = isTr
-    ? "Yönetim paneli hesabınız için bir kurtarma talebi alındı ve yeni bir geçici giriş şifresi oluşturuldu."
-    : "A recovery request was made for your administrator account, and a new temporary sign-in password has been generated.";
+    ? "Oriens Academy hesabınız için bir kurtarma talebi alındı ve yeni bir geçici giriş şifresi oluşturuldu."
+    : "A recovery request was made for your Oriens Academy account, and a new temporary sign-in password has been generated.";
   const instruction = isTr
-    ? "Bu şifreyle yönetim paneline giriş yapabilirsiniz. Giriş yaptıktan sonra size yeni bir şifre belirlemeniz istenecektir."
-    : "You can use this password to sign in to the administration panel. After signing in, you will be asked to set a new password."
+    ? "Bu şifreyle ortak Oturum Aç sayfasından giriş yapabilirsiniz. Ardından yeni bir şifre belirlemeniz istenecektir."
+    : "Use this password on the shared Sign In page. You will then be asked to set a new password."
   const warning = isTr
     ? "Bu işlemi siz başlatmadıysanız lütfen Oriens Academy sistem yöneticisiyle iletişime geçin."
     : "If you did not request this, please contact the Oriens Academy system administrator.";
@@ -386,13 +386,13 @@ export function renderAdminPasswordRecoveryEmail(
   const html = renderEmailShell({
     locale,
     eyebrow: isTr ? "Hesap Kurtarma" : "Account Recovery",
-    title: isTr ? "Yeni Yönetici Şifreniz" : "Your New Administrator Password",
+    title: isTr ? "Yeni Geçici Şifreniz" : "Your New Temporary Password",
     bodyHtml,
   });
 
   const text = `Oriens Academy
 
-${isTr ? "Yeni Yönetici Şifreniz" : "Your New Administrator Password"}
+${isTr ? "Yeni Geçici Şifreniz" : "Your New Temporary Password"}
 
 ${intro}
 

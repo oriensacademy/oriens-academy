@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Manrope, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { CompassLoader } from "@/components/brand/CompassLoader";
+import { AccountProvider } from "@/lib/auth/account-context";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -48,7 +49,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
-        <CompassLoader>{children}</CompassLoader>
+        <AccountProvider><CompassLoader>{children}</CompassLoader></AccountProvider>
       </body>
     </html>
   );

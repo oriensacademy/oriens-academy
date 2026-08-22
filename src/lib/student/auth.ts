@@ -25,22 +25,5 @@ export async function registerStudent(input: StudentRegistrationInput) {
   });
 }
 
-export async function signInStudent(email: string, password: string) {
-  const supabase = getSupabaseClient();
-  const result = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-  if (result.error || !result.data.user) return { user: null, error: result.error?.message || "LOGIN_FAILED" };
-  if (result.data.user.app_metadata?.role === "admin") {
-    await supabase.auth.signOut();
-    return { user: null, error: "STUDENT_ACCOUNT_REQUIRED" };
-  }
-  const { data: profile, error } = await supabase.from("student_profiles").select("id,active").eq("id", result.data.user.id).maybeSingle();
-  if (error || !profile?.active) {
-    await supabase.auth.signOut();
-    return { user: null, error: "STUDENT_PROFILE_INACTIVE" };
-  }
-  return { user: result.data.user, error: null };
-}
-
-export async function signOutStudent() { return getSupabaseClient().auth.signOut(); }
 export async function updateStudentEmail(email: string) { return getSupabaseClient().auth.updateUser({ email: email.trim().toLowerCase() }); }
 export async function updateStudentPassword(password: string) { return getSupabaseClient().auth.updateUser({ password }); }

@@ -1,15 +1,15 @@
 import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
-import { renderAdminPasswordRecoveryEmail } from "../_shared/email/templates.ts";
+import { renderAccountPasswordRecoveryEmail } from "../_shared/email/templates.ts";
 
 const RESET_ACTION = "admin_password_reset";
 const RESET_COOLDOWN_MS = 10 * 60 * 1000;
 const FAILED_DELIVERY_COOLDOWN_MS = 60 * 1000;
 const NEUTRAL_MESSAGE_TR =
-  "E-posta adresi yönetici hesabıyla eşleşiyorsa yeni giriş bilgileri gönderildi.";
+  "E-posta adresi aktif bir Oriens Academy hesabıyla eşleşiyorsa yeni giriş bilgileri gönderildi.";
 const NEUTRAL_MESSAGE_EN =
-  "If the email matches the administrator account, new sign-in credentials have been sent.";
+  "If the email matches an active Oriens Academy account, new sign-in information has been sent.";
 
 type Locale = "tr" | "en";
 
@@ -82,8 +82,8 @@ async function recordAudit(
 ) {
   const { error } = await client.from("audit_logs").insert({
     actor_user_id: null,
-    action: "admin.password_reset_requested",
-    entity_type: "admin_auth",
+    action: "account.password_reset_requested",
+    entity_type: "account_auth",
     entity_id: userId,
     metadata: { email_masked: maskEmail(email), delivery },
   });
@@ -100,8 +100,8 @@ async function recordDelivery(
 ) {
   const { error } = await client.from("notification_deliveries").insert({
     channel: "email",
-    event_type: "admin.password_reset",
-    entity_type: "admin_auth",
+    event_type: "account.password_reset",
+    entity_type: "account_auth",
     entity_id: requestId,
     recipient,
     provider: "resend",
@@ -123,7 +123,7 @@ async function sendCredentialEmail(params: {
   apiKey: string;
   from: string;
 }): Promise<boolean> {
-  const template = renderAdminPasswordRecoveryEmail(params.to, params.password, params.locale);
+  const template = renderAccountPasswordRecoveryEmail(params.to, params.password, params.locale);
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -181,9 +181,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const allowedEmail = (Deno.env.get("ADMIN_AUTH_EMAIL") ?? "").trim().toLowerCase();
-  if (!allowedEmail || email !== allowedEmail) return neutralResponse(req, locale);
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -218,32 +215,30 @@ Deno.serve(async (req: Request) => {
   for (let page = 1; page <= 10; page += 1) {
     const { data, error } = await client.auth.admin.listUsers({ page, perPage: 100 });
     if (error) {
-      console.error("[admin-password-reset] Administrator lookup failed.");
+      console.error("[admin-password-reset] Account lookup failed.");
       return neutralResponse(req, locale);
     }
-    matchingUsers.push(...data.users.filter((user) => user.email?.toLowerCase() === allowedEmail));
+    matchingUsers.push(...data.users.filter((user) => user.email?.toLowerCase() === email));
     if (data.users.length < 100) break;
   }
-  if (matchingUsers.length !== 1 || matchingUsers[0].app_metadata?.role !== "admin") {
-    console.error("[admin-password-reset] Configured administrator identity is inconsistent.");
-    return neutralResponse(req, locale);
-  }
+  if (matchingUsers.length !== 1) return neutralResponse(req, locale);
 
-  const adminUser = matchingUsers[0];
-  const { data: profile, error: profileError } = await client
-    .from("admin_profiles")
-    .select("role, active")
-    .eq("user_id", adminUser.id)
-    .maybeSingle();
-  if (profileError || !profile || profile.role !== "admin" || profile.active !== true) {
-    console.error("[admin-password-reset] Configured administrator profile is inconsistent.");
-    return neutralResponse(req, locale);
+  const accountUser = matchingUsers[0];
+  let activeAccount = false;
+  if (accountUser.app_metadata?.role === "admin") {
+    const { data: profile } = await client.from("admin_profiles").select("role, active").eq("user_id", accountUser.id).maybeSingle();
+    activeAccount = profile?.role === "admin" && profile.active === true;
   }
+  if (!activeAccount) {
+    const { data: profile } = await client.from("student_profiles").select("active").eq("id", accountUser.id).maybeSingle();
+    activeAccount = profile?.active === true;
+  }
+  if (!activeAccount) return neutralResponse(req, locale);
 
   const temporaryPassword = generateTemporaryPassword();
-  const { error: updateError } = await client.auth.admin.updateUserById(adminUser.id, {
+  const { error: updateError } = await client.auth.admin.updateUserById(accountUser.id, {
     password: temporaryPassword,
-    user_metadata: { ...adminUser.user_metadata, force_password_change: true },
+    user_metadata: { ...accountUser.user_metadata, force_password_change: true },
   });
   if (updateError) {
     console.error("[admin-password-reset] Password update failed.");
@@ -254,13 +249,13 @@ Deno.serve(async (req: Request) => {
   const delivered = await sendCredentialEmail({
     client,
     requestId,
-    to: allowedEmail,
+    to: email,
     password: temporaryPassword,
     locale,
     apiKey: resendApiKey,
     from,
   });
-  await recordAudit(client, adminUser.id, allowedEmail, delivered ? "sent" : "failed");
+  await recordAudit(client, accountUser.id, email, delivered ? "sent" : "failed");
 
   if (!delivered) {
     for (const keyHash of keyHashes) {

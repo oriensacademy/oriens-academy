@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpen, CalendarDays, Check, ClipboardList, Copy, CreditCard, LayoutDashboard, LogOut, Package, RefreshCw, Save, UserRound } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
-import { localizedPath, studentLoginPath } from "@/lib/routes";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import { signOutStudent, updateStudentEmail, updateStudentPassword } from "@/lib/student/auth";
+import { localizedPath } from "@/lib/routes";
+import { updateStudentEmail, updateStudentPassword } from "@/lib/student/auth";
+import { useAccount } from "@/lib/auth/account-context";
+import { loginPathWithReturn } from "@/lib/auth/account-routing";
+import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { getStudentPortalData, submitStudentHomework, updateStudentProfile, type StudentHomeworkRow, type StudentPortalData } from "@/lib/student/data";
 import { cn } from "@/lib/utils";
 
@@ -18,23 +20,24 @@ const icons = [LayoutDashboard, UserRound, CalendarDays, BookOpen, ClipboardList
 
 export function StudentPortal() {
   const locale = useLocale(); const copy = getStudentCopy(locale); const router = useRouter();
+  const { accountType, user, isInitializing, signOut } = useAccount();
   const [section, setSection] = useState<SectionId>("overview"); const [data, setData] = useState<StudentPortalData | null>(null);
-  const [userId, setUserId] = useState(""); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const userId = user?.id || ""; const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const navigatedRef = useRef(false);
+  const loadedUserRef = useRef("");
   const load = useCallback(async (id: string) => { setLoading(true); const result = await getStudentPortalData(id); setLoading(false); if (result.error || !result.data?.profile.active) { setError(result.error || "INACTIVE_PROFILE"); return; } setData(result.data); }, []);
 
   useEffect(() => {
-    let active = true; const supabase = getSupabaseClient();
-    supabase.auth.getSession().then(({ data: sessionData }) => {
-      if (!active) return; const user = sessionData.session?.user;
-      if (!user) { router.replace(studentLoginPath(locale)); return; }
-      if (user.app_metadata?.role === "admin") { router.replace("/admin"); return; }
-      setUserId(user.id); void load(user.id);
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => { if (event === "SIGNED_OUT") router.replace(studentLoginPath(locale)); });
-    return () => { active = false; listener.subscription.unsubscribe(); };
-  }, [locale, load, router]);
+    if (isInitializing || navigatedRef.current) return;
+    if (accountType === "unauthenticated" || accountType === "unknown") {
+      navigatedRef.current = true; router.replace(loginPathWithReturn(locale, localizedPath("studentAccount", locale))); return;
+    }
+    if (accountType === "admin") { navigatedRef.current = true; router.replace("/admin"); return; }
+    if (accountType === "student" && user && loadedUserRef.current !== user.id) { loadedUserRef.current = user.id; void load(user.id); }
+  }, [accountType, isInitializing, locale, load, router, user]);
 
-  async function logout() { await signOutStudent(); router.replace(studentLoginPath(locale)); }
+  async function logout() { navigatedRef.current = true; await signOut(); router.replace(localizedPath("home", locale)); }
+  if (isInitializing || accountType !== "student") return <AccountWaveLoader />;
   if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Öğrenci hesabı yükleniyor…" : "Loading student account…")}</div></div></section>;
 
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">

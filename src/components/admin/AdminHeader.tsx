@@ -51,7 +51,7 @@ export function AdminHeader() {
     if (signingOut) return;
     setSigningOut(true);
     await signOut();
-    router.replace("/admin/login");
+    router.replace("/tr");
   };
 
   const displayName = profile?.display_name || "Oriens Academy Admin";
