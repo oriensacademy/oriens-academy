@@ -46,6 +46,7 @@ for (const locale of ["tr", "en"]) {
   }
 
   const pendingText = locale === "tr" ? "Kartlı ödeme, resmî banka" : "Card payments will be enabled";
+  await page.waitForTimeout(1200);
   check((await page.getByText(pendingText, { exact: false }).count()) > 0, `${locale} pending bank credential notice is missing`);
   check(await page.getByRole("button", { name: locale === "tr" ? "Ödemeye Devam Et" : "Continue to Payment" }).isDisabled(), `${locale} card submit is not disabled while credentials are pending`);
   check((await page.locator('input[autocomplete="cc-number"], input[autocomplete="cc-csc"], input[name*="card" i], input[name*="cvv" i]').count()) === 0, `${locale} page contains a raw card input`);

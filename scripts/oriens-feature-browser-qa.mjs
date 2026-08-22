@@ -39,6 +39,7 @@ for (const route of ["/en", "/tr/sinavlar", "/en/exams", "/tr/sinavlar/sat", "/e
 
 await page.setViewportSize({ width: 390, height: 900 });
 await page.goto(`${base}/tr/kendini-dene`, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(1200);
 check((await page.getByRole("radio").count()) === 12, "TR assessment does not list all 12 exams");
 await page.getByRole("button", { name: "Testi Başlat" }).click();
 for (let index = 0; index < 8; index += 1) {
@@ -52,11 +53,13 @@ check(trBody.includes("Konu A") && trBody.includes("1 / 3") && trBody.includes("
 check(trBody.includes("Bu test yapısı örnek içerikle hazırlanmıştır."), "TR placeholder disclaimer is missing");
 
 await page.goto(`${base}/en/test-yourself`, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(1200);
 check((await page.getByRole("radio").count()) === 12, "EN assessment does not list all 12 exams");
 check((await page.getByText("This assessment currently uses placeholder content.", { exact: false }).count()) > 0, "EN placeholder disclaimer is missing");
 
 await page.setViewportSize({ width: 1440, height: 1000 });
 await page.goto(`${base}/en`, { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(1200);
 const destinationSection = page.locator("[data-study-destination-section]");
 await destinationSection.scrollIntoViewIfNeeded();
 for (const name of ["United Kingdom", "Europe", "United States", "Canada"]) {
