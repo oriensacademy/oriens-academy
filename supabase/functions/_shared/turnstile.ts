@@ -4,8 +4,8 @@ const TURNSTILE_SITEVERIFY_URL =
 const ALLOWED_HOSTNAMES = new Set([
   "oriens-academy.com",
   "www.oriens-academy.com",
+  "oriens-academy-official.pages.dev",
   "oriens-academy.pages.dev",
-  "oriens-v1.netlify.app",
   "localhost",
   "127.0.0.1",
 ]);

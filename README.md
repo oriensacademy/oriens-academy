@@ -135,7 +135,7 @@ Deployments to Cloudflare Pages are performed from `out/`:
 
 ```bash
 npm run build
-npx wrangler pages deploy out --project-name oriens-academy --branch main
+npx wrangler pages deploy out --project-name oriens-academy-official --branch main
 ```
 
 Host headers and redirects are governed by `public/_headers` and `public/_redirects`.

@@ -8,7 +8,7 @@ This checklist separates work performed in the Oriens admin panel from developer
 - **Admin / leads:** review new and in-progress contact requests; confirm package context appears where applicable; resolve or classify spam deliberately.
 - **Admin / email delivery:** inspect failed `notification_deliveries`, record the provider error, verify the parent request still exists and retry only through an approved process.
 - **Admin / audit:** scan recent audit events for unexpected pricing, testimonial, settings or booking changes.
-- **External / Netlify:** check the latest production build/runtime status and error volume. Do not redeploy merely to clear a transient external incident.
+- **External / Cloudflare Pages:** check the latest production deployment status and edge metrics.
 - **External / Supabase:** review database, Auth and Edge Function health/logs; watch resource limits and repeated Turnstile/email failures.
 
 ## Monthly
@@ -18,14 +18,14 @@ This checklist separates work performed in the Oriens admin panel from developer
 - Review administrator membership, JWT roles and active `admin_profiles`; remove departed access through the secure identity process.
 - Verify pricing and testimonial public visibility against admin records and TR/EN presentation.
 - Review ingestion/source freshness, program quality quarantine and official admission-source verification dates if the admission/search system is in active use.
-- Check Netlify environment ownership, Supabase backups/point-in-time-recovery settings and retention appropriate to the subscribed plans. Backup availability is an external plan/configuration responsibility, not implemented by repository code.
+- Check Cloudflare Pages environment ownership, Supabase backups/point-in-time-recovery settings and retention appropriate to the subscribed plans. Backup availability is an external plan/configuration responsibility, not implemented by repository code.
 - Check Search Console indexing/coverage, sitemap health and major canonical/hreflang issues.
 - Check GA4/GTM events after consent and verify no PII has been added to event payloads.
 - Verify `oriens-academy.com` and `www` TLS, redirect and DNS health. Registrar/DNS access remains external.
 
 ## Quarterly or Before a Release
 
-- Review Node/Next/React/Supabase/Netlify compatibility and release notes.
+- Review Node/Next/React/Supabase/Cloudflare compatibility and release notes.
 - Exercise TR/EN home, exam hub/detail, pricing, contact, booking and legal routes at desktop and mobile widths.
 - Test keyboard navigation, focus, reduced motion, long localized strings and the complete contact email rendering.
 - Test all public Turnstile actions against the intended hostname and verify production fails closed with invalid tokens.
@@ -101,8 +101,8 @@ The permanent package scripts are documented in README. Additional `scripts/` fi
 
 ### Handoff audit baseline (2026-08-14)
 
-`npm audit --omit=dev` reports three high-severity production dependency findings: the direct `next` package is affected through its bundled `postcss`, and the dependency tree also contains an affected `sharp`. The audit's automatic remediation is Next.js 16.3.1, a semver-major framework migration from the current 15.5.23. Do not apply that migration directly in production: upgrade on a branch, follow the repository's generated `AGENTS.md` instruction to consult the installed Next.js documentation, then repeat lint, build, route, image-processing and Netlify runtime tests. Re-run the audit first because advisory and patched-version data changes over time.
+`npm audit --omit=dev` reports three high-severity production dependency findings: the direct `next` package is affected through its bundled `postcss`, and the dependency tree also contains an affected `sharp`. The audit's automatic remediation is Next.js 16.3.1, a semver-major framework migration from the current 15.5.23. Do not apply that migration directly in production: upgrade on a branch, follow the repository's generated `AGENTS.md` instruction to consult the installed Next.js documentation, then repeat lint, build, route, image-processing and Cloudflare Pages deployment tests. Re-run the audit first because advisory and patched-version data changes over time.
 
 ## External Ownership and Secure Transfer
 
-Transfer these separately: administrator credentials; Supabase organization/project; Netlify site/team; domain registrar and DNS; Resend; Cloudflare Turnstile; GA4/GTM; Search Console. Confirm billing owner, recovery contacts and least-privilege roles. Never place access exports, recovery codes or screenshots containing secrets in `docs/references`.
+Transfer these separately: administrator credentials; Supabase organization/project; Cloudflare Pages / DNS account; domain registrar and DNS; Google Workspace Mail; Cloudflare Turnstile; GA4/GTM; Search Console. Confirm billing owner, recovery contacts and least-privilege roles. Never place access exports, recovery codes or screenshots containing secrets in `docs/references`.

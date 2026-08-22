@@ -150,7 +150,7 @@ License/attribution notes: Source URL retained; review source terms before reuse
 
 | Package | Purpose | Main location | Notes |
 |---|---|---|---|
-| `next`, `react`, `react-dom` | App Router/runtime | `src/app` | Netlify runtime, not static export |
+| `next`, `react`, `react-dom` | App Router/runtime | `src/app` | Cloudflare Pages, static export |
 | `tailwindcss`, `tw-animate-css` | Utility styling/motion | `src/app/globals.css` | Tailwind 4 PostCSS |
 | `motion` | React motion primitives | brand/motion/UI components | Imported as `motion/react`; `framer-motion` is not installed |
 | `lucide-react`, `react-icons` | Icons | component source | Prefer Lucide for new Oriens UI |

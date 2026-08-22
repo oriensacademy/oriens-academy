@@ -25,7 +25,7 @@ This document details the configuration required to activate Cloudflare Turnstil
 ## 2. Setting Environment Variables
 
 ### A. Frontend Site Key (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`)
-Add the public Site Key to `.env.local` (for local development) and your Vercel / Netlify / Hosting environment variables:
+Add the public Site Key to `.env.local` (for local development) and your Cloudflare Pages / Hosting environment variables:
 
 ```bash
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAA...your_site_key

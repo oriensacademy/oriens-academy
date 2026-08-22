@@ -12,7 +12,7 @@ These files take precedence over older phase documents when implementation detai
 
 ## Current setup and subsystem references
 
-- `SUPABASE_SETUP.md`, `LOCAL_ADMIN_SETUP.md`, `TURNSTILE_SETUP.md`, `NETLIFY_DEPLOYMENT.md`
+- `SUPABASE_SETUP.md`, `LOCAL_ADMIN_SETUP.md`, `TURNSTILE_SETUP.md`, `CLOUDFLARE_DEPLOYMENT.md`
 - `BACKEND.md`, `BOOKING.md`, `EMAIL_NOTIFICATIONS.md`
 - `UNIVERSITY_DATA_SOURCE.md`
 

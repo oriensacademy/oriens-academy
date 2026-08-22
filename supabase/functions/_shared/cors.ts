@@ -1,13 +1,14 @@
 const ALLOWED_ORIGINS = new Set([
   "https://oriens-academy.com",
   "https://www.oriens-academy.com",
+  "https://oriens-academy-official.pages.dev",
   "https://oriens-academy.pages.dev",
-  "https://oriens-v1.netlify.app",
 ]);
 
 export function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return true; // Server-to-server or direct requests without Origin header
   if (ALLOWED_ORIGINS.has(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.oriens-academy-official\.pages\.dev$/.test(origin)) return true;
   if (/^https:\/\/[a-z0-9-]+\.oriens-academy\.pages\.dev$/.test(origin)) return true;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   return false;

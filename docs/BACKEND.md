@@ -8,18 +8,15 @@ This document details the backend foundation, database schema, Row Level Securit
 
 Oriens Academy uses a Next.js runtime backed by Supabase:
 
-- **Frontend / Runtime API**: Netlify Next.js runtime (OpenNext). Localized routes include `/tr/randevu`, `/en/booking`, `/tr/sinavlar/sat`, and `/en/exams/sat`.
+- **Frontend / Runtime API**: Cloudflare Pages (Next.js static export). Localized routes include `/tr/randevu`, `/en/booking`, `/tr/sinavlar/sat`, and `/en/exams/sat`.
 - **Backend & Database**: Hosted Supabase (PostgreSQL, Supabase Auth, Row Level Security, Edge Functions).
-- **Transactional Email**: Resend (configured via Supabase Edge Functions).
+- **Transactional Email**: Google Mail / Gmail API OAuth2 (configured via Supabase Edge Functions).
 - **Public Booking & Contact Pipeline**: Public form submissions and availability queries target **Supabase Edge Functions** directly (`booking-availability`, `create-booking`, `create-contact`) backed by atomic Postgres transaction RPCs.
-
-
-- **Request-time runtime**: Next.js Route Handlers execute search and other request-dependent features at runtime. Public booking/contact mutations continue to use Supabase Edge Functions.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Oriens Academy Frontend                  │
-│                    (Netlify Next.js Runtime)                │
+│                    (Cloudflare Pages CDN)                   │
 └──────────────┬───────────────────────────────▲──────────────┘
                │                               │
        Direct Browser Reads             Public Select Only
