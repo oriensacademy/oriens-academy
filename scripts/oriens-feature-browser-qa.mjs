@@ -13,7 +13,9 @@ const page = await browser.newPage();
 await page.route("**/rest/v1/site_settings*", async (route) => route.fulfill({ status: 200, headers: { "content-type": "application/vnd.pgrst.object+json", "content-range": "0-0/1" }, body: JSON.stringify({ value: { visible: true } }) }));
 page.on("pageerror", (error) => issues.push(`pageerror: ${error.message}`));
 page.on("console", (message) => {
-  if (message.type() === "error" && !message.text().includes("site_settings")) issues.push(`console: ${message.text()}`);
+  const sourceUrl = message.location().url || "";
+  const isTurnstileDiagnostic = sourceUrl.startsWith("https://challenges.cloudflare.com/");
+  if (message.type() === "error" && !message.text().includes("site_settings") && !isTurnstileDiagnostic) issues.push(`console: ${message.text()}`);
 });
 
 for (const width of [360, 390, 430, 768, 1024, 1440, 1920]) {

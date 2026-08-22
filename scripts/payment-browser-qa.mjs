@@ -13,7 +13,9 @@ const check = (condition, message) => { if (!condition) issues.push(message); };
 page.on("pageerror", (error) => issues.push(`pageerror: ${error.message}`));
 page.on("console", (message) => {
   const value = message.text();
-  if (message.type() === "error" && !value.includes("Turnstile") && !value.includes("challenges.cloudflare.com")) issues.push(`console: ${value}`);
+  const sourceUrl = message.location().url || "";
+  const isTurnstileDiagnostic = sourceUrl.startsWith("https://challenges.cloudflare.com/");
+  if (message.type() === "error" && !value.includes("Turnstile") && !value.includes("challenges.cloudflare.com") && !isTurnstileDiagnostic) issues.push(`console: ${value}`);
 });
 
 await page.route("**/rest/v1/pricing_packages*", (route) => route.fulfill({
