@@ -188,6 +188,7 @@ function PricingContent() {
                   <th className="px-4 py-3">Paket Kimliği (ID)</th>
                   <th className="px-4 py-3">Fiyat & Para Birimi</th>
                   <th className="px-4 py-3">Faturalandırma Basis</th>
+                  <th className="px-4 py-3">Satın Alma</th>
                   <th className="px-4 py-3">Sıralama</th>
                   <th className="px-4 py-3">Durum</th>
                   <th className="px-4 py-3 text-right">İşlemler</th>
@@ -219,6 +220,10 @@ function PricingContent() {
 
                     <td className="px-4 py-3.5 text-muted-foreground">
                       <span className="capitalize">{pkg.billing_basis}</span>
+                    </td>
+
+                    <td className="px-4 py-3.5 text-muted-foreground">
+                      {pkg.purchase_mode === "purchasable" ? "Satın alınabilir" : "Görüşme"}
                     </td>
 
                     <td className="px-4 py-3.5 text-muted-foreground font-mono">

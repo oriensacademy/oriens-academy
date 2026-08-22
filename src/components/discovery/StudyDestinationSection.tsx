@@ -18,7 +18,7 @@ const StudyDestinationGlobe = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="mx-auto aspect-square w-full max-w-[620px] animate-pulse rounded-full border border-[#DDE4DC] bg-[#EEF2EC]" />
+      <div className="mx-auto aspect-square w-full max-w-[620px] animate-pulse rounded-full border border-border bg-surface-muted" />
     ),
   }
 );
@@ -39,6 +39,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
   const exams = useExamsContent();
   const isTr = locale === "tr";
   const [selectedRegion, setSelectedRegion] = useState<StudyRegion | null>(() => studyDestinations[0] ?? null);
+  const [hoveredRegionId, setHoveredRegionId] = useState<StudyRegion["id"] | null>(null);
   const universities = selectedRegion?.countries.flatMap((country) => country.universities) ?? [];
   const visibleUniversities = compact ? universities.slice(0, 3) : universities;
   const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
@@ -48,17 +49,17 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
       id="study-destinations"
       data-study-destination-section
       data-selected-destination={selectedRegion?.id ?? "none"}
-      className={`overflow-hidden border-y border-[#DDE4DC] bg-[#F6F8F3] ${compact ? "py-16 md:py-20" : "py-20 md:py-28"}`}
+      className={`overflow-hidden border-y border-border bg-background ${compact ? "py-16 md:py-20" : "py-20 md:py-28"}`}
     >
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
         <Reveal className="max-w-3xl" y={10}>
-          <p className="text-xs font-semibold tracking-[0.22em] text-[#819586] uppercase">
+          <p className="text-xs font-semibold tracking-[0.22em] text-primary uppercase">
             {isTr ? "Yurt Dışında Eğitim" : "Study Abroad"}
           </p>
-          <h2 className="mt-4 max-w-[16ch] font-heading text-[clamp(2.35rem,5.5vw,4.7rem)] leading-[0.98] tracking-[-0.025em] text-[#10271B]">
+          <h2 className="mt-4 max-w-[16ch] font-heading text-[clamp(2.35rem,5.5vw,4.7rem)] leading-[0.98] tracking-[-0.025em] text-ink">
             {isTr ? "Nerede okumak istersiniz?" : "Where would you like to study?"}
           </h2>
-          <p className="mt-5 max-w-[64ch] text-base leading-7 text-[#68756C] md:text-lg md:leading-8">
+          <p className="mt-5 max-w-[64ch] text-base leading-7 text-muted-foreground md:text-lg md:leading-8">
             {isTr
               ? "Hedeflediğiniz ülkeyi seçin; ilgili sınavları, hazırlık alanlarını ve üniversite rotanızı tek bir yerde keşfedin."
               : "Choose your destination and explore the exams, preparation areas and university pathways relevant to your goals."}
@@ -71,15 +72,16 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
             regions={studyDestinations}
             selectedId={selectedRegion?.id ?? null}
             onSelect={setSelectedRegion}
+            emphasizedId={hoveredRegionId}
           />
         </div>
 
         <div className={`mt-8 grid items-center gap-8 lg:grid-cols-12 ${compact ? "lg:gap-8" : "lg:gap-12"}`}>
           <Reveal className="order-1 min-w-0 lg:col-span-7" y={8}>
-            <div className="relative rounded-[2rem] border border-[#DDE4DC] bg-white/45 p-2 sm:p-4">
-              <StudyDestinationGlobe locale={locale} region={selectedRegion} regions={studyDestinations} compact={compact} />
-              <div className="absolute right-4 bottom-4 hidden items-center gap-2 rounded-full border border-[#DDE4DC] bg-white/85 px-3 py-1.5 text-[11px] text-[#68756C] backdrop-blur-sm sm:flex">
-                <Route className="size-3.5 text-[#819586]" aria-hidden="true" />
+            <div className="relative rounded-[2rem] border border-border bg-surface/45 p-2 sm:p-4">
+              <StudyDestinationGlobe locale={locale} region={selectedRegion} regions={studyDestinations} compact={compact} onSelect={setSelectedRegion} onHoverRegion={setHoveredRegionId} />
+              <div className="absolute right-4 bottom-4 hidden items-center gap-2 rounded-full border border-border bg-surface/85 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur-sm sm:flex">
+                <Route className="size-3.5 text-primary" aria-hidden="true" />
                 {isTr ? "Sürükleyerek keşfedin" : "Drag to explore"}
               </div>
             </div>
@@ -101,17 +103,17 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
         </div>
 
         {selectedRegion && universities.length > 0 && (
-          <div className={`${compact ? "mt-10" : "mt-14"} border-t border-[#DDE4DC] pt-8`}>
+          <div className={`${compact ? "mt-10" : "mt-14"} border-t border-border pt-8`}>
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-[#819586] uppercase">
+                <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
                   {isTr ? "Doğrulanmış örnekler" : "Verified examples"}
                 </p>
-                <h3 className="mt-2 font-heading text-2xl text-[#10271B]">
+                <h3 className="mt-2 font-heading text-2xl text-ink">
                   {isTr ? `${selectedRegion.labelTr} üniversite rotaları` : `${selectedRegion.labelEn} university routes`}
                 </h3>
               </div>
-              <p className="max-w-[48ch] text-xs leading-5 text-[#68756C]">
+              <p className="max-w-[48ch] text-xs leading-5 text-muted-foreground">
                 {isTr
                   ? "Koşullar programa ve döneme göre değişir."
                   : "Conditions vary by programme and cycle."}
@@ -120,12 +122,12 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
 
             <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {visibleUniversities.map((university) => (
-                <li key={university.id} className="rounded-xl border border-[#DDE4DC] bg-white p-4">
+                <li key={university.id} className="rounded-xl border border-border bg-surface p-4">
                   <div className="flex items-start gap-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#E9EFE9] text-[#10271B]"><GraduationCap className="size-4" aria-hidden="true" /></span>
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sage-soft text-ink"><GraduationCap className="size-4" aria-hidden="true" /></span>
                     <div className="min-w-0">
-                      <h4 className="text-sm font-semibold leading-5 text-[#10271B]">{university.name}</h4>
-                      <p className="mt-1 text-xs text-[#68756C]">{university.city ?? university.country}</p>
+                      <h4 className="text-sm font-semibold leading-5 text-ink">{university.name}</h4>
+                      <p className="mt-1 text-xs text-muted-foreground">{university.city ?? university.country}</p>
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -133,7 +135,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
                       <Link
                         key={`${university.id}-${relation.examId}`}
                         href={examDetailPath(locale, relation.examId.toLowerCase())}
-                        className="inline-flex min-h-8 items-center gap-1 rounded-full border border-[#DDE4DC] px-2.5 py-1 text-[11px] font-semibold text-[#10271B] outline-none hover:border-[#819586] focus-visible:ring-2 focus-visible:ring-[#819586]"
+                        className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-ink outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label={`${relation.examId}: ${relationshipLabel(relation.relationship, isTr)}`}
                       >
                         {relation.examId} · {relationshipLabel(relation.relationship, isTr)}

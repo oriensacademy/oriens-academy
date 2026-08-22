@@ -15,7 +15,7 @@ function getRelationshipLabel(rel: AdmissionRelationship, isTr: boolean): string
     case "accepted":
       return isTr ? "Kabul Ediliyor" : "Accepted";
     case "program_specific":
-      return isTr ? "Programa Özel" : "Program Specific";
+      return isTr ? "Programa Özel" : "Programme-specific";
     case "considered":
       return isTr ? "Değerlendiriliyor" : "Considered";
     case "recommended":

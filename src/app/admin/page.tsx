@@ -176,6 +176,21 @@ function DashboardContent() {
       </div>
 
 
+      {/* Student CRM metrics */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold tracking-tight text-[#10271B]">Öğrenci Operasyonları</h2>
+        {loading ? <div className="rounded-xl border border-border bg-white p-8"><AdminWaveStatus label="Öğrenci metrikleri sorgulanıyor…" /></div> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+          <MetricCard label="Aktif Öğrenci" count={metrics?.activeStudents||0} subtext="Aktif profiller" href="/admin/ogrenciler" />
+          <MetricCard label="Bu Hafta Randevu" count={metrics?.weekAppointments||0} subtext="İptal olmayan" href="/admin/randevular" />
+          <MetricCard label="Bugünkü Ders" count={metrics?.todayLessons||0} subtext="Ders geçmişi" href="/admin/ogrenciler" />
+          <MetricCard label="Bekleyen Ödev" count={metrics?.pendingHomework||0} subtext="Atandı / teslim" href="/admin/ogrenciler" highlight={Boolean(metrics?.pendingHomework)} />
+          <MetricCard label="Aktif Paket" count={metrics?.activeStudentPackages||0} subtext="Öğrenci paketleri" href="/admin/ogrenciler" />
+          <MetricCard label="Ödeme Bekliyor" count={metrics?.awaitingPayments||0} subtext="İnceleme gerekli" href="/admin/odemeler" highlight={Boolean(metrics?.awaitingPayments)} />
+          <MetricCard label="Tamamlanan Paket" count={metrics?.completedStudentPackages||0} subtext="Kullanımı tamamlandı" href="/admin/ogrenciler" />
+        </div>}
+      </div>
+
+
 
       {/* Module Quick Navigation Grid */}
       <div className="space-y-3">

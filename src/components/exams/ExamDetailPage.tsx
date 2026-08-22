@@ -44,6 +44,7 @@ export function ExamDetailPage({ exam }: { exam: ExamRecord }) {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <ButtonLink href={`${localizedPath("home", locale)}#consultation-form`} directional size="lg" className="h-12 px-5">{detailPage.primaryCta}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
                 <ButtonLink href="#overview" variant="outline" size="lg" className="h-12 px-5">{detailPage.overviewTitle(exam.code)}<ArrowRight className="size-4" aria-hidden="true" /></ButtonLink>
+                <ButtonLink href={`${localizedPath("examTest", locale)}#${exam.code}`} variant="outline" size="lg" className="h-12 px-5">{locale === "tr" ? "Kendini Dene" : "Test Yourself"}<ArrowRight className="size-4" aria-hidden="true" /></ButtonLink>
               </div>
             </div>
             <div className="lg:col-span-5">

@@ -32,7 +32,7 @@ export const universitySupport = {
     eyebrow: "Akademik destek alanları",
     title: "Ders adına değil, öğrencinin gerçek akademik ihtiyacına göre.",
     intro:
-      "Mevcut Oriens içeriğinin doğruladığı destek çerçevesi aşağıdadır. Belirli ders kapsamı, öğrencinin syllabus ve materyalleri incelendikten sonra netleştirilir.",
+      "Mevcut Oriens içeriğinin doğruladığı destek çerçevesi aşağıdadır. Belirli ders kapsamı, öğrencinin ders izlencesi ve materyalleri incelendikten sonra netleştirilir.",
     indexLabel: "Destek indeksi",
     categoryLabels: {
       quantitative: "STEM ve sayısal",
@@ -90,7 +90,7 @@ export const universitySupport = {
     title: "Önce mevcut konumu, sonra doğru çalışma rotasını belirleriz.",
     intro: "Süreç, uydurma bir formüle değil; ihtiyaç analizi, açık öncelikler ve düzenli gözden geçirmeye dayanır.",
     steps: [
-      { id: "analyse", title: "İhtiyacı analiz et", description: "Ders syllabus’ı, materyaller, yaklaşan değerlendirmeler ve öğrencinin zorlandığı noktalar birlikte incelenir." },
+      { id: "analyse", title: "İhtiyacı analiz et", description: "Ders izlencesi, materyaller, yaklaşan değerlendirmeler ve öğrencinin zorlandığı noktalar birlikte incelenir." },
       { id: "map", title: "Konu haritasını çıkar", description: "Ön koşullar, güncel konular ve eksikler görünür bir sıraya yerleştirilir." },
       { id: "practise", title: "Kavramı uygula", description: "Kısa kavram tekrarları kontrollü problem ve soru pratiğiyle ilişkilendirilir." },
       { id: "review", title: "İlerlemeyi gözden geçir", description: "Hatalar ve yeni ihtiyaçlar değerlendirilir; çalışma rotası gerektiğinde yeniden önceliklendirilir." },
@@ -136,7 +136,7 @@ export const universitySupport = {
     eyebrow: "Sık sorulan sorular",
     title: "Üniversite ders desteği hakkında.",
     items: [
-      { question: "Hangi üniversite dersleri için destek alabilirim?", answer: "Mevcut içerik STEM ve sayısal dersler, problem setleri, laboratuvar raporları, araştırma çalışmaları ve üniversite çalışma becerileri için genel bir destek çerçevesini doğruluyor. Belirli bir ders için uygunluk, syllabus ve materyaller incelendikten sonra netleştirilir." },
+      { question: "Hangi üniversite dersleri için destek alabilirim?", answer: "Mevcut içerik STEM ve sayısal dersler, problem setleri, laboratuvar raporları, araştırma çalışmaları ve üniversite çalışma becerileri için genel bir destek çerçevesini doğruluyor. Belirli bir ders için uygunluk, ders izlencesi ve materyaller incelendikten sonra netleştirilir." },
       { question: "Destek yalnızca sınav dönemlerinde mi verilir?", answer: "Hayır. Haftalık ders takibi ve problem setleri için düzenli çalışma yapılabileceği gibi quiz, vize ve final öncesinde daha odaklı bir plan da oluşturulabilir." },
       { question: "Ders materyallerimi paylaşmam gerekir mi?", answer: "Syllabus, ders notları, görev yönergeleri ve yaklaşan değerlendirme kapsamı desteğin doğru yapılandırılmasına yardımcı olur. İlk aşamada hangi materyallerin gerekli olduğu birlikte belirlenir." },
       { question: "Oriens ödevimi veya raporumu benim yerime hazırlar mı?", answer: "Hayır. Destek; kavramı anlama, yapı kurma, yöntem seçme, geri bildirim ve öğrencinin kendi çalışmasını geliştirmesi üzerine kuruludur." },

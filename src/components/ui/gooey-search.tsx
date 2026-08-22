@@ -344,7 +344,7 @@ export function GooeySearchBar() {
                       <div className="py-1">
                         <div className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold tracking-wider text-amber-700 dark:text-amber-400 uppercase">
                           <Award className="size-3.5" />
-                          {isTr ? "Sınavlar & Kalifikasyonlar" : "Qualifications & Exams"}
+                          {isTr ? "Sınavlar ve Yeterlilikler" : "Qualifications & Exams"}
                         </div>
                         <ul className="mt-1 space-y-1">
                           {visibleSearchResults.groups.qualifications.map((item) => {

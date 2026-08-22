@@ -47,6 +47,7 @@ html[data-oriens-loader-skip="1"] [data-initial-loader] {
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
@@ -83,12 +84,24 @@ html[data-oriens-loader-skip="1"] [data-initial-loader] {
   --muted: #EFF2ED;
   --muted-foreground: #68756C;
   --border: #DDE4DC;
+  --border-strong: #AAB8AC;
   --input: #D6DED6;
   --ring: #819586;
   --popover: #FFFFFF;
   --popover-foreground: #10271B;
   --destructive: #B91C1C;
   --destructive-foreground: #FFFFFF;
+
+  --destination-uk: #53697A;
+  --destination-uk-soft: #E9EFF2;
+  --destination-europe: #6F8B82;
+  --destination-europe-soft: #EAF1EE;
+  --destination-us: #667F98;
+  --destination-us-soft: #EBF0F5;
+  --destination-canada: #8A6268;
+  --destination-canada-soft: #F3EBEC;
+  --destination-other: #877A5F;
+  --destination-other-soft: #F2EFE8;
 
   --font-display: var(--font-dm-serif);
   --font-ui: var(--font-manrope);
@@ -110,7 +123,7 @@ html[data-oriens-loader-skip="1"] [data-initial-loader] {
   html {
     font-family: var(--font-body), sans-serif;
     scroll-behavior: smooth;
-    background-color: #F6F8F3;
+    background-color: var(--background);
   }
 
   h1,
@@ -138,8 +151,8 @@ html[data-oriens-loader-skip="1"] [data-initial-loader] {
   }
 
   ::selection {
-    background-color: #819586;
-    color: #FFFFFF;
+    background-color: var(--primary);
+    color: var(--primary-foreground);
   }
 }
 

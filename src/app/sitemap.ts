@@ -14,6 +14,8 @@ const ROUTE_MAP: Array<{ tr: string; en: string }> = [
   { tr: "randevu", en: "booking" },
   { tr: "iletisim", en: "contact" },
   { tr: "degerlendirme", en: "assessment" },
+  { tr: "kendini-dene", en: "test-yourself" },
+  { tr: "odeme", en: "payment" },
   { tr: "privacy", en: "privacy" },
   { tr: "terms", en: "terms" },
 ];

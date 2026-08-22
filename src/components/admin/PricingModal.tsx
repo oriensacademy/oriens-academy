@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { PricingPackageRow, BillingBasis } from "@/lib/admin/pricing";
+import type { PricingPackageRow, BillingBasis, PurchaseMode } from "@/lib/admin/pricing";
 import {
   createAdminPricingPackage,
   updateAdminPricingPackage,
@@ -36,6 +36,7 @@ export function PricingModal({
   const [priceAmount, setPriceAmount] = useState<string>("");
   const [currency, setCurrency] = useState("TRY");
   const [billingBasis, setBillingBasis] = useState<BillingBasis>("session");
+  const [purchaseMode, setPurchaseMode] = useState<PurchaseMode>("consultation_only");
   const [active, setActive] = useState(true);
   const [featured, setFeatured] = useState(false);
   const [displayOrder, setDisplayOrder] = useState<number>(0);
@@ -58,6 +59,7 @@ export function PricingModal({
         setPriceAmount(editingPackage.price_amount !== null ? String(editingPackage.price_amount) : "");
         setCurrency(editingPackage.currency || "TRY");
         setBillingBasis(editingPackage.billing_basis as BillingBasis);
+        setPurchaseMode((editingPackage.purchase_mode as PurchaseMode) || "consultation_only");
         setActive(editingPackage.active);
         setFeatured(editingPackage.featured);
         setDisplayOrder(editingPackage.display_order || 0);
@@ -74,6 +76,7 @@ export function PricingModal({
         setPriceAmount("");
         setCurrency("TRY");
         setBillingBasis("session");
+        setPurchaseMode("consultation_only");
         setActive(true);
         setFeatured(false);
         setDisplayOrder(0);
@@ -103,6 +106,7 @@ export function PricingModal({
       lesson_count: numberOrNull(lessonCount), discount_percentage: numberOrNull(discount),
       unit_price: numberOrNull(unitPrice), old_total: numberOrNull(oldTotal), current_total: numberOrNull(currentTotal),
       badge_tr: badgeTr.trim() || null, badge_en: badgeEn.trim() || null,
+      purchase_mode: purchaseMode,
     };
 
     if (parsedPrice !== null && (isNaN(parsedPrice) || parsedPrice < 0)) {
@@ -286,6 +290,15 @@ export function PricingModal({
               <option value="month">Aylık (month)</option>
               <option value="custom">Özel Paket (custom)</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">Satın Alma Türü / Purchase Mode</label>
+            <select value={purchaseMode} onChange={(event) => setPurchaseMode(event.target.value as PurchaseMode)} className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground">
+              <option value="consultation_only">Yalnızca Görüşme / Consultation Only</option>
+              <option value="purchasable">Çevrim İçi Satın Alınabilir / Purchasable</option>
+            </select>
+            <p className="mt-1 text-[10px] text-muted-foreground">Kart altyapısı, banka sağlayıcısı ayrıca yapılandırılmadan etkinleşmez.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">

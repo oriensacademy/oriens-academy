@@ -7,6 +7,7 @@ import type { SiteSettingRow } from "@/lib/admin/settings";
 import type { Json } from "@/types/database.types";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
+import { Switch } from "@/components/ui/switch";
 import {
   listAdminSiteSettings,
   updateAdminSiteSetting,
@@ -21,6 +22,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   Lock,
+  Navigation,
+  Landmark,
 } from "lucide-react";
 
 export default function AdminSettingsPage() {
@@ -37,11 +40,19 @@ function SettingsContent() {
   const [contactEmail, setContactEmail] = useState("");
   const [bookingEmail, setBookingEmail] = useState("");
   const [adminLocale, setAdminLocale] = useState("tr");
+  const [showPricing, setShowPricing] = useState(true);
+  const [bankAccountHolder, setBankAccountHolder] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [iban, setIban] = useState("");
 
   // Track initial values for dirty state checking
   const [initialContactEmail, setInitialContactEmail] = useState("");
   const [initialBookingEmail, setInitialBookingEmail] = useState("");
   const [initialAdminLocale, setInitialAdminLocale] = useState("tr");
+  const [initialShowPricing, setInitialShowPricing] = useState(true);
+  const [initialBankAccountHolder, setInitialBankAccountHolder] = useState("");
+  const [initialBankName, setInitialBankName] = useState("");
+  const [initialIban, setInitialIban] = useState("");
 
   const parseSettings = (rows: SiteSettingRow[]) => {
     rows.forEach((r) => {
@@ -59,6 +70,17 @@ function SettingsContent() {
         const loc = String((r.value as { locale: string }).locale);
         setAdminLocale(loc);
         setInitialAdminLocale(loc);
+      }
+      if (r.key === "navigation.show_pricing" && typeof r.value === "object" && r.value !== null && "visible" in r.value) {
+        const visible = Boolean((r.value as { visible: boolean }).visible);
+        setShowPricing(visible);
+        setInitialShowPricing(visible);
+      }
+      if (["payment.bank_account_holder", "payment.bank_name", "payment.iban"].includes(r.key) && typeof r.value === "object" && r.value !== null && "value" in r.value) {
+        const value = String((r.value as { value: string }).value ?? "");
+        if (r.key === "payment.bank_account_holder") { setBankAccountHolder(value); setInitialBankAccountHolder(value); }
+        if (r.key === "payment.bank_name") { setBankName(value); setInitialBankName(value); }
+        if (r.key === "payment.iban") { setIban(value); setInitialIban(value); }
       }
     });
   };
@@ -177,6 +199,50 @@ function SettingsContent() {
       {/* Settings Forms */}
       {!loading && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
+            <div className="border-b border-border pb-3"><h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Landmark className="size-4 text-primary" /><span>Ödeme Bilgileri / Payment Details</span></h2><p className="mt-0.5 text-xs text-muted-foreground">Banka havalesi alanları yalnızca gerçek bilgiler kaydedildiğinde herkese açık ödeme sayfasında gösterilir.</p></div>
+            {[
+              { key: "payment.bank_account_holder", label: "Hesap Sahibi / Account Holder", value: bankAccountHolder, setValue: setBankAccountHolder, initial: initialBankAccountHolder },
+              { key: "payment.bank_name", label: "Banka / Bank", value: bankName, setValue: setBankName, initial: initialBankName },
+              { key: "payment.iban", label: "IBAN", value: iban, setValue: (value: string) => setIban(value.toUpperCase().replace(/\s+/g, "")), initial: initialIban },
+            ].map((field) => <div key={field.key} className="flex flex-col gap-3 rounded-lg border border-border bg-background-soft/50 p-4 sm:flex-row sm:items-end sm:justify-between"><label className="w-full text-xs font-bold text-foreground">{field.label}<span className="mt-1 block font-mono text-[10px] font-normal text-muted-foreground">{field.key}</span><input value={field.value} onChange={(event) => field.setValue(event.target.value)} autoComplete="off" className="mt-2 w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground sm:max-w-lg" /></label><button type="button" disabled={savingKey === field.key || field.value === field.initial} onClick={() => handleSaveSetting(field.key, { value: field.value.trim() })} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40">{savingKey === field.key ? <Wave className="h-3.5 w-7 text-white" aria-label="Kaydediliyor" /> : <Save className="size-3.5" />}<span>Kaydet</span></button></div>)}
+          </div>
+
+          <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
+            <div className="border-b border-border pb-3">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Navigation className="size-4 text-primary" />
+                <span>Genel Menü / Public Navigation</span>
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Yalnızca herkese açık site başlığındaki menü bağlantılarını kontrol eder.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-4 rounded-lg border border-border bg-background-soft/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1 max-w-lg">
+                <label htmlFor="pricing-navigation-switch" className="text-xs font-bold text-foreground">Ücretler Menüsü / Pricing Navigation</label>
+                <div className="text-[11px] font-mono text-muted-foreground">navigation.show_pricing</div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Kapalı olduğunda Ücretler / Pricing bağlantısı TR ve EN genel menülerinden gizlenir. Fiyatlandırma sayfası ve doğrudan URL erişimi korunur.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="min-w-14 text-right text-xs font-semibold text-foreground">{showPricing ? "Açık" : "Kapalı"}</span>
+                <Switch id="pricing-navigation-switch" checked={showPricing} onCheckedChange={setShowPricing} aria-label="Ücretler menüsü görünürlüğü" />
+                <button
+                  type="button"
+                  disabled={savingKey === "navigation.show_pricing" || showPricing === initialShowPricing}
+                  onClick={() => handleSaveSetting("navigation.show_pricing", { visible: showPricing })}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-3.5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {savingKey === "navigation.show_pricing" ? <Wave className="h-3.5 w-7 text-white" aria-label="Kaydediliyor" /> : <Save className="size-3.5" />}
+                  <span>Kaydet</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Notification Email Settings Section */}
           <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
             <div className="border-b border-border pb-3">

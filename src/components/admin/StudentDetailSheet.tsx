@@ -1,103 +1,34 @@
 "use client";
 
-import { X, Mail, Phone, MessageCircle, CalendarPlus, MessageSquareText, CalendarCheck, Send } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarPlus, Mail, Phone, X } from "lucide-react";
+import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
+import { completeStudentAppointment, updateAdminStudentProfile } from "@/lib/admin/student-learning";
+import { updateAdminBookingStatus } from "@/lib/admin/bookings";
 import type { StudentProfile } from "@/lib/admin/students";
-import { formatPackagePrice, getContactPackageContext } from "@/lib/contact/package-context";
 
-interface StudentDetailSheetProps {
-  student: StudentProfile | null;
-  onClose: () => void;
-  onCreateBooking: () => void;
+type Tab="overview"|"profile"|"appointments"|LearningSection;
+const tabs:{id:Tab;label:string}[]=[{id:"overview",label:"Genel"},{id:"profile",label:"Profil"},{id:"appointments",label:"Randevular"},{id:"lessons",label:"Dersler"},{id:"homework",label:"Ödevler"},{id:"packages",label:"Paketler"},{id:"payments",label:"Ödemeler"},{id:"notes",label:"Notlar"}];
+
+export function StudentDetailSheet({student,onClose,onCreateBooking,onChanged}:{student:StudentProfile|null;onClose:()=>void;onCreateBooking:()=>void;onChanged?:()=>void}){
+  const[tab,setTab]=useState<Tab>("overview");const[message,setMessage]=useState("");
+  useEffect(()=>{setTab("overview");setMessage("");},[student?.id]);
+  if(!student)return null;
+  return <div className="fixed inset-0 z-50 flex justify-end"><button aria-label="Kapat" onClick={onClose} className="absolute inset-0 bg-forest/30 backdrop-blur-xs"/><aside className="relative z-10 h-full w-full overflow-y-auto border-l border-border bg-white shadow-2xl sm:max-w-3xl">
+    <header className="sticky top-0 z-20 border-b border-border bg-white/95 p-4 backdrop-blur"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-bold text-ink">{student.fullName}</h2><p className="text-xs text-muted-foreground">{student.email} · {student.phone||"Telefon yok"}</p></div><button onClick={onClose} className="rounded-lg p-2 hover:bg-muted"><X className="size-4"/></button></div><nav aria-label="Öğrenci detay bölümleri" className="mt-4 flex gap-1 overflow-x-auto pb-1">{tabs.map((item)=><button key={item.id} onClick={()=>setTab(item.id)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${tab===item.id?"border-primary bg-primary text-primary-foreground":"border-border bg-white text-muted-foreground hover:bg-muted"}`}>{item.label}</button>)}</nav></header>
+    <div className="space-y-4 p-4 sm:p-5">{message&&<div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">{message}</div>}{tab==="overview"&&<Overview student={student} onCreateBooking={onCreateBooking}/>} {tab==="profile"&&<ProfileForm student={student} onDone={()=>{setMessage("Öğrenci profili güncellendi.");onChanged?.();}}/>} {tab==="appointments"&&<Appointments student={student} onCreateBooking={onCreateBooking} onDone={(text)=>{setMessage(text);onChanged?.();}}/>} {(["lessons","homework","packages","payments","notes"] as Tab[]).includes(tab)&&student.userId&&<StudentLearningManager userId={student.userId} section={tab as LearningSection} onChanged={onChanged}/>} {(["lessons","homework","packages","payments","notes"] as Tab[]).includes(tab)&&!student.userId&&<NoAccount/>}</div>
+  </aside></div>;
 }
 
-export function StudentDetailSheet({ student, onClose, onCreateBooking }: StudentDetailSheetProps) {
-  if (!student) return null;
-  const whatsappPhone = student.phone?.replace(/\D/g, "").replace(/^0/, "90") || "";
-  const packageContexts = student.contacts
-    .map((contact) => getContactPackageContext(contact.metadata))
-    .filter((item): item is NonNullable<typeof item> => item !== null);
-  const latestPackage = packageContexts[0] || null;
-  const timeline = [
-    ...student.contacts.map((contact) => ({
-      id: `contact-${contact.id}`,
-      at: contact.created_at,
-      title: contact.source === "quick_contact" ? "Hızlı iletişim talebi" : "İletişim formu",
-      detail: contact.message,
-      icon: MessageSquareText,
-    })),
-    ...student.bookings.map((booking) => ({
-      id: `booking-${booking.id}`,
-      at: booking.availability_slots?.starts_at || booking.created_at,
-      title: `Randevu · ${booking.status}`,
-      detail: booking.exam_code || booking.custom_exam || booking.notes || "Genel danışmanlık",
-      icon: CalendarCheck,
-    })),
-  ].sort((a, b) => b.at.localeCompare(a.at));
+function Overview({student,onCreateBooking}:{student:StudentProfile;onCreateBooking:()=>void}){return <div className="space-y-4"><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Info label="Hedef sınav" value={student.targetExam||"—"}/><Info label="Aktif paket" value={student.activePackage?.name||"—"}/><Info label="Kalan ders" value={student.activePackage?String(Math.max(0,student.activePackage.lessonCount-student.activePackage.lessonsUsed)):"—"}/><Info label="Bekleyen ödev" value={String(student.pendingHomework)}/><Info label="Okul" value={student.school||"—"}/><Info label="Hedef üniversite" value={student.targetUniversity||"—"}/><Info label="Son randevu" value={date(student.latestAppointment)}/><Info label="Sonraki randevu" value={date(student.nextAppointment)}/></div><div className="flex flex-wrap gap-2"><a href={`mailto:${student.email}`} className={action}><Mail className="size-4"/>E-posta</a>{student.phone&&<a href={`tel:${student.phone}`} className={action}><Phone className="size-4"/>Ara</a>}<button onClick={onCreateBooking} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink px-3 text-xs font-semibold text-white"><CalendarPlus className="size-4"/>Randevu Oluştur</button></div><div className="rounded-xl border border-border p-4"><h3 className="text-xs font-bold">İletişim geçmişi</h3><p className="mt-1 text-xs text-muted-foreground">{student.contacts.length} iletişim talebi · {student.bookings.length} randevu · {student.deliveries.length} bildirim teslimatı</p></div></div>}
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button type="button" aria-label="Kapat" onClick={onClose} className="absolute inset-0 bg-forest/30 backdrop-blur-xs" />
-      <aside className="relative z-10 h-full w-full overflow-y-auto border-l border-border bg-white shadow-2xl sm:max-w-xl">
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-white/95 p-5 backdrop-blur">
-          <div><h2 className="text-lg font-bold text-[#10271B]">{student.fullName}</h2><p className="text-xs text-muted-foreground">Öğrenci / kişi profili</p></div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:bg-muted"><X className="size-4" /></button>
-        </div>
-        <div className="space-y-6 p-5">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Info label="E-posta" value={student.email} />
-            <Info label="Telefon" value={student.phone || "—"} />
-            <Info label="İlgi Alanı" value={student.interests.join(", ") || "—"} />
-            <Info label="İlişki" value={contextLabel(student.context)} />
-          </div>
+function ProfileForm({student,onDone}:{student:StudentProfile;onDone:()=>void}){const[form,setForm]=useState({fullName:student.fullName,phone:student.phone||"",school:student.school||"",targetExam:student.targetExam||"",targetUniversity:student.targetUniversity||"",targetCountry:student.targetCountry||"",preferredLanguage:student.preferredLanguage,active:student.active});const[error,setError]=useState("");const[busy,setBusy]=useState(false);if(!student.userId)return <NoAccount/>;async function submit(e:React.FormEvent){e.preventDefault();if(!student.userId)return;setBusy(true);setError("");const r=await updateAdminStudentProfile(student.userId,form);setBusy(false);if(r.error)setError(r.error);else onDone();}return <form onSubmit={submit} className="space-y-3"><div className="grid gap-3 sm:grid-cols-2"><Field label="Ad soyad" value={form.fullName} onChange={(v)=>setForm({...form,fullName:v})} required/><Field label="Telefon" value={form.phone} onChange={(v)=>setForm({...form,phone:v})}/><Field label="Okul" value={form.school} onChange={(v)=>setForm({...form,school:v})}/><Field label="Hedef sınav" value={form.targetExam} onChange={(v)=>setForm({...form,targetExam:v})}/><Field label="Hedef üniversite" value={form.targetUniversity} onChange={(v)=>setForm({...form,targetUniversity:v})}/><Field label="Hedef ülke" value={form.targetCountry} onChange={(v)=>setForm({...form,targetCountry:v})}/><label className="space-y-1 text-xs font-semibold text-muted-foreground">Tercih edilen dil<select value={form.preferredLanguage} onChange={(e)=>setForm({...form,preferredLanguage:e.target.value})} className={input}><option value="tr">Türkçe</option><option value="en">English</option></select></label><label className="flex items-center gap-2 rounded-lg border border-border p-3 text-xs font-semibold"><input type="checkbox" checked={form.active} onChange={(e)=>setForm({...form,active:e.target.checked})}/>Aktif öğrenci</label></div><p className="text-[11px] text-muted-foreground">E-posta, doğrulanmış kimlik hesabına bağlıdır ve bu formdan değiştirilemez.</p>{error&&<p className="text-xs text-red-700">{error}</p>}<button disabled={busy} className="rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy?"Kaydediliyor…":"Profili Kaydet"}</button></form>}
 
-          {latestPackage && (
-            <div className="rounded-xl border border-[#DDE4DC] bg-[#F6F8F3] p-4">
-              <div className="text-[10px] font-bold uppercase tracking-wide text-[#819586]">İlgilenilen Paket</div>
-              <div className="mt-1 text-sm font-bold text-[#10271B]">{latestPackage.name}</div>
-              <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
-                {latestPackage.lessons !== null && <span>{latestPackage.lessons} ders</span>}
-                {formatPackagePrice(latestPackage) && <span>{formatPackagePrice(latestPackage)}</span>}
-              </div>
-            </div>
-          )}
+function Appointments({student,onCreateBooking,onDone}:{student:StudentProfile;onCreateBooking:()=>void;onDone:(text:string)=>void}){const[busy,setBusy]=useState("");const[error,setError]=useState("");async function finish(id:string,asLesson:boolean){setBusy(id);setError("");if(asLesson){const r=await completeStudentAppointment({bookingId:id,packagePurchaseId:student.activePackage?.id||null,title:`${student.targetExam||"Akademik"} dersi`,subject:student.targetExam||"Genel akademik çalışma",examCode:student.targetExam||"",durationMinutes:60,teacherNote:""});if(r.error)setError(r.error);else onDone(r.alreadyCompleted?"Bu randevu daha önce ders olarak tamamlanmış; paket yeniden düşülmedi.":"Randevu tamamlandı, ders geçmişi ve paket kullanımı işlendi.");}else{const r=await updateAdminBookingStatus(id,"completed");if(r.error)setError(r.error);else onDone("Randevu ders/paket kaydı oluşturmadan tamamlandı.");}setBusy("");}
+  return <div className="space-y-3"><button onClick={onCreateBooking} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink px-3 text-xs font-semibold text-white"><CalendarPlus className="size-4"/>Yeni Randevu</button>{error&&<p className="rounded bg-red-50 p-2 text-xs text-red-700">{error}</p>}{student.bookings.length?student.bookings.map((b)=><div key={b.id} className="rounded-xl border border-border p-3 text-xs"><div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{b.exam_code||b.custom_exam||"Genel danışmanlık"}</strong><p className="mt-1 text-muted-foreground">{date(b.availability_slots?.starts_at||b.created_at)} · {b.status}</p></div>{!(["completed","cancelled","no_show"].includes(b.status))&&<div className="flex flex-wrap gap-2"><button disabled={busy===b.id} onClick={()=>void finish(b.id,false)} className="rounded border border-border px-2 py-1">Yalnız randevuyu tamamla</button>{student.userId&&<button disabled={busy===b.id} onClick={()=>void finish(b.id,true)} className="rounded bg-ink px-2 py-1 text-white">Ders olarak tamamla</button>}</div>}</div></div>):<div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">Randevu kaydı yok.</div>}</div>}
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Action href={`mailto:${student.email}`} icon={Mail} label="E-posta" />
-            <Action href={student.phone ? `tel:${student.phone}` : undefined} icon={Phone} label="Ara" />
-            <Action href={whatsappPhone ? `https://wa.me/${whatsappPhone}` : undefined} icon={MessageCircle} label="WhatsApp" external />
-            <button type="button" onClick={onCreateBooking} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#10271B] px-3 py-2 text-xs font-semibold text-white"><CalendarPlus className="size-4" />Randevu</button>
-          </div>
-
-          <section>
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">E-posta teslimatları</h3>
-            {student.deliveries.length ? (
-              <div className="space-y-2">{student.deliveries.map((delivery) => (
-                <div key={delivery.id} className="flex items-center justify-between rounded-lg border border-border p-3 text-xs">
-                  <div className="flex items-center gap-2"><Send className="size-3.5 text-[#819586]" /><div><div className="font-semibold">{delivery.event_type.includes("admin_notification") ? "Yönetici Bildirim E-postası" : "Öğrenci Onay E-postası"}</div><div className="font-mono text-[10px] text-muted-foreground">{delivery.event_type}</div></div></div>
-                  <span className={delivery.status === "sent" ? "font-semibold text-emerald-700" : delivery.status === "failed" ? "font-semibold text-red-700" : "font-semibold text-amber-700"}>{delivery.status === "sent" ? "Gönderildi" : delivery.status === "failed" ? "Başarısız" : "Bekliyor"}</span>
-                </div>
-              ))}</div>
-            ) : <p className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">Bu kişiyle eşleşen teslimat kaydı yok.</p>}
-          </section>
-
-          <section>
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Geçmiş / Zaman Çizelgesi</h3>
-            <div className="space-y-3 border-l border-[#DDE4DC] pl-4">
-              {timeline.map((event) => { const Icon = event.icon; return (
-                <div key={event.id} className="relative rounded-xl border border-border bg-background-soft/40 p-3">
-                  <span className="absolute -left-[23px] top-3 flex size-4 items-center justify-center rounded-full bg-white ring-1 ring-[#819586]"><Icon className="size-2.5 text-[#10271B]" /></span>
-                  <div className="flex items-start justify-between gap-3"><div className="text-xs font-bold">{event.title}</div><time className="shrink-0 text-[10px] text-muted-foreground">{new Date(event.at).toLocaleString("tr-TR")}</time></div>
-                  <p className="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">{event.detail}</p>
-                </div>
-              ); })}
-            </div>
-          </section>
-        </div>
-      </aside>
-    </div>
-  );
-}
-
-function contextLabel(value: StudentProfile["context"]) { return value === "booking" ? "Randevulu" : value === "quick_contact" ? "Hızlı iletişim" : "Yalnızca iletişim"; }
-function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-lg border border-border bg-background-soft/50 p-3"><div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-0.5 break-words text-xs font-semibold">{value}</div></div>; }
-function Action({ href, icon: Icon, label, external }: { href?: string; icon: typeof Mail; label: string; external?: boolean }) { return href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"><Icon className="size-4" />{label}</a> : <span className="inline-flex cursor-not-allowed items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground opacity-50"><Icon className="size-4" />{label}</span>; }
+function NoAccount(){return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">Bu kişi henüz doğrulanmış bir öğrenci hesabına bağlı değil. Ders, ödev, paket, ödeme ve özel not işlevleri öğrenci hesabı oluşturulduktan sonra açılır.</div>}
+function Info({label,value}:{label:string;value:string}){return <div className="rounded-lg border border-border bg-background-soft/50 p-3"><span className="block text-[9px] uppercase text-muted-foreground">{label}</span><strong className="mt-1 block break-words text-xs">{value}</strong></div>}
+function Field({label,value,onChange,required=false}:{label:string;value:string;onChange:(v:string)=>void;required?:boolean}){return <label className="space-y-1 text-xs font-semibold text-muted-foreground">{label}<input required={required} value={value} onChange={(e)=>onChange(e.target.value)} className={input}/></label>}
+const input="min-h-9 w-full rounded-lg border border-input bg-white px-3 text-xs text-foreground focus:border-primary focus:outline-hidden";const action="inline-flex min-h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted";
+function date(value:string|null){return value?new Date(value).toLocaleString("tr-TR",{dateStyle:"short",timeStyle:"short"}):"—"}

@@ -14,6 +14,7 @@ import {
   Settings,
   Lock,
   FileCheck,
+  WalletCards,
 } from "lucide-react";
 
 export interface NavItem {
@@ -59,6 +60,13 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     labelEn: "Pricing",
     href: "/admin/fiyatlandirma",
     icon: CreditCard,
+    enabled: true,
+  },
+  {
+    label: "Ödemeler",
+    labelEn: "Payments",
+    href: "/admin/odemeler",
+    icon: WalletCards,
     enabled: true,
   },
   {

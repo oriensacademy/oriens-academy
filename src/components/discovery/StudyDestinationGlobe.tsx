@@ -51,11 +51,15 @@ export function StudyDestinationGlobe({
   region,
   regions,
   compact = false,
+  onSelect,
+  onHoverRegion,
 }: {
   locale: Locale;
   region: StudyRegion | null;
   regions: StudyRegion[];
   compact?: boolean;
+  onSelect?: (region: StudyRegion) => void;
+  onHoverRegion?: (regionId: StudyRegion["id"] | null) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -78,6 +82,7 @@ export function StudyDestinationGlobe({
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [hoveredName, setHoveredName] = useState<string | null>(null);
+  const [hoveredRegionId, setHoveredRegionId] = useState<StudyRegion["id"] | null>(null);
   const reducedMotion = Boolean(useReducedMotion());
   const isTr = locale === "tr";
 
@@ -158,6 +163,7 @@ export function StudyDestinationGlobe({
     drawCountryGroup(selectedFeatures, "#607867", 1.1);
     drawCountryGroup(hoveredFeatures, "#819586", 1.1);
 
+    const hoveredRegion = hoveredFeatureRef.current ? regionForFeature(hoveredFeatureRef.current, regions) : null;
     for (const candidate of regions) {
       const point = currentProjection([candidate.focus.lng, candidate.focus.lat]);
       const onFront = geoDistance([candidate.focus.lng, candidate.focus.lat], visibleCenter) <= Math.PI / 2;
@@ -165,9 +171,16 @@ export function StudyDestinationGlobe({
         continue;
       }
       const active = candidate.id === regionRef.current?.id;
+      const hovered = candidate.id === hoveredRegion?.id;
+      if (active || hovered) {
+        context.beginPath();
+        context.arc(point[0], point[1], active ? 8.5 : 7, 0, Math.PI * 2);
+        context.fillStyle = active ? "rgba(16,39,27,.16)" : "rgba(129,149,134,.18)";
+        context.fill();
+      }
       context.beginPath();
-      context.arc(point[0], point[1], active ? 5 : 3.5, 0, Math.PI * 2);
-      context.fillStyle = active ? "#10271B" : "#FFFFFF";
+      context.arc(point[0], point[1], active ? 5 : hovered ? 4.2 : 3.5, 0, Math.PI * 2);
+      context.fillStyle = active ? "#10271B" : hovered ? "#819586" : "#FFFFFF";
       context.fill();
       context.strokeStyle = active ? "#FFFFFF" : "#819586";
       context.lineWidth = 2;
@@ -318,6 +331,7 @@ export function StudyDestinationGlobe({
     const { clientX: x, clientY: y, pointerId: id } = event;
     dragRef.current = { id, x, y, originX: x, originY: y, moved: false };
     event.currentTarget.setPointerCapture?.(id);
+    event.currentTarget.style.cursor = "grabbing";
     dirtyRef.current = true;
   }
 
@@ -335,6 +349,7 @@ export function StudyDestinationGlobe({
     }
     if (event.timeStamp - hoverTimeRef.current < 65 || hoverFrameRef.current) return;
     const point = canvasCoordinate(event);
+    const canvas = event.currentTarget;
     hoverFrameRef.current = requestAnimationFrame(() => {
       hoverFrameRef.current = 0;
       hoverTimeRef.current = performance.now();
@@ -342,15 +357,26 @@ export function StudyDestinationGlobe({
       if (feature !== hoveredFeatureRef.current) {
         hoveredFeatureRef.current = feature;
         setHoveredName(feature?.properties?.ADMIN ?? null);
+        const interactiveRegion = feature ? regionForFeature(feature, regions) : null;
+        setHoveredRegionId(interactiveRegion?.id ?? null);
+        onHoverRegion?.(interactiveRegion?.id ?? null);
+        canvas.style.cursor = interactiveRegion ? "pointer" : "grab";
         dirtyRef.current = true;
       }
     });
   }
 
   function handlePointerUp(event: ReactPointerEvent<HTMLCanvasElement>) {
+    const completedDrag = dragRef.current;
     try { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
     isDraggingRef.current = false;
     dragRef.current = null;
+    if (completedDrag && !completedDrag.moved) {
+      const feature = featureAt(canvasCoordinate(event));
+      const selected = feature ? regionForFeature(feature, regions) : null;
+      if (selected) onSelect?.(selected);
+    }
+    event.currentTarget.style.cursor = hoveredRegionId ? "pointer" : "grab";
     if (!isPointerOverRef.current) scheduleResume();
   }
 
@@ -358,6 +384,7 @@ export function StudyDestinationGlobe({
     try { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
     isDraggingRef.current = false;
     dragRef.current = null;
+    event.currentTarget.style.cursor = hoveredRegionId ? "pointer" : "grab";
     if (!isPointerOverRef.current) scheduleResume();
   }
 
@@ -371,6 +398,7 @@ export function StudyDestinationGlobe({
       data-render-engine="canvas"
       data-react-frame-updates="false"
       data-selected-region={region?.id ?? "none"}
+      data-hovered-region={hoveredRegionId ?? "none"}
       className="relative mx-auto aspect-square w-full max-w-[620px]"
       onPointerEnter={() => {
         isPointerOverRef.current = true;
@@ -381,6 +409,8 @@ export function StudyDestinationGlobe({
         isPointerOverRef.current = false;
         hoveredFeatureRef.current = null;
         setHoveredName(null);
+        setHoveredRegionId(null);
+        onHoverRegion?.(null);
         dirtyRef.current = true;
         scheduleResume();
       }}

@@ -34,18 +34,20 @@ export interface CreateManualBookingParams {
   email: string;
   phone: string;
   exam: string;
+  subject: string;
   startsAt: string;
   endsAt: string;
   notes?: string;
   status: BookingStatus;
   privacyConsent: boolean;
+  studentUserId?: string | null;
 }
 
 export async function createManualAdminBooking(
   params: CreateManualBookingParams
 ): Promise<{ bookingId: string | null; error: string | null }> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc("admin_create_booking", {
+  const rpcArgs = {
     p_full_name: params.fullName,
     p_email: params.email,
     p_phone: params.phone,
@@ -55,7 +57,10 @@ export async function createManualAdminBooking(
     p_privacy_consent: params.privacyConsent,
     p_notes: params.notes || "",
     p_status: params.status,
-  });
+  };
+  const { data, error } = params.studentUserId
+    ? await supabase.rpc("admin_create_student_booking", { ...rpcArgs, p_student_id: params.studentUserId, p_subject: params.subject })
+    : await supabase.rpc("admin_create_booking", rpcArgs);
 
   if (error) return { bookingId: null, error: error.message };
   const result = data as { success?: boolean; booking_id?: string; error_code?: string } | null;
@@ -66,6 +71,10 @@ export async function createManualAdminBooking(
         ? "Bu saat dilimi dolu veya engellenmiş. Lütfen başka bir saat seçin."
         : "Randevu bilgileri geçersiz veya randevu zamanı geçmişte.",
     };
+  }
+  if (result.booking_id && params.studentUserId) {
+    const { error: emailError } = await supabase.functions.invoke("send-student-appointment", { body: { bookingId: result.booking_id } });
+    if (emailError) console.error("[Admin Booking] Appointment created; localized email delivery could not be started.");
   }
   return { bookingId: result.booking_id || null, error: null };
 }

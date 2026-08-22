@@ -45,7 +45,7 @@ export const about: AboutContent = {
         id: "doguhan",
         name: "Doğuhan",
         role: "Mathematics & Physics Tutor / Founder",
-        bio: "Providing 1-on-1 support for over 10 years across IB, AP, SAT, ESAT, TARA, TMUA, IGCSE and university-level maths & physics courses.",
+        bio: "Providing one-to-one support for over 10 years across IB, AP, SAT, ESAT, TARA, TMUA, IGCSE and university-level mathematics and physics courses.",
         credentials: ["Robert College", "St. Joseph", "Liceo Italiano", "Üsküdar American"],
       },
     ],
@@ -66,7 +66,7 @@ export const about: AboutContent = {
     metrics: [],
     items: [
       { title: "Robert College", description: "Targeted subject support across IB and AP courses." },
-      { title: "St. Joseph", description: "French/international curriculum maths and physics support." },
+      { title: "St. Joseph", description: "French and international curriculum mathematics and physics support." },
       { title: "Liceo Italiano", description: "Italian High School curriculum and IMAT / entrance exam prep." },
       { title: "Üsküdar American Academy", description: "1-on-1 support for IB HL/SL subjects and SAT preparation." },
     ],
@@ -97,7 +97,7 @@ export const about: AboutContent = {
         id: "2",
         quote: "My son's motivation and confidence in IB HL Maths and Physics grew noticeably.",
         author: "Yasemin T.",
-        role: "Parent · IB HL Maths & Physics",
+        role: "Parent · IB HL Mathematics & Physics",
       },
       {
         id: "3",
@@ -115,7 +115,7 @@ export const about: AboutContent = {
         id: "5",
         quote: "Helped me get over my fear of geometry quickly, making the subject enjoyable with practical tips.",
         author: "Ada Elif A.",
-        role: "Student · High School Maths & Physics",
+        role: "Student · Secondary Mathematics & Physics",
       },
       {
         id: "6",

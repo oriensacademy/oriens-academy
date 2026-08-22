@@ -387,6 +387,15 @@ deno_version = 2
 # Turnstile, origin validation, and the atomic DB-backed cooldown.
 verify_jwt = false
 
+[functions.create-payment]
+verify_jwt = false
+
+[functions.payment-status]
+verify_jwt = false
+
+[functions.payment-callback]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

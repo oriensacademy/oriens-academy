@@ -20,6 +20,8 @@ export interface PricingTier {
   color?: "sage" | "forest" | "gold" | "ivory";
   ctaLabel: string;
   ctaHref: string;
+  purchaseLabel?: string;
+  purchaseHref?: string;
 }
 
 interface CreativePricingProps {
@@ -157,7 +159,7 @@ export function CreativePricing({
                   ))}
                 </ul>
 
-                <Link
+                <div className="space-y-2"><Link
                   href={tier.ctaHref}
                   className={cn(
                     "inline-flex h-12 w-full items-center justify-center rounded-xl border px-4 text-center font-ui text-sm font-semibold outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2 motion-reduce:transition-none",
@@ -167,7 +169,7 @@ export function CreativePricing({
                   )}
                 >
                   {tier.ctaLabel}
-                </Link>
+                </Link>{tier.purchaseHref && tier.purchaseLabel ? <Link href={tier.purchaseHref} className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-ink bg-ink px-4 text-center font-ui text-sm font-semibold text-white outline-none transition-colors hover:bg-forest focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">{tier.purchaseLabel}</Link> : null}</div>
               </article>
             </div>
           ))}

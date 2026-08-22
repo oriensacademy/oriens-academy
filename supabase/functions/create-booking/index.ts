@@ -159,6 +159,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    let studentUserId: string | null = null;
+    const authorization = req.headers.get("authorization") ?? "";
+    const accessToken = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7) : "";
+    if (accessToken) {
+      const { data: authData } = await supabaseAdmin.auth.getUser(accessToken);
+      const authUser = authData.user;
+      if (authUser && authUser.app_metadata?.role !== "admin") {
+        const { data: studentProfile } = await supabaseAdmin.from("student_profiles")
+          .select("id,email,active").eq("id", authUser.id).maybeSingle();
+        if (studentProfile?.active && studentProfile.email.toLowerCase() === email) studentUserId = authUser.id;
+      }
+    }
 
     // Invoke atomic RPC function
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(
@@ -208,6 +220,12 @@ Deno.serve(async (req: Request) => {
         httpStatus,
         req
       );
+    }
+
+    if (studentUserId && result.booking_id) {
+      const { error: linkError } = await supabaseAdmin.from("bookings")
+        .update({ student_user_id: studentUserId }).eq("id", result.booking_id);
+      if (linkError) console.error("[create-booking] Student identity link failed for booking.");
     }
 
     // Complete both delivery attempts and their logs before the edge runtime exits.

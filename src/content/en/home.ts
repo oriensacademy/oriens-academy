@@ -74,7 +74,7 @@ export const oriensMethod = {
 };
 
 export const signatureMathematics = {
-  eyebrow: "Maths & Physics Focus",
+  eyebrow: "Mathematics & Physics Focus",
   headline: "Precise problem solving that grasps exam logic.",
   body: "We break down complex quantitative and logical problems into simple, clear solutions.",
   sliderLabel: "Position along the curve",
@@ -158,7 +158,7 @@ export const resultsTestimonials = {
     {
       quote: "My son's motivation and confidence in IB HL Maths and Physics grew noticeably.",
       name: "Yasemin T.",
-      context: "Parent · IB HL Maths & Physics",
+      context: "Parent · IB HL Mathematics & Physics",
     },
     {
       quote: "He teaches hard subjects in simple ways — I passed all my maths and physics exams with high grades.",
@@ -173,7 +173,7 @@ export const resultsTestimonials = {
     {
       quote: "Helped me get over my fear of geometry quickly, making the subject enjoyable with practical tips.",
       name: "Ada Elif A.",
-      context: "Student · High School Maths & Physics",
+      context: "Student · Secondary Mathematics & Physics",
     },
     {
       quote: "Quickly identified our daughter's gaps and prepared her successfully for her written exam.",

@@ -46,7 +46,7 @@ export const examDetailText: ExamDetailTextMap = {
     overview: ["SAT, okuma-yazma ve matematik becerilerini ölçen dijital bir sınavdır ve bazı lisans başvurularında akademik değerlendirme unsuru olarak kullanılabilir.", "Kurumların SAT politikaları farklılaşabildiği için sınav kararı hedef üniversitelerin güncel kabul şartlarıyla birlikte değerlendirilmelidir."],
     preparationAreas: [
       { title: "Reading & Writing", description: "Kısa metinlerde kanıt, bağlam, dil bilgisi ve anlatım kararlarını birlikte çalışırız." },
-      { title: "Mathematics", description: "Cebir, problem çözme, veri analizi ve ileri matematik konularında kavram-uygulama bağını güçlendiririz." },
+      { title: "Matematik", description: "Cebir, problem çözme, veri analizi ve ileri matematik konularında kavram-uygulama bağını güçlendiririz." },
       { title: "Dijital sınav stratejisi", description: "Modül düzeni, araç kullanımı ve deneme sonrası hata analizi için tekrar edilebilir bir sistem kurarız." },
     ],
     oriensSupport: "Başlangıç değerlendirmesinden sonra konu eksikleri, soru yaklaşımı ve deneme performansı tek planda birleştirilir. İlerleme, yalnızca toplam sonuçla değil hata türleri ve çözüm kalitesiyle izlenir.",
@@ -115,7 +115,7 @@ export const examDetailText: ExamDetailTextMap = {
   IGCSE: {
     seoTitle: "IGCSE Hazırlık ve Ders Desteği | Oriens Academy",
     seoDescription: "Cambridge IGCSE matematik ve fen derslerinde müfredat takibi, kavram tekrarı ve sınav odaklı birebir akademik destek.",
-    overview: ["Cambridge IGCSE, okulların farklı ders kombinasyonları oluşturabildiği uluslararası bir ortaöğretim programı ve yeterlilik sistemidir.", "Değerlendirme biçimi derse göre değişebildiğinden hazırlık, öğrencinin kesin ders kodu ve güncel syllabus belgesi üzerinden yürütülmelidir."],
+    overview: ["Cambridge IGCSE, okulların farklı ders kombinasyonları oluşturabildiği uluslararası bir ortaöğretim programı ve yeterlilik sistemidir.", "Değerlendirme biçimi derse göre değişebildiğinden hazırlık, öğrencinin kesin ders kodu ve güncel müfredat belgesi üzerinden yürütülmelidir."],
     preparationAreas: [
       { title: "Syllabus takibi", description: "Ders koduna ait güncel kapsamı okul ilerleyişiyle eşleştiririz." },
       { title: "Kavramsal temel", description: "Matematik ve fen konularında ezber yerine neden-sonuç ilişkisini güçlendiririz." },
@@ -124,7 +124,7 @@ export const examDetailText: ExamDetailTextMap = {
     oriensSupport: "Öğrencinin aldığı IGCSE dersini ve okul takvimini temel alan düzenli destek sağlıyoruz. Konu anlatımı, ödev yaklaşımı ve sınav pratiği aynı ilerleme planında buluşur.",
     featuredFacts: [{ label: "Program yaklaşımı", value: "Esnek ders kombinasyonları" }, { label: "Oriens kapsamı", value: "Matematik ve fen ders desteği" }],
     faqs: [
-      { question: "Tüm IGCSE derslerinin sınav yapısı aynı mıdır?", answer: "Hayır. Yazılı, sözlü, coursework veya uygulamalı değerlendirmeler derse göre değişebilir; doğru syllabus kontrol edilmelidir." },
+      { question: "Tüm IGCSE derslerinin sınav yapısı aynı mıdır?", answer: "Hayır. Yazılı, sözlü, ders içi çalışma veya uygulamalı değerlendirmeler derse göre değişebilir; doğru müfredat kontrol edilmelidir." },
       { question: "Core ve Extended kapsamı hazırlığı etkiler mi?", answer: "Evet. İlgili derste seçenek bulunuyorsa öğrencinin takip ettiği kapsam çalışma planını belirler." },
       { question: "Okul dersleriyle paralel destek alınabilir mi?", answer: "Evet. Plan okulun konu sırası ve yaklaşan değerlendirmeleriyle uyumlu kurulabilir." },
     ],
@@ -207,7 +207,7 @@ export const examDetailText: ExamDetailTextMap = {
     seoDescription: "Programa göre belirlenen OMPT matematik sınavı için konu analizi, kavram tekrarı ve birebir problem çözme desteği.",
     overview: ["OMPT, üniversitelerin uluslararası adayların programa uygun matematik yeterliliğini değerlendirmek için kullanabildiği çevrim içi kabul sınavları ailesidir.", "Farklı OMPT türleri farklı konu kapsamlarına sahip olduğundan adayın hazırlığı, üniversitenin istediği kesin test türü doğrulandıktan sonra planlanmalıdır."],
     preparationAreas: [
-      { title: "Test türünü doğrulama", description: "Önce hedef programın istediği OMPT varyantını ve resmî syllabus'ı netleştiririz." },
+      { title: "Test türünü doğrulama", description: "Önce hedef programın istediği OMPT varyantını ve resmî konu kapsamını netleştiririz." },
       { title: "Kavram yenileme", description: "Gerekli cebir, fonksiyon, kalkülüs, geometri veya istatistik konularını ihtiyaca göre çalışırız." },
       { title: "Dijital problem çözme", description: "Çevrim içi matematik gösterimi ve kontrollü çözüm adımları için uygulama yaparız." },
     ],
@@ -215,7 +215,7 @@ export const examDetailText: ExamDetailTextMap = {
     featuredFacts: [{ label: "Sınav ailesi", value: "Programa göre farklı matematik testleri" }, { label: "İlk adım", value: "Doğru OMPT türünü doğrulamak" }],
     faqs: [
       { question: "Hangi OMPT sınavına girmeliyim?", answer: "Bunu hedef üniversite veya program belirler. Kayıt ve hazırlık öncesinde kabul ofisinin güncel şartını kontrol edin." },
-      { question: "Tüm OMPT türlerinin konu kapsamı aynı mıdır?", answer: "Hayır. OMPT varyantlarının kapsamı farklıdır; yalnızca ilgili testin resmî syllabus'ı üzerinden çalışılmalıdır." },
+      { question: "Tüm OMPT türlerinin konu kapsamı aynı mıdır?", answer: "Hayır. OMPT varyantlarının kapsamı farklıdır; yalnızca ilgili testin resmî konu kapsamı üzerinden çalışılmalıdır." },
       { question: "Oriens yalnızca eksik olduğum konulara odaklanabilir mi?", answer: "Evet. Tanılama sonucuna ve test kapsamına göre konu ağırlıkları kişiselleştirilebilir." },
     ],
     cta: { title: "Doğru OMPT rotasını birlikte belirleyelim.", body: "Programınızın istediği test türünü ve matematik seviyenizi değerlendirerek odaklı bir çalışma planı oluşturalım.", primary: "Ücretsiz Görüşme Planla", secondary: "Tüm Sınavları Gör" },

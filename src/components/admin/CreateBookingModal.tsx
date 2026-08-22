@@ -15,6 +15,7 @@ interface CreateBookingModalProps {
   initialEmail?: string;
   initialName?: string;
   initialPhone?: string;
+  initialStudentUserId?: string | null;
 }
 
 export function CreateBookingModal({
@@ -24,11 +25,13 @@ export function CreateBookingModal({
   initialEmail = "",
   initialName = "",
   initialPhone = "",
+  initialStudentUserId = null,
 }: CreateBookingModalProps) {
   const [fullName, setFullName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
   const [exam, setExam] = useState("");
+  const [subject, setSubject] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState("13:00");
   const [endTime, setEndTime] = useState("14:00");
@@ -49,11 +52,13 @@ export function CreateBookingModal({
       email,
       phone,
       exam,
+      subject,
       startsAt: new Date(`${date}T${startTime}:00`).toISOString(),
       endsAt: new Date(`${date}T${endTime}:00`).toISOString(),
       notes,
       status,
       privacyConsent,
+      studentUserId: initialStudentUserId,
     });
     setSubmitting(false);
     if (error) {
@@ -85,7 +90,8 @@ export function CreateBookingModal({
             <Field label="Ad Soyad"><input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} /></Field>
             <Field label="E-posta"><input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} /></Field>
             <Field label="Telefon"><input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} /></Field>
-            <Field label="Sınav / Konu"><input required value={exam} onChange={(e) => setExam(e.target.value)} className={inputClass} /></Field>
+            <Field label="Sınav"><input required value={exam} onChange={(e) => setExam(e.target.value)} className={inputClass} /></Field>
+            <Field label="Ders / Konu"><input required value={subject} onChange={(e) => setSubject(e.target.value)} className={inputClass} /></Field>
             <Field label="Tarih"><input required type="date" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} /></Field>
             <Field label="Durum">
               <select value={status} onChange={(e) => setStatus(e.target.value as BookingStatus)} className={inputClass}>

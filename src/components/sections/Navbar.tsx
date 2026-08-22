@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, UserRound, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import { useScrolled } from "@/lib/use-scrolled";
 import { useCommonContent, useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 import { isPrimaryNavigationActive, localizedPath } from "@/lib/routes";
+import { getPricingNavigationVisibility } from "@/lib/public-settings";
 
 const focusableSelector = [
   "a[href]",
@@ -30,6 +31,7 @@ export function Navbar() {
   const pathname = usePathname();
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
+  const [showPricing, setShowPricing] = useState(true);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -43,22 +45,39 @@ export function Navbar() {
         id: localizedPath("universitySupport", locale),
         label: locale === "tr" ? "Üniversite Desteği" : "University Support",
       },
-      { id: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" },
+      ...(showPricing ? [{ id: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
       { id: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     ],
-    [locale],
+    [locale, showPricing],
   );
   const mobileItems = useMemo(() => [
     { href: localizedPath("home", locale), label: locale === "tr" ? "Ana Sayfa" : "Home" },
     { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
     { href: localizedPath("universitySupport", locale), label: locale === "tr" ? "Üniversite Desteği" : "University Support" },
-    { href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" },
+    ...(showPricing ? [{ href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
     { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
-  ], [locale]);
+    { href: localizedPath("studentAccount", locale), label: locale === "tr" ? "Hesabım" : "My Account" },
+  ], [locale, showPricing]);
   const activeTab = headerTabs.find((tab) =>
     isPrimaryNavigationActive(tab.id, pathname, locale),
   )?.id;
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () => getPricingNavigationVisibility().then((visible) => {
+      if (active) setShowPricing(visible);
+    });
+    void refresh();
+    const handleVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -139,7 +158,7 @@ export function Navbar() {
         ref={headerRef}
         className={cn(
           "fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200",
-          scrolled ? "border-border/80 bg-[#F6F8F3]/90 backdrop-blur-md shadow-[0_2px_12px_rgba(16,39,27,0.04)]" : "border-transparent bg-transparent"
+          scrolled ? "border-border/80 bg-background/90 backdrop-blur-md shadow-[0_2px_12px_rgba(16,39,27,0.04)]" : "border-transparent bg-transparent"
         )}
       >
         <div className="mx-auto flex h-[72px] max-w-[1360px] items-center px-[clamp(24px,5vw,72px)] md:h-20">
@@ -164,6 +183,7 @@ export function Navbar() {
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <div className="flex items-center gap-3">
               <LanguageSwitch />
+              <Link href={localizedPath("studentAccount", locale)} className="flex size-11 items-center justify-center rounded-full border border-border text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={locale === "tr" ? "Öğrenci hesabım" : "My student account"}><UserRound className="size-4" /></Link>
               <ButtonLink href={`/${locale}#consultation-form`} directional size="lg" className="hidden h-11 px-5 text-[13px] xl:flex">
                 {nav.ctaBook}
                 <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />

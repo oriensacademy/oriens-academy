@@ -70,14 +70,14 @@ export async function updateAdminSiteSetting(
 
   try {
     const { data: userData } = await supabase.auth.getUser();
-
+    const updatedSetting = {
+      value,
+      updated_at: new Date().toISOString(),
+      updated_by: userData.user?.id || null,
+    };
     const { error } = await supabase
       .from("site_settings")
-      .update({
-        value,
-        updated_at: new Date().toISOString(),
-        updated_by: userData.user?.id || null,
-      })
+      .update(key === "navigation.show_pricing" ? { ...updatedSetting, is_public: true } : updatedSetting)
       .eq("key", key);
 
     if (error) {

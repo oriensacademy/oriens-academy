@@ -1,7 +1,7 @@
 "use client";
 
 import { FaEnvelope, FaInstagram, FaWhatsapp } from "react-icons/fa6";
-import { Phone } from "lucide-react";
+import { LockKeyhole, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { LanguageSwitch } from "./LanguageSwitch";
@@ -61,6 +61,23 @@ export function Footer() {
                 </a>
               </li>)}
             </ul>
+        </>
+      }
+      security={
+        <>
+          <h2 className="text-xs font-bold tracking-[0.18em] text-ink uppercase">{isTr ? "Adres ve Güvenlik" : "Address & Security"}</h2>
+          <address className="mt-4 flex items-start gap-2 text-sm not-italic leading-relaxed text-ink/75">
+            <MapPin className="mt-0.5 size-4 shrink-0 text-brand-accent" aria-hidden="true" />
+            <span>{CONTACT.businessAddress[locale]}</span>
+          </address>
+          <div className="mt-4 rounded-xl border border-border bg-surface-muted p-3">
+            <p className="flex items-center gap-2 text-xs font-semibold text-ink"><LockKeyhole className="size-4 text-brand-accent" aria-hidden="true" />{isTr ? "Güvenli Ödeme" : "Secure Payment"}</p>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              {isTr
+                ? "Bağlantılar SSL ile korunur. Kartlı ödeme etkinleştirildiğinde, desteklenen işlemlerde bankanın barındırdığı doğrulama ve 3D Secure akışı kullanılır."
+                : "Connections are protected by SSL. Once card payment is enabled, eligible transactions use bank-hosted verification and 3D Secure flows."}
+            </p>
+          </div>
         </>
       }
       language={

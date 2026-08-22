@@ -21,8 +21,10 @@ export type PublicPricingPackage = Pick<
   | "current_total"
   | "badge_tr"
   | "badge_en"
+  | "purchase_mode"
 >;
 export type BillingBasis = "session" | "month" | "custom";
+export type PurchaseMode = "consultation_only" | "purchasable";
 
 export interface PricingDetailsInput {
   name_tr?: string | null;
@@ -36,6 +38,7 @@ export interface PricingDetailsInput {
   current_total?: number | null;
   badge_tr?: string | null;
   badge_en?: string | null;
+  purchase_mode?: PurchaseMode;
 }
 
 export interface CreatePricingPackageInput extends PricingDetailsInput {
@@ -68,7 +71,7 @@ export async function getPublicPricingPackages(): Promise<PublicPricingPackage[]
     if (!supabaseUrl || !publishableKey) return [];
 
     const query = new URLSearchParams({
-      select: "id,price_amount,currency,active,featured,display_order,name_tr,name_en,description_tr,description_en,lesson_count,discount_percentage,unit_price,old_total,current_total,badge_tr,badge_en",
+      select: "id,price_amount,currency,active,featured,display_order,name_tr,name_en,description_tr,description_en,lesson_count,discount_percentage,unit_price,old_total,current_total,badge_tr,badge_en,purchase_mode",
       active: "eq.true",
       order: "display_order.asc",
     });
@@ -160,6 +163,7 @@ export async function createAdminPricingPackage(
       current_total: input.current_total ?? input.price_amount,
       badge_tr: input.badge_tr || null,
       badge_en: input.badge_en || null,
+      purchase_mode: input.purchase_mode ?? "consultation_only",
     };
 
     const { data, error } = await supabase

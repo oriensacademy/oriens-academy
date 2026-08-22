@@ -1053,6 +1053,8 @@ export type Database = {
           slot_id: string | null
           source: string | null
           status: string
+          student_user_id: string | null
+          appointment_subject: string | null
           updated_at: string
         }
         Insert: {
@@ -1070,6 +1072,8 @@ export type Database = {
           slot_id?: string | null
           source?: string | null
           status?: string
+          student_user_id?: string | null
+          appointment_subject?: string | null
           updated_at?: string
         }
         Update: {
@@ -1087,6 +1091,8 @@ export type Database = {
           slot_id?: string | null
           source?: string | null
           status?: string
+          student_user_id?: string | null
+          appointment_subject?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1195,6 +1201,153 @@ export type Database = {
         }
         Relationships: []
       }
+      student_profiles: {
+        Row: { id: string; full_name: string; email: string; phone: string | null; date_of_birth: string | null; preferred_language: string; school: string | null; target_country: string | null; target_university: string | null; target_exam: string | null; active: boolean; created_at: string; updated_at: string }
+        Insert: { id: string; full_name: string; email: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_university?: string | null; target_exam?: string | null; active?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: string; full_name?: string; email?: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_university?: string | null; target_exam?: string | null; active?: boolean; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      student_admin_notes: {
+        Row: { id: string; student_user_id: string; note: string; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; student_user_id: string; note: string; created_by: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; student_user_id?: string; note?: string; created_by?: string; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      student_lessons: {
+        Row: { id: string; student_user_id: string; booking_id: string | null; package_purchase_id: string | null; title: string; subject: string; exam_code: string | null; lesson_date: string; duration_minutes: number; status: string; teacher_note: string | null; created_at: string }
+        Insert: { id?: string; student_user_id: string; booking_id?: string | null; package_purchase_id?: string | null; title: string; subject: string; exam_code?: string | null; lesson_date: string; duration_minutes: number; status?: string; teacher_note?: string | null; created_at?: string }
+        Update: { id?: string; student_user_id?: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; created_at?: string }
+        Relationships: []
+      }
+      student_homework: {
+        Row: { id: string; student_user_id: string; lesson_id: string | null; title: string; description: string; due_date: string | null; status: string; submission_text: string | null; submitted_at: string | null; teacher_feedback: string | null; assignment_file_url: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; student_user_id: string; lesson_id?: string | null; title: string; description: string; due_date?: string | null; status?: string; submission_text?: string | null; submitted_at?: string | null; teacher_feedback?: string | null; assignment_file_url?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; student_user_id?: string; lesson_id?: string | null; title?: string; description?: string; due_date?: string | null; status?: string; submission_text?: string | null; submitted_at?: string | null; teacher_feedback?: string | null; assignment_file_url?: string | null; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          id: string
+          student_user_id: string | null
+          package_id: string
+          public_reference: string
+          status_token_hash: string
+          provider: string
+          provider_transaction_id: string | null
+          amount: number
+          currency: string
+          status: string
+          payment_method: string
+          installment_count: number | null
+          payer_name: string | null
+          payer_email: string | null
+          payer_phone: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+          paid_at: string | null
+        }
+        Insert: {
+          id?: string
+          student_user_id?: string | null
+          package_id: string
+          public_reference: string
+          status_token_hash: string
+          provider: string
+          provider_transaction_id?: string | null
+          amount: number
+          currency: string
+          status?: string
+          payment_method: string
+          installment_count?: number | null
+          payer_name?: string | null
+          payer_email?: string | null
+          payer_phone?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+          paid_at?: string | null
+        }
+        Update: {
+          id?: string
+          student_user_id?: string | null
+          package_id?: string
+          public_reference?: string
+          status_token_hash?: string
+          provider?: string
+          provider_transaction_id?: string | null
+          amount?: number
+          currency?: string
+          status?: string
+          payment_method?: string
+          installment_count?: number | null
+          payer_name?: string | null
+          payer_email?: string | null
+          payer_phone?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+          paid_at?: string | null
+        }
+        Relationships: []
+      }
+      student_package_purchases: {
+        Row: {
+          id: string
+          student_user_id: string | null
+          package_id: string
+          payment_transaction_id: string | null
+          lesson_count: number
+          lessons_used: number
+          start_date: string
+          end_date: string | null
+          status: string
+          created_at: string
+          price_amount: number | null
+          currency: string
+          payment_status: string
+          assignment_source: string
+          assigned_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_user_id?: string | null
+          package_id: string
+          payment_transaction_id?: string | null
+          lesson_count: number
+          lessons_used?: number
+          start_date?: string
+          end_date?: string | null
+          status?: string
+          created_at?: string
+          price_amount?: number | null
+          currency?: string
+          payment_status?: string
+          assignment_source?: string
+          assigned_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_user_id?: string | null
+          package_id?: string
+          payment_transaction_id?: string | null
+          lesson_count?: number
+          lessons_used?: number
+          start_date?: string
+          end_date?: string | null
+          status?: string
+          created_at?: string
+          price_amount?: number | null
+          currency?: string
+          payment_status?: string
+          assignment_source?: string
+          assigned_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pricing_packages: {
         Row: {
           active: boolean
@@ -1215,6 +1368,7 @@ export type Database = {
           name_tr: string | null
           old_total: number | null
           price_amount: number | null
+          purchase_mode: string
           unit_price: number | null
           updated_at: string
           updated_by: string | null
@@ -1238,6 +1392,7 @@ export type Database = {
           name_tr?: string | null
           old_total?: number | null
           price_amount?: number | null
+          purchase_mode?: string
           unit_price?: number | null
           updated_at?: string
           updated_by?: string | null
@@ -1261,6 +1416,7 @@ export type Database = {
           name_tr?: string | null
           old_total?: number | null
           price_amount?: number | null
+          purchase_mode?: string
           unit_price?: number | null
           updated_at?: string
           updated_by?: string | null
@@ -1363,6 +1519,26 @@ export type Database = {
       }
       admin_update_booking_status: {
         Args: { p_booking_id: string; p_notes?: string; p_status: string }
+        Returns: Json
+      }
+      admin_update_student_profile: {
+        Args: { p_student_id: string; p_full_name: string; p_phone: string; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean }
+        Returns: Json
+      }
+      admin_create_student_booking: {
+        Args: { p_student_id: string; p_full_name: string; p_email: string; p_phone: string; p_exam: string; p_subject: string; p_starts_at: string; p_ends_at: string; p_privacy_consent: boolean; p_notes?: string; p_status?: string }
+        Returns: Json
+      }
+      admin_assign_student_package: {
+        Args: { p_student_id: string; p_package_id: string; p_start_date: string; p_end_date: string | null; p_lesson_count: number; p_price_amount: number; p_currency: string; p_payment_status?: string; p_payment_transaction_id?: string | null }
+        Returns: Json
+      }
+      admin_complete_student_appointment: {
+        Args: { p_booking_id: string; p_package_purchase_id: string | null; p_title: string; p_subject: string; p_exam_code: string; p_duration_minutes: number; p_teacher_note?: string }
+        Returns: Json
+      }
+      admin_review_bank_transfer: {
+        Args: { p_payment_id: string; p_decision: string }
         Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }

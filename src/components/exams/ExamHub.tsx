@@ -12,7 +12,7 @@ import {
   type ExamCode,
 } from "@/content/exams";
 import { useExamsContent, useLocale } from "@/content/locale-context";
-import { examDetailPath } from "@/lib/routes";
+import { examDetailPath, localizedPath } from "@/lib/routes";
 import { OriensLottie } from "@/components/ui/OriensLottie";
 import { CONTACT } from "@/config/contact";
 import { ThreeDExamCarousel, type ExamOverviewCard } from "@/components/ui/three-d-exam-carousel";
@@ -70,10 +70,13 @@ export function ExamHub() {
               <CompassMark size={24} interactive />
               <span>{page.heroNote}</span>
             </div>
+            <ButtonLink href={localizedPath("examTest", locale)} variant="outline" size="lg" directional className="mt-8 h-12 px-5 text-sm">
+              {locale === "tr" ? "Kendini Dene" : "Test Yourself"}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />
+            </ButtonLink>
           </div>
 
           <div className="relative mx-auto w-full max-w-[500px] lg:col-span-5">
-            <div className="rounded-[2rem] border border-border bg-[#F6F8F3] p-3 sm:p-5">
+            <div className="rounded-[2rem] border border-border bg-background p-3 sm:p-5">
               <OriensLottie
                 src="/animations/exams-preparation.lottie"
                 speed={0.9}
