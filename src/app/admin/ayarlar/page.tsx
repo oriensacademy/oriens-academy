@@ -389,8 +389,9 @@ function SettingsContent() {
                 <span>Korumalı Sistem Anahtarları</span>
               </div>
               <p className="mt-0.5 text-[11px]">
-                API anahtarları, Resend API key, Turnstile secret key ve veritabanı şifreleri site ayarları panelinden hariç tutulmuştur ve yalnızca güvenli ortam değişkenlerinde (Supabase / Netlify env) saklanır.
+                API anahtarları, e-posta sağlayıcı kimlikleri, Turnstile secret key ve veritabanı şifreleri site ayarları panelinden hariç tutulmuştur ve yalnızca güvenli ortam değişkenlerinde (Supabase / Cloudflare env) saklanır.
               </p>
+
             </div>
           </div>
         </div>

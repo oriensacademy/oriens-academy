@@ -132,7 +132,7 @@ function NotificationsContent() {
             <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Alıcı e-posta veya Resend ID…"
+              placeholder="Alıcı e-posta veya Mesaj ID…"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -141,6 +141,7 @@ function NotificationsContent() {
               className="w-full rounded-lg border border-input bg-white pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#10271B] focus:outline-hidden"
             />
           </div>
+
 
           {/* Status Dropdown */}
           <div>

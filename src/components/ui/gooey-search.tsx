@@ -7,7 +7,10 @@ import { useRouter } from "next/navigation";
 import { useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 
+import { retrieveSearchResultsFromDatabase } from "@/lib/search/db-retrieval-service";
+
 export type SearchResultType = "UNIVERSITY" | "PROGRAM" | "COUNTRY" | "QUALIFICATION";
+
 
 export interface SearchResultItem {
   id: string;
@@ -107,30 +110,28 @@ export function GooeySearchBar() {
   const currentPlaceholder =
     rotatingPlaceholders[placeholderIndex] || (currentLocale === "tr" ? "Üniversite veya sınav ara..." : "Search universities or exams...");
 
-  // Fetch API results with AbortController for race condition safety
+  // Fetch results directly from Supabase RPC via retrieval service
   useEffect(() => {
     const query = debouncedSearchText.trim();
     if (!query) return;
 
-    const controller = new AbortController();
+    let isSubscribed = true;
     queueMicrotask(() => {
-      if (!controller.signal.aborted) {
+      if (isSubscribed) {
         setIsFetching(true);
         setIsError(false);
       }
     });
 
-    fetch(`/api/search/autocomplete?q=${encodeURIComponent(query)}`, {
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Search API HTTP Error");
-        const data: GroupedSearchResults = await res.json();
-        setSearchResults(data);
-        setIsFetching(false);
+    retrieveSearchResultsFromDatabase(query)
+      .then((data) => {
+        if (isSubscribed) {
+          setSearchResults(data);
+          setIsFetching(false);
+        }
       })
       .catch((err) => {
-        if (err.name !== "AbortError") {
+        if (isSubscribed) {
           console.error("[Search UI Error]:", err);
           setSearchResults(null);
           setIsError(true);
@@ -139,9 +140,10 @@ export function GooeySearchBar() {
       });
 
     return () => {
-      controller.abort();
+      isSubscribed = false;
     };
   }, [debouncedSearchText]);
+
 
   // Flatten items across groups for keyboard navigation
   const allItems = useMemo(() => {

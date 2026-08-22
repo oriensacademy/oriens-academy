@@ -4,18 +4,18 @@ Oriens Academy is a bilingual Turkish/English academic consultancy site with int
 
 ## Architecture
 
-- **Frontend/runtime:** Next.js 15 App Router, React 19, TypeScript and Tailwind CSS 4 on Netlify's Next.js runtime.
+- **Frontend/hosting:** Next.js 16 App Router, React 19, TypeScript and Tailwind CSS 4 hosted on **Cloudflare Pages** via Next.js static export (`out/`).
 - **Backend:** hosted Supabase PostgreSQL, Auth, Row Level Security (RLS), RPCs and Edge Functions.
-- **Email/security:** Resend transactional email and Cloudflare Turnstile.
+- **Email/security:** Google Mail (Google Workspace / Gmail API) transactional email and Cloudflare Turnstile.
 - **Content:** localized TypeScript dictionaries plus selected Supabase-managed records.
-- **Important:** this is not configured as a static export. Dynamic Next.js route handlers provide search and eligibility APIs.
+- **Static Export:** The frontend is pre-rendered as a fast, secure static export. Dynamic backend logic and mutations are handled directly by Supabase and Supabase Edge Functions.
 
 ```text
-Browser -> Netlify Next.js runtime -> public pages / Next route handlers
-   |                                  |
-   +-> Supabase public reads          +-> Supabase data/search
-   +-> Supabase Edge Functions -> Turnstile -> PostgreSQL/RPC -> Resend
-   +-> Supabase Auth + RLS (admin only)
+Browser -> Cloudflare Pages (Static Assets / Edge CDN) -> public pages & admin UI
+   |
+   +-> Supabase public reads / RPCs (search, availability, public settings)
+   +-> Supabase Edge Functions -> Turnstile verification -> PostgreSQL/RPC -> Google Mail
+   +-> Supabase Auth + RLS (student & admin authenticated access)
 ```
 
 See [Developer Handoff](docs/DEVELOPER_HANDOFF.md) for the detailed system model.
@@ -24,23 +24,23 @@ See [Developer Handoff](docs/DEVELOPER_HANDOFF.md) for the detailed system model
 
 | Area | Implementation |
 |---|---|
-| Web | Next.js 15.5, React 19, TypeScript 5 |
+| Web | Next.js 16, React 19, TypeScript 5 |
 | Styling | Tailwind CSS 4, shadcn-compatible local components, Base UI/Radix primitives |
 | Motion | Motion for React, CSS motion, DotLottie |
 | Data visualization | D3 geographic modules, Canvas, local GeoJSON |
 | Backend | Supabase PostgreSQL, Auth, RLS, Edge Functions |
-| Email / bot defense | Resend / Cloudflare Turnstile |
-| Hosting | Netlify Next.js runtime |
+| Email / bot defense | Google Mail (Gmail API / OAuth) / Cloudflare Turnstile |
+| Hosting / CDN | Cloudflare Pages |
 
 ## Project Structure
 
 ```text
-src/app/                 App Router pages, admin routes and runtime APIs
+src/app/                 App Router pages, TR/EN routes, student and admin routes
 src/components/          Public, admin, motion and UI component source
 src/content/             TR/EN content and exam metadata
 src/data/                Destination, university and visual mappings
 src/lib/                 Supabase, admin, search and admission-domain logic
-public/                  Runtime brand, animation and map assets
+public/                  Runtime brand, animation assets, _redirects and _headers
 supabase/functions/      Edge Functions and shared email/security code
 supabase/migrations/     Ordered PostgreSQL schema and policy history
 scripts/                 Maintained ingestion, local setup and regression tooling
@@ -50,7 +50,7 @@ docs/                    Canonical handoff and supporting technical records
 
 ## Quick Start
 
-Prerequisites: Node.js 20 (Netlify pins `20.18.0`), npm, and optionally Docker plus the Supabase CLI for local backend work.
+Prerequisites: Node.js 20+, npm, and optionally Docker plus the Supabase CLI for local backend work.
 
 ```bash
 npm install
@@ -58,7 +58,7 @@ copy .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000/tr/` or `/en/`. Configure only the variables required for the workflow being exercised. Never place service-role, Resend or Turnstile secrets in a `NEXT_PUBLIC_*` variable.
+Open `http://localhost:3000/tr/` or `/en/`. Configure only the variables required for the workflow being exercised. Never place service-role, Google Mail or Turnstile secrets in a `NEXT_PUBLIC_*` variable.
 
 ```bash
 npm run lint
@@ -66,15 +66,15 @@ npm run build
 npm audit --omit=dev
 ```
 
-The package manager is npm (`package-lock.json`). `npm run start` serves a completed Next.js build.
+The package manager is npm (`package-lock.json`). Static output is generated in `out/`.
 
 ## Environment Variables
 
-The safe, commented inventory is [.env.example](.env.example). Browser variables configure Supabase public access and Turnstile. Privileged variables belong in Netlify server configuration, local untracked files, or Supabase Edge Function secrets. Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to deployed functions.
+The safe, commented inventory is [.env.example](.env.example). Browser variables configure Supabase public access and Turnstile. Privileged variables belong in Supabase Edge Function secrets or local untracked files. Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to deployed functions.
 
 ## Public Routes and Internationalization
 
-The locale prefix is mandatory. Turkish is the default redirect target.
+The locale prefix is mandatory. Turkish is the default redirect target (`public/_redirects`).
 
 | Purpose | Turkish | English |
 |---|---|---|
@@ -93,15 +93,13 @@ Localized content is in `src/content/tr`, `src/content/en`, and shared records i
 
 ## UI, Brand and Interactive Components
 
-The implemented visual system uses an editorial ivory/sage palette, DM Serif Display headings, Inter body text and Manrope UI text. Runtime tokens are in `src/app/globals.css`; brand assets are in `public/brand`. The current implementation is documented in [Design System](docs/DESIGN_SYSTEM.md). Historical approved direction remains preserved under `design-system/oriens-academy`.
+The implemented visual system uses an editorial ivory/sage palette, DM Serif Display headings, Inter body text and Manrope UI text. Runtime tokens are in `src/app/globals.css`; brand assets are in `public/brand`. The current implementation is documented in [Design System](docs/DESIGN_SYSTEM.md).
 
-Motion includes the compass loader, route and locale transitions, reveal/stagger primitives, rotating hero text, phone and exam carousels, Lottie illustrations, counters and the D3/Canvas study-destination globe. See [Component References](docs/COMPONENT_REFERENCES.md) for restoration commands.
+Motion includes the compass loader, route and locale transitions, reveal/stagger primitives, rotating hero text, phone and exam carousels, Lottie illustrations, counters and the D3/Canvas study-destination globe.
 
 ## Admin Panel
 
 `/admin` is protected by Supabase Auth, a JWT `app_metadata.role = "admin"` check, an active `admin_profiles` row and RLS. Modules cover dashboard, appointments, students, contact requests, availability, pricing, testimonials/content, notification delivery, audit logs and settings. Credentials must be transferred separately through a secure channel.
-
-The auth provider is stable at the admin layout level. Internal navigation uses Next.js links; silent token refresh must not unmount open modals or reset filters. Local setup is documented in `docs/LOCAL_ADMIN_SETUP.md`.
 
 ## Supabase, RLS and Edge Functions
 
@@ -112,48 +110,36 @@ npm run local:supabase:start
 npm run local:reset
 ```
 
-Set explicit local administrator variables before `npm run local:admin:setup`. Link and deploy only when separately authorized:
+Deploy Edge Functions when authorized:
 
 ```bash
 npx supabase link --project-ref <PROJECT_REF>
 npx supabase db push
-npx supabase functions deploy <FUNCTION_NAME>
+npx supabase functions deploy create-booking
+npx supabase functions deploy create-contact
+npx supabase functions deploy admin-password-reset
+npx supabase functions deploy send-student-appointment
 ```
 
-Public mutations do not write PII tables directly. `create-booking` and `create-contact` validate Turnstile and use server credentials; booking uses an atomic reservation RPC. `booking-availability` returns a reduced future-slot DTO. `admin-password-reset` is Turnstile-, identity- and cooldown-protected. Detailed entities and boundaries are in [Developer Handoff](docs/DEVELOPER_HANDOFF.md).
+Public mutations do not write PII tables directly. `create-booking` and `create-contact` validate Turnstile and use server credentials; booking uses an atomic reservation RPC. `admin-password-reset` is Turnstile-, identity- and cooldown-protected.
 
 ## Transactional Email and Turnstile
 
-Email templates live in `supabase/functions/_shared/email/templates.ts`; dispatch/logging is in `email/service.ts`. Admin notifications include useful request data while student acknowledgements remain minimal. Delivery attempts are recorded in `notification_deliveries`, and provider failure does not roll back the originating request.
+Email templates live in `supabase/functions/_shared/email/templates.ts`; dispatch/logging is centralized in `supabase/functions/_shared/email/service.ts`. Transactional email is dispatched from the owner's Google Mail mailbox via the Google Gmail API (OAuth2) and logged to `notification_deliveries` with `provider: 'google_workspace'`.
 
-Turnstile protects booking, contact/consultation, quick-contact and admin password-recovery submissions. Production fails closed when the secret is absent. Configuration details remain in `docs/TURNSTILE_SETUP.md`.
-
-## Analytics and SEO
-
-GA4 and GTM are mounted only in the localized public layout; admin routes exclude them. Consent Mode v2 defaults storage to denied, and custom success events omit names, email, phone, messages and user IDs. Public identifiers are intentionally client-visible in the analytics components.
-
-SEO uses localized metadata, canonical URLs, TR/EN hreflang plus `x-default`, JSON-LD, generated robots and sitemap routes. Admin routes are `noindex` and disallowed in robots rules.
+Turnstile protects booking, contact/consultation, quick-contact and admin password-recovery submissions. Production fails closed when the secret is absent.
 
 ## Deployment
 
-Netlify runs `npm run build` using Node `20.18.0`. `netlify.toml` redirects `/` to `/tr/`, applies security/cache headers and uses the Netlify Next.js runtime. There is no `output: "export"`; the ignored `out/` directory is not a deployment source.
+Deployments to Cloudflare Pages are performed from `out/`:
 
-Do not push, deploy, alter DNS or run remote migrations without explicit release authorization. See `docs/NETLIFY_DEPLOYMENT.md` and [Developer Handoff](docs/DEVELOPER_HANDOFF.md).
+```bash
+npm run build
+npx wrangler pages deploy out --project-name oriens-academy --branch main
+```
 
-## Operational Maintenance
-
-Use the admin panel for routine appointments, leads, pricing, testimonials, delivery failures, audit records and site settings. Use Supabase for schema/function health and Netlify for build/runtime health. See [Maintenance](docs/MAINTENANCE.md).
-
-## Troubleshooting
-
-- Missing Supabase variables cause the browser client to fail immediately by design.
-- A form failing only in production commonly indicates Turnstile hostname/action or Edge Function secret configuration.
-- A stored request with failed email status should be investigated in `notification_deliveries`; do not resubmit the visitor record blindly.
-- Search APIs require the Netlify/Next runtime and database availability; they are not static files.
-- If an admin session authenticates but the UI rejects it, verify both JWT app metadata and the active admin profile.
+Host headers and redirects are governed by `public/_headers` and `public/_redirects`.
 
 ## Security and Handoff Notes
 
-Never commit real `.env` files, database passwords, service-role keys, Resend keys, Turnstile secrets, private keys or administrator passwords. Public Supabase publishable keys and analytics IDs are browser identifiers, not authorization boundaries; RLS and server-side controls remain mandatory.
-
-Transfer administrator credentials and access to Supabase, Netlify, the domain registrar/DNS provider, Resend, Cloudflare, GA/GTM and Search Console separately through secure channels. No credentials belong in this repository.
+Never commit real `.env` files, database passwords, service-role keys, Google credentials, Turnstile secrets, private keys or administrator passwords. Public Supabase publishable keys and analytics IDs are browser identifiers, not authorization boundaries; RLS and server-side controls remain mandatory.

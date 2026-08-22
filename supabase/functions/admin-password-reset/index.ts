@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
-import { renderAccountPasswordRecoveryEmail } from "../_shared/email/templates.ts";
+import { dispatchPasswordResetEmail } from "../_shared/email/service.ts";
 
 const RESET_ACTION = "admin_password_reset";
 const RESET_COOLDOWN_MS = 10 * 60 * 1000;
@@ -90,69 +90,6 @@ async function recordAudit(
   if (error) console.error("[admin-password-reset] Sanitized audit write failed.");
 }
 
-async function recordDelivery(
-  client: SupabaseClient,
-  requestId: string,
-  recipient: string,
-  status: "sent" | "failed",
-  providerMessageId?: string,
-  lastErrorCode?: string
-) {
-  const { error } = await client.from("notification_deliveries").insert({
-    channel: "email",
-    event_type: "account.password_reset",
-    entity_type: "account_auth",
-    entity_id: requestId,
-    recipient,
-    provider: "resend",
-    provider_message_id: providerMessageId ?? null,
-    status,
-    attempt_count: 1,
-    last_error_code: lastErrorCode ?? null,
-    sent_at: status === "sent" ? new Date().toISOString() : null,
-  });
-  if (error) console.error("[admin-password-reset] Sanitized delivery write failed.");
-}
-
-async function sendCredentialEmail(params: {
-  client: SupabaseClient;
-  requestId: string;
-  to: string;
-  password: string;
-  locale: Locale;
-  apiKey: string;
-  from: string;
-}): Promise<boolean> {
-  const template = renderAccountPasswordRecoveryEmail(params.to, params.password, params.locale);
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${params.apiKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": `admin-password-reset-${params.requestId}`,
-      },
-      body: JSON.stringify({
-        from: params.from,
-        to: [params.to],
-        subject: template.subject,
-        html: template.html,
-        text: template.text,
-      }),
-    });
-    const result = await response.json().catch(() => ({})) as { id?: string; name?: string };
-    if (!response.ok || !result.id) {
-      await recordDelivery(params.client, params.requestId, params.to, "failed", undefined, result.name ?? `HTTP_${response.status}`);
-      return false;
-    }
-    await recordDelivery(params.client, params.requestId, params.to, "sent", result.id);
-    return true;
-  } catch {
-    await recordDelivery(params.client, params.requestId, params.to, "failed", undefined, "NETWORK_ERROR");
-    return false;
-  }
-}
-
 Deno.serve(async (req: Request) => {
   const invalidRequest = validateMutationRequest(req, ["POST"]);
   if (invalidRequest) return invalidRequest;
@@ -183,9 +120,7 @@ Deno.serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
-  const from = Deno.env.get("RESEND_FROM_EMAIL") ?? "";
-  if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !from) {
+  if (!supabaseUrl || !serviceRoleKey) {
     console.error("[admin-password-reset] Required server configuration is missing.");
     return temporaryFailure(req);
   }
@@ -246,15 +181,15 @@ Deno.serve(async (req: Request) => {
   }
 
   const requestId = crypto.randomUUID();
-  const delivered = await sendCredentialEmail({
-    client,
+  const deliveryResult = await dispatchPasswordResetEmail({
+    supabaseAdmin: client,
     requestId,
     to: email,
-    password: temporaryPassword,
+    temporaryPassword,
     locale,
-    apiKey: resendApiKey,
-    from,
   });
+  const delivered = deliveryResult.status === "sent";
+
   await recordAudit(client, accountUser.id, email, delivered ? "sent" : "failed");
 
   if (!delivered) {

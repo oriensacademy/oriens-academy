@@ -147,7 +147,7 @@ export function NotificationDetailSheet({
 
                 {delivery.provider_message_id && (
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Resend Message ID:</span>
+                    <span className="text-muted-foreground">Mesaj ID (Message ID):</span>
                     <span className="font-mono text-[10px] text-muted-foreground">
                       {delivery.provider_message_id}
                     </span>
@@ -212,12 +212,13 @@ export function NotificationDetailSheet({
           <div className="rounded-xl border border-border bg-background-soft p-4 text-xs text-muted-foreground space-y-1">
             <div className="font-bold text-foreground flex items-center gap-1.5">
               <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-              <span>Güvenli E-Posta Yeniden Gönderim Politikası</span>
+              <span>Güvenli E-Posta Gönderim Politikası</span>
             </div>
             <p className="text-[11px] leading-relaxed">
-              Resend e-posta API anahtarları tarayıcı tarafına asla sunulmaz. Yeniden gönderim işlemleri güvenlik protokolü gereği yalnızca sunucu tarafı Supabase Edge Function workflows üzerinden yetkili olarak tetiklenir.
+              E-posta ve kimlik doğrulama anahtarları tarayıcı tarafına asla sunulmaz. Tüm bildirim işlemleri güvenlik protokolü gereği yalnızca sunucu tarafı Supabase Edge Function workflows üzerinden yetkili olarak yönetilir.
             </p>
           </div>
+
         </div>
       </div>
     </div>
