@@ -70,6 +70,7 @@ export function CreateSlotModal({
   const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
+    const restoreDraft = () => {
     try {
       const raw = sessionStorage.getItem(AVAILABILITY_DRAFT_KEY);
       if (raw) {
@@ -99,6 +100,8 @@ export function CreateSlotModal({
     } finally {
       setDraftReady(true);
     }
+    };
+    queueMicrotask(restoreDraft);
   }, []);
 
   useEffect(() => {

@@ -20,7 +20,14 @@ export default function AdminStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const refresh = useCallback(async () => { setLoading(true); setError(""); const result = await listAdminStudents(); setStudents(result.data); setError(result.error || ""); setLoading(false); }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    let active = true;
+    listAdminStudents().then((result) => {
+      if (!active) return;
+      setStudents(result.data); setError(result.error || ""); setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
   const exams = useMemo(() => [...new Set(students.map((s) => s.targetExam).filter(Boolean) as string[])].sort(), [students]);
   const packages = useMemo(() => [...new Set(students.map((s) => s.activePackage?.name).filter(Boolean) as string[])].sort(), [students]);
   const visible = useMemo(() => { const query = search.trim().toLocaleLowerCase("tr-TR"); return students.filter((student) => {
@@ -36,7 +43,7 @@ export default function AdminStudentsPage() {
       <div className="hidden overflow-x-auto rounded-xl border border-border bg-white lg:block"><table className="w-full min-w-[1180px] text-left text-xs"><thead className="border-b border-border bg-background-soft text-[10px] uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-3">Öğrenci</th><th className="px-4 py-3">Hedef sınav</th><th className="px-4 py-3">Aktif paket</th><th className="px-4 py-3">Kalan ders</th><th className="px-4 py-3">Son randevu</th><th className="px-4 py-3">Sonraki randevu</th><th className="px-4 py-3">Durum</th><th/></tr></thead><tbody className="divide-y divide-border">{visible.map((student)=><tr key={student.id} onClick={()=>setSelected(student)} className="cursor-pointer hover:bg-background-soft/70"><td className="px-4 py-3"><strong className="block text-ink">{student.fullName}</strong><span className="text-[10px] text-muted-foreground">{student.email} · {student.phone || "Telefon yok"}</span></td><td className="px-4 py-3">{student.targetExam || "—"}</td><td className="px-4 py-3">{student.activePackage?.name || "—"}</td><td className="px-4 py-3 font-semibold">{student.activePackage ? Math.max(0,student.activePackage.lessonCount-student.activePackage.lessonsUsed) : "—"}</td><td className="px-4 py-3 text-muted-foreground">{formatDate(student.latestAppointment)}</td><td className="px-4 py-3 text-muted-foreground">{formatDate(student.nextAppointment,true)}</td><td className="px-4 py-3"><Status active={student.active}/></td><td className="px-4 py-3"><ChevronRight className="ml-auto size-4"/></td></tr>)}</tbody></table></div>
       <div className="grid gap-3 lg:hidden">{visible.map((student)=><button key={student.id} onClick={()=>setSelected(student)} className="rounded-xl border border-border bg-white p-4 text-left"><div className="flex justify-between gap-3"><div><strong className="block text-sm text-ink">{student.fullName}</strong><span className="text-[11px] text-muted-foreground">{student.email}<br/>{student.phone || "Telefon yok"}</span></div><Status active={student.active}/></div><div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 text-[11px]"><Datum label="Hedef" value={student.targetExam||"—"}/><Datum label="Paket" value={student.activePackage?.name||"—"}/><Datum label="Kalan ders" value={student.activePackage ? String(Math.max(0,student.activePackage.lessonCount-student.activePackage.lessonsUsed)) : "—"}/><Datum label="Sonraki randevu" value={formatDate(student.nextAppointment,true)}/></div></button>)}</div>
     </>}
-    <StudentDetailSheet student={selected} onClose={()=>setSelected(null)} onChanged={()=>void refresh()} onCreateBooking={()=>{setBookingStudent(selected);setSelected(null);}}/>
+    <StudentDetailSheet key={selected?.id || "closed"} student={selected} onClose={()=>setSelected(null)} onChanged={()=>void refresh()} onCreateBooking={()=>{setBookingStudent(selected);setSelected(null);}}/>
     {bookingStudent && <CreateBookingModal key={bookingStudent.id} isOpen initialName={bookingStudent.fullName} initialEmail={bookingStudent.email} initialPhone={bookingStudent.phone||""} initialStudentUserId={bookingStudent.userId} onClose={()=>setBookingStudent(null)} onCreated={()=>{setBookingStudent(null);void refresh();}}/>}
   </div>;
 }

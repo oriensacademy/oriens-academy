@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CalendarPlus, Mail, Phone, X } from "lucide-react";
 import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
 import { completeStudentAppointment, updateAdminStudentProfile } from "@/lib/admin/student-learning";
@@ -12,7 +12,6 @@ const tabs:{id:Tab;label:string}[]=[{id:"overview",label:"Genel"},{id:"profile",
 
 export function StudentDetailSheet({student,onClose,onCreateBooking,onChanged}:{student:StudentProfile|null;onClose:()=>void;onCreateBooking:()=>void;onChanged?:()=>void}){
   const[tab,setTab]=useState<Tab>("overview");const[message,setMessage]=useState("");
-  useEffect(()=>{setTab("overview");setMessage("");},[student?.id]);
   if(!student)return null;
   return <div className="fixed inset-0 z-50 flex justify-end"><button aria-label="Kapat" onClick={onClose} className="absolute inset-0 bg-forest/30 backdrop-blur-xs"/><aside className="relative z-10 h-full w-full overflow-y-auto border-l border-border bg-white shadow-2xl sm:max-w-3xl">
     <header className="sticky top-0 z-20 border-b border-border bg-white/95 p-4 backdrop-blur"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-bold text-ink">{student.fullName}</h2><p className="text-xs text-muted-foreground">{student.email} · {student.phone||"Telefon yok"}</p></div><button onClick={onClose} className="rounded-lg p-2 hover:bg-muted"><X className="size-4"/></button></div><nav aria-label="Öğrenci detay bölümleri" className="mt-4 flex gap-1 overflow-x-auto pb-1">{tabs.map((item)=><button key={item.id} onClick={()=>setTab(item.id)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${tab===item.id?"border-primary bg-primary text-primary-foreground":"border-border bg-white text-muted-foreground hover:bg-muted"}`}>{item.label}</button>)}</nav></header>

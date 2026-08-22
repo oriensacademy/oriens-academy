@@ -34,7 +34,7 @@ export function BookingCTA() {
   useEffect(() => {
     const packageId = new URLSearchParams(window.location.search).get("package");
     if (!packageId || !CONSULTATION_PACKAGE_IDS.has(packageId)) return;
-    setSelectedPackageId(packageId);
+    queueMicrotask(() => setSelectedPackageId(packageId));
     getPublicPricingPackages().then((packages) => {
       setSelectedPackage(packages.find((item) => item.id === packageId) || null);
     });

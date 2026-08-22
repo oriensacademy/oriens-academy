@@ -27,7 +27,7 @@ export function ExamTestPage() {
 
   useEffect(() => {
     const code = window.location.hash.slice(1).toUpperCase() as ExamCode;
-    if (code in examTests) setSelectedExam(code);
+    if (code in examTests) queueMicrotask(() => setSelectedExam(code));
   }, []);
 
   function start() { setAnswers({}); setIndex(0); setResult(null); setStage("test"); window.scrollTo({ top: 0, behavior: "smooth" }); }

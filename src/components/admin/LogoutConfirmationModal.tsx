@@ -16,7 +16,10 @@ export function LogoutConfirmationModal({ open, signingOut, onCancel, onConfirm 
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const signingOutRef = useRef(signingOut);
-  signingOutRef.current = signingOut;
+
+  useEffect(() => {
+    signingOutRef.current = signingOut;
+  }, [signingOut]);
 
   useEffect(() => {
     if (!open) return;
