@@ -1,5 +1,5 @@
 export function ExamTestProgress({ current, total, label }: { current: number; total: number; label: string }) {
-  const safeTotal = Math.max(1, Number.isFinite(total) ? total : 6);
+  const safeTotal = Math.max(1, Number.isFinite(total) ? total : 1);
   const safeCurrent = Math.max(0, Number.isFinite(current) ? current : 0);
   const percentage = Math.min(100, Math.max(0, Math.round((safeCurrent / safeTotal) * 100)));
 

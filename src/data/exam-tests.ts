@@ -37,10 +37,13 @@ export interface TopicResult {
 export interface TestResult {
   correct: number;
   incorrect: number;
+  unanswered: number;
   total: number;
   accuracy: number;
   topics: TopicResult[];
 }
+
+export const EXAM_TEST_QUESTION_COUNT = 6;
 
 const topicSequence = ["topic-a", "topic-b", "topic-c", "topic-a", "topic-b", "topic-c"] as const;
 const correctSequence: AnswerId[] = ["a", "b", "c", "d", "a", "b"];
@@ -78,7 +81,7 @@ function createQuestion(exam: ExamCode, index: number): ExamTestQuestion {
 }
 
 export const examTests: Record<ExamCode, ExamTest> = Object.fromEntries(
-  examCodes.map((exam) => [exam, { exam, questions: Array.from({ length: 6 }, (_, index) => createQuestion(exam, index)) }])
+  examCodes.map((exam) => [exam, { exam, questions: Array.from({ length: EXAM_TEST_QUESTION_COUNT }, (_, index) => createQuestion(exam, index)) }])
 ) as Record<ExamCode, ExamTest>;
 
 export function calculateTestResult(
@@ -89,13 +92,14 @@ export function calculateTestResult(
   const topicMap = new Map<string, TopicResult>();
   let correct = 0;
   let answered = 0;
-  const questions = test?.questions ?? [];
+  const questions = Array.isArray(test?.questions) ? test.questions.filter(Boolean) : [];
 
   for (const question of questions) {
     if (!question) continue;
     const selectedAnswer = answers[question.id];
-    if (selectedAnswer) answered += 1;
-    const isCorrect = Boolean(selectedAnswer && selectedAnswer === question.correctAnswer);
+    const isValidAnswer = question.answers.some((answer) => answer.id === selectedAnswer);
+    if (isValidAnswer) answered += 1;
+    const isCorrect = isValidAnswer && selectedAnswer === question.correctAnswer;
     if (isCorrect) correct += 1;
 
     const categoryKey = question.recommendationCategory || "topic-a";
@@ -115,13 +119,14 @@ export function calculateTestResult(
     topicMap.set(categoryKey, existing);
   }
 
-  const total = Math.max(1, questions.length);
-  const accuracy = questions.length > 0 ? Math.round((correct / total) * 100) : 0;
+  const total = questions.length;
+  const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
 
   return {
     correct,
-    incorrect: Math.max(0, questions.length - correct),
-    total: questions.length,
+    incorrect: Math.max(0, answered - correct),
+    unanswered: Math.max(0, total - answered),
+    total,
     accuracy: Math.min(100, Math.max(0, accuracy)),
     topics: Array.from(topicMap.values()),
   };

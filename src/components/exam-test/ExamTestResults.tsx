@@ -2,15 +2,15 @@ import type { TestResult } from "@/data/exam-tests";
 import { getExamTestCopy } from "@/content/exam-test";
 import type { Locale } from "@/content/dictionaries";
 
-export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { locale: Locale; result?: TestResult | null; onRetry: () => void; onChangeExam: () => void }) {
+export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { locale: Locale; result: TestResult; onRetry: () => void; onChangeExam: () => void }) {
   const copy = getExamTestCopy(locale);
-  const topics = Array.isArray(result?.topics) ? result.topics : [];
+  const topics = Array.isArray(result.topics) ? result.topics : [];
   const strong = topics.filter((topic) => (topic?.accuracy ?? 0) >= 80);
   const improve = topics.filter((topic) => (topic?.accuracy ?? 0) < 60);
-  const totalQuestions = result?.total ?? 6;
-  const correctCount = result?.correct ?? 0;
-  const incorrectCount = result?.incorrect ?? Math.max(0, totalQuestions - correctCount);
-  const rawAccuracy = result?.accuracy ?? 0;
+  const totalQuestions = Number.isFinite(result.total) ? Math.max(0, result.total) : 0;
+  const correctCount = Number.isFinite(result.correct) ? Math.max(0, result.correct) : 0;
+  const incorrectCount = Number.isFinite(result.incorrect) ? Math.max(0, result.incorrect) : 0;
+  const rawAccuracy = result.accuracy;
   const accuracy = Number.isFinite(rawAccuracy) ? Math.min(100, Math.max(0, Math.round(rawAccuracy))) : 0;
 
   const recommendation = accuracy >= 80
@@ -20,18 +20,18 @@ export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { loc
       : (copy?.performance?.foundation ?? "Temel tekrar önerilir.");
 
   return (
-    <div aria-live="polite">
+    <div aria-live="polite" data-testid="exam-result">
       <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
         {totalQuestions} {locale === "tr" ? "soruluk örnek test" : "question sample test"}
       </p>
       <h2 className="mt-3 text-3xl text-ink md:text-4xl">{copy?.resultsTitle ?? "Sonuç Analizi"}</h2>
       <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-4">
         {[
-          [copy?.correct ?? "Doğru", `${correctCount} / ${totalQuestions}`],
-          [copy?.incorrect ?? "Yanlış", `${incorrectCount} / ${totalQuestions}`],
-          [copy?.accuracy ?? "Başarı Oranı", `${accuracy}%`],
-        ].map(([label, value]) => (
-          <div key={label} className="rounded-xl border border-border bg-surface-muted p-3 sm:p-5">
+          ["correct", copy?.correct ?? "Doğru", `${correctCount} / ${totalQuestions}`],
+          ["incorrect", copy?.incorrect ?? "Yanlış", `${incorrectCount} / ${totalQuestions}`],
+          ["accuracy", copy?.accuracy ?? "Başarı Oranı", `${accuracy}%`],
+        ].map(([id, label, value]) => (
+          <div key={id} data-testid={`exam-result-${id}`} className="rounded-xl border border-border bg-surface-muted p-3 sm:p-5">
             <div className="text-[11px] font-semibold text-muted-foreground sm:text-xs">{label}</div>
             <div className="mt-2 font-heading text-2xl text-ink sm:text-3xl">{value}</div>
           </div>

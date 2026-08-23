@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/normalize-next-static-rsc.mjs",
     "start": "next start",
     "lint": "eslint",
     "test:search:api": "node scripts/search-api-regression.mjs",
     "test:search:browser": "node scripts/search-browser-qa.mjs",
+    "test:exam:browser": "node scripts/test-all-exam-scenarios.mjs",
     "local:supabase:start": "npx supabase start",
     "local:supabase:status": "npx supabase status",
     "local:admin:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-local-admin.ps1",

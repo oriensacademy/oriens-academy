@@ -42,14 +42,14 @@ await page.goto(`${base}/tr/kendini-dene`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(1200);
 check((await page.getByRole("radio").count()) === 12, "TR assessment does not list all 12 exams");
 await page.getByRole("button", { name: "Testi Başlat" }).click();
-for (let index = 0; index < 8; index += 1) {
+for (let index = 0; index < 6; index += 1) {
   await page.locator("fieldset input[type=radio]").first().check();
-  if (index < 7) await page.getByRole("button", { name: "Sonraki" }).click();
+  if (index < 5) await page.getByRole("button", { name: "Sonraki" }).click();
   else await page.getByRole("button", { name: "Testi Bitir" }).click();
 }
 const trBody = await page.locator("body").innerText();
-check(trBody.includes("2 / 8") && trBody.includes("25%"), "TR deterministic score is not 2/8 and 25%");
-check(trBody.includes("Konu A") && trBody.includes("1 / 3") && trBody.includes("Konu C") && trBody.includes("0 / 2"), "TR topic aggregation is incorrect");
+check(trBody.includes("2 / 6") && trBody.includes("33%"), "TR deterministic score is not 2/6 and 33%");
+check(trBody.includes("Konu A") && trBody.includes("1 / 2") && trBody.includes("Konu C") && trBody.includes("0 / 2"), "TR topic aggregation is incorrect");
 check(trBody.includes("Bu test yapısı örnek içerikle hazırlanmıştır."), "TR placeholder disclaimer is missing");
 
 await page.goto(`${base}/en/test-yourself`, { waitUntil: "domcontentloaded" });

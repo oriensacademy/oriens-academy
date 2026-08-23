@@ -1,148 +1,185 @@
+import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
-const BASE_URL = "http://localhost:3001";
+const QUESTION_COUNT = 6;
+const BASE_URL = (process.env.EXAM_TEST_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
+const SMOKE_ONLY = process.argv.includes("--smoke");
+const correctAnswers = ["a", "b", "c", "d", "a", "b"];
+const wrongAnswers = ["c", "d", "a", "b", "c", "d"];
+const mixedAnswers = ["a", "d", "c", "b", "a", "d"];
 
-async function runScenario(browser, { name, url, locale, selectExam, answerStrategy, testDoubleSubmit, testBack }) {
-  console.log(`\n--------------------------------------------------`);
-  console.log(`[SCENARIO] ${name}`);
-  console.log(`URL: ${url} | Locale: ${locale}`);
+function copy(locale) {
+  return locale === "tr"
+    ? { path: "/tr/kendini-dene/", start: "Testi Başlat", next: "Sonraki", finish: "Testi Bitir", result: "Sonuç Analizi", change: "Başka Sınav Seç" }
+    : { path: "/en/test-yourself/", start: "Start Test", next: "Next", finish: "Finish Test", result: "Result Analysis", change: "Choose Another Exam" };
+}
 
+async function observedPage(browser) {
   const page = await browser.newPage();
   const errors = [];
-  page.on("pageerror", (err) => errors.push(err.message || String(err)));
-  page.on("console", (msg) => {
-    if (msg.type() === "error") errors.push(msg.text());
+  const origin = new URL(BASE_URL).origin;
+
+  page.on("pageerror", (error) => errors.push(`pageerror: ${error.stack || error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console.error: ${message.text()}`);
+  });
+  page.on("requestfailed", (request) => {
+    const errorText = request.failure()?.errorText || "unknown";
+    if (new URL(request.url()).origin === origin && errorText !== "net::ERR_ABORTED") errors.push(`requestfailed: ${request.method()} ${request.url()} ${errorText}`);
+  });
+  page.on("response", (response) => {
+    if (new URL(response.url()).origin === origin && response.status() >= 400) errors.push(`response: ${response.status()} ${response.url()}`);
   });
 
-  try {
-    await page.goto(url, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(400);
+  return { page, errors };
+}
 
-    // Select custom exam if provided
-    if (selectExam) {
-      const examButton = page.locator(`button[role="radio"]`).filter({ hasText: selectExam }).first();
-      if (await examButton.count()) {
-        await examButton.click();
-        console.log(`Selected exam: ${selectExam}`);
-      }
-    }
+async function assertHealthy(page, errors, context) {
+  const body = await page.locator("body").innerText();
+  assert(!body.includes("This page couldn't load"), `${context}: global error boundary rendered`);
+  assert(!body.includes("Reload to try again"), `${context}: reload error UI rendered`);
+  assert.equal(errors.length, 0, `${context}: browser errors\n${errors.join("\n")}`);
+}
 
-    // Start Test
-    const startBtn = page.locator('button:has-text("Testi Başlat"), button:has-text("Start Test")');
-    await startBtn.click();
-    await page.waitForTimeout(300);
+async function openTest(page, locale) {
+  const labels = copy(locale);
+  const response = await page.goto(`${BASE_URL}${labels.path}`, { waitUntil: "domcontentloaded" });
+  assert(response?.ok(), `${locale}: initial document failed with ${response?.status()}`);
+  await page.getByRole("button", { name: labels.start, exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, labels.path);
+  return labels;
+}
 
-    // Answer questions
-    for (let q = 1; q <= 6; q++) {
-      let optionLetter = "a";
-      if (answerStrategy === "all_correct") {
-        const seq = ["a", "b", "c", "d", "a", "b"];
-        optionLetter = seq[q - 1];
-      } else if (answerStrategy === "all_wrong") {
-        const seq = ["c", "d", "a", "b", "c", "d"];
-        optionLetter = seq[q - 1];
-      } else if (answerStrategy === "mixed") {
-        optionLetter = q % 2 === 1 ? "a" : "c";
-      }
+async function startTest(page, labels, exam) {
+  if (exam) await page.getByRole("radio", { name: new RegExp(`^${exam}\\b`) }).click();
+  await page.getByRole("button", { name: labels.start, exact: true }).click();
+  await page.locator('input[type="radio"][value="a"]').waitFor();
+}
 
-      const optionLabel = page.locator("label").filter({ hasText: optionLetter }).first();
-      await optionLabel.click();
-      await page.waitForTimeout(150);
+async function answerCurrent(page, answer) {
+  await page.locator(`input[type="radio"][value="${answer}"]`).check();
+}
 
-      if (q < 6) {
-        const nextBtn = page.locator('button:has-text("Sonraki"), button:has-text("Next")');
-        await nextBtn.click();
-        await page.waitForTimeout(200);
+async function completeTest(page, labels, answers, doubleSubmit = false) {
+  assert.equal(answers.length, QUESTION_COUNT);
+  const routeBeforeSubmit = new URL(page.url()).pathname;
+
+  for (let index = 0; index < QUESTION_COUNT; index += 1) {
+    await answerCurrent(page, answers[index]);
+    if (index < QUESTION_COUNT - 1) {
+      await page.getByRole("button", { name: labels.next, exact: true }).click();
+    } else {
+      const finish = page.getByRole("button", { name: labels.finish, exact: true });
+      assert.equal(await finish.isEnabled(), true);
+      if (doubleSubmit) {
+        await finish.evaluate((button) => {
+          button.click();
+          button.click();
+        });
       } else {
-        const finishBtn = page.locator('button:has-text("Testi Bitir"), button:has-text("Finish Test")');
-        if (testDoubleSubmit) {
-          console.log("Testing rapid double submit on finish button...");
-          await finishBtn.click({ clickCount: 2, timeout: 5000 }).catch(() => {});
-        } else {
-          await finishBtn.click({ timeout: 5000 });
-        }
+        await finish.click();
       }
     }
+  }
 
-    await page.waitForTimeout(600);
+  await page.getByRole("heading", { name: labels.result, exact: true }).waitFor();
+  assert.equal(new URL(page.url()).pathname, routeBeforeSubmit, "result must remain on the static test route");
+}
 
-    // Verify Result page
-    const bodyContent = await page.textContent("body");
-    if (bodyContent.includes("This page couldn't load") || bodyContent.includes("Reload to try again")) {
-      throw new Error("GLOBAL ERROR BOUNDARY TRIGGERED!");
-    }
+async function assertResult(page, { correct, incorrect, accuracy }) {
+  const result = page.getByTestId("exam-result");
+  await result.waitFor();
+  assert.equal((await page.getByTestId("exam-result-correct").innerText()).split("\n").at(-1), `${correct} / ${QUESTION_COUNT}`);
+  assert.equal((await page.getByTestId("exam-result-incorrect").innerText()).split("\n").at(-1), `${incorrect} / ${QUESTION_COUNT}`);
+  assert.equal((await page.getByTestId("exam-result-accuracy").innerText()).split("\n").at(-1), `${accuracy}%`);
+  assert.equal(await result.locator("section").count() >= 4, true, "analysis and recommendation sections must render");
+}
 
-    const headingText = await page.locator("h2").first().textContent();
-    console.log(`Result Heading: ${headingText}`);
-
-    // Verify score display
-    const stats = await page.locator(".font-heading").allTextContents();
-    console.log(`Calculated Metrics: ${stats.slice(0, 3).join(" | ")}`);
-
-    if (testBack) {
-      console.log("Testing back/retry navigation...");
-      const retryBtn = page.locator('button:has-text("Yeniden Dene"), button:has-text("Try Again")').first();
-      await retryBtn.click();
-      await page.waitForTimeout(400);
-      console.log("✓ Successfully restarted test from result screen.");
-    }
-
-    if (errors.length > 0) {
-      console.error(`Scenario encountered errors:`, errors);
-      return false;
-    }
-
-    console.log(`✓ ${name} PASSED (0 Errors)`);
-    return true;
-  } catch (err) {
-    console.error(`Scenario FAILED with error:`, err);
-    return false;
+async function outcomeScenario(browser, name, locale, answers, expected, options = {}) {
+  const { page, errors } = await observedPage(browser);
+  try {
+    const labels = await openTest(page, locale);
+    await startTest(page, labels, options.exam);
+    await completeTest(page, labels, answers, options.doubleSubmit);
+    await assertResult(page, expected);
+    await assertHealthy(page, errors, name);
+    console.log(`PASS ${name}`);
   } finally {
     await page.close();
   }
 }
 
-async function runRefreshScenario(browser) {
-  console.log(`\n--------------------------------------------------`);
-  console.log(`[SCENARIO] TR: Page Refresh & Clean State Recovery`);
-  const page = await browser.newPage();
-  const errors = [];
-  page.on("pageerror", (err) => errors.push(err.message || String(err)));
-
+async function partialScenario(browser) {
+  const { page, errors } = await observedPage(browser);
   try {
-    await page.goto(`${BASE_URL}/tr/kendini-dene`, { waitUntil: "domcontentloaded" });
-    const startBtn = page.locator('button:has-text("Testi Başlat")');
-    await startBtn.click();
-    await page.waitForTimeout(300);
+    const labels = await openTest(page, "tr");
+    await startTest(page, labels);
+    assert.equal(await page.getByRole("button", { name: labels.next, exact: true }).isDisabled(), true, "0/6 must not advance");
 
-    // Answer 2 questions
-    for (let q = 1; q <= 2; q++) {
-      await page.locator("label").filter({ hasText: "a" }).first().click();
-      await page.locator('button:has-text("Sonraki")').click();
-      await page.waitForTimeout(200);
+    for (let index = 0; index < QUESTION_COUNT - 1; index += 1) {
+      await answerCurrent(page, correctAnswers[index]);
+      await page.getByRole("button", { name: labels.next, exact: true }).click();
     }
+    assert.equal(await page.getByRole("button", { name: labels.finish, exact: true }).isDisabled(), true, "5/6 must not submit");
+    await assertHealthy(page, errors, "partial answers");
+    console.log("PASS 0/6 and 5/6 submission blocking");
+  } finally {
+    await page.close();
+  }
+}
 
-    // Refresh page in middle of test
-    console.log("Refreshing page in the middle of active test session...");
+async function refreshScenario(browser, afterResult) {
+  const { page, errors } = await observedPage(browser);
+  try {
+    const labels = await openTest(page, "tr");
+    await startTest(page, labels);
+    if (afterResult) {
+      await completeTest(page, labels, correctAnswers);
+      await assertResult(page, { correct: 6, incorrect: 0, accuracy: 100 });
+    } else {
+      await answerCurrent(page, "a");
+      await page.getByRole("button", { name: labels.next, exact: true }).click();
+    }
     await page.reload({ waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(500);
+    await page.getByRole("button", { name: labels.start, exact: true }).waitFor();
+    assert.equal(await page.getByTestId("exam-result").count(), 0, "reload must recover to a clean selection state");
+    await assertHealthy(page, errors, afterResult ? "refresh after result" : "refresh before finish");
+    console.log(`PASS refresh ${afterResult ? "after result" : "before finish"}`);
+  } finally {
+    await page.close();
+  }
+}
 
-    const bodyContent = await page.textContent("body");
-    if (bodyContent.includes("This page couldn't load") || bodyContent.includes("Reload to try again")) {
-      throw new Error("GLOBAL ERROR BOUNDARY TRIGGERED ON REFRESH!");
-    }
+async function secondExamScenario(browser) {
+  const { page, errors } = await observedPage(browser);
+  try {
+    const labels = await openTest(page, "tr");
+    await startTest(page, labels);
+    await completeTest(page, labels, correctAnswers);
+    await page.getByRole("button", { name: labels.change, exact: true }).click();
+    await startTest(page, labels, "AP");
+    await completeTest(page, labels, wrongAnswers);
+    await assertResult(page, { correct: 0, incorrect: 6, accuracy: 0 });
+    await assertHealthy(page, errors, "second exam");
+    console.log("PASS second exam");
+  } finally {
+    await page.close();
+  }
+}
 
-    const restartedStart = page.locator('button:has-text("Testi Başlat")');
-    const isStartVisible = await restartedStart.isVisible();
-    console.log(`Start button cleanly visible after reload: ${isStartVisible}`);
-
-    if (!isStartVisible) throw new Error("Start button not visible after reload");
-
-    console.log(`✓ TR: Page Refresh & Recovery PASSED (0 Errors)`);
-    return true;
-  } catch (err) {
-    console.error(`Refresh scenario FAILED:`, err);
-    return false;
+async function navigationScenario(browser) {
+  const { page, errors } = await observedPage(browser);
+  try {
+    await page.goto(`${BASE_URL}/tr/`, { waitUntil: "domcontentloaded" });
+    const labels = await openTest(page, "tr");
+    await startTest(page, labels);
+    await completeTest(page, labels, mixedAnswers);
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    assert.equal(new URL(page.url()).pathname, "/tr/");
+    await page.goForward({ waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: labels.start, exact: true }).waitFor();
+    await assertHealthy(page, errors, "back and return");
+    console.log("PASS browser Back and return");
   } finally {
     await page.close();
   }
@@ -150,85 +187,25 @@ async function runRefreshScenario(browser) {
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
-  const results = [];
-
   try {
-    results.push(await runScenario(browser, {
-      name: "TR: 6/6 All Correct (100% Accuracy)",
-      url: `${BASE_URL}/tr/kendini-dene`,
-      locale: "tr",
-      answerStrategy: "all_correct",
-    }));
-
-    results.push(await runScenario(browser, {
-      name: "TR: 6/6 All Incorrect (0% Accuracy)",
-      url: `${BASE_URL}/tr/kendini-dene`,
-      locale: "tr",
-      answerStrategy: "all_wrong",
-    }));
-
-    results.push(await runScenario(browser, {
-      name: "TR: 6/6 Mixed Answers (50% Accuracy)",
-      url: `${BASE_URL}/tr/kendini-dene`,
-      locale: "tr",
-      answerStrategy: "mixed",
-    }));
-
-    results.push(await runScenario(browser, {
-      name: "EN: 6/6 All Correct (100% Accuracy)",
-      url: `${BASE_URL}/en/test-yourself`,
-      locale: "en",
-      answerStrategy: "all_correct",
-    }));
-
-    results.push(await runScenario(browser, {
-      name: "EN: 6/6 All Incorrect (0% Accuracy)",
-      url: `${BASE_URL}/en/test-yourself`,
-      locale: "en",
-      answerStrategy: "all_wrong",
-    }));
-
-    results.push(await runScenario(browser, {
-      name: "EN: 6/6 Mixed Answers (50% Accuracy)",
-      url: `${BASE_URL}/en/test-yourself`,
-      locale: "en",
-      answerStrategy: "mixed",
-    }));
-
-    results.push(await runScenario(browser, {
-      name: "TR: Rapid Double Submit & Retry Navigation",
-      url: `${BASE_URL}/tr/kendini-dene`,
-      locale: "tr",
-      answerStrategy: "all_correct",
-      testDoubleSubmit: true,
-      testBack: true,
-    }));
-
-    results.push(await runRefreshScenario(browser));
-
-    results.push(await runScenario(browser, {
-      name: "TR: Different Exam (AP)",
-      url: `${BASE_URL}/tr/kendini-dene`,
-      locale: "tr",
-      selectExam: "AP",
-      answerStrategy: "all_correct",
-    }));
-
-    results.push(await runScenario(browser, {
-      name: "EN: Different Exam (IB)",
-      url: `${BASE_URL}/en/test-yourself`,
-      locale: "en",
-      selectExam: "IB",
-      answerStrategy: "all_correct",
-    }));
-
-    console.log("\n==================================================");
-    const allPassed = results.every(Boolean);
-    console.log(allPassed ? "ALL 10 EXAM TEST SCENARIOS PASSED WITH 0 ERRORS!" : "SOME SCENARIOS FAILED!");
-    console.log("==================================================");
+    await outcomeScenario(browser, "TR 6/6 all correct", "tr", correctAnswers, { correct: 6, incorrect: 0, accuracy: 100 });
+    if (SMOKE_ONLY) return;
+    await outcomeScenario(browser, "EN 6/6 all correct", "en", correctAnswers, { correct: 6, incorrect: 0, accuracy: 100 });
+    await outcomeScenario(browser, "all incorrect", "tr", wrongAnswers, { correct: 0, incorrect: 6, accuracy: 0 });
+    await outcomeScenario(browser, "mixed answers", "en", mixedAnswers, { correct: 3, incorrect: 3, accuracy: 50 });
+    await partialScenario(browser);
+    await outcomeScenario(browser, "double submit", "tr", correctAnswers, { correct: 6, incorrect: 0, accuracy: 100 }, { doubleSubmit: true });
+    await refreshScenario(browser, false);
+    await refreshScenario(browser, true);
+    await secondExamScenario(browser);
+    await navigationScenario(browser);
+    console.log("PASS all exam browser regression scenarios");
   } finally {
     await browser.close();
   }
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error(error.stack || error);
+  process.exitCode = 1;
+});

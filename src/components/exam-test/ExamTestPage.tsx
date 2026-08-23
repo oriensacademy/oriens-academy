@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import type { ExamCode } from "@/content/exams";
 import { examRecords } from "@/content/exams";
@@ -23,6 +23,7 @@ export function ExamTestPage() {
   const [answers, setAnswers] = useState<Record<string, AnswerId>>({});
   const [result, setResult] = useState<TestResult | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
+  const finishLock = useRef(false);
 
   const test = examTests[selectedExam] ?? examTests[examRecords[0].code] ?? { exam: "SAT" as ExamCode, questions: [] };
   const questions = Array.isArray(test.questions) ? test.questions : [];
@@ -43,6 +44,7 @@ export function ExamTestPage() {
   }, []);
 
   function start() {
+    finishLock.current = false;
     setAnswers({});
     setIndex(0);
     setResult(null);
@@ -54,7 +56,9 @@ export function ExamTestPage() {
   }
 
   function finish() {
-    if (isFinishing) return;
+    const allAnswered = questions.length > 0 && questions.every((question) => Boolean(answers[question.id]));
+    if (finishLock.current || !allAnswered) return;
+    finishLock.current = true;
     setIsFinishing(true);
     try {
       const computedResult = calculateTestResult(test, answers, locale);
@@ -68,14 +72,13 @@ export function ExamTestPage() {
       // Safe fallback result
       setResult({
         correct: 0,
-        incorrect: questions.length || 6,
-        total: questions.length || 6,
+        incorrect: 0,
+        unanswered: questions.length,
+        total: questions.length,
         accuracy: 0,
         topics: [],
       });
       setStage("result");
-    } finally {
-      setIsFinishing(false);
     }
   }
 
@@ -100,6 +103,7 @@ export function ExamTestPage() {
                 <button
                   type="button"
                   onClick={start}
+                  disabled={questions.length === 0}
                   className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-lg bg-ink px-6 py-3 text-sm font-semibold text-white hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
                 >
                   {copy.start}
@@ -164,7 +168,7 @@ export function ExamTestPage() {
               </>
             )}
 
-            {stage === "result" && (
+            {stage === "result" && result && (
               <ExamTestResults
                 locale={locale}
                 result={result}
