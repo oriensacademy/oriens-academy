@@ -101,6 +101,48 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    if (paymentMethod === "bank_transfer") {
+      try {
+        const { data: bankSettings } = await admin.from("site_settings").select("value").eq("key", "payment.bank_details").maybeSingle();
+        const bank = (bankSettings?.value as { bank_name?: string; iban?: string; account_holder?: string } | null) ?? {
+          bank_name: "Garanti BBVA",
+          iban: "TR12 0006 2000 0000 0000 00",
+          account_holder: "Oriens Danışmanlık ve Eğitim Ltd. Şti.",
+        };
+
+        const { dispatchBankTransferPendingEmail, dispatchAdminPaymentAlert } = await import("../_shared/email/service.ts");
+        Promise.allSettled([
+          dispatchBankTransferPendingEmail(admin, {
+            paymentReference: reference,
+            studentName: payerName,
+            studentEmail: payerEmail,
+            packageName: String(packageRow.id),
+            amount,
+            currency,
+            bankName: bank.bank_name || "Garanti BBVA",
+            iban: bank.iban || "TR12 0006 2000 0000 0000 00",
+            accountHolder: bank.account_holder || "Oriens Danışmanlık",
+            locale: locale === "tr" ? "tr" : "en",
+          }),
+          dispatchAdminPaymentAlert(admin, {
+            paymentReference: reference,
+            payerName,
+            payerEmail,
+            payerPhone,
+            packageName: String(packageRow.id),
+            amount,
+            currency,
+            paymentMethod: "bank_transfer",
+            status: "pending",
+            createdAt: new Date().toISOString(),
+            locale: locale === "tr" ? "tr" : "en",
+          }),
+        ]).catch((err) => console.error("[create-payment] Email dispatch background error:", err));
+      } catch (err) {
+        console.error("[create-payment] Failed to initiate email dispatch:", err);
+      }
+    }
+
     return buildJsonResponse({ success: true, reference, statusToken: token, status: "pending", paymentMethod }, 201, req);
   } catch {
     return buildJsonResponse({ error_code: "INTERNAL_ERROR", message: "Payment request could not be processed." }, 500, req);

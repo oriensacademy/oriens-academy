@@ -35,6 +35,41 @@ Deno.serve(async (req: Request) => {
     if (verified.status === "paid") {
       const { error: activationError } = await admin.rpc("activate_paid_package", { p_payment_id: transaction.id });
       if (activationError) return buildJsonResponse({ error_code: "PACKAGE_ACTIVATION_FAILED", message: "Payment verified; package activation requires review." }, 500, req);
+
+      try {
+        const { data: fullTx } = await admin.from("payment_transactions").select("id,public_reference,payer_name,payer_email,payer_phone,package_id,amount,currency,payment_method,metadata").eq("id", transaction.id).single();
+        if (fullTx?.payer_email) {
+          const { dispatchPaymentSuccessEmail, dispatchAdminPaymentAlert } = await import("../_shared/email/service.ts");
+          Promise.allSettled([
+            dispatchPaymentSuccessEmail(admin, {
+              paymentReference: fullTx.public_reference,
+              studentName: fullTx.payer_name || "Öğrenci",
+              studentEmail: fullTx.payer_email,
+              packageName: fullTx.package_id,
+              amountPaid: Number(fullTx.amount),
+              currency: fullTx.currency,
+              paymentMethod: fullTx.payment_method,
+              paidAt: new Date().toISOString(),
+              locale: (fullTx.metadata as Record<string, string>)?.locale === "en" ? "en" : "tr",
+            }),
+            dispatchAdminPaymentAlert(admin, {
+              paymentReference: fullTx.public_reference,
+              payerName: fullTx.payer_name || "Öğrenci",
+              payerEmail: fullTx.payer_email,
+              payerPhone: fullTx.payer_phone,
+              packageName: fullTx.package_id,
+              amount: Number(fullTx.amount),
+              currency: fullTx.currency,
+              paymentMethod: fullTx.payment_method,
+              status: "paid",
+              createdAt: new Date().toISOString(),
+              locale: (fullTx.metadata as Record<string, string>)?.locale === "en" ? "en" : "tr",
+            }),
+          ]).catch((err) => console.error("[payment-callback] Email dispatch background error:", err));
+        }
+      } catch (emailErr) {
+        console.error("[payment-callback] Failed to dispatch success email:", emailErr);
+      }
     }
     return buildJsonResponse({ success: true }, 200, req);
   } catch {

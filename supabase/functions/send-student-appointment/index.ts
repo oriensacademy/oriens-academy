@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
-import { dispatchBookingEmails } from "../_shared/email/service.ts";
+import { dispatchBookingEmails, dispatchAppointmentConfirmedEmails } from "../_shared/email/service.ts";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 Deno.serve(async(req:Request)=>{
@@ -17,6 +17,36 @@ Deno.serve(async(req:Request)=>{
   if(error||!data)return buildJsonResponse({error_code:"BOOKING_NOT_FOUND"},404,req);
   const slot=Array.isArray(data.availability_slots)?data.availability_slots[0]:data.availability_slots;
   const {data:profile}=await admin.from("student_profiles").select("preferred_language").eq("id",data.student_user_id).maybeSingle();
-  await dispatchBookingEmails(admin,{bookingId:data.id,fullName:data.full_name,email:data.email,phone:data.phone,supportType:"exam_preparation",examCode:data.exam_code,customExam:data.custom_exam,startsAt:slot?.starts_at||null,endsAt:slot?.ends_at||null,locale:profile?.preferred_language==="en"?"en":"tr",notes:data.notes,status:data.status});
+  const locale = profile?.preferred_language === "en" ? "en" : "tr";
+
+  if (slot?.starts_at) {
+    await dispatchAppointmentConfirmedEmails(admin, {
+      appointmentId: data.id,
+      studentName: data.full_name,
+      studentEmail: data.email,
+      lessonTitle: data.exam_code ? `Sınav Hazırlığı (${data.exam_code.toUpperCase()})` : (data.custom_exam || "Birebir Akademik Danışmanlık"),
+      startsAt: slot.starts_at,
+      endsAt: slot.ends_at,
+      locationOrMeetingUrl: "https://oriens-academy.com/tr/hesabim",
+      notes: data.notes,
+      locale,
+    });
+  } else {
+    await dispatchBookingEmails(admin, {
+      bookingId: data.id,
+      fullName: data.full_name,
+      email: data.email,
+      phone: data.phone,
+      supportType: "exam_preparation",
+      examCode: data.exam_code,
+      customExam: data.custom_exam,
+      startsAt: null,
+      endsAt: null,
+      locale,
+      notes: data.notes,
+      status: data.status,
+    });
+  }
+
   return buildJsonResponse({success:true},200,req);
 });
