@@ -37,8 +37,9 @@ import {
   type StudentPayment,
 } from "@/lib/admin/student-learning";
 import type { Tables } from "@/types/database.types";
+import { listStudentExamAttempts, type StudentExamAttempt } from "@/lib/student/exam-history";
 
-export type LearningSection = "lessons" | "homework" | "packages" | "payments" | "notes";
+export type LearningSection = "lessons" | "homework" | "packages" | "payments" | "notes" | "exam_history";
 
 export function StudentLearningManager({
   userId,
@@ -163,6 +164,10 @@ export function StudentLearningManager({
         </p>
       </div>
     );
+  }
+
+  if (section === "exam_history") {
+    return <AdminExamHistoryPanel userId={userId} />;
   }
 
   return (
@@ -1585,3 +1590,190 @@ import { formatCurrency } from "@/lib/format/currency";
 function money(amount: number, currency: string) {
   return formatCurrency(amount, { currency, locale: "tr" });
 }
+
+function AdminExamHistoryPanel({ userId }: { userId: string }) {
+  const [attempts, setAttempts] = useState<StudentExamAttempt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedAttempt, setSelectedAttempt] = useState<StudentExamAttempt | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listStudentExamAttempts(userId).then((res) => {
+      if (!active) return;
+      setLoading(false);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setAttempts(res.data || []);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  if (loading) {
+    return <div className="p-4 text-xs text-muted-foreground animate-pulse">Sınav geçmişi yükleniyor...</div>;
+  }
+
+  if (error) {
+    return <Notice tone="error">{error}</Notice>;
+  }
+
+  if (attempts.length === 0) {
+    return <Empty>Bu öğrencinin tamamladığı kayıtlı bir değerlendirme / sınav bulunmuyor.</Empty>;
+  }
+
+  const total = attempts.length;
+  const avg = Math.round(attempts.reduce((s, a) => s + (a.accuracy || 0), 0) / total);
+
+  return (
+    <div className="space-y-4">
+      {/* Top Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-border bg-surface p-3 text-center">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase">Toplam Sınav</span>
+          <p className="text-lg font-bold text-ink mt-0.5">{total}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-3 text-center">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase">Ortalama Başarı</span>
+          <p className="text-lg font-bold text-ink mt-0.5">%{avg}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-3 text-center">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase">En Yüksek</span>
+          <p className="text-lg font-bold text-emerald-800 mt-0.5">%{Math.max(...attempts.map((a) => a.accuracy || 0))}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-3 text-center">
+          <span className="text-[11px] font-bold text-muted-foreground uppercase">Son Sınav</span>
+          <p className="text-xs font-semibold text-ink mt-1 truncate">{attempts[0]?.exam_code} ({new Date(attempts[0]?.completed_at).toLocaleDateString("tr-TR")})</p>
+        </div>
+      </div>
+
+      {/* Attempts List */}
+      <div className="divide-y divide-border rounded-xl border border-border bg-white overflow-hidden">
+        {attempts.map((att) => {
+          const acc = att.accuracy || 0;
+          const isStr = acc >= 75;
+          const isMod = acc >= 40 && acc < 75;
+          return (
+            <div key={att.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50">
+              <div className="flex items-start gap-3">
+                <span className="rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-1 text-xs font-bold uppercase">
+                  {att.exam_code}
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-xs text-ink">{att.exam_code} Kendini Dene</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isStr ? "bg-emerald-100 text-emerald-800" : isMod ? "bg-amber-100 text-amber-800" : "bg-rose-100 text-rose-800"}`}>
+                      %{acc} Başarı
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {new Date(att.completed_at).toLocaleString("tr-TR")} · {att.correct_count}/{att.total_questions} Doğru · {att.locale.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedAttempt(att)}
+                className="self-end sm:self-auto rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-ink hover:bg-slate-100 cursor-pointer"
+              >
+                Detayları İncele
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Admin Attempt Detail Modal */}
+      {selectedAttempt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Sınav Analiz Detayı</span>
+                <h3 className="text-xl font-bold text-ink mt-1">
+                  {selectedAttempt.exam_code} · {new Date(selectedAttempt.completed_at).toLocaleString("tr-TR")}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAttempt(null)}
+                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Score cards */}
+            <div className="grid grid-cols-3 gap-2.5 text-center">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
+                <span className="text-[10px] font-bold text-emerald-800 uppercase">Doğru</span>
+                <p className="text-lg font-bold text-emerald-950">{selectedAttempt.correct_count} / {selectedAttempt.total_questions}</p>
+              </div>
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-2.5">
+                <span className="text-[10px] font-bold text-rose-800 uppercase">Yanlış</span>
+                <p className="text-lg font-bold text-rose-950">{selectedAttempt.incorrect_count} / {selectedAttempt.total_questions}</p>
+              </div>
+              <div className="rounded-xl border border-primary/20 bg-sage-soft p-2.5">
+                <span className="text-[10px] font-bold text-primary uppercase">Başarı</span>
+                <p className="text-lg font-bold text-ink">%{selectedAttempt.accuracy}</p>
+              </div>
+            </div>
+
+            {/* Topic Breakdown */}
+            {selectedAttempt.topic_analysis?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-ink uppercase tracking-wider">Konu Dağılımı</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {selectedAttempt.topic_analysis.map((t) => (
+                    <div key={t.id || t.label} className="rounded-lg border border-border p-2 bg-slate-50 flex justify-between items-center">
+                      <span className="font-medium text-ink">{t.label}</span>
+                      <span className="font-bold text-primary">%{t.accuracy} ({t.correct}/{t.total})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Question Breakdown */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-ink uppercase tracking-wider">Soru Detayları</h4>
+              <div className="space-y-2.5">
+                {(selectedAttempt.question_snapshots || []).map((q, idx) => (
+                  <div key={q.id || idx} className="rounded-xl border border-border p-3 text-xs space-y-1.5 bg-slate-50">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-ink">Soru {idx + 1} ({q.topicLabel})</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${q.wasCorrect ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
+                        {q.wasCorrect ? "✓ Doğru" : "✕ Yanlış"}
+                      </span>
+                    </div>
+                    <p className="text-ink text-[11px]">{q.prompt}</p>
+                    <div className="text-[11px] text-muted-foreground bg-white p-2 rounded border border-border space-y-0.5">
+                      <div><strong>Öğrenci Cevabı:</strong> <span className={q.wasCorrect ? "text-emerald-700 font-semibold" : "text-rose-700 font-semibold"}>{q.selectedAnswer || "Boş"}</span></div>
+                      {!q.wasCorrect && <div><strong>Doğru Cevap:</strong> <span className="text-emerald-700 font-semibold">{q.correctAnswer}</span></div>}
+                      {q.explanation && <div className="pt-1 text-[10px] border-t border-border mt-1"><strong>Açıklama:</strong> {q.explanation}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-border flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedAttempt(null)}
+                className="rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

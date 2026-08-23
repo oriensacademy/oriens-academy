@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { localizedPath } from "@/lib/routes";
@@ -14,11 +14,12 @@ import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { getStudentPortalData, submitStudentHomework, updateStudentProfile, type StudentHomeworkRow, type StudentPortalData } from "@/lib/student/data";
 import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
+import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { cn } from "@/lib/utils";
 
-const sectionIds = ["overview", "profile", "appointments", "lessons", "homework", "package", "payments", "support"] as const;
+const sectionIds = ["overview", "profile", "appointments", "lessons", "homework", "package", "payments", "exam_history", "support"] as const;
 type SectionId = typeof sectionIds[number];
-const icons = [LayoutDashboard, UserRound, CalendarDays, BookOpen, ClipboardList, Package, CreditCard, MessageCircle];
+const icons = [LayoutDashboard, UserRound, CalendarDays, BookOpen, ClipboardList, Package, CreditCard, Award, MessageCircle];
 
 export function StudentPortal() {
   const locale = useLocale(); const copy = getStudentCopy(locale); const router = useRouter();
@@ -28,6 +29,25 @@ export function StudentPortal() {
   const navigatedRef = useRef(false);
   const loadedUserRef = useRef("");
   const load = useCallback(async (id: string) => { setLoading(true); const result = await getStudentPortalData(id); setLoading(false); if (result.error || !result.data?.profile.active) { setError(result.error || "INACTIVE_PROFILE"); return; } setData(result.data); }, []);
+
+  // Claim pending exam result if token exists in sessionStorage
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const claimToken = sessionStorage.getItem("oriens.pendingExamClaimToken");
+        if (claimToken) {
+          claimAnonymousExamResult(claimToken).then((res) => {
+            if (res.success) {
+              sessionStorage.removeItem("oriens.pendingExamClaimToken");
+              sessionStorage.removeItem("oriens.pendingSignupEmail");
+            }
+          });
+        }
+      }
+    } catch {
+      // safe fallback
+    }
+  }, []);
 
   useEffect(() => {
     if (isInitializing || navigatedRef.current) return;
@@ -45,7 +65,7 @@ export function StudentPortal() {
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Öğrenci Hesabı" : "Student Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {data.profile.full_name.split(" ")[0]}</h1></div><div className="flex gap-2"><button onClick={() => load(userId)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><RefreshCw className="size-4" />{locale === "tr" ? "Yenile" : "Refresh"}</button><button onClick={logout} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></div></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={userId} locale={locale} />}</main>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "exam_history" && <ExamHistoryView userId={userId} locale={locale} />}{section === "support" && <SupportSection userId={userId} locale={locale} />}</main>
     </div>
   </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 overflow-x-auto border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="mx-auto flex min-w-max justify-center gap-1">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px]", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</div></nav></section>;
 }
@@ -1107,3 +1127,337 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
     </div>
   );
 }
+
+function ExamHistoryView({ userId, locale }: { userId: string; locale: "tr" | "en" }) {
+  const isTr = locale === "tr";
+  const [attempts, setAttempts] = useState<StudentExamAttempt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedAttempt, setSelectedAttempt] = useState<StudentExamAttempt | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listStudentExamAttempts(userId).then((res) => {
+      if (!active) return;
+      setLoading(false);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setAttempts(res.data || []);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  // Aggregate metrics
+  const totalExams = attempts.length;
+  const avgAccuracy = totalExams > 0
+    ? Math.round(attempts.reduce((sum, a) => sum + (a.accuracy || 0), 0) / totalExams)
+    : 0;
+  const highestAccuracy = totalExams > 0
+    ? Math.max(...attempts.map((a) => a.accuracy || 0))
+    : 0;
+  const latestExam = attempts[0] || null;
+
+  if (loading) {
+    return (
+      <Panel title={isTr ? "Sınav Geçmişi" : "Exam History"}>
+        <div className="space-y-4 animate-pulse">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 rounded-2xl bg-surface-muted" />
+            ))}
+          </div>
+          <div className="h-48 rounded-2xl bg-surface-muted" />
+        </div>
+      </Panel>
+    );
+  }
+
+  if (error) {
+    return (
+      <Panel title={isTr ? "Sınav Geçmişi" : "Exam History"}>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">
+          {error}
+        </div>
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Panel title={isTr ? "Sınav Geçmişi" : "Exam History"}>
+        {totalExams === 0 ? (
+          <div className="py-12 text-center space-y-4">
+            <div className="size-16 rounded-full bg-[#EBF0E6] text-primary flex items-center justify-center mx-auto">
+              <Award className="size-8" />
+            </div>
+            <div>
+              <h3 className="font-heading text-xl text-ink">
+                {isTr ? "Henüz tamamladığınız bir sınav bulunmuyor." : "No completed exams yet."}
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
+                {isTr
+                  ? "Kendini Dene modülümüzü kullanarak seviyenizi ölçebilir ve detaylı konu analizinizi hemen görüntüleyebilirsiniz."
+                  : "Use our Test Yourself diagnostic to measure your readiness and receive instant topic-level analysis."}
+              </p>
+            </div>
+            <Link
+              href={isTr ? "/tr/kendini-dene" : "/en/test-yourself"}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white hover:bg-forest transition-colors"
+            >
+              <Award className="size-4" />
+              {isTr ? "Kendini Dene" : "Test Yourself"}
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Top 4 Summary Metrics */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric
+                label={isTr ? "Toplam Çözülen Sınav" : "Total Completed Exams"}
+                value={totalExams}
+              />
+              <Metric
+                label={isTr ? "Ortalama Başarı" : "Average Accuracy"}
+                value={`%${avgAccuracy}`}
+              />
+              <Metric
+                label={isTr ? "En Yüksek Başarı" : "Highest Accuracy"}
+                value={`%${highestAccuracy}`}
+              />
+              <Metric
+                label={isTr ? "Son Sınav" : "Latest Exam"}
+                value={latestExam ? `${latestExam.exam_code} (${fmt(latestExam.completed_at, locale)})` : "—"}
+              />
+            </div>
+
+            {/* Attempt List */}
+            <div className="space-y-3 pt-2">
+              <h3 className="text-sm font-bold text-ink">
+                {isTr ? "Tamamlanan Değerlendirmeler" : "Completed Assessments"}
+              </h3>
+
+              <div className="divide-y divide-border rounded-2xl border border-border bg-surface overflow-hidden">
+                {attempts.map((att) => {
+                  const acc = att.accuracy || 0;
+                  const isStrong = acc >= 75;
+                  const isModerate = acc >= 40 && acc < 75;
+                  const tierBadge = isStrong
+                    ? (isTr ? "Güçlü" : "Strong")
+                    : isModerate
+                      ? (isTr ? "Geliştirilebilir" : "Developing")
+                      : (isTr ? "Öncelikli Alan" : "Priority Focus");
+
+                  const badgeColor = isStrong
+                    ? "bg-emerald-100 text-emerald-800"
+                    : isModerate
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-rose-100 text-rose-800";
+
+                  return (
+                    <article
+                      key={att.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-[#FAFBF9] transition-colors"
+                    >
+                      <div className="flex items-start gap-3.5">
+                        <div className="size-11 rounded-xl bg-sage-soft text-primary flex items-center justify-center shrink-0 font-extrabold text-xs uppercase tracking-wider">
+                          {att.exam_code}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-heading text-base font-bold text-ink">
+                              {att.exam_code} {isTr ? "Deneme Sınavı" : "Diagnostic Exam"}
+                            </h4>
+                            <span className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase ${badgeColor}`}>
+                              {tierBadge}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {fmt(att.completed_at, locale, true)} · {att.correct_count} / {att.total_questions} {isTr ? "Doğru" : "Correct"} (%{acc})
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAttempt(att)}
+                        className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 text-xs font-semibold text-ink hover:bg-surface-muted transition-colors cursor-pointer self-end sm:self-auto"
+                      >
+                        {isTr ? "Detayları Gör" : "View Details"}
+                        <ArrowRight className="size-3.5 text-primary" />
+                      </button>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </Panel>
+
+      {/* Selected Attempt Detail Modal */}
+      {selectedAttempt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-5">
+              <div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#EBF0E6] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-primary">
+                  <Award className="size-3.5" />
+                  {selectedAttempt.exam_code} {isTr ? "Sınav Raporu" : "Exam Report"}
+                </span>
+                <h3 className="mt-2 font-heading text-2xl text-ink">
+                  {selectedAttempt.exam_code} · {fmt(selectedAttempt.completed_at, locale, true)}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAttempt(null)}
+                className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Score & Accuracy Overview Cards */}
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3.5 text-center">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                  {isTr ? "Doğru" : "Correct"}
+                </span>
+                <p className="mt-0.5 text-xl font-extrabold text-emerald-950 sm:text-2xl">
+                  {selectedAttempt.correct_count} / {selectedAttempt.total_questions}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-3.5 text-center">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800">
+                  {isTr ? "Yanlış" : "Incorrect"}
+                </span>
+                <p className="mt-0.5 text-xl font-extrabold text-rose-950 sm:text-2xl">
+                  {selectedAttempt.incorrect_count} / {selectedAttempt.total_questions}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-3.5 text-center">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                  {isTr ? "Başarı Oranı" : "Accuracy"}
+                </span>
+                <p className="mt-0.5 text-xl font-extrabold text-ink sm:text-2xl">
+                  %{selectedAttempt.accuracy}
+                </p>
+              </div>
+            </div>
+
+            {/* Topic Breakdown */}
+            {selectedAttempt.topic_analysis && selectedAttempt.topic_analysis.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h4 className="text-sm font-bold text-ink">
+                  {isTr ? "Konu Bazlı Başarı Analizi" : "Topic Mastery Breakdown"}
+                </h4>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {selectedAttempt.topic_analysis.map((t) => {
+                    const acc = t.accuracy || 0;
+                    const isStr = acc >= 75;
+                    const isMod = acc >= 50 && acc < 75;
+                    return (
+                      <div key={t.id || t.label} className="rounded-xl border border-border bg-surface p-3 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-ink">{t.label}</span>
+                          <span className={`font-bold ${isStr ? "text-emerald-700" : isMod ? "text-amber-700" : "text-rose-700"}`}>
+                            %{acc} ({t.correct}/{t.total})
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${isStr ? "bg-emerald-600" : isMod ? "bg-amber-600" : "bg-rose-600"}`}
+                            style={{ width: `${acc}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Question Breakdown */}
+            <div className="mt-6 space-y-3">
+              <h4 className="text-sm font-bold text-ink">
+                {isTr ? "Soru ve Çözüm Detayları" : "Question Solutions"}
+              </h4>
+              <div className="space-y-3">
+                {(selectedAttempt.question_snapshots || []).map((q, idx) => (
+                  <div
+                    key={q.id || idx}
+                    className="rounded-2xl border border-border bg-surface p-4 space-y-2.5 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-ink">
+                        {isTr ? `Soru ${idx + 1}` : `Question ${idx + 1}`} · <span className="text-muted-foreground font-normal">{q.topicLabel}</span>
+                      </span>
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          q.wasCorrect ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                        }`}
+                      >
+                        {q.wasCorrect ? (isTr ? "✓ Doğru" : "✓ Correct") : (isTr ? "✕ Yanlış" : "✕ Incorrect")}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-ink/90 font-medium leading-relaxed">
+                      {q.prompt}
+                    </p>
+
+                    <div className="rounded-xl bg-surface-muted p-2.5 space-y-1 text-[11px]">
+                      <div>
+                        <strong>{isTr ? "Verdiğiniz Cevap:" : "Your Answer:"}</strong>{" "}
+                        <span className={q.wasCorrect ? "text-emerald-700 font-semibold" : "text-rose-700 font-semibold"}>
+                          {q.selectedAnswer || (isTr ? "Boş" : "Unanswered")}
+                        </span>
+                      </div>
+                      {!q.wasCorrect && (
+                        <div>
+                          <strong>{isTr ? "Doğru Cevap:" : "Correct Answer:"}</strong>{" "}
+                          <span className="text-emerald-700 font-semibold">{q.correctAnswer}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {q.explanation && (
+                      <p className="text-[11px] text-muted-foreground leading-relaxed pt-1 border-t border-border/60">
+                        <strong>{isTr ? "Açıklama:" : "Explanation:"}</strong> {q.explanation}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
+              <Link
+                href={isTr ? "/tr/randevu" : "/en/booking"}
+                className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors"
+              >
+                <CalendarDays className="size-4" />
+                {isTr ? "Ücretsiz Ön Görüşme Talep Et" : "Request Free Consultation"}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelectedAttempt(null)}
+                className="rounded-xl border border-border px-5 py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+              >
+                {isTr ? "Kapat" : "Close"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

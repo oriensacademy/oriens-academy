@@ -178,6 +178,7 @@ export function ExamTestPage() {
                 <ExamTestResults
                   locale={locale}
                   result={result}
+                  testData={test}
                   onRetry={start}
                   onChangeExam={() => {
                     finishLock.current = false;

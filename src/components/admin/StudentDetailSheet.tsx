@@ -17,6 +17,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "homework", label: "Ödevler" },
   { id: "packages", label: "Paketler" },
   { id: "payments", label: "Ödemeler" },
+  { id: "exam_history", label: "Sınav Geçmişi" },
   { id: "notes", label: "Notlar" },
 ];
 
@@ -94,10 +95,10 @@ export function StudentDetailSheet({
               }}
             />
           )}
-          {(["lessons", "homework", "packages", "payments", "notes"] as Tab[]).includes(tab) && student.userId && (
+          {(["lessons", "homework", "packages", "payments", "exam_history", "notes"] as Tab[]).includes(tab) && student.userId && (
             <StudentLearningManager userId={student.userId} section={tab as LearningSection} onChanged={onChanged} />
           )}
-          {(["lessons", "homework", "packages", "payments", "notes"] as Tab[]).includes(tab) && !student.userId && (
+          {(["lessons", "homework", "packages", "payments", "exam_history", "notes"] as Tab[]).includes(tab) && !student.userId && (
             <NoAccount />
           )}
         </div>

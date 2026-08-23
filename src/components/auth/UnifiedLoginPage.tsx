@@ -12,6 +12,7 @@ import { useAccount } from "@/lib/auth/account-context";
 import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routing";
 import { changePasswordPath, forgotPasswordPath, localizedPath } from "@/lib/routes";
 import { registerStudent } from "@/lib/student/auth";
+import { claimAnonymousExamResult } from "@/lib/student/exam-history";
 
 export function UnifiedLoginPage() {
   const locale = useLocale();
@@ -22,11 +23,23 @@ export function UnifiedLoginPage() {
 
   const [mode, setMode] = useState<"login" | "register">(() => {
     if (typeof window === "undefined") return "login";
+    try {
+      if (sessionStorage.getItem("oriens.pendingSignupEmail")) return "register";
+    } catch {
+      // safe fallback
+    }
     return window.location.pathname.includes("kayit") || window.location.pathname.includes("register")
       ? "register"
       : "login";
   });
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("oriens.pendingSignupEmail") || "";
+    } catch {
+      return "";
+    }
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -44,12 +57,27 @@ export function UnifiedLoginPage() {
   const navigatedRef = useRef(false);
   const requested = safeReturnPath(searchParams.get("next"));
 
-  // Check URL query to see if register mode is requested (e.g. from signup link)
+  // Check URL query for register mode
   useEffect(() => {
     if (searchParams.get("mode") === "register") {
       queueMicrotask(() => setMode("register"));
     }
   }, [searchParams]);
+
+  const tryClaimPendingResult = async () => {
+    try {
+      if (typeof window !== "undefined") {
+        const pendingClaimToken = sessionStorage.getItem("oriens.pendingExamClaimToken");
+        if (pendingClaimToken) {
+          await claimAnonymousExamResult(pendingClaimToken);
+          sessionStorage.removeItem("oriens.pendingExamClaimToken");
+          sessionStorage.removeItem("oriens.pendingSignupEmail");
+        }
+      }
+    } catch {
+      // safe fallback
+    }
+  };
 
   useEffect(() => {
     if (isInitializing || navigatedRef.current || !["admin", "student"].includes(accountType)) return;
@@ -79,6 +107,8 @@ export function UnifiedLoginPage() {
       setError(isTr ? "Bu hesap için aktif bir Oriens Academy profili bulunamadı." : "No active Oriens Academy profile was found for this account.");
       return;
     }
+
+    await tryClaimPendingResult();
 
     navigatedRef.current = true;
     const destination = result.user?.user_metadata?.force_password_change === true
@@ -127,6 +157,8 @@ export function UnifiedLoginPage() {
         );
         return;
       }
+
+      await tryClaimPendingResult();
 
       // If signUp returned an active session directly
       if (regResult.data?.session && regResult.data?.user) {

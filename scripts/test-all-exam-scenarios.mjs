@@ -11,7 +11,7 @@ const mixedAnswers = ["a", "d", "c", "b", "a", "d"];
 function copy(locale) {
   return locale === "tr"
     ? { path: "/tr/kendini-dene/", start: "Testi Başlat", next: "Sonraki", finish: "Testi Bitir", result: "Sonuç Analizi", change: "Başka Sınav Seç" }
-    : { path: "/en/test-yourself/", start: "Start Test", next: "Next", finish: "Finish Test", result: "Result Analysis", change: "Choose Another Exam" };
+    : { path: "/en/test-yourself/", start: "Start Diagnostic", next: "Next", finish: "Finish Test", result: "Diagnostic Breakdown", change: "Choose Another Exam" };
 }
 
 async function observedPage(browser) {
