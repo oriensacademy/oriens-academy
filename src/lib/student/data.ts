@@ -20,8 +20,11 @@ export interface StudentPortalData {
 
 export async function getStudentPortalData(userId: string): Promise<{ data: StudentPortalData | null; error: string | null }> {
   const supabase = getSupabaseClient();
-  const [profile, bookings, lessons, homework, purchases, payments, bankDetails] = await Promise.all([
+  const selectFrom = supabase.from as unknown as (table: string) => { select: (cols: string) => { eq: (col: string, val: string) => Promise<{ data: Array<Record<string, unknown>> | null }> } };
+  const [profile, examPrefs, destPrefs, bookings, lessons, homework, purchases, payments, bankDetails] = await Promise.all([
     supabase.from("student_profiles").select("*").eq("id", userId).maybeSingle(),
+    selectFrom("student_exam_preferences").select("exam_code").eq("student_user_id", userId),
+    selectFrom("student_destination_preferences").select("destination_code").eq("student_user_id", userId),
     supabase.from("bookings").select("id,status,exam_code,custom_exam,created_at,availability_slots(starts_at,ends_at)").eq("student_user_id", userId).order("created_at", { ascending: false }),
     supabase.from("student_lessons").select("*").eq("student_user_id", userId).order("lesson_date", { ascending: false }),
     supabase.from("student_homework").select("*").eq("student_user_id", userId).order("due_date", { ascending: true, nullsFirst: false }),
@@ -31,7 +34,35 @@ export async function getStudentPortalData(userId: string): Promise<{ data: Stud
   ]);
   const firstError = profile.error || bookings.error || lessons.error || homework.error || purchases.error || payments.error;
   if (firstError || !profile.data) return { data: null, error: firstError?.message || "STUDENT_PROFILE_NOT_FOUND" };
-  return { data: { profile: profile.data, bookings: (bookings.data || []) as unknown as StudentBooking[], lessons: lessons.data || [], homework: homework.data || [], purchases: (purchases.data || []) as unknown as StudentPurchase[], payments: payments.data || [], bankDetails }, error: null };
+
+  // Harmonize preferences across column arrays and relational tables
+  const profileRecord = profile.data as unknown as Record<string, unknown>;
+  const columnExams = Array.isArray(profileRecord.target_exams) ? (profileRecord.target_exams as string[]) : [];
+  const relExams = (examPrefs.data || []).map((r) => String(r.exam_code || ""));
+  const mergedExams = Array.from(new Set([...columnExams, ...relExams].filter(Boolean)));
+
+  const columnDests = Array.isArray(profileRecord.target_countries) ? (profileRecord.target_countries as string[]) : [];
+  const relDests = (destPrefs.data || []).map((r) => String(r.destination_code || ""));
+  const mergedDests = Array.from(new Set([...columnDests, ...relDests].filter(Boolean)));
+
+  const harmonizedProfile = {
+    ...profile.data,
+    target_exams: mergedExams.length > 0 ? mergedExams : (profile.data.target_exam ? [profile.data.target_exam] : []),
+    target_countries: mergedDests.length > 0 ? mergedDests : (profile.data.target_country ? [profile.data.target_country] : []),
+  };
+
+  return {
+    data: {
+      profile: harmonizedProfile as StudentProfileRow,
+      bookings: (bookings.data || []) as unknown as StudentBooking[],
+      lessons: lessons.data || [],
+      homework: homework.data || [],
+      purchases: (purchases.data || []) as unknown as StudentPurchase[],
+      payments: payments.data || [],
+      bankDetails,
+    },
+    error: null,
+  };
 }
 
 export type StudentProfileUpdate = Partial<StudentProfileRow> & {

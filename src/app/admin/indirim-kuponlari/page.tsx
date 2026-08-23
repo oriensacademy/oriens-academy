@@ -540,13 +540,13 @@ export default function AdminCouponsPage() {
                     className="mt-1.5 min-h-10 w-full rounded-xl border border-[#DDE4DC] px-3 text-xs outline-none focus:border-[#819586]"
                   >
                     <option value="percentage">Yüzdelik İndirim (%)</option>
-                    <option value="fixed">Sabit Tutar İndirimi (₺)</option>
+                    <option value="fixed">Sabit Tutar İndirimi (TL)</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-[#10271B]">
-                    {form.discount_type === "percentage" ? "İndirim Oranı (%)" : "İndirim Tutarı (₺)"}{" "}
+                    {form.discount_type === "percentage" ? "İndirim Oranı (%)" : "İndirim Tutarı (TL)"}{" "}
                     <span className="text-rose-600">*</span>
                   </label>
                   <input

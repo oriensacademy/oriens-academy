@@ -360,23 +360,16 @@ export function PaymentPage() {
 
               {packages.length > 0 ? (
                 <>
-                  <div className="mt-5">
-                    <label className="block text-xs font-semibold text-ink">
+                  <div className="mt-5 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {locale === "tr" ? "Seçilen Paket" : "Selected Package"}
-                    </label>
-                    <select
-                      value={selectedPackageId}
-                      onChange={(event) => setSelectedPackageId(event.target.value)}
-                      className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    </span>
+                    <Link
+                      href={localizedPath("pricing", locale)}
+                      className="text-xs font-semibold text-primary hover:underline"
                     >
-                      {packages.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {locale === "tr" ? item.name_tr : item.name_en} ({item.lesson_count}{" "}
-                          {locale === "tr" ? "Ders" : "Lessons"}) —{" "}
-                          {money(Number(item.current_total ?? item.price_amount), item.currency)}
-                        </option>
-                      ))}
-                    </select>
+                      {locale === "tr" ? "Paketi Değiştir" : "Change Package"}
+                    </Link>
                   </div>
 
                   {selectedPackage && (

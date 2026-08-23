@@ -225,8 +225,12 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
         throw new Error(profileError.message || (isTr ? "Profil kaydedilemedi." : "Profile could not be saved."));
       }
 
-      await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
-      setMessage(isTr ? "Profiliniz kaydedildi." : "Profile saved successfully.");
+      const prefResult = await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
+      if (!prefResult.success && prefResult.error) {
+        throw new Error(prefResult.error);
+      }
+
+      setMessage(isTr ? "Profiliniz başarıyla kaydedildi." : "Profile saved successfully.");
       onReload();
     } catch (err) {
       const msg = err instanceof Error ? err.message : (isTr ? "Profil kaydedilemedi." : "Profile could not be saved.");

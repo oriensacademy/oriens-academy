@@ -462,7 +462,7 @@ export function ExamTestResults({
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
             {/* Primary Action: Email Report */}
             <button
               type="button"
@@ -471,10 +471,10 @@ export function ExamTestResults({
                 setEmailSuccess(false);
                 setEmailError("");
               }}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white shadow-sm hover:bg-forest transition-colors cursor-pointer"
+              className="inline-flex min-h-12 sm:min-w-[210px] items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white shadow-sm hover:bg-forest transition-colors cursor-pointer"
             >
-              <Mail className="size-4" />
-              {user?.id ? copy.sendToMyEmail : copy.emailReportCTA}
+              <Mail className="size-4 shrink-0" />
+              <span>{user?.id ? (isTr ? "Sonuçlarımı Danışmana Gönder" : "Send to My Advisor") : copy.emailReportCTA}</span>
             </button>
 
             {/* Secondary Action: Consultation */}
@@ -485,10 +485,10 @@ export function ExamTestResults({
                 setConsultSuccess(false);
                 setConsultError("");
               }}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-ink shadow-sm hover:bg-[#F9FAF8] transition-colors cursor-pointer"
+              className="inline-flex min-h-12 sm:min-w-[210px] items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-ink shadow-sm hover:bg-[#F9FAF8] transition-colors cursor-pointer"
             >
-              <Calendar className="size-4 text-primary" />
-              {copy.requestConsultation}
+              <Calendar className="size-4 text-primary shrink-0" />
+              <span>{copy.requestConsultation}</span>
             </button>
           </div>
         </div>
@@ -496,7 +496,7 @@ export function ExamTestResults({
 
       {/* Email Report Modal (Includes Post-Email Registration Conversion) */}
       {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c1c14]/55 p-4 backdrop-blur-md">
           <div className="relative w-full max-w-md rounded-2xl border border-[#DDE4DC] bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
             {emailSuccess ? (
               <div className="text-center py-2 space-y-4">
@@ -617,7 +617,7 @@ export function ExamTestResults({
 
       {/* Consultation Modal */}
       {showConsultModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c1c14]/55 p-4 backdrop-blur-md">
           <div className="relative w-full max-w-md rounded-2xl border border-[#DDE4DC] bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
             {consultSuccess ? (
               <div className="text-center py-4 space-y-4">

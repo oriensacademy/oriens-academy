@@ -5,6 +5,8 @@ import { Check, Globe, GraduationCap, Sparkles, ArrowRight } from "lucide-react"
 import { useLocale } from "@/content/locale-context";
 import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
 
+import { useAccount } from "@/lib/auth/account-context";
+
 interface StudentOnboardingPersonalizationProps {
   studentId: string;
   initialExams?: string[];
@@ -22,10 +24,12 @@ export function StudentOnboardingPersonalization({
 }: StudentOnboardingPersonalizationProps) {
   const locale = useLocale();
   const isTr = locale === "tr";
+  const { user } = useAccount();
 
   const [selectedExams, setSelectedExams] = useState<string[]>(initialExams);
   const [selectedCountries, setSelectedCountries] = useState<string[]>(initialCountries);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const toggleExam = (id: string) => {
     setSelectedExams((prev) =>
@@ -40,10 +44,29 @@ export function StudentOnboardingPersonalization({
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    await saveStudentPreferences(studentId, selectedExams, selectedCountries, true);
-    setSaving(false);
-    onComplete(selectedExams, selectedCountries);
+    const targetUserId = (studentId && studentId !== "student-id" && studentId !== "new-student-id")
+      ? studentId
+      : user?.id;
+
+    if (!targetUserId) {
+      onComplete(selectedExams, selectedCountries);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+      const result = await saveStudentPreferences(targetUserId, selectedExams, selectedCountries, true);
+      if (!result.success && result.error) {
+        console.warn("[Onboarding] saveStudentPreferences error:", result.error);
+      }
+      onComplete(selectedExams, selectedCountries);
+    } catch (err) {
+      console.error("[Onboarding] Save error:", err);
+      onComplete(selectedExams, selectedCountries);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSkip = async () => {
@@ -145,6 +168,12 @@ export function StudentOnboardingPersonalization({
           })}
         </div>
       </div>
+
+      {error && (
+        <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive">
+          {error}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="mt-10 flex flex-col-reverse justify-end gap-3 pt-4 sm:flex-row border-t border-border">

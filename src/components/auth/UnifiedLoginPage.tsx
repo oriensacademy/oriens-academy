@@ -209,7 +209,7 @@ export function UnifiedLoginPage() {
     return (
       <section className="min-h-screen bg-background px-4 pt-28 pb-16 sm:pt-36">
         <StudentOnboardingPersonalization
-          studentId={registeredUserId || "student-id"}
+          studentId={registeredUserId || user?.id || ""}
           onComplete={handleOnboardingComplete}
           onSkip={handleOnboardingComplete}
         />

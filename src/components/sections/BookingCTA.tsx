@@ -104,29 +104,40 @@ export function BookingCTA() {
     const subject = [interestLabel, examLabel].filter(Boolean).join(" · ");
 
     setIsSubmitting(true);
-    const result = await submitContact({
-      fullName: name,
-      email: email.toLowerCase(),
-      phone,
-      subject: subject || undefined,
-      message: message || (isTr ? "Tanışma görüşmesi talebi." : "Introductory consultation request."),
-      locale,
-      privacyConsent,
-      turnstileToken,
-      source: "consultation",
-      packageId: selectedPackageId || undefined,
-    });
-    setIsSubmitting(false);
+    try {
+      const result = await submitContact({
+        fullName: name,
+        email: email.toLowerCase(),
+        phone,
+        subject: subject || undefined,
+        message: message || (isTr ? "Tanışma görüşmesi talebi." : "Introductory consultation request."),
+        locale,
+        privacyConsent,
+        turnstileToken,
+        source: "consultation",
+        packageId: selectedPackageId || undefined,
+      });
 
-    if (result.success) {
-      setSubmissionMessage(result.message);
-      setSubmitted(true);
-      return;
+      if (result.success) {
+        setSubmissionMessage(result.message);
+        setSubmitted(true);
+        return;
+      }
+
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
+      setErrors({ submit: result.message });
+    } catch (err) {
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
+      setErrors({
+        submit: isTr
+          ? "İletişim talebi gönderilemedi. Lütfen tekrar deneyin."
+          : "Request failed. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setTurnstileToken("");
-    turnstileRef.current?.reset();
-    setErrors({ submit: result.message });
   }
 
   function clearError(field: string) {
