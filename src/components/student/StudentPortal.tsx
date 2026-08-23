@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, Download, ExternalLink, FileText, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, Download, ExternalLink, FileText, LayoutDashboard, LogOut, MessageCircle, Package, Paperclip, Plus, RefreshCw, Save, Send, Upload, UserRound, Video, Award, X } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { localizedPath } from "@/lib/routes";
@@ -609,13 +609,18 @@ function HomeworkCard({
 }) {
   const isTr = locale === "tr";
   const [text, setText] = useState(item.submission_text || "");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [subDownloading, setSubDownloading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const rawItem = item as unknown as Record<string, unknown>;
   const attachmentPath = rawItem.attachment_path as string | undefined;
   const attachmentName = (rawItem.attachment_name as string | undefined) || (isTr ? "Ödev Eki / Dosya" : "Assignment Attachment");
+  const submissionAttachmentPath = rawItem.submission_attachment_path as string | undefined;
+  const submissionAttachmentName = (rawItem.submission_attachment_name as string | undefined) || (isTr ? "Teslim Edilen Ödev Dosyası" : "Submitted Assignment File");
   const fileUrl = item.assignment_file_url;
 
   async function handleDownloadAttachment() {
@@ -635,15 +640,88 @@ function HomeworkCard({
     }
   }
 
+  async function handleDownloadSubmissionAttachment() {
+    if (!submissionAttachmentPath) return;
+    try {
+      setSubDownloading(true);
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.storage.from("homework-attachments").createSignedUrl(submissionAttachmentPath, 3600);
+      if (error || !data?.signedUrl) {
+        throw new Error(error?.message || "Download failed");
+      }
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      alert(isTr ? "Ödev dosyanız indirilemedi." : "Could not download submitted file.");
+    } finally {
+      setSubDownloading(false);
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check 20MB limit
+    if (file.size > 20 * 1024 * 1024) {
+      setMessage(isTr ? "Dosya boyutu en fazla 20 MB olabilir." : "File size cannot exceed 20 MB.");
+      return;
+    }
+
+    setSelectedFile(file);
+    setMessage("");
+  }
+
   async function submit() {
-    if (!text.trim()) return;
+    if (!text.trim() && !selectedFile) {
+      setMessage(isTr ? "Lütfen bir ödev yanıtı yazın veya dosya ekleyin." : "Please provide a written response or attach a file.");
+      return;
+    }
+
     try {
       setSaving(true);
       setMessage("");
-      const { error } = await submitStudentHomework(item.id, text.trim());
+
+      let uploadedPath: string | null = null;
+      let uploadedName: string | null = null;
+      let uploadedSize: number | null = null;
+      let uploadedMime: string | null = null;
+
+      if (selectedFile) {
+        const supabase = getSupabaseClient();
+        const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filePath = `${item.student_user_id}/${Date.now()}-${safeName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("homework-attachments")
+          .upload(filePath, selectedFile, {
+            upsert: true,
+            contentType: selectedFile.type || "application/octet-stream",
+          });
+
+        if (uploadError) {
+          throw new Error(isTr ? `Dosya yüklenemedi: ${uploadError.message}` : `File upload failed: ${uploadError.message}`);
+        }
+
+        uploadedPath = filePath;
+        uploadedName = selectedFile.name;
+        uploadedSize = selectedFile.size;
+        uploadedMime = selectedFile.type || "application/octet-stream";
+      }
+
+      const { error } = await submitStudentHomework(item.id, {
+        submissionText: text.trim(),
+        attachmentPath: uploadedPath || submissionAttachmentPath,
+        attachmentName: uploadedName || submissionAttachmentName,
+        attachmentSize: uploadedSize,
+        attachmentMime: uploadedMime,
+      });
+
       if (error) {
         throw new Error(error.message);
       }
+
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setMessage(isTr ? "Ödeviniz başarıyla gönderildi." : "Homework submitted successfully.");
       onReload();
     } catch (err) {
@@ -674,7 +752,7 @@ function HomeworkCard({
         {item.description}
       </p>
 
-      {/* Attachment / File Download */}
+      {/* Teacher Assignment File Download */}
       {(attachmentPath || fileUrl) && (
         <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-forest/5 p-3 text-xs">
           <FileText className="size-4 text-primary shrink-0" />
@@ -706,6 +784,26 @@ function HomeworkCard({
         </div>
       )}
 
+      {/* Previously Submitted Student Attachment */}
+      {submissionAttachmentPath && (
+        <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs">
+          <FileText className="size-4 text-emerald-700 shrink-0" />
+          <span className="font-semibold text-ink">
+            {isTr ? "Teslim Ettiğiniz Dosya:" : "Your Submitted Attachment:"}
+          </span>
+          <button
+            type="button"
+            disabled={subDownloading}
+            onClick={handleDownloadSubmissionAttachment}
+            className="inline-flex items-center gap-1.5 font-medium text-emerald-800 hover:underline cursor-pointer disabled:opacity-50"
+          >
+            <Download className="size-3.5" />
+            <span>{submissionAttachmentName}</span>
+            {subDownloading && <span className="text-[10px]">({isTr ? "İndiriliyor..." : "Downloading..."})</span>}
+          </button>
+        </div>
+      )}
+
       {item.teacher_feedback && (
         <div className="mt-3.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs leading-5 text-emerald-950">
           <strong className="block font-bold text-emerald-900 mb-0.5">
@@ -715,25 +813,74 @@ function HomeworkCard({
         </div>
       )}
 
-      <label className="mt-4 block text-xs font-semibold text-ink">
-        {isTr ? "Ödev Yanıtınız / Teslim Notunuz" : "Your Submission / Notes"}
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={3}
-          placeholder={isTr ? "Ödev yanıtınızı veya teslim detaylarınızı buraya yazın..." : "Write your submission or answers here..."}
-          className="mt-1.5 w-full rounded-xl border border-input p-3 text-sm focus:border-primary focus:outline-hidden"
-        />
-      </label>
+      <div className="mt-4 space-y-3">
+        <label className="block text-xs font-semibold text-ink">
+          {isTr ? "Ödev Yanıtınız / Teslim Notunuz" : "Your Submission / Notes"}
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            placeholder={isTr ? "Ödev yanıtınızı veya teslim detaylarınızı buraya yazın..." : "Write your submission or answers here..."}
+            className="mt-1.5 w-full rounded-xl border border-input p-3 text-sm focus:border-primary focus:outline-hidden"
+          />
+        </label>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {/* File Upload Section */}
+        <div>
+          <label className="block text-xs font-semibold text-ink mb-1.5">
+            {isTr ? "Ödev Dosyası Ekle (PDF, Word, Excel, Görsel, ZIP - maks. 20 MB)" : "Attach Homework File (PDF, Word, Excel, Image, ZIP - max 20 MB)"}
+          </label>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.zip,.rar"
+            className="hidden"
+            id={`hw-upload-${item.id}`}
+          />
+
+          {selectedFile ? (
+            <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Paperclip className="size-4 text-primary shrink-0" />
+                <span className="font-semibold text-ink truncate">{selectedFile.name}</span>
+                <span className="text-[11px] text-muted-foreground shrink-0">
+                  ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+                className="p-1 text-muted-foreground hover:text-destructive rounded-lg transition-colors cursor-pointer"
+                title={isTr ? "Dosyayı kaldır" : "Remove file"}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <label
+              htmlFor={`hw-upload-${item.id}`}
+              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border p-3.5 text-xs text-muted-foreground hover:border-primary/50 hover:bg-surface-muted transition-colors cursor-pointer"
+            >
+              <Upload className="size-4 text-primary" />
+              <span>{isTr ? "Bilgisayarınızdan dosya seçin veya buraya tıklayın" : "Select file from your device or click here"}</span>
+            </label>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
-          disabled={saving || !text.trim()}
+          disabled={saving || (!text.trim() && !selectedFile)}
           onClick={submit}
           className="min-h-10 inline-flex items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-40 cursor-pointer"
         >
           <Send className="size-3.5" />
-          {saving ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Yanıtı Gönder" : "Submit Response")}
+          {saving ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Ödevi Gönder" : "Submit Homework")}
         </button>
         {message && (
           <p

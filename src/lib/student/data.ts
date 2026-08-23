@@ -75,6 +75,39 @@ export async function updateStudentProfile(userId: string, input: StudentProfile
   const updateFn = client.from("student_profiles").update as unknown as (values: unknown) => { eq: (col: string, val: string) => { select: () => { single: () => Promise<{ data: StudentProfileRow | null; error: { message: string } | null }> } } };
   return updateFn(input).eq("id", userId).select().single();
 }
-export async function submitStudentHomework(id: string, submissionText: string) {
-  return getSupabaseClient().from("student_homework").update({ submission_text: submissionText, status: "submitted", submitted_at: new Date().toISOString() }).eq("id", id).select().single();
+export interface StudentHomeworkSubmissionInput {
+  submissionText: string;
+  attachmentPath?: string | null;
+  attachmentName?: string | null;
+  attachmentSize?: number | null;
+  attachmentMime?: string | null;
 }
+
+export async function submitStudentHomework(
+  id: string,
+  input: string | StudentHomeworkSubmissionInput
+) {
+  const payload = typeof input === "string" ? { submission_text: input } : {
+    submission_text: input.submissionText,
+    submission_attachment_path: input.attachmentPath || null,
+    submission_attachment_name: input.attachmentName || null,
+    submission_attachment_size: input.attachmentSize || null,
+    submission_attachment_mime: input.attachmentMime || null,
+  };
+
+  const client = getSupabaseClient();
+  const updateFn = client.from("student_homework").update as unknown as (values: unknown) => {
+    eq: (col: string, val: string) => {
+      select: () => {
+        single: () => Promise<{ data: StudentHomeworkRow | null; error: { message: string } | null }>;
+      };
+    };
+  };
+
+  return updateFn({
+    ...payload,
+    status: "submitted",
+    submitted_at: new Date().toISOString(),
+  }).eq("id", id).select().single();
+}
+

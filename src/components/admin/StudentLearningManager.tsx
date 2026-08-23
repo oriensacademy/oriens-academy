@@ -999,11 +999,14 @@ function HomeworkReview({
 }) {
   const [feedback, setFeedback] = useState(item.teacher_feedback || "");
   const [downloading, setDownloading] = useState(false);
+  const [subDownloading, setSubDownloading] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const raw = item as unknown as Record<string, unknown>;
   const attachmentPath = raw.attachment_path as string | undefined;
   const attachmentName = (raw.attachment_name as string | undefined) || "Atama Dosyası";
+  const submissionAttachmentPath = raw.submission_attachment_path as string | undefined;
+  const submissionAttachmentName = (raw.submission_attachment_name as string | undefined) || "Öğrenci Ödev Dosyası";
   const fileUrl = item.assignment_file_url;
 
   async function handleDownloadAttachment() {
@@ -1020,6 +1023,23 @@ function HomeworkReview({
       alert("Dosya indirilemedi.");
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function handleDownloadSubmissionAttachment() {
+    if (!submissionAttachmentPath) return;
+    try {
+      setSubDownloading(true);
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.storage.from("homework-attachments").createSignedUrl(submissionAttachmentPath, 3600);
+      if (error || !data?.signedUrl) {
+        throw new Error(error?.message || "Download failed");
+      }
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Öğrenci dosyası indirilemedi.");
+    } finally {
+      setSubDownloading(false);
     }
   }
 
@@ -1069,10 +1089,26 @@ function HomeworkReview({
         </div>
       )}
 
-      {item.submission_text && (
-        <div className="mt-3 rounded-lg border border-border bg-white p-3 text-xs space-y-1">
+      {(item.submission_text || submissionAttachmentPath) && (
+        <div className="mt-3 rounded-lg border border-border bg-white p-3 text-xs space-y-2">
           <strong className="text-ink font-semibold block">Öğrenci Yanıtı / Teslimi:</strong>
-          <p className="whitespace-pre-wrap text-ink/80">{item.submission_text}</p>
+          {item.submission_text && <p className="whitespace-pre-wrap text-ink/80">{item.submission_text}</p>}
+          {submissionAttachmentPath && (
+            <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+              <FileText className="size-3.5 text-emerald-700" />
+              <span className="font-semibold text-ink">Teslim Edilen Dosya:</span>
+              <button
+                type="button"
+                disabled={subDownloading}
+                onClick={handleDownloadSubmissionAttachment}
+                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer disabled:opacity-50"
+              >
+                <Download className="size-3" />
+                <span>{submissionAttachmentName}</span>
+                {subDownloading && <span className="text-[10px]">(İndiriliyor...)</span>}
+              </button>
+            </div>
+          )}
           {item.submitted_at && (
             <p className="text-[10px] text-muted-foreground">
               Teslim Tarihi: {new Date(item.submitted_at).toLocaleString("tr-TR")}
