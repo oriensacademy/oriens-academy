@@ -1,25 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import {
-  Calendar,
+  AlertCircle,
   CheckCircle2,
   ClipboardList,
   Copy,
+  Download,
   ExternalLink,
-  Mail,
+  FileText,
   PackagePlus,
   Plus,
   Send,
   StickyNote,
+  Trash2,
+  Upload,
   Video,
   XCircle,
   Sparkles,
   History,
-  Layers,
   Check,
   RotateCcw,
 } from "lucide-react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   addStudentPrivateNote,
   assignStudentPackage,
@@ -644,118 +647,476 @@ function HomeworkPanel({
   setError: (v: string) => void;
   changed: () => void;
 }) {
-  const [form, setForm] = useState({ title: "", description: "", dueDate: "", lessonId: "", fileUrl: "" });
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    dueDate: "",
+    lessonId: "",
+    fileUrl: "",
+  });
+  const [resourceType, setResourceType] = useState<"file" | "url">("file");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [errors, setErrors] = useState<{ title?: string; description?: string; file?: string }>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".webp"];
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
+  function validateFile(file: File): string | null {
+    const ext = `.${file.name.split(".").pop()?.toLowerCase()}`;
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return "Yalnızca PDF, Word, PowerPoint, Excel ve görsel dosyaları yüklenebilir.";
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return "Dosya boyutu 20 MB sınırını aşamaz.";
+    }
+    return null;
+  }
+
+  function handleFileSelect(file: File | null) {
+    if (!file) {
+      setSelectedFile(null);
+      setErrors((prev) => ({ ...prev, file: undefined }));
+      return;
+    }
+    const err = validateFile(file);
+    if (err) {
+      setErrors((prev) => ({ ...prev, file: err }));
+      setSelectedFile(null);
+    } else {
+      setSelectedFile(file);
+      setErrors((prev) => ({ ...prev, file: undefined }));
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const newErrors: { title?: string; description?: string; file?: string } = {};
+
+    if (!form.title.trim()) {
+      newErrors.title = "Başlık gereklidir.";
+    }
+    if (!form.description.trim()) {
+      newErrors.description = "Açıklama gereklidir.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
     setBusy(true);
-    const { error } = await createStudentHomework({
+    setError("");
+
+    let attachmentPath: string | null = null;
+    let attachmentName: string | null = null;
+    let attachmentSize: number | null = null;
+    let attachmentMime: string | null = null;
+
+    if (resourceType === "file" && selectedFile) {
+      setUploading(true);
+      const cleanFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const filePath = `${userId}/${Date.now()}_${cleanFileName}`;
+
+      const { error: uploadError } = await getSupabaseClient()
+        .storage
+        .from("homework-attachments")
+        .upload(filePath, selectedFile, { upsert: true });
+
+      setUploading(false);
+
+      if (uploadError) {
+        setBusy(false);
+        setError(`Dosya yüklenemedi: ${uploadError.message}`);
+        return;
+      }
+
+      attachmentPath = filePath;
+      attachmentName = selectedFile.name;
+      attachmentSize = selectedFile.size;
+      attachmentMime = selectedFile.type || "application/octet-stream";
+    }
+
+    const { error: homeworkError } = await createStudentHomework({
       student_user_id: userId,
       title: form.title.trim(),
       description: form.description.trim(),
       due_date: form.dueDate ? new Date(form.dueDate).toISOString() : null,
       lesson_id: form.lessonId || null,
-      assignment_file_url: form.fileUrl.trim() || null,
+      assignment_file_url: resourceType === "url" ? form.fileUrl.trim() || null : null,
+      attachment_path: attachmentPath,
+      attachment_name: attachmentName,
+      attachment_size: attachmentSize,
+      attachment_mime: attachmentMime,
     });
+
     setBusy(false);
-    if (error) setError(error.message);
-    else {
+    if (homeworkError) {
+      setError(homeworkError.message);
+    } else {
       setForm({ title: "", description: "", dueDate: "", lessonId: "", fileUrl: "" });
+      setSelectedFile(null);
+      setErrors({});
       changed();
     }
   }
 
+  function formatBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
   return (
     <div className="space-y-4">
-      <form onSubmit={submit} className="grid gap-2 rounded-xl border border-border bg-background-soft/40 p-3">
-        <h4 className="flex items-center gap-2 text-xs font-bold">
-          <ClipboardList className="size-4" />
-          Ödev Ata
-        </h4>
-        <Input required placeholder="Başlık" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
-        <textarea
-          required
-          placeholder="Açıklama"
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className={field}
-        />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <input
-            type="datetime-local"
-            value={form.dueDate}
-            onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-            className={field}
-          />
-          <select
-            value={form.lessonId}
-            onChange={(e) => setForm({ ...form, lessonId: e.target.value })}
-            className={field}
-          >
-            <option value="">Ders bağlantısı yok</option>
-            {lessons.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.title} ({new Date(l.lesson_date).toLocaleDateString("tr-TR")})
-              </option>
-            ))}
-          </select>
+      <form
+        noValidate
+        onSubmit={submit}
+        className="grid gap-3.5 rounded-2xl border border-border bg-background-soft/40 p-4 shadow-xs text-xs"
+      >
+        <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+          <h4 className="flex items-center gap-2 font-bold text-ink text-sm">
+            <ClipboardList className="size-4 text-primary" />
+            Ödev Ata
+          </h4>
         </div>
-        <Input
-          placeholder="Dosya bağlantısı (isteğe bağlı)"
-          value={form.fileUrl}
-          onChange={(v) => setForm({ ...form, fileUrl: v })}
-        />
-        <Submit busy={busy}>Ödevi Ata</Submit>
+
+        {/* Title Field with Inline Validation */}
+        <div className="space-y-1">
+          <label className="block font-semibold text-muted-foreground">
+            Başlık <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => {
+              setForm({ ...form, title: e.target.value });
+              if (errors.title) setErrors({ ...errors, title: undefined });
+            }}
+            placeholder="Örn: SAT Math / Geometri Çalışması"
+            aria-invalid={Boolean(errors.title)}
+            className={`min-h-9 w-full rounded-lg border bg-white px-3 text-xs outline-hidden transition-colors ${
+              errors.title
+                ? "border-red-400 bg-red-50/30 focus:border-red-500"
+                : "border-input focus:border-primary"
+            }`}
+          />
+          {errors.title && (
+            <p className="flex items-center gap-1 text-[11px] font-medium text-red-600">
+              <AlertCircle className="size-3 shrink-0" />
+              {errors.title}
+            </p>
+          )}
+        </div>
+
+        {/* Description Field with Inline Validation */}
+        <div className="space-y-1">
+          <label className="block font-semibold text-muted-foreground">
+            Açıklama / Yönergeler <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            rows={3}
+            value={form.description}
+            onChange={(e) => {
+              setForm({ ...form, description: e.target.value });
+              if (errors.description) setErrors({ ...errors, description: undefined });
+            }}
+            placeholder="Ödev detayları, çözülmesi gereken sorular veya yönergeler..."
+            aria-invalid={Boolean(errors.description)}
+            className={`w-full rounded-lg border bg-white p-3 text-xs outline-hidden transition-colors ${
+              errors.description
+                ? "border-red-400 bg-red-50/30 focus:border-red-500"
+                : "border-input focus:border-primary"
+            }`}
+          />
+          {errors.description && (
+            <p className="flex items-center gap-1 text-[11px] font-medium text-red-600">
+              <AlertCircle className="size-3 shrink-0" />
+              {errors.description}
+            </p>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="block font-semibold text-muted-foreground">Son Teslim Tarihi & Saati</label>
+            <input
+              type="datetime-local"
+              value={form.dueDate}
+              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              className={field}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="block font-semibold text-muted-foreground">İlişkili Canlı Ders (İsteğe Bağlı)</label>
+            <select
+              value={form.lessonId}
+              onChange={(e) => setForm({ ...form, lessonId: e.target.value })}
+              className={field}
+            >
+              <option value="">Ders bağlantısı yok</option>
+              {lessons.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.title} ({new Date(l.lesson_date).toLocaleDateString("tr-TR")})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Resource Attachment Section */}
+        <div className="space-y-2 rounded-xl border border-border/80 bg-surface-muted/50 p-3">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-ink flex items-center gap-1.5">
+              <FileText className="size-3.5 text-primary" />
+              Dosya / Kaynak Ekle (İsteğe Bağlı)
+            </span>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setResourceType("file")}
+                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+                  resourceType === "file"
+                    ? "bg-primary text-white"
+                    : "bg-white text-muted-foreground hover:text-ink"
+                }`}
+              >
+                Dosya Yükle
+              </button>
+              <button
+                type="button"
+                onClick={() => setResourceType("url")}
+                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
+                  resourceType === "url"
+                    ? "bg-primary text-white"
+                    : "bg-white text-muted-foreground hover:text-ink"
+                }`}
+              >
+                Harici Bağlantı (URL)
+              </button>
+            </div>
+          </div>
+
+          {resourceType === "file" ? (
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
+                onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
+                className="hidden"
+              />
+
+              {selectedFile ? (
+                <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-2.5">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText className="size-4 text-primary shrink-0" />
+                    <div className="truncate">
+                      <span className="font-semibold text-ink block truncate">{selectedFile.name}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatBytes(selectedFile.size)}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleFileSelect(null)}
+                    className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                    aria-label="Dosyayı kaldır"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleFileSelect(file);
+                  }}
+                  className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-white p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-forest/5 transition-colors"
+                >
+                  <Upload className="size-5 text-muted-foreground mb-1" />
+                  <p className="text-xs font-semibold text-ink">
+                    Dosya seçin veya buraya sürükleyip bırakın
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    PDF, DOC, DOCX, PPT, XLS, Görsel (Maks. 20 MB)
+                  </p>
+                </div>
+              )}
+
+              {errors.file && (
+                <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-red-600">
+                  <AlertCircle className="size-3 shrink-0" />
+                  {errors.file}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div>
+              <input
+                type="url"
+                placeholder="https://drive.google.com/... veya dosya bağlantısı"
+                value={form.fileUrl}
+                onChange={(e) => setForm({ ...form, fileUrl: e.target.value })}
+                className={field}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <Submit busy={busy || uploading}>
+            {uploading ? "Dosya Yükleniyor..." : "Ödevi Ata"}
+          </Submit>
+        </div>
       </form>
-      <div className="space-y-2">
+
+      <div className="space-y-2.5">
+        <h5 className="text-xs font-bold text-ink">Atanan Ödevler ({homework.length})</h5>
         {homework.length ? (
           homework.map((h) => <HomeworkReview key={h.id} item={h} changed={changed} />)
         ) : (
-          <Empty>Henüz ödev yok.</Empty>
+          <Empty>Henüz ödev kaydı bulunmuyor.</Empty>
         )}
       </div>
     </div>
   );
 }
 
-function HomeworkReview({ item, changed }: { item: Tables<"student_homework">; changed: () => void }) {
+function HomeworkReview({
+  item,
+  changed,
+}: {
+  item: Tables<"student_homework">;
+  changed: () => void;
+}) {
   const [feedback, setFeedback] = useState(item.teacher_feedback || "");
+  const [downloading, setDownloading] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const raw = item as unknown as Record<string, unknown>;
+  const attachmentPath = raw.attachment_path as string | undefined;
+  const attachmentName = (raw.attachment_name as string | undefined) || "Atama Dosyası";
+  const fileUrl = item.assignment_file_url;
+
+  async function handleDownloadAttachment() {
+    if (!attachmentPath) return;
+    try {
+      setDownloading(true);
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.storage.from("homework-attachments").createSignedUrl(attachmentPath, 3600);
+      if (error || !data?.signedUrl) {
+        throw new Error(error?.message || "Download failed");
+      }
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      alert("Dosya indirilemedi.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <Card>
-      <div className="flex justify-between gap-2">
-        <strong>{item.title}</strong>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <strong className="text-sm font-semibold text-ink">{item.title}</strong>
+          {item.due_date && (
+            <p className="text-[11px] text-muted-foreground">
+              Son Teslim: {new Date(item.due_date).toLocaleString("tr-TR")}
+            </p>
+          )}
+        </div>
         <Badge>{item.status}</Badge>
       </div>
-      <p>{item.description}</p>
-      {item.assignment_file_url && (
-        <a className="text-primary underline" href={item.assignment_file_url} target="_blank" rel="noreferrer">
-          Atama dosyası
-        </a>
+
+      <p className="mt-2 text-xs leading-relaxed text-ink/80 whitespace-pre-wrap">{item.description}</p>
+
+      {/* Attachment Resource Links */}
+      {(attachmentPath || fileUrl) && (
+        <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-primary/20 bg-forest/5 p-2 text-xs">
+          <FileText className="size-3.5 text-primary shrink-0" />
+          <span className="font-semibold text-ink">Ek:</span>
+          {attachmentPath ? (
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={handleDownloadAttachment}
+              className="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer disabled:opacity-50"
+            >
+              <Download className="size-3" />
+              <span>{attachmentName}</span>
+              {downloading && <span className="text-[10px]">(İndiriliyor...)</span>}
+            </button>
+          ) : fileUrl ? (
+            <a
+              className="inline-flex items-center gap-1 font-semibold text-primary underline"
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="size-3" />
+              <span>Bağlantıyı Aç</span>
+            </a>
+          ) : null}
+        </div>
       )}
-      {item.submission_text && <p className="mt-2 rounded bg-white p-2">Öğrenci yanıtı: {item.submission_text}</p>}
-      <textarea
-        value={feedback}
-        onChange={(e) => setFeedback(e.target.value)}
-        placeholder="Geri bildirim"
-        className={`${field} mt-2`}
-      />
-      <div className="mt-2 flex flex-wrap gap-2">
+
+      {item.submission_text && (
+        <div className="mt-3 rounded-lg border border-border bg-white p-3 text-xs space-y-1">
+          <strong className="text-ink font-semibold block">Öğrenci Yanıtı / Teslimi:</strong>
+          <p className="whitespace-pre-wrap text-ink/80">{item.submission_text}</p>
+          {item.submitted_at && (
+            <p className="text-[10px] text-muted-foreground">
+              Teslim Tarihi: {new Date(item.submitted_at).toLocaleString("tr-TR")}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 space-y-1.5">
+        <label className="block text-[11px] font-semibold text-muted-foreground">
+          Eğitmen Geri Bildirimi / Değerlendirme
+        </label>
+        <textarea
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          placeholder="Öğrenci için değerlendirme notu..."
+          className={`${field} min-h-16`}
+        />
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap gap-2">
         <button
+          disabled={busy}
           onClick={async () => {
+            setBusy(true);
             await reviewStudentHomework(item.id, "reviewed", feedback);
+            setBusy(false);
             changed();
           }}
-          className="rounded border border-border px-2 py-1 cursor-pointer"
+          className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold hover:bg-surface-muted cursor-pointer disabled:opacity-50"
         >
-          İncelendi
+          {busy ? "İşleniyor..." : "İncelendi Olarak İşaretle"}
         </button>
         <button
+          disabled={busy}
           onClick={async () => {
+            setBusy(true);
             await reviewStudentHomework(item.id, "completed", feedback);
+            setBusy(false);
             changed();
           }}
-          className="rounded bg-ink px-2 py-1 text-white cursor-pointer"
+          className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 cursor-pointer disabled:opacity-50"
         >
-          Tamamlandı
+          {busy ? "İşleniyor..." : "Tamamlandı Olarak İşaretle"}
         </button>
       </div>
     </Card>
@@ -976,106 +1337,143 @@ function PackagePanel({
             </div>
 
             {assignMode === "catalog" ? (
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Paket Seçin</label>
-                <select
-                  required
-                  value={packageForm.packageId}
-                  onChange={(e) => chooseCatalogPackage(e.target.value)}
-                  className={field}
-                >
-                  <option value="">Seçiniz...</option>
-                  {packages.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name_tr || p.name_en || p.id} ({p.lesson_count} Ders · {money(p.current_total ?? p.price_amount ?? 0, p.currency || "TRY")})
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Paket Seçin</label>
+                  <select
+                    required
+                    value={packageForm.packageId}
+                    onChange={(e) => chooseCatalogPackage(e.target.value)}
+                    className={field}
+                  >
+                    <option value="">Seçiniz...</option>
+                    {packages.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name_tr || p.name_en || p.id} ({p.lesson_count} Ders · {money(Number(p.current_total ?? p.price_amount ?? 0), "TRY")})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {packageForm.packageId && (
+                  <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-forest/5 p-3 text-xs">
+                    <span className="font-semibold text-ink">Seçilen Paket Özeti:</span>
+                    <span className="font-bold text-primary">
+                      {packageForm.lessonCount} Ders · {money(Number(packageForm.price || 0), "TRY")}
+                    </span>
+                  </div>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Başlangıç Tarihi</label>
+                    <input
+                      required
+                      type="date"
+                      value={packageForm.startDate}
+                      onChange={(e) => setPackageForm({ ...packageForm, startDate: e.target.value })}
+                      className={field}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Bitiş Tarihi (Opsiyonel)</label>
+                    <input
+                      type="date"
+                      min={packageForm.startDate}
+                      value={packageForm.endDate}
+                      onChange={(e) => setPackageForm({ ...packageForm, endDate: e.target.value })}
+                      className={field}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
+                  <select
+                    value={packageForm.paymentStatus}
+                    onChange={(e) => setPackageForm({ ...packageForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
+                    className={field}
+                  >
+                    <option value="paid">Ödendi (Onaylı)</option>
+                    <option value="pending">Ödeme Bekliyor</option>
+                    <option value="waived">Ücretsiz / Muaf</option>
+                  </select>
+                </div>
               </div>
             ) : (
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Özel Paket Adı</label>
-                <input
-                  required
-                  type="text"
-                  placeholder="örn. 15 Derslik Özel Paket / Hızlandırılmış AP Calculus"
-                  value={packageForm.customName}
-                  onChange={(e) => setPackageForm({ ...packageForm, customName: e.target.value })}
-                  className={field}
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Özel Paket Adı</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="örn. 15 Derslik Özel Paket / Hızlandırılmış AP Calculus"
+                    value={packageForm.customName}
+                    onChange={(e) => setPackageForm({ ...packageForm, customName: e.target.value })}
+                    className={field}
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Toplam Ders Sayısı</label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      max="500"
+                      value={packageForm.lessonCount}
+                      onChange={(e) => setPackageForm({ ...packageForm, lessonCount: e.target.value })}
+                      className={field}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ücret (TL)</label>
+                    <input
+                      required
+                      type="number"
+                      min="0"
+                      value={packageForm.price}
+                      onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
+                      className={field}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Başlangıç Tarihi</label>
+                    <input
+                      required
+                      type="date"
+                      value={packageForm.startDate}
+                      onChange={(e) => setPackageForm({ ...packageForm, startDate: e.target.value })}
+                      className={field}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Bitiş Tarihi (Opsiyonel)</label>
+                    <input
+                      type="date"
+                      min={packageForm.startDate}
+                      value={packageForm.endDate}
+                      onChange={(e) => setPackageForm({ ...packageForm, endDate: e.target.value })}
+                      className={field}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
+                  <select
+                    value={packageForm.paymentStatus}
+                    onChange={(e) => setPackageForm({ ...packageForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
+                    className={field}
+                  >
+                    <option value="paid">Ödendi (Onaylı)</option>
+                    <option value="pending">Ödeme Bekliyor</option>
+                    <option value="waived">Ücretsiz / Muaf</option>
+                  </select>
+                </div>
               </div>
             )}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Başlangıç Tarihi</label>
-                <input
-                  required
-                  type="date"
-                  value={packageForm.startDate}
-                  onChange={(e) => setPackageForm({ ...packageForm, startDate: e.target.value })}
-                  className={field}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Bitiş Tarihi (Opsiyonel)</label>
-                <input
-                  type="date"
-                  min={packageForm.startDate}
-                  value={packageForm.endDate}
-                  onChange={(e) => setPackageForm({ ...packageForm, endDate: e.target.value })}
-                  className={field}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Toplam Ders Sayısı</label>
-                <input
-                  required
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={packageForm.lessonCount}
-                  onChange={(e) => setPackageForm({ ...packageForm, lessonCount: e.target.value })}
-                  className={field}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ücret</label>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  value={packageForm.price}
-                  onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
-                  className={field}
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Para Birimi</label>
-                <select
-                  value={packageForm.currency}
-                  onChange={(e) => setPackageForm({ ...packageForm, currency: e.target.value })}
-                  className={field}
-                >
-                  <option value="TRY">TRY (₺)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
-                <select
-                  value={packageForm.paymentStatus}
-                  onChange={(e) => setPackageForm({ ...packageForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
-                  className={field}
-                >
-                  <option value="paid">Ödendi (Onaylı)</option>
-                  <option value="pending">Ödeme Bekliyor</option>
-                  <option value="waived">Ücretsiz / Muaf</option>
-                </select>
-              </div>
-            </div>
 
             <div>
               <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Yönetici Notu (Opsiyonel)</label>
@@ -1147,7 +1545,7 @@ function PackagePanel({
                     setExtraForm({
                       ...extraForm,
                       purchaseId: pId,
-                      currency: purchases.find((x) => x.id === pId)?.currency || "TRY",
+                      currency: "TRY",
                     });
                   }}
                   className={field}
@@ -1241,9 +1639,9 @@ function PackagePanel({
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ek Ücret (Opsiyonel)</label>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ek Ücret (TL) (Opsiyonel)</label>
                 <input
                   type="number"
                   min="0"
@@ -1252,19 +1650,6 @@ function PackagePanel({
                   className={field}
                   placeholder="0"
                 />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Para Birimi</label>
-                <select
-                  value={extraForm.currency}
-                  onChange={(e) => setExtraForm({ ...extraForm, currency: e.target.value })}
-                  className={field}
-                >
-                  <option value="TRY">TRY (₺)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                </select>
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>

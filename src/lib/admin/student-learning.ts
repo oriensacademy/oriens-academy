@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
-import type { Tables } from "@/types/database.types";
+import type { Tables, TablesInsert } from "@/types/database.types";
 
 export type PackagePurchase = Tables<"student_package_purchases"> & {
   pricing_packages: { name_tr: string | null; name_en: string | null } | null;
@@ -87,12 +87,34 @@ export async function updateAdminStudentProfile(
 }
 
 export async function createStudentHomework(
-  input: Pick<Tables<"student_homework">, "student_user_id" | "title" | "description" | "due_date"> & {
+  input: {
+    student_user_id: string;
+    title: string;
+    description: string;
+    due_date?: string | null;
     lesson_id?: string | null;
     assignment_file_url?: string | null;
+    attachment_path?: string | null;
+    attachment_name?: string | null;
+    attachment_size?: number | null;
+    attachment_mime?: string | null;
   }
 ) {
-  return getSupabaseClient().from("student_homework").insert({ ...input, status: "assigned" }).select().single();
+  const supabase = getSupabaseClient();
+  const insertPayload = {
+    student_user_id: input.student_user_id,
+    title: input.title,
+    description: input.description,
+    due_date: input.due_date || null,
+    lesson_id: input.lesson_id || null,
+    assignment_file_url: input.assignment_file_url || null,
+    attachment_path: input.attachment_path || null,
+    attachment_name: input.attachment_name || null,
+    attachment_size: input.attachment_size || null,
+    attachment_mime: input.attachment_mime || null,
+    status: "assigned",
+  };
+  return supabase.from("student_homework").insert(insertPayload as unknown as TablesInsert<"student_homework">).select().single();
 }
 
 export async function reviewStudentHomework(id: string, status: "reviewed" | "completed", teacherFeedback: string) {

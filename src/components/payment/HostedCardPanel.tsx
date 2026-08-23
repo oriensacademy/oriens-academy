@@ -4,7 +4,6 @@ import { useState, type ChangeEvent } from "react";
 import { AlertTriangle, CheckCircle2, CreditCard, LockKeyhole, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
-import { pendingBankCapabilities } from "@/lib/payments/bank-provider";
 
 export function HostedCardPanel({
   locale,
@@ -240,14 +239,6 @@ export function HostedCardPanel({
         </div>
       )}
 
-      {!pendingBankCapabilities.configured && (
-        <div className="rounded-xl border border-amber-300/80 bg-amber-50/80 p-4 text-xs text-amber-950 leading-relaxed">
-          <p className="font-semibold">{copy.cardPending}</p>
-          <p className="mt-1 font-mono text-[10px] text-amber-800">
-            BANK POS STATUS: PENDING CONFIGURATION · 3D Secure: REQUIRED
-          </p>
-        </div>
-      )}
     </div>
   );
 }

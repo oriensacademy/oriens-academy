@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, Download, ExternalLink, FileText, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { localizedPath } from "@/lib/routes";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { updateStudentEmail, updateStudentPassword } from "@/lib/student/auth";
 import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
@@ -205,22 +206,33 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
   };
 
   async function save() {
-    setSaving(true);
-    setMessage("");
-    const { error: profileError } = await updateStudentProfile(userId, {
-      ...form,
-      target_exams: selectedExams,
-      target_countries: selectedCountries,
-      target_exam: selectedExams[0] || null,
-      target_country: selectedCountries[0] || null,
-    });
-    const { error: prefError } = await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
-    setSaving(false);
-    if (profileError || prefError) {
-      setMessage(isTr ? "Profil kaydedilemedi." : "Profile could not be saved.");
-    } else {
-      setMessage(isTr ? "Profil başarıyla güncellendi." : "Profile updated successfully.");
+    try {
+      setSaving(true);
+      setMessage("");
+      const { error: profileError } = await updateStudentProfile(userId, {
+        full_name: form.full_name.trim(),
+        phone: form.phone.trim() || null,
+        school: form.school.trim() || null,
+        target_university: form.target_university.trim() || null,
+        preferred_language: form.preferred_language as "tr" | "en",
+        target_exams: selectedExams,
+        target_countries: selectedCountries,
+        target_exam: selectedExams[0] || null,
+        target_country: selectedCountries[0] || null,
+      });
+
+      if (profileError) {
+        throw new Error(profileError.message || (isTr ? "Profil kaydedilemedi." : "Profile could not be saved."));
+      }
+
+      await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
+      setMessage(isTr ? "Profiliniz kaydedildi." : "Profile saved successfully.");
       onReload();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : (isTr ? "Profil kaydedilemedi." : "Profile could not be saved.");
+      setMessage(msg);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -557,8 +569,180 @@ function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en
     </div>
   );
 }
-function Homework({data,locale,onReload}:{data:StudentPortalData;locale:"tr"|"en";onReload:()=>void}) { return <Panel title={locale==="tr"?"Ödevlerim":"Homework"}>{data.homework.length?<div className="space-y-4">{data.homework.map(h=><HomeworkCard key={h.id} item={h} locale={locale} onReload={onReload} />)}</div>:<Empty>{locale==="tr"?"Aktif veya geçmiş ödev bulunmuyor.":"No current or previous homework."}</Empty>}</Panel>; }
-function HomeworkCard({item,locale,onReload}:{item:StudentHomeworkRow;locale:"tr"|"en";onReload:()=>void}) { const [text,setText]=useState(item.submission_text||"");const [saving,setSaving]=useState(false);const [message,setMessage]=useState("");async function submit(){if(!text.trim())return;setSaving(true);const {error}=await submitStudentHomework(item.id,text.trim());setSaving(false);setMessage(error?(locale==="tr"?"Gönderilemedi.":"Could not submit."):(locale==="tr"?"Ödev gönderildi.":"Homework submitted."));if(!error)onReload();} return <article className="rounded-xl border border-border p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold text-ink">{item.title}</h3><p className="mt-1 text-xs text-muted-foreground">{locale==="tr"?"Teslim":"Due"}: {fmt(item.due_date,locale,true)}</p></div><span className="rounded-full border border-border px-2 py-1 text-xs">{status(item.status,locale)}</span></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-ink/75">{item.description}</p>{item.teacher_feedback&&<div className="mt-3 rounded-lg bg-surface-muted p-3 text-xs leading-5"><strong>{locale==="tr"?"Öğretmen geri bildirimi":"Teacher feedback"}:</strong> {item.teacher_feedback}</div>}<label className="mt-4 block text-xs font-semibold">{locale==="tr"?"Yanıtınız":"Your response"}<textarea value={text} onChange={(e)=>setText(e.target.value)} rows={3} className="mt-1.5 w-full rounded-lg border border-input p-3 text-sm" /></label><button disabled={saving||!text.trim()} onClick={submit} className="mt-3 min-h-10 rounded-lg bg-ink px-4 text-xs font-semibold text-white disabled:opacity-40">{locale==="tr"?"Yanıtı Gönder":"Submit Response"}</button>{message&&<p role="status" className="mt-2 text-xs text-primary">{message}</p>}</article>; }
+function Homework({
+  data,
+  locale,
+  onReload,
+}: {
+  data: StudentPortalData;
+  locale: "tr" | "en";
+  onReload: () => void;
+}) {
+  const isTr = locale === "tr";
+  return (
+    <Panel title={isTr ? "Ödevlerim" : "Homework"}>
+      {data.homework.length ? (
+        <div className="space-y-4">
+          {data.homework.map((h) => (
+            <HomeworkCard key={h.id} item={h} locale={locale} onReload={onReload} />
+          ))}
+        </div>
+      ) : (
+        <Empty>{isTr ? "Aktif veya geçmiş ödev bulunmuyor." : "No current or previous homework."}</Empty>
+      )}
+    </Panel>
+  );
+}
+
+function HomeworkCard({
+  item,
+  locale,
+  onReload,
+}: {
+  item: StudentHomeworkRow;
+  locale: "tr" | "en";
+  onReload: () => void;
+}) {
+  const isTr = locale === "tr";
+  const [text, setText] = useState(item.submission_text || "");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [downloading, setDownloading] = useState(false);
+
+  const rawItem = item as unknown as Record<string, unknown>;
+  const attachmentPath = rawItem.attachment_path as string | undefined;
+  const attachmentName = (rawItem.attachment_name as string | undefined) || (isTr ? "Ödev Eki / Dosya" : "Assignment Attachment");
+  const fileUrl = item.assignment_file_url;
+
+  async function handleDownloadAttachment() {
+    if (!attachmentPath) return;
+    try {
+      setDownloading(true);
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.storage.from("homework-attachments").createSignedUrl(attachmentPath, 3600);
+      if (error || !data?.signedUrl) {
+        throw new Error(error?.message || "Download failed");
+      }
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch {
+      alert(isTr ? "Dosya indirilemedi." : "Could not download file.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  async function submit() {
+    if (!text.trim()) return;
+    try {
+      setSaving(true);
+      setMessage("");
+      const { error } = await submitStudentHomework(item.id, text.trim());
+      if (error) {
+        throw new Error(error.message);
+      }
+      setMessage(isTr ? "Ödeviniz başarıyla gönderildi." : "Homework submitted successfully.");
+      onReload();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : (isTr ? "Ödev gönderilemedi." : "Could not submit homework.");
+      setMessage(msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <article className="rounded-2xl border border-border bg-white p-5 shadow-xs">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-heading text-lg font-bold text-ink">{item.title}</h3>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {isTr ? "Son Teslim Tarihi" : "Due Date"}: {fmt(item.due_date, locale, true)}
+          </p>
+        </div>
+        <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold">
+          {status(item.status, locale)}
+        </span>
+      </div>
+
+      <p className="mt-3.5 whitespace-pre-wrap text-sm leading-6 text-ink/80">
+        {item.description}
+      </p>
+
+      {/* Attachment / File Download */}
+      {(attachmentPath || fileUrl) && (
+        <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-forest/5 p-3 text-xs">
+          <FileText className="size-4 text-primary shrink-0" />
+          <span className="font-semibold text-ink">
+            {isTr ? "Ödev Dosyası / Kaynağı:" : "Assignment Resource:"}
+          </span>
+          {attachmentPath ? (
+            <button
+              type="button"
+              disabled={downloading}
+              onClick={handleDownloadAttachment}
+              className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline cursor-pointer disabled:opacity-50"
+            >
+              <Download className="size-3.5" />
+              <span>{attachmentName}</span>
+              {downloading && <span className="text-[10px]">({isTr ? "İndiriliyor..." : "Downloading..."})</span>}
+            </button>
+          ) : fileUrl ? (
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            >
+              <ExternalLink className="size-3.5" />
+              <span>{isTr ? "Bağlantıyı Aç" : "Open Link"}</span>
+            </a>
+          ) : null}
+        </div>
+      )}
+
+      {item.teacher_feedback && (
+        <div className="mt-3.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs leading-5 text-emerald-950">
+          <strong className="block font-bold text-emerald-900 mb-0.5">
+            {isTr ? "Eğitmen Değerlendirmesi / Geri Bildirim:" : "Teacher Feedback:"}
+          </strong>
+          {item.teacher_feedback}
+        </div>
+      )}
+
+      <label className="mt-4 block text-xs font-semibold text-ink">
+        {isTr ? "Ödev Yanıtınız / Teslim Notunuz" : "Your Submission / Notes"}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={3}
+          placeholder={isTr ? "Ödev yanıtınızı veya teslim detaylarınızı buraya yazın..." : "Write your submission or answers here..."}
+          className="mt-1.5 w-full rounded-xl border border-input p-3 text-sm focus:border-primary focus:outline-hidden"
+        />
+      </label>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          disabled={saving || !text.trim()}
+          onClick={submit}
+          className="min-h-10 inline-flex items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-40 cursor-pointer"
+        >
+          <Send className="size-3.5" />
+          {saving ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Yanıtı Gönder" : "Submit Response")}
+        </button>
+        {message && (
+          <p
+            role="status"
+            className={cn("text-xs font-medium", message.includes("başarıyla") || message.includes("successfully") ? "text-emerald-700" : "text-destructive")}
+          >
+            {message}
+          </p>
+        )}
+      </div>
+    </article>
+  );
+}
 function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
   const p = data.purchases.find((x) => x.status === "active") || data.purchases[0];
   if (!p) {

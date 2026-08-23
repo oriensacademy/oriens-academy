@@ -1,24 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarPlus, Check, Globe, GraduationCap, Mail, Phone, X } from "lucide-react";
+import { CalendarPlus, Check, Globe, GraduationCap, Mail, Phone, X, BookOpen, ClipboardList, Package, CreditCard, Award, StickyNote, CalendarDays, UserRound, LayoutDashboard } from "lucide-react";
 import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
 import { completeStudentAppointment, updateAdminStudentProfile } from "@/lib/admin/student-learning";
 import { updateAdminBookingStatus } from "@/lib/admin/bookings";
 import type { StudentProfile } from "@/lib/admin/students";
-import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, formatExamBadges, formatDestinationBadges } from "@/lib/student/preferences";
+import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, formatExamBadges, formatDestinationBadges, saveStudentPreferences } from "@/lib/student/preferences";
 
 type Tab = "overview" | "profile" | "appointments" | LearningSection;
-const tabs: { id: Tab; label: string }[] = [
-  { id: "overview", label: "Genel" },
-  { id: "profile", label: "Profil" },
-  { id: "appointments", label: "Randevular" },
-  { id: "lessons", label: "Dersler" },
-  { id: "homework", label: "Ödevler" },
-  { id: "packages", label: "Paketler" },
-  { id: "payments", label: "Ödemeler" },
-  { id: "exam_history", label: "Sınav Geçmişi" },
-  { id: "notes", label: "Notlar" },
+const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: "overview", label: "Genel Bakış", icon: LayoutDashboard },
+  { id: "profile", label: "Profil & Tercihler", icon: UserRound },
+  { id: "lessons", label: "Eğitim & Canlı Dersler", icon: BookOpen },
+  { id: "appointments", label: "Randevular", icon: CalendarDays },
+  { id: "homework", label: "Ödevler", icon: ClipboardList },
+  { id: "packages", label: "Paket & Ders Hakları", icon: Package },
+  { id: "payments", label: "Ödemeler", icon: CreditCard },
+  { id: "exam_history", label: "Sınav Geçmişi", icon: Award },
+  { id: "notes", label: "Özel Notlar", icon: StickyNote },
 ];
 
 export function StudentDetailSheet({
@@ -37,41 +37,69 @@ export function StudentDetailSheet({
   if (!student) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button aria-label="Kapat" onClick={onClose} className="absolute inset-0 bg-forest/30 backdrop-blur-xs" />
-      <aside className="relative z-10 h-full w-full overflow-y-auto border-l border-border bg-white shadow-2xl sm:max-w-3xl">
-        <header className="sticky top-0 z-20 border-b border-border bg-white/95 p-4 backdrop-blur">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-ink">{student.fullName}</h2>
-              <p className="text-xs text-muted-foreground">
-                {student.email} · {student.phone || "Telefon yok"}
-              </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+      {/* Fixed backdrop - clicking backdrop does NOT accidentally close the modal */}
+      <div className="fixed inset-0 bg-[#0c1c14]/55 backdrop-blur-xs transition-opacity cursor-default" />
+
+      <div className="relative z-10 flex flex-col w-[min(1200px,94vw)] h-[min(880px,92vh)] rounded-3xl border border-border bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <header className="shrink-0 border-b border-border bg-surface px-6 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-forest/10 font-heading text-lg font-bold text-primary">
+                {student.fullName?.slice(0, 2).toUpperCase() || "ÖG"}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-heading text-xl font-bold text-ink">{student.fullName}</h2>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                      student.active
+                        ? "border border-emerald-300 bg-emerald-50 text-emerald-800"
+                        : "border border-red-300 bg-red-50 text-red-800"
+                    }`}
+                  >
+                    {student.active ? "Aktif Öğrenci" : "Pasif"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {student.email} · {student.phone || "Telefon belirtilmemiş"}
+                </p>
+              </div>
             </div>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-muted">
-              <X className="size-4" />
+
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-ink cursor-pointer"
+              aria-label="Kapat"
+            >
+              <X className="size-5" />
             </button>
           </div>
-          <nav aria-label="Öğrenci detay bölümleri" className="mt-4 flex gap-1 overflow-x-auto pb-1">
-            {tabs.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setTab(item.id)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
-                  tab === item.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-white text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+
+          <nav aria-label="Öğrenci detay bölümleri" className="mt-4 flex gap-1.5 overflow-x-auto pb-1">
+            {tabs.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setTab(item.id)}
+                  className={`inline-flex items-center gap-1.5 shrink-0 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                    tab === item.id
+                      ? "border-primary bg-primary text-white shadow-xs"
+                      : "border-border bg-white text-muted-foreground hover:bg-surface-muted hover:text-ink"
+                  }`}
+                >
+                  <Icon className="size-3.5" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
         </header>
 
-        <div className="space-y-4 p-4 sm:p-5">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-background">
           {message && (
-            <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+            <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 font-medium">
               {message}
             </div>
           )}
@@ -80,7 +108,7 @@ export function StudentDetailSheet({
             <ProfileForm
               student={student}
               onDone={() => {
-                setMessage("Öğrenci profili güncellendi.");
+                setMessage("Öğrenci profili başarıyla güncellendi.");
                 onChanged?.();
               }}
             />
@@ -102,7 +130,7 @@ export function StudentDetailSheet({
             <NoAccount />
           )}
         </div>
-      </aside>
+      </div>
     </div>
   );
 }
@@ -258,15 +286,25 @@ function ProfileForm({ student, onDone }: { student: StudentProfile; onDone: () 
     setBusy(true);
     setError("");
 
-    const r = await updateAdminStudentProfile(student.userId, {
-      ...form,
-      targetExam: selectedExams[0] || form.targetExam,
-      targetCountry: selectedCountries[0] || form.targetCountry,
-    });
+    try {
+      const r = await updateAdminStudentProfile(student.userId, {
+        ...form,
+        targetExam: selectedExams[0] || form.targetExam,
+        targetCountry: selectedCountries[0] || form.targetCountry,
+      });
 
-    setBusy(false);
-    if (r.error) setError(r.error);
-    else onDone();
+      if (r.error) {
+        setError(r.error);
+        return;
+      }
+
+      await saveStudentPreferences(student.userId, selectedExams, selectedCountries, true);
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Profil güncellenemedi.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

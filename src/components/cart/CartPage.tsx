@@ -18,6 +18,7 @@ import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { useAccount } from "@/lib/auth/account-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { formatCurrency } from "@/lib/format/currency";
 
 export function CartPage() {
   const locale = useLocale();
@@ -60,23 +61,22 @@ export function CartPage() {
     .map((item) => availablePackages.find((p) => p.id === item.packageId))
     .filter((p): p is PublicPricingPackage => Boolean(p));
 
-  const totalLessons = cartPackages.reduce((acc, p) => acc + (p.lesson_count || 0), 0);
   const totalPrice = cartPackages.reduce(
     (acc, p) => acc + Number(p.current_total ?? p.price_amount ?? 0),
     0
   );
+  const totalOriginalPrice = cartPackages.reduce((acc, p) => {
+    const listPrice = p.old_total && p.old_total > Number(p.current_total ?? p.price_amount ?? 0)
+      ? p.old_total
+      : Number(p.current_total ?? p.price_amount ?? 0);
+    return acc + listPrice;
+  }, 0);
+  const totalDiscount = Math.max(0, totalOriginalPrice - totalPrice);
+  const totalLessons = cartPackages.reduce((acc, p) => acc + (p.lesson_count || 0), 0);
   const currency = cartPackages[0]?.currency || "TRY";
 
   const money = (val: number, cur = "TRY") => {
-    try {
-      return new Intl.NumberFormat(isTr ? "tr-TR" : "en-GB", {
-        style: "currency",
-        currency: cur,
-        maximumFractionDigits: 0,
-      }).format(val);
-    } catch {
-      return `${val} ${cur}`;
-    }
+    return formatCurrency(val, { currency: cur, locale });
   };
 
   const firstPackageId = cartPackages[0]?.id;
@@ -142,7 +142,11 @@ export function CartPage() {
 
                 {cartPackages.map((pkg) => {
                   const pkgName = isTr ? pkg.name_tr : pkg.name_en || pkg.name_tr;
-                  const price = Number(pkg.current_total ?? pkg.price_amount ?? 0);
+                  const finalPrice = Number(pkg.current_total ?? pkg.price_amount ?? 0);
+                  const hasDiscount = Boolean(pkg.old_total && pkg.old_total > finalPrice);
+                  const listPrice = hasDiscount ? (pkg.old_total as number) : finalPrice;
+                  const discountVal = listPrice - finalPrice;
+                  const discountPct = pkg.discount_percentage || Math.round((discountVal / listPrice) * 100);
 
                   return (
                     <div
@@ -169,9 +173,17 @@ export function CartPage() {
                       </div>
 
                       <div className="flex items-center justify-between gap-6 border-t border-border pt-3 sm:border-0 sm:pt-0">
-                        <div className="text-right">
+                        <div className="text-right space-y-0.5">
+                          {hasDiscount && (
+                            <div className="flex flex-col items-end text-[11px] text-muted-foreground">
+                              <span className="line-through">{money(listPrice, pkg.currency)}</span>
+                              <span className="font-semibold text-emerald-800">
+                                {isTr ? `Paket İndirimi (%${discountPct}): -${money(discountVal, pkg.currency)}` : `Package Discount (%${discountPct}): -${money(discountVal, pkg.currency)}`}
+                              </span>
+                            </div>
+                          )}
                           <span className="block text-base font-bold text-ink sm:text-lg">
-                            {money(price, pkg.currency)}
+                            {money(finalPrice, pkg.currency)}
                           </span>
                         </div>
                         <button
@@ -204,10 +216,28 @@ export function CartPage() {
                     <span>{isTr ? "Toplam Ders" : "Total Lessons"}</span>
                     <span className="font-semibold text-ink">{totalLessons} {isTr ? "Ders" : "Lessons"}</span>
                   </div>
-                  <div className="flex items-center justify-between border-t border-border pt-4 text-base font-heading text-ink sm:text-xl">
-                    <span>{isTr ? "Toplam Tutar" : "Total Amount"}</span>
-                    <span className="font-bold text-ink">{money(totalPrice, currency)}</span>
-                  </div>
+
+                  {totalDiscount > 0 ? (
+                    <>
+                      <div className="flex justify-between text-muted-foreground border-t border-border pt-3">
+                        <span>{isTr ? "Paket Tutarı / Liste Fiyatı" : "List Price"}</span>
+                        <span>{money(totalOriginalPrice, currency)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium text-emerald-800">
+                        <span>{isTr ? "Paket İndirimi" : "Package Discount"}</span>
+                        <span>-{money(totalDiscount, currency)}</span>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-border pt-4 text-base font-heading text-ink sm:text-xl">
+                        <span>{isTr ? "Toplam Tutar" : "Total Amount"}</span>
+                        <span className="font-bold text-ink">{money(totalPrice, currency)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between border-t border-border pt-4 text-base font-heading text-ink sm:text-xl">
+                      <span>{isTr ? "Toplam Tutar" : "Total Amount"}</span>
+                      <span className="font-bold text-ink">{money(totalPrice, currency)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <Link

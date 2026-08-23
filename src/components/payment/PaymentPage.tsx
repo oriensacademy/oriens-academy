@@ -398,19 +398,40 @@ export function PaymentPage() {
                       </div>
 
                       <div className="space-y-2 border-t border-border pt-4 text-sm">
-                        <div className="flex justify-between text-muted-foreground">
-                          <span>{locale === "tr" ? "Paket Tutarı" : "Package Price"}</span>
-                          <span>{money(basePrice, selectedPackage.currency)}</span>
-                        </div>
+                        {selectedPackage.old_total && selectedPackage.old_total > basePrice ? (
+                          <>
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>{locale === "tr" ? "Paket Tutarı / Liste Fiyatı" : "Package List Price"}</span>
+                              <span>{money(selectedPackage.old_total, selectedPackage.currency)}</span>
+                            </div>
+                            <div className="flex justify-between font-medium text-emerald-800">
+                              <span>
+                                {locale === "tr"
+                                  ? `Paket İndirimi (%${selectedPackage.discount_percentage || Math.round(((selectedPackage.old_total - basePrice) / selectedPackage.old_total) * 100)})`
+                                  : `Package Discount (%${selectedPackage.discount_percentage || Math.round(((selectedPackage.old_total - basePrice) / selectedPackage.old_total) * 100)})`}
+                              </span>
+                              <span>-{money(selectedPackage.old_total - basePrice, selectedPackage.currency)}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground border-t border-border/60 pt-2">
+                              <span>{locale === "tr" ? "Ara Toplam" : "Subtotal"}</span>
+                              <span className="font-semibold text-ink">{money(basePrice, selectedPackage.currency)}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>{locale === "tr" ? "Paket Tutarı" : "Package Price"}</span>
+                            <span>{money(basePrice, selectedPackage.currency)}</span>
+                          </div>
+                        )}
 
                         {appliedCoupon && (
-                          <div className="flex items-center justify-between text-emerald-800">
-                            <span className="flex items-center gap-1.5 font-medium">
+                          <div className="flex items-center justify-between font-medium text-emerald-800">
+                            <span className="flex items-center gap-1.5">
                               <Tag className="size-3.5" />
-                              {appliedCoupon.code} (
+                              {locale === "tr" ? "Kupon İndirimi" : "Coupon Discount"} ({appliedCoupon.code}
                               {appliedCoupon.discount_type === "percentage"
-                                ? `%${appliedCoupon.discount_value}`
-                                : money(appliedCoupon.discount_value, appliedCoupon.currency)}
+                                ? ` · %${appliedCoupon.discount_value}`
+                                : ` · -${money(appliedCoupon.discount_value, appliedCoupon.currency)}`}
                               )
                             </span>
                             <span className="font-semibold">-{money(discountAmount, selectedPackage.currency)}</span>
