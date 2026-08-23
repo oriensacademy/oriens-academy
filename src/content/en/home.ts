@@ -13,7 +13,7 @@ export const hero = {
 export const trustResults = {
   eyebrow: "Support structured around academic goals",
   items: [
-    { title: "International exam preparation", description: "Exam-specific preparation and 1-on-1 practice for twelve target exams." },
+    { title: "International exam preparation", description: "Targeted preparation and 1-on-1 practice for international exams." },
     { title: "University course support", description: "Support in Calculus, Linear Algebra, Differential Equations, Statistics, and Physics I-II." },
     { title: "Bilingual delivery", description: "Academic content and consultation available in both Turkish and English." },
     { title: "Transparent pricing", description: "Fixed package fees guaranteed until June 2027 and a free intro call." },
@@ -22,7 +22,7 @@ export const trustResults = {
 
 export const examPreparation = {
   eyebrow: "Exam Preparation",
-  headline: "Twelve exams. Goal-focused preparation.",
+  headline: "Goal-focused international exam preparation.",
   body: "Every exam has its own language, scoring logic, and time pressure, so preparation is built around that exam specifically.",
   categories: [
     {
@@ -125,7 +125,7 @@ export const whyOriens = {
     },
     {
       icon: Globe2 as LucideIcon,
-      title: "12 International Exams",
+      title: "International Exams",
       copy: "Specialist expertise in IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, and OMPT.",
     },
     {
@@ -147,7 +147,7 @@ export const instructorAbout = {
 
 export const resultsTestimonials = {
   eyebrow: "Student Experience",
-  headline: "A few of over 111 student and parent reviews.",
+  headline: "A few of hundreds of student and parent reviews.",
   functionPlotCaption: "Real student and parent reviews.",
   testimonials: [
     {

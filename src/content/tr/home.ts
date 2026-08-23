@@ -13,7 +13,7 @@ export const hero = {
 export const trustResults = {
   eyebrow: "Akademik hedefe göre yapılandırılmış destek",
   items: [
-    { title: "Uluslararası sınav hazırlığı", description: "12 sınav için sınava özel hazırlık kurgusu ve birebir antrenman." },
+    { title: "Uluslararası sınav hazırlığı", description: "Hedefe yönelik sınav hazırlık kurgusu ve birebir antrenman." },
     { title: "Üniversite ders desteği", description: "Calculus, Lineer Cebir, Diferansiyel Denklemler, İstatistik ve Fizik I-II takviyesi." },
     { title: "Türkçe ve İngilizce", description: "İki dilde erişilebilen akademik içerik ve ders akışı." },
     { title: "Şeffaf ücretlendirme", description: "Haziran 2027'ye kadar sabit paket ücretleri ve ücretsiz tanışma görüşmesi." },
@@ -22,7 +22,7 @@ export const trustResults = {
 
 export const examPreparation = {
   eyebrow: "Sınav Hazırlığı",
-  headline: "On iki sınav. Hedef odaklı hazırlık.",
+  headline: "Hedef odaklı sınav hazırlığı.",
   body: "Her sınavın kendi dili, puanlama mantığı ve zaman baskısı olduğu için hazırlık o sınava özel kurgulanır.",
   categories: [
     {
@@ -125,7 +125,7 @@ export const whyOriens = {
     },
     {
       icon: Globe2 as LucideIcon,
-      title: "12 Uluslararası Sınav",
+      title: "Uluslararası Sınavlar",
       copy: "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, OMPT uzmanlığı.",
     },
     {
@@ -147,7 +147,7 @@ export const instructorAbout = {
 
 export const resultsTestimonials = {
   eyebrow: "Öğrenci Deneyimi",
-  headline: "111'den fazla değerlendirmeden bir kaçı.",
+  headline: "Yüzlerce öğrenci ve veli değerlendirmesinden birkaçı.",
   functionPlotCaption: "Gerçek veli ve öğrenci yorumları.",
   testimonials: [
     {

@@ -11,6 +11,7 @@ import { AssessmentPage } from "@/components/assessment/AssessmentPage";
 import { LegalPage } from "@/components/legal/LegalPage";
 import { ExamTestPage } from "@/components/exam-test/ExamTestPage";
 import { PaymentPage } from "@/components/payment/PaymentPage";
+import { CartPage } from "@/components/cart/CartPage";
 import { StudentPortal } from "@/components/student/StudentPortal";
 import { UnifiedLoginPage } from "@/components/auth/UnifiedLoginPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
@@ -18,7 +19,7 @@ import { AccountPasswordChangePage } from "@/components/auth/AccountPasswordChan
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { Footer } from "@/components/sections/Footer";
 import { getDictionary, isLocale } from "@/content/dictionaries";
-import { aboutSegment, assessmentSegment, bookingSegment, changePasswordSegment, contactSegment, examHubSegment, examTestSegment, forgotPasswordSegment, localizedPath, paymentSegment, pricingSegment, privacySegment, studentAccountSegment, termsSegment, unifiedLoginSegment, universitySupportSegment } from "@/lib/routes";
+import { aboutSegment, assessmentSegment, bookingSegment, cartSegment, changePasswordSegment, contactSegment, examHubSegment, examTestSegment, forgotPasswordSegment, localizedPath, paymentSegment, pricingSegment, privacySegment, studentAccountSegment, termsSegment, unifiedLoginSegment, universitySupportSegment } from "@/lib/routes";
 
 type Params = { lang: string; examHub: string };
 
@@ -34,6 +35,7 @@ export function generateStaticParams({ params }: { params: { lang: string } }) {
         { examHub: assessmentSegment(params.lang) },
         { examHub: examTestSegment(params.lang) },
         { examHub: paymentSegment(params.lang) },
+        { examHub: cartSegment(params.lang) },
         { examHub: studentAccountSegment(params.lang) },
         { examHub: unifiedLoginSegment(params.lang) },
         { examHub: forgotPasswordSegment(params.lang) },
@@ -59,13 +61,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const isAssessment = examHub === assessmentSegment(lang);
   const isExamTest = examHub === examTestSegment(lang);
   const isPayment = examHub === paymentSegment(lang);
+  const isCart = examHub === cartSegment(lang);
   const isStudentAccount = examHub === studentAccountSegment(lang);
   const isLogin = examHub === unifiedLoginSegment(lang);
   const isForgotPassword = examHub === forgotPasswordSegment(lang);
   const isChangePassword = examHub === changePasswordSegment(lang);
   const isPrivacy = examHub === privacySegment(lang);
   const isTerms = examHub === termsSegment(lang);
-  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact && !isAssessment && !isExamTest && !isPayment && !isStudentAccount && !isLogin && !isForgotPassword && !isChangePassword && !isPrivacy && !isTerms) return {};
+  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact && !isAssessment && !isExamTest && !isPayment && !isCart && !isStudentAccount && !isLogin && !isForgotPassword && !isChangePassword && !isPrivacy && !isTerms) return {};
   if (isLogin || isForgotPassword || isChangePassword) {
     const route = isLogin ? "login" : isForgotPassword ? "forgotPassword" : "changePassword";
     const title = isLogin ? (lang === "tr" ? "Oturum Aç | Oriens Academy" : "Sign In | Oriens Academy") : isForgotPassword ? (lang === "tr" ? "Şifremi Unuttum | Oriens Academy" : "Forgot Password | Oriens Academy") : (lang === "tr" ? "Şifre Değiştir | Oriens Academy" : "Change Password | Oriens Academy");
@@ -74,6 +77,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   if (isStudentAccount) {
     const title = lang === "tr" ? "Hesabım | Oriens Academy" : "My Account | Oriens Academy";
     return { title, robots: { index: false, follow: false }, alternates: { canonical: localizedPath("studentAccount", lang), languages: { tr: localizedPath("studentAccount", "tr"), en: localizedPath("studentAccount", "en") } } };
+  }
+  if (isCart) {
+    const title = lang === "tr" ? "Sepetim | Oriens Academy" : "My Cart | Oriens Academy";
+    return { title, robots: { index: false, follow: false }, alternates: { canonical: localizedPath("cart", lang), languages: { tr: localizedPath("cart", "tr"), en: localizedPath("cart", "en") } } };
   }
 
   const route = isExams
@@ -167,13 +174,14 @@ export default async function TopLevelHubPage({ params }: { params: Promise<Para
   const isAssessment = examHub === assessmentSegment(lang);
   const isExamTest = examHub === examTestSegment(lang);
   const isPayment = examHub === paymentSegment(lang);
+  const isCart = examHub === cartSegment(lang);
   const isStudentAccount = examHub === studentAccountSegment(lang);
   const isLogin = examHub === unifiedLoginSegment(lang);
   const isForgotPassword = examHub === forgotPasswordSegment(lang);
   const isChangePassword = examHub === changePasswordSegment(lang);
   const isPrivacy = examHub === privacySegment(lang);
   const isTerms = examHub === termsSegment(lang);
-  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact && !isAssessment && !isExamTest && !isPayment && !isStudentAccount && !isLogin && !isForgotPassword && !isChangePassword && !isPrivacy && !isTerms) notFound();
+  if (!isExams && !isUniversitySupport && !isPricing && !isAbout && !isBooking && !isContact && !isAssessment && !isExamTest && !isPayment && !isCart && !isStudentAccount && !isLogin && !isForgotPassword && !isChangePassword && !isPrivacy && !isTerms) notFound();
 
   return (
     <>
@@ -196,6 +204,8 @@ export default async function TopLevelHubPage({ params }: { params: Promise<Para
           <ExamTestPage />
         ) : isPayment ? (
           <PaymentPage />
+        ) : isCart ? (
+          <CartPage />
         ) : isStudentAccount ? (
           <StudentPortal />
         ) : isLogin ? (

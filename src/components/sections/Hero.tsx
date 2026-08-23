@@ -10,6 +10,7 @@ import GooeySearchBar from "@/components/ui/gooey-search";
 import { TextReveal } from "@/components/text-reveal";
 import { TextRotate } from "@/components/ui/text-rotate";
 import { useLocale } from "@/content/locale-context";
+import { localizedPath } from "@/lib/routes";
 
 const rise = (skip: boolean): Variants => ({
   hidden: { opacity: skip ? 1 : 0, y: skip ? 0 : 18 },
@@ -95,7 +96,7 @@ export function Hero() {
               <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />
             </ButtonLink>
             <ButtonLink
-              href="#method"
+              href={localizedPath("exams", locale)}
               variant="outline"
               size="lg"
               className="h-12 px-6 text-base font-ui"

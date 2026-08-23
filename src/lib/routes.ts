@@ -13,6 +13,7 @@ export type LocalizedRouteId =
   | "assessment"
   | "examTest"
   | "payment"
+  | "cart"
   | "studentAccount"
   | "login"
   | "forgotPassword"
@@ -31,6 +32,7 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   assessment: { tr: "degerlendirme", en: "assessment" },
   examTest: { tr: "kendini-dene", en: "test-yourself" },
   payment: { tr: "odeme", en: "payment" },
+  cart: { tr: "sepet", en: "cart" },
   studentAccount: { tr: "hesabim", en: "account" },
   login: { tr: "giris", en: "login" },
   forgotPassword: { tr: "sifremi-unuttum", en: "forgot-password" },
@@ -54,6 +56,14 @@ export function universitySupportSegment(locale: Locale): string {
 
 export function pricingSegment(locale: Locale): string {
   return localizedSegments.pricing[locale];
+}
+
+export function cartSegment(locale: Locale): string {
+  return localizedSegments.cart[locale];
+}
+
+export function cartPath(locale: Locale): string {
+  return localizedPath("cart", locale);
 }
 
 export function aboutSegment(locale: Locale): string {
@@ -101,6 +111,7 @@ export function primaryNavigationPath(anchor: string, locale: Locale): string {
   if (anchor === "#university-support") return localizedPath("universitySupport", locale);
   if (anchor === "#pricing") return localizedPath("pricing", locale);
   if (anchor === "#about") return localizedPath("about", locale);
+  if (anchor === "#method") return `${localizedPath("home", locale)}#method`;
   return `${localizedPath("home", locale)}${anchor}`;
 }
 

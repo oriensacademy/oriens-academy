@@ -8,7 +8,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ButtonLink } from "@/components/ui/button";
 import { useLocale, useUniversitySupportContent } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
-import { StudyDestinationSection } from "@/components/discovery/StudyDestinationSection";
 import { CONTACT } from "@/config/contact";
 import { OriensLottie } from "@/components/ui/OriensLottie";
 
@@ -85,8 +84,6 @@ export function UniversitySupportPage() {
           </Reveal>
         </div>
       </section>
-
-      <StudyDestinationSection />
 
       <section id="support-areas" className="section-offset border-y border-border bg-surface-muted py-20 md:py-28">
         <div className="mx-auto max-w-[1280px] px-6 md:px-12">

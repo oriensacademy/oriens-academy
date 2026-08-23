@@ -1,36 +1,36 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  GraduationCap,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Compass,
+  Sparkles,
+  BookOpen,
+  Target,
+  Award,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 
-export interface ImageItem {
-  src?: string;
-  alt: string;
-  eyebrow?: string;
-  title?: string;
-  detail?: string;
-  tone?: "sage" | "ivory" | "forest" | "gold";
-}
-
-interface PhoneCarouselProps {
-  images?: ImageItem[];
+export interface PhoneCarouselProps {
   autoPlayInterval?: number;
   className?: string;
 }
 
 export function PhoneCarousel({
-  images = [
-    { alt: "Oriens temporary screen", eyebrow: "ORIENS", title: "Academic Route", tone: "sage" },
-  ],
-  autoPlayInterval = 4000,
+  autoPlayInterval = 5000,
   className,
 }: PhoneCarouselProps) {
-  const slideCount = images.length;
+  const locale = useLocale();
+  const isTr = locale === "tr";
+  const slideCount = 3;
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
-  const currentImage = images[currentIndex];
   const containerRef = useRef<HTMLDivElement>(null);
   const [inViewport, setInViewport] = useState(false);
   const [tabVisible, setTabVisible] = useState(true);
@@ -84,8 +84,8 @@ export function PhoneCarousel({
     >
       <div className="relative flex w-full items-center justify-center px-4">
         <motion.div
-          className="relative h-[520px] w-[270px] touch-pan-y rounded-[48px] border-4 border-[#0D2A1C] bg-[#10271B] p-3 shadow-[0_24px_60px_rgba(16,39,27,0.16)] ring-1 ring-[#819586]/30 transition-all duration-300 sm:h-[577px] sm:w-[300px] lg:h-[674px] lg:w-[350px] xl:h-[712px] xl:w-[370px]"
-          drag={slideCount > 1 ? "x" : false}
+          className="relative h-[520px] w-[280px] touch-pan-y rounded-[48px] border-4 border-[#0D2A1C] bg-[#10271B] p-3 shadow-[0_24px_60px_rgba(16,39,27,0.16)] ring-1 ring-[#819586]/30 transition-all duration-300 sm:h-[577px] sm:w-[310px] lg:h-[650px] lg:w-[340px]"
+          drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.12}
           onDragEnd={(_, info) => {
@@ -93,64 +93,261 @@ export function PhoneCarousel({
             if (info.offset.x > 45) handleManualPrev();
           }}
         >
+          {/* Dynamic Island / Speaker Pill */}
           <div className="absolute top-5 left-1/2 z-20 flex h-5 w-28 -translate-x-1/2 items-center justify-center rounded-full bg-[#0D2A1C]">
             <div className="mr-2 size-3 rounded-full border border-[#819586]/40 bg-[#10271B]" />
             <div className="size-2 rounded-full bg-[#25382D]" />
           </div>
 
-          <div className="relative h-full w-full overflow-hidden rounded-[38px] bg-[#E7EBE3] shadow-inner">
+          <div className="relative h-full w-full overflow-hidden rounded-[38px] bg-[#0E2419] shadow-inner">
             <AnimatePresence mode="wait">
-              <motion.div
-                key={currentIndex}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute inset-0 bg-[#E7EBE3]"
-              >
-                {currentImage.src && failedImages[currentImage.src] ? (
-                  <div
-                    className="flex h-full w-full items-center justify-center bg-[#E7EBE3]"
-                    role="img"
-                    aria-label={`${currentImage.alt} unavailable`}
-                  >
-                    <div className="size-12 rounded-2xl border border-[#819586]/25 bg-[#F6F8F3]" />
-                  </div>
-                ) : currentImage.src ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={currentImage.src}
-                    alt={currentImage.alt}
-                    className="h-full w-full object-cover"
-                    draggable={false}
-                    onError={() =>
-                      setFailedImages((failed) => ({
-                        ...failed,
-                        [currentImage.src!]: true,
-                      }))
-                    }
-                  />
-                ) : (
-                  <div className={cn(
-                    "flex h-full flex-col justify-between p-7 pt-16 sm:p-9 sm:pt-20",
-                    currentImage.tone === "forest" && "bg-[#10271B] text-white",
-                    currentImage.tone === "ivory" && "bg-[#F7F1E2] text-[#10271B]",
-                    currentImage.tone === "gold" && "bg-[#D6B56D] text-[#10271B]",
-                    (!currentImage.tone || currentImage.tone === "sage") && "bg-[#DCE6DC] text-[#10271B]",
-                  )} role="img" aria-label={currentImage.alt}>
-                    <div>
-                      <p className="text-[10px] font-bold tracking-[0.2em] opacity-65">{currentImage.eyebrow}</p>
-                      <h3 className="mt-5 font-heading text-4xl leading-[1.02]">{currentImage.title}</h3>
-                      <p className="mt-4 text-sm leading-6 opacity-70">{currentImage.detail}</p>
+              {currentIndex === 0 && (
+                <motion.div
+                  key="slide-exam-prep"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 flex flex-col justify-between bg-gradient-to-b from-[#132C1E] to-[#0A1A12] p-5 pt-14 text-white sm:p-6 sm:pt-16"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 rounded-full bg-[#819586]/20 px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] text-[#A2B8A8] uppercase">
+                        <Target className="size-3 text-[#A2B8A8]" />
+                        {isTr ? "Sınav Hazırlığı" : "Exam Prep"}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-white/60">
+                        <Sparkles className="size-3 text-[#D6B56D]" />
+                        {isTr ? "1-e-1 Özel" : "1-on-1"}
+                      </span>
                     </div>
-                    <div className="space-y-3" aria-hidden="true">
-                      <div className="h-24 rounded-3xl border border-current/15 bg-white/20" />
-                      <div className="grid grid-cols-2 gap-3"><div className="h-20 rounded-2xl border border-current/15 bg-white/15" /><div className="h-20 rounded-2xl border border-current/15 bg-white/15" /></div>
+
+                    <h3 className="mt-3 font-heading text-2xl font-normal text-white sm:text-3xl">
+                      {isTr ? "Hedef Odaklı Hazırlık" : "Target-Driven Prep"}
+                    </h3>
+                    <p className="mt-1 text-xs text-white/70">
+                      {isTr ? "Sınav formatına özel soru çözüm teknikleri" : "Exam-specific problem-solving mastery"}
+                    </p>
+
+                    <div className="mt-4 space-y-2.5">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs transition-colors hover:bg-white/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="flex size-7 items-center justify-center rounded-lg bg-[#819586]/30 text-xs font-bold text-white">
+                              IB
+                            </span>
+                            <div>
+                              <p className="text-xs font-bold text-white">Math AA & Physics HL</p>
+                              <p className="text-[10px] text-white/60">{isTr ? "İç Değerlendirme & Soru Analizi" : "IA Strategy & Past Papers"}</p>
+                            </div>
+                          </div>
+                          <span className="rounded-md bg-[#819586]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#A2B8A8]">
+                            7 / 7
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs transition-colors hover:bg-white/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="flex size-7 items-center justify-center rounded-lg bg-[#D6B56D]/30 text-xs font-bold text-[#F4E7C5]">
+                              SAT
+                            </span>
+                            <div>
+                              <p className="text-xs font-bold text-white">Digital SAT · Math & RW</p>
+                              <p className="text-[10px] text-white/60">{isTr ? "Modül & Zaman Yönetimi" : "Module & Time Management"}</p>
+                            </div>
+                          </div>
+                          <span className="rounded-md bg-[#D6B56D]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#F4E7C5]">
+                            1540+
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs transition-colors hover:bg-white/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="flex size-7 items-center justify-center rounded-lg bg-[#819586]/30 text-xs font-bold text-white">
+                              AP
+                            </span>
+                            <div>
+                              <p className="text-xs font-bold text-white">Calculus BC & Physics C</p>
+                              <p className="text-[10px] text-white/60">{isTr ? "Üniversite Kredi Yeterliliği" : "University Credit Mastery"}</p>
+                            </div>
+                          </div>
+                          <span className="rounded-md bg-[#819586]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#A2B8A8]">
+                            5 / 5
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[9px] font-semibold tracking-[0.16em] opacity-55">TEMPORARY OWNER PLACEHOLDER</p>
                   </div>
-                )}
-              </motion.div>
+
+                  <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-center">
+                    <p className="text-[11px] font-semibold text-[#D6B56D]">
+                      {isTr ? "Birebir Soru Analizi & Düzenli Takip" : "1-on-1 Practice & Structured Progress"}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {currentIndex === 1 && (
+                <motion.div
+                  key="slide-student-portal"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 flex flex-col justify-between bg-gradient-to-b from-[#102B1D] to-[#08180F] p-5 pt-14 text-white sm:p-6 sm:pt-16"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 rounded-full bg-[#D6B56D]/20 px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] text-[#F4E7C5] uppercase">
+                        <Calendar className="size-3 text-[#D6B56D]" />
+                        {isTr ? "Öğrenci Portalı" : "Student Portal"}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400">
+                        <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        {isTr ? "Aktif Dönem" : "Active Term"}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-3 font-heading text-2xl font-normal text-white sm:text-3xl">
+                      {isTr ? "Ders & İlerleme" : "Lessons & Progress"}
+                    </h3>
+                    <p className="mt-1 text-xs text-white/70">
+                      {isTr ? "Planlanan dersler, ödevler ve paket durumu" : "Scheduled lessons, assignments & credits"}
+                    </p>
+
+                    <div className="mt-4 space-y-2.5">
+                      {/* Upcoming Lesson */}
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-xs">
+                        <div className="flex items-center justify-between text-[11px] text-white/60">
+                          <span className="flex items-center gap-1 font-semibold text-[#D6B56D]">
+                            <Clock className="size-3" />
+                            {isTr ? "Yarın · 18:30" : "Tomorrow · 18:30"}
+                          </span>
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] uppercase font-bold text-white/80">
+                            {isTr ? "Canlı Birebir" : "Live 1-on-1"}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-xs font-bold text-white">Calculus & University Physics</p>
+                        <p className="text-[10px] text-white/60">{isTr ? "Eğitmen: Doğuhan" : "Tutor: Doğuhan"}</p>
+                      </div>
+
+                      {/* Homework status */}
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400">
+                              <CheckCircle2 className="size-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white">{isTr ? "Zamanlı Deneme 4" : "Timed Mock Exam 4"}</p>
+                              <p className="text-[10px] text-white/60">{isTr ? "İncelendi · Not: 92/100" : "Reviewed · Score: 92/100"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Package Meter */}
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-white/80">{isTr ? "10 Derslik Paket" : "10-Lesson Package"}</span>
+                          <span className="font-bold text-[#D6B56D]">8 / 10 {isTr ? "Ders" : "Lessons"}</span>
+                        </div>
+                        <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
+                          <div className="h-full rounded-full bg-[#D6B56D]" style={{ width: "80%" }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-center">
+                    <p className="text-[11px] font-semibold text-white/80">
+                      {isTr ? "Ders takvimi ve gelişim raporu her an elinizin altında" : "Lesson schedule & reports always at hand"}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {currentIndex === 2 && (
+                <motion.div
+                  key="slide-university-routes"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 flex flex-col justify-between bg-gradient-to-b from-[#132A22] to-[#0A1A14] p-5 pt-14 text-white sm:p-6 sm:pt-16"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 rounded-full bg-[#819586]/20 px-2.5 py-1 text-[10px] font-bold tracking-[0.16em] text-[#A2B8A8] uppercase">
+                        <Compass className="size-3 text-[#A2B8A8]" />
+                        {isTr ? "Akademik Rota" : "Academic Route"}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-white/60">
+                        <GraduationCap className="size-3.5 text-[#819586]" />
+                        {isTr ? "Global Kabul" : "Global Entry"}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-3 font-heading text-2xl font-normal text-white sm:text-3xl">
+                      {isTr ? "Üniversite Kabul Rotası" : "University Pathways"}
+                    </h3>
+                    <p className="mt-1 text-xs text-white/70">
+                      {isTr ? "Dünya çapında seçkin programlara stratejik hazırlık" : "Strategic prep for leading international degrees"}
+                    </p>
+
+                    <div className="mt-4 space-y-2.5">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-[#D6B56D] uppercase">UK &middot; Oxbridge / Imperial</span>
+                            </div>
+                            <p className="mt-0.5 text-xs font-bold text-white">Mathematics & Computer Science</p>
+                            <p className="text-[10px] text-white/60">{isTr ? "TMUA, STEP & Mülakat Stratejisi" : "TMUA, STEP & Interview Strategy"}</p>
+                          </div>
+                          <Award className="size-4 text-[#D6B56D] shrink-0" />
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-[#A2B8A8] uppercase">US &middot; Top 20 & Ivy League</span>
+                            </div>
+                            <p className="mt-0.5 text-xs font-bold text-white">Engineering & Natural Sciences</p>
+                            <p className="text-[10px] text-white/60">{isTr ? "Digital SAT, AP Physics & Calculus" : "Digital SAT, AP Physics & Calculus"}</p>
+                          </div>
+                          <BookOpen className="size-4 text-[#819586] shrink-0" />
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-sky-400 uppercase">EU &middot; İtalya Tıp & Hollanda</span>
+                            </div>
+                            <p className="mt-0.5 text-xs font-bold text-white">Medicine & Quantitative Econ</p>
+                            <p className="text-[10px] text-white/60">{isTr ? "IMAT & OMPT Matematik Yeterliliği" : "IMAT & OMPT Placement Prep"}</p>
+                          </div>
+                          <GraduationCap className="size-4 text-sky-400 shrink-0" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-center">
+                    <p className="text-[11px] font-semibold text-[#A2B8A8]">
+                      {isTr ? "Hedef programa göre özelleştirilmiş çalışma takvimi" : "Customized study roadmap tailored to your target programme"}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
 
@@ -165,7 +362,7 @@ export function PhoneCarousel({
           type="button"
           onClick={handleManualPrev}
           className="cursor-pointer rounded-full p-1.5 text-foreground transition-colors hover:bg-muted focus:ring-2 focus:ring-primary/30 focus:outline-hidden"
-          aria-label="Previous slide"
+          aria-label={isTr ? "Önceki slayt" : "Previous slide"}
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -173,14 +370,14 @@ export function PhoneCarousel({
         <div
           className="flex items-center gap-2 px-1"
           role="tablist"
-          aria-label="Phone screens pagination"
+          aria-label={isTr ? "Telefon ekranları" : "Phone screens"}
         >
-          {images.map((image, index) => {
+          {Array.from({ length: slideCount }).map((_, index) => {
             const isActive = currentIndex === index;
 
             return (
               <button
-                key={`${image.alt}-${index}`}
+                key={index}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
@@ -201,7 +398,7 @@ export function PhoneCarousel({
           type="button"
           onClick={handleManualNext}
           className="cursor-pointer rounded-full p-1.5 text-foreground transition-colors hover:bg-muted focus:ring-2 focus:ring-primary/30 focus:outline-hidden"
-          aria-label="Next slide"
+          aria-label={isTr ? "Sonraki slayt" : "Next slide"}
         >
           <ChevronRight className="size-4" />
         </button>

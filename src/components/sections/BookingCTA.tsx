@@ -142,7 +142,7 @@ export function BookingCTA() {
           <Reveal delay={0.18} className="mt-6 space-y-2">
             <a href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · +90 544 293 90 40</a>
             <a href="tel:+905442939040" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Phone className="size-4" />{isTr ? "Telefon" : "Phone"} · +90 544 293 90 40</a>
-            <a href="mailto:oriensacademy@gmail.com" className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 py-2 text-sm font-semibold"><Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">oriensacademy@gmail.com</span></a>
+            <a href="mailto:info@oriens-academy.com" className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 py-2 text-sm font-semibold"><Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">info@oriens-academy.com</span></a>
           </Reveal>
         </div>
 

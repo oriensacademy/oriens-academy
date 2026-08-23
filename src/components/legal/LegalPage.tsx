@@ -12,7 +12,7 @@ const copy = {
       ["Saklama ve güvenlik", "Veriler yalnızca hizmet, güvenlik ve geçerli yükümlülükler için gerekli süre boyunca saklanır. Yetkisiz erişimi azaltmak amacıyla uygun teknik ve organizasyonel önlemler uygulanır."],
       ["Üçüncü taraf altyapısı", "Barındırma, veritabanı, e-posta ve güvenlik hizmetleri için güvenilir altyapı sağlayıcıları kullanılabilir. Veriler yalnızca hizmetin gerektirdiği ölçüde paylaşılır."],
       ["Ödeme verileri", "Ödeme kayıtları; paket, tutar, yöntem ve banka işlem referansı gibi işlem bilgilerini içerebilir. Oriens Academy ham kart numarası veya CVV saklamaz. Kartlı ödeme etkinleştirildiğinde kart bilgileri doğrudan bankanın barındırdığı veya tokenlaştırılmış güvenli ödeme akışında işlenir."],
-      ["Talepleriniz", "Verilerinizle ilgili erişim, düzeltme veya silme talebinizi oriensacademy@gmail.com adresine iletebilirsiniz."],
+      ["Talepleriniz", "Verilerinizle ilgili erişim, düzeltme veya silme talebinizi info@oriens-academy.com adresine iletebilirsiniz."],
     ]},
     terms: { title: "Kullanım Koşulları", intro: "Bu koşullar Oriens Academy web sitesi ile eğitim ve danışmanlık hizmetlerinin genel kullanım çerçevesini açıklar.", sections: [
       ["Hizmet kapsamı", "Oriens Academy sınav hazırlığı, akademik destek ve eğitim danışmanlığı sunar. Web sitesi içerikleri genel bilgilendirme niteliğindedir ve belirli bir kabul veya sonuç garantisi oluşturmaz."],
@@ -21,7 +21,7 @@ const copy = {
       ["Ödemeler ve paketler", "Güncel fiyat, paket kapsamı, ödeme ve varsa iptal koşulları satın alma veya hizmet onayı öncesinde kullanıcıya bildirilir. Havale/EFT bildirimleri banka hesabında doğrulanana kadar beklemede kalır; kartlı ödemeler yalnızca banka tarafından doğrulanan sonuç üzerine başarılı sayılır."],
       ["Fikri mülkiyet ve kabul edilebilir kullanım", "Site içeriği ve eğitim materyalleri izin olmadan çoğaltılamaz veya ticari amaçla kullanılamaz. Siteye zarar veren, yanıltıcı veya hukuka aykırı kullanıma izin verilmez."],
       ["Sorumluluğun sınırı", "Hizmetler akademik gelişimi desteklemek üzere sunulur; sınav, kabul veya kariyer sonuçları öğrencinin çalışması ve üçüncü taraf kararları dahil birçok etkene bağlıdır."],
-      ["Değişiklikler ve iletişim", "Hizmetler veya bu koşullar gerektiğinde güncellenebilir. Sorular için oriensacademy@gmail.com adresinden iletişime geçebilirsiniz."],
+      ["Değişiklikler ve iletişim", "Hizmetler veya bu koşullar gerektiğinde güncellenebilir. Sorular için info@oriens-academy.com adresinden iletişime geçebilirsiniz."],
     ]},
   },
   en: {
@@ -33,7 +33,7 @@ const copy = {
       ["Retention and security", "Data is retained only as long as needed for service, security and applicable obligations. Appropriate technical and organisational safeguards are used to reduce unauthorised access."],
       ["Third-party infrastructure", "Trusted hosting, database, email and security providers may process data only to the extent required to deliver the service."],
       ["Payment data", "Payment records may include transaction details such as package, amount, method and a bank transaction reference. Oriens Academy does not store raw card numbers or CVV values. Once card payment is enabled, card details are processed directly through the bank's hosted or tokenised secure payment flow."],
-      ["Your requests", "You may request access, correction or deletion of your data by contacting oriensacademy@gmail.com."],
+      ["Your requests", "You may request access, correction or deletion of your data by contacting info@oriens-academy.com."],
     ]},
     terms: { title: "Terms of Service", intro: "These terms provide the general framework for using the Oriens Academy website, education and consultancy services.", sections: [
       ["Service scope", "Oriens Academy provides exam preparation, academic support and education consultancy. Website content is informational and does not guarantee a particular admission or result."],
@@ -42,7 +42,7 @@ const copy = {
       ["Payments and packages", "Current pricing, package scope, payment terms and applicable cancellation conditions are communicated before purchase or service confirmation. Bank transfers remain pending until verified in the bank account; card payments are treated as successful only after a bank-verified result."],
       ["Intellectual property and acceptable use", "Website content and educational materials may not be reproduced or used commercially without permission. Harmful, misleading or unlawful use is prohibited."],
       ["Limitation of liability", "Services support academic development; exam, admission and career results depend on many factors including student work and third-party decisions."],
-      ["Changes and contact", "Services or these terms may be updated when needed. Contact oriensacademy@gmail.com with questions."],
+      ["Changes and contact", "Services or these terms may be updated when needed. Contact info@oriens-academy.com with questions."],
     ]},
   },
 } as const;

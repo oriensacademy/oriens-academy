@@ -59,59 +59,70 @@ export function Footer() {
         </nav>
       }
       contact={
-        <>
-          <h2>
-            <Link
-              href={localizedPath("contact", locale)}
-              className="text-xs font-bold tracking-[0.18em] text-ink uppercase transition-colors hover:text-primary"
-            >
-              {isTr ? "İletişim" : "Contact"}
-            </Link>
-          </h2>
-          <ul className="mt-4 space-y-2.5">
-            {contacts.map((item) => (
-              <li key={item.label}>
-                <a
-                  href={item.href}
-                  target={item.external ? "_blank" : undefined}
-                  rel={item.external ? "noreferrer" : undefined}
-                  className="group flex min-w-0 items-center gap-2.5 rounded-lg text-xs text-ink/75 outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4"
-                >
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#D6DED6] bg-[#EFF3EE] text-[#10271B] transition-colors duration-200 group-hover:bg-[#10271B] group-hover:text-white">
-                    <item.icon className="size-3.5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="mr-1.5 font-bold tracking-wider text-muted-foreground uppercase text-[9px]">{item.label}:</span>
-                    <span className={item.href.startsWith("mailto:") ? "break-all" : undefined}>{item.value}</span>
-                  </span>
-                </a>
-              </li>
-            ))}
-            <li>
-              <div className="flex min-w-0 items-start gap-2.5 text-xs text-ink/75 pt-1">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#D6DED6] bg-[#EFF3EE] text-[#10271B]">
-                  <MapPin className="size-3.5" aria-hidden="true" />
-                </span>
-                <address className="not-italic leading-relaxed text-[11px] text-muted-foreground">
-                  <span className="block font-bold tracking-wider text-ink uppercase text-[9px] mb-0.5">
-                    {isTr ? "Adres" : "Address"}
-                  </span>
-                  {CONTACT.businessAddress[locale]}
-                </address>
-              </div>
-            </li>
-          </ul>
-
-          <div className="mt-4 pt-1">
-            <Image
-              src="/images/payment-methods.png"
-              alt={isTr ? "Ödeme Yöntemleri - Visa ve Mastercard" : "Payment Methods - Visa and Mastercard"}
-              width={1224}
-              height={307}
-              className="h-auto w-full max-w-[150px] sm:max-w-[170px] object-contain opacity-95 transition-opacity hover:opacity-100"
-            />
+        <div className="space-y-6">
+          <div>
+            <h2>
+              <Link
+                href={localizedPath("contact", locale)}
+                className="text-xs font-bold tracking-[0.18em] text-ink uppercase transition-colors hover:text-primary"
+              >
+                {isTr ? "İletişim" : "Contact"}
+              </Link>
+            </h2>
+            <ul className="mt-3.5 space-y-2.5">
+              {contacts.map((item) => (
+                <li key={item.label}>
+                  <a
+                    href={item.href}
+                    target={item.external ? "_blank" : undefined}
+                    rel={item.external ? "noreferrer" : undefined}
+                    className="group flex min-w-0 items-center gap-2.5 rounded-lg text-xs text-ink/75 outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-4"
+                  >
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#D6DED6] bg-[#EFF3EE] text-[#10271B] transition-colors duration-200 group-hover:bg-[#10271B] group-hover:text-white">
+                      <item.icon className="size-3.5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="mr-1.5 font-bold tracking-wider text-muted-foreground uppercase text-[9px]">{item.label}:</span>
+                      <span className={item.href.startsWith("mailto:") ? "break-all" : undefined}>{item.value}</span>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
-        </>
+
+          <div>
+            <span className="block text-xs font-bold tracking-[0.18em] text-ink uppercase">
+              {isTr ? "Adres" : "Address"}
+            </span>
+            <div className="mt-2 flex min-w-0 items-start gap-2.5 text-xs text-ink/75">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[#D6DED6] bg-[#EFF3EE] text-[#10271B]">
+                <MapPin className="size-3.5" aria-hidden="true" />
+              </span>
+              <address className="not-italic leading-relaxed text-[11px] text-muted-foreground">
+                {CONTACT.businessAddress[locale]}
+              </address>
+            </div>
+          </div>
+
+          <div>
+            <span className="block text-xs font-bold tracking-[0.18em] text-ink uppercase">
+              {isTr ? "Güvenli Ödeme" : "Secure Payment"}
+            </span>
+            <div className="mt-2.5">
+              <Image
+                src="/images/payment-methods.png"
+                alt={isTr ? "Ödeme Yöntemleri - Visa ve Mastercard" : "Payment Methods - Visa and Mastercard"}
+                width={1224}
+                height={307}
+                className="h-auto w-full max-w-[150px] sm:max-w-[165px] object-contain opacity-95 transition-opacity hover:opacity-100"
+              />
+              <p className="mt-1.5 text-[10px] text-muted-foreground">
+                {isTr ? "Ödeme bağlantıları SSL ile korunur." : "Payment connections are SSL protected."}
+              </p>
+            </div>
+          </div>
+        </div>
       }
       language={
         <div className="flex flex-col items-start gap-3">

@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 export const page = {
-  eyebrow: "Sınav Hazırlığı · 01—12",
+  eyebrow: "Sınav Hazırlığı",
   title: "Uluslararası sınavlarda doğru rota.",
   lead:
     "Hedefinizi, akademik geçmişinizi ve başvuru takviminizi birlikte okuyarak hangi sınava, ne zaman ve nasıl hazırlanmanız gerektiğini netleştiriyoruz.",

@@ -8,8 +8,8 @@ export const metadata = {
 };
 
 export const page = {
-  eyebrow: "Exam Preparation · 01—12",
-  title: "The right route through international exams.",
+  eyebrow: "Exam Preparation",
+  title: "The right route for international exams.",
   lead:
     "We read your destination, academic background and application timeline together—then clarify which exam to take, when to take it and how to prepare.",
   heroNote: "Destination → Strategy → Progress",

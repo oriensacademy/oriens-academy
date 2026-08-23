@@ -142,7 +142,7 @@ function renderEmailShell(opts: {
           <td style="padding:24px 36px 28px 36px;border-top:1px solid ${PALETTE.border};margin-top:8px;">
             ${footerNote ? `<div style="font-size:12px;color:${PALETTE.sage};margin-bottom:12px;">${footerNote}</div>` : ""}
             <div style="font-size:12px;font-weight:700;color:${PALETTE.primary};">Oriens Academy</div>
-            <div style="font-size:12px;color:${PALETTE.sage};margin-top:3px;overflow-wrap:anywhere;word-break:break-word;">oriensacademy@gmail.com</div>
+            <div style="font-size:12px;color:${PALETTE.sage};margin-top:3px;overflow-wrap:anywhere;word-break:break-word;">info@oriens-academy.com</div>
             <div style="font-size:12px;color:${PALETTE.sage};margin-top:2px;">+90 544 293 90 40</div>
           </td>
         </tr>
@@ -234,7 +234,7 @@ export function renderStudentBookingEmail(data: BookingEmailData) {
   const text = joinText([
     `ORIENS ACADEMY - ${subject}`, "", isTr ? `Merhaba ${data.fullName},` : `Hello ${data.fullName},`, "",
     isTr ? "Tanışma görüşmesi talebinizi başarıyla aldık.\n\nEkibimiz paylaştığınız iletişim bilgileri üzerinden en kısa sürede sizinle iletişime geçecektir." : "We have successfully received your introductory consultation request.\n\nOur team will contact you as soon as possible using the contact information you provided.",
-    "", "Oriens Academy", "oriensacademy@gmail.com", "+90 544 293 90 40",
+    "", "Oriens Academy", "info@oriens-academy.com", "+90 544 293 90 40",
   ]);
 
   return { subject, html, text };
@@ -303,7 +303,7 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
     packagePrice ? `${isTr ? "Gösterilen fiyat" : "Displayed price"}: ${packagePrice}` : null,
     data.message ? `\n${isTr ? "Mesaj" : "Message"}:\n${data.message}` : null,
     "", `${isTr ? "Yönetim Panelinde Görüntüle" : "View in Admin Panel"}: https://oriens-academy.com/admin/iletisim`,
-    "", "Oriens Academy", "oriensacademy@gmail.com", "+90 544 293 90 40",
+    "", "Oriens Academy", "info@oriens-academy.com", "+90 544 293 90 40",
   ]);
 
   return { subject, html, text };
@@ -338,7 +338,7 @@ export function renderStudentContactEmail(data: ContactEmailData) {
     `ORIENS ACADEMY - ${subject}`, "",
     isTr ? (isQuick ? "Merhaba," : `Merhaba ${data.fullName},`) : (isQuick ? "Hello," : `Hello ${data.fullName},`), "",
     isTr ? `${isConsultation ? "Tanışma görüşmesi" : "İletişim"} talebinizi başarıyla aldık.\n\nEkibimiz paylaştığınız iletişim bilgileri üzerinden en kısa sürede sizinle iletişime geçecektir.` : `We have successfully received your ${isConsultation ? "introductory consultation" : "contact"} request.\n\nOur team will contact you as soon as possible using the contact information you provided.`,
-    "", "Oriens Academy", "oriensacademy@gmail.com", "+90 544 293 90 40",
+    "", "Oriens Academy", "info@oriens-academy.com", "+90 544 293 90 40",
   ]);
 
   return { subject, html, text };

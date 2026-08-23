@@ -3,6 +3,7 @@ import { Inter, Manrope, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { CompassLoader } from "@/components/brand/CompassLoader";
 import { AccountProvider } from "@/lib/auth/account-context";
+import { CartProvider } from "@/lib/cart/cart-context";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -51,7 +52,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
-        <AccountProvider><CompassLoader>{children}</CompassLoader></AccountProvider>
+        <AccountProvider><CartProvider><CompassLoader>{children}</CompassLoader></CartProvider></AccountProvider>
       </body>
     </html>
   );

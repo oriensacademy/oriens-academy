@@ -9,8 +9,8 @@ const subjects: Array<{ tr: string; en: string; type: AcademicIconType; accent: 
   { tr: "Fizik", en: "Physics", type: "physics", accent: "#D6B56D" },
   { tr: "Kimya", en: "Chemistry", type: "chemistry", accent: "#819586" },
   { tr: "Biyoloji", en: "Biology", type: "biology", accent: "#D6B56D" },
-  { tr: "Coğrafya", en: "Geography", type: "geography", accent: "#819586" },
-  { tr: "Tarih", en: "History", type: "history", accent: "#D6B56D" },
+  { tr: "Ekonomi", en: "Economics", type: "analysis", accent: "#819586" },
+  { tr: "İstatistik", en: "Statistics", type: "assessment", accent: "#D6B56D" },
 ];
 
 export function AcademicSubjectMotifs() {

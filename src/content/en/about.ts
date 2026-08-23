@@ -79,13 +79,13 @@ export const about: AboutContent = {
     examLabel: "Contact",
     links: [
       { route: "contact", title: "WhatsApp", description: "Send an instant message via +90 544 293 90 40.", linkLabel: "Chat on WhatsApp" },
-      { route: "contact", title: "Email", description: "Write to oriensacademy@gmail.com for details.", linkLabel: "Send Email" },
+      { route: "contact", title: "Email", description: "Write to info@oriens-academy.com for details.", linkLabel: "Send Email" },
       { route: "contact", title: "Instagram", description: "Follow our @oriens.academy profile.", linkLabel: "View Instagram" },
     ],
   },
   testimonials: {
     eyebrow: "What Students Say",
-    title: "A few of over 111 student and parent reviews.",
+    title: "A few of hundreds of student and parent reviews.",
     items: [
       {
         id: "1",

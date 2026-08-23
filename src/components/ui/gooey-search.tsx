@@ -8,6 +8,7 @@ import { useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 
 import { retrieveSearchResultsFromDatabase } from "@/lib/search/db-retrieval-service";
+import { retrieveSearchResults } from "@/lib/search/retrieval-engine";
 
 export type SearchResultType = "UNIVERSITY" | "PROGRAM" | "COUNTRY" | "QUALIFICATION";
 
@@ -128,17 +129,13 @@ export function GooeySearchBar() {
         if (isSubscribed) {
           setSearchResults(data);
           setIsFetching(false);
+          setIsError(false);
         }
       })
       .catch(() => {
         if (isSubscribed) {
-          setSearchResults({
-            query,
-            intent: "UNKNOWN",
-            confidence: 0,
-            groups: { universities: [], programs: [], countries: [], qualifications: [] },
-            totalCount: 0,
-          });
+          const fallback = retrieveSearchResults(query);
+          setSearchResults(fallback);
           setIsError(false);
           setIsFetching(false);
         }

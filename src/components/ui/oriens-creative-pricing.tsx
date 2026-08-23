@@ -2,7 +2,9 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { Check, ShoppingBag, CheckCircle2 } from "lucide-react";
+import { useCart } from "@/lib/cart/cart-context";
+import { localizedPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 export interface PricingTier {
@@ -42,6 +44,7 @@ export function CreativePricing({
   tiers,
 }: CreativePricingProps) {
   const Heading = headingLevel;
+  const { addToCart, isInCart } = useCart();
   const money = (value: number) => new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", {
     style: "currency",
     currency: "TRY",
@@ -159,25 +162,38 @@ export function CreativePricing({
                   ))}
                 </ul>
 
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {tier.purchaseHref && tier.purchaseLabel ? (
                     <Link
                       href={tier.purchaseHref}
-                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#10271B] bg-[#10271B] px-4 text-center font-ui text-sm font-semibold text-white shadow-sm outline-none transition-colors hover:bg-[#203D2D] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#10271B] bg-[#10271B] px-4 text-center font-ui text-sm font-semibold text-white shadow-sm outline-none transition-colors hover:bg-[#203D2D] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     >
                       {tier.purchaseLabel}
                     </Link>
                   ) : null}
+
+                  {isInCart(tier.id) ? (
+                    <Link
+                      href={localizedPath("cart", locale)}
+                      className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-50 px-3 text-center font-ui text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                    >
+                      <CheckCircle2 className="size-3.5 text-emerald-600" />
+                      <span>{locale === "tr" ? "Sepette (Sepete Git)" : "In Cart (View Cart)"}</span>
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => addToCart(tier.id)}
+                      className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#CAD5CB] bg-white px-3 text-center font-ui text-xs font-semibold text-[#10271B] transition-colors hover:bg-[#EFF3EE] focus-visible:ring-2 focus-visible:ring-[#819586]"
+                    >
+                      <ShoppingBag className="size-3.5 text-[#819586]" />
+                      <span>{locale === "tr" ? "Sepete Ekle" : "Add to Cart"}</span>
+                    </button>
+                  )}
+
                   <Link
                     href={tier.ctaHref}
-                    className={cn(
-                      "inline-flex h-11 w-full items-center justify-center rounded-xl border px-4 text-center font-ui text-xs font-semibold outline-none transition-all duration-200 focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2 motion-reduce:transition-none",
-                      tier.purchaseHref && tier.purchaseLabel
-                        ? "border-[#DDE4DC] bg-white text-[#405447] hover:bg-[#F2F6F1] hover:text-[#10271B]"
-                        : tier.popular
-                          ? "border-[#819586] bg-[#819586] text-white hover:bg-[#718678]"
-                          : "border-[#CAD5CB] bg-[#F7F9F6] text-[#10271B] hover:bg-[#EDF2EC]"
-                    )}
+                    className="inline-flex h-9 w-full items-center justify-center rounded-lg px-3 text-center font-ui text-[11px] font-medium text-[#68756C] transition-colors hover:text-[#10271B] hover:underline"
                   >
                     {tier.ctaLabel}
                   </Link>
