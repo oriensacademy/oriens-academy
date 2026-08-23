@@ -15,6 +15,8 @@ import {
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { listAdminPayments, type AdminPaymentRow } from "@/lib/admin/payments";
 
+import { formatCurrency } from "@/lib/format/currency";
+
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   paid: { label: "Ödendi", bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800" },
   pending: { label: "Bekliyor", bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
@@ -26,15 +28,7 @@ const statusConfig: Record<string, { label: string; bg: string; text: string }> 
 };
 
 function formatMoney(amount: number, currency = "TRY") {
-  try {
-    return new Intl.NumberFormat("tr-TR", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${amount} ${currency}`;
-  }
+  return formatCurrency(amount, { currency, locale: "tr" });
 }
 
 export default function AdminFinancialFlowPage() {

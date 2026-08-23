@@ -26,6 +26,7 @@ import type { CouponValidationSuccess } from "@/lib/coupons/types";
 import type { BankTransferDetails, PaymentMethod } from "@/lib/payments/types";
 import { pendingBankCapabilities } from "@/lib/payments/bank-provider";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
+import { formatCurrency } from "@/lib/format/currency";
 import { useAccount } from "@/lib/auth/account-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
@@ -107,15 +108,7 @@ export function PaymentPage() {
       (pendingBankCapabilities.hostedPayment || pendingBankCapabilities.tokenizedPayment));
 
   const money = (value: number, currency = "TRY") => {
-    try {
-      return new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", {
-        style: "currency",
-        currency,
-        maximumFractionDigits: 0,
-      }).format(value);
-    } catch {
-      return `${value} ${currency}`;
-    }
+    return formatCurrency(value, { currency, locale });
   };
 
   const basePrice = Number(selectedPackage?.current_total ?? selectedPackage?.price_amount ?? 0);

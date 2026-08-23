@@ -22,6 +22,8 @@ import {
   Inbox,
 } from "lucide-react";
 
+import { formatCurrency } from "@/lib/format/currency";
+
 export default function AdminPricingPage() {
   return <PricingContent />;
 }
@@ -214,7 +216,7 @@ function PricingContent() {
 
                     <td className="px-4 py-3.5 font-semibold text-[#10271B]">
                       {pkg.price_amount !== null
-                        ? `${pkg.price_amount.toFixed(2)} ${pkg.currency}`
+                        ? formatCurrency(pkg.price_amount, { currency: pkg.currency || "TRY", locale: "tr" })
                         : "Özel Fiyatlandırma"}
                     </td>
 

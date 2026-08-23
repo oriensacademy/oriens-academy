@@ -154,14 +154,59 @@ async function resolveAccount(session: Session): Promise<AccountResolution> {
       }
     }
 
+    // Student profile lookup
     const { data: studentProfile } = await supabase
       .from("student_profiles")
       .select("*")
       .eq("id", user.id)
-      .eq("active", true)
       .maybeSingle();
     if (studentProfile) {
       return { accountType: "student", adminProfile: null, studentProfile };
+    }
+
+    // If profile is not found yet (e.g. freshly registered student before trigger), ensure student profile is created
+    if (user.id && user.email) {
+      const fallbackName = (user.user_metadata?.full_name as string) || user.email.split("@")[0] || "Öğrenci";
+      const { data: createdProfile } = await supabase
+        .from("student_profiles")
+        .upsert({
+          id: user.id,
+          full_name: fallbackName,
+          email: user.email.toLowerCase(),
+          preferred_language: (user.user_metadata?.preferred_language as string) === "en" ? "en" : "tr",
+          phone: (user.user_metadata?.phone as string) || null,
+          school: (user.user_metadata?.school as string) || null,
+          target_exam: (user.user_metadata?.target_exam as string) || null,
+          target_country: (user.user_metadata?.target_country as string) || null,
+          active: true,
+        })
+        .select()
+        .maybeSingle();
+
+      if (createdProfile) {
+        return { accountType: "student", adminProfile: null, studentProfile: createdProfile };
+      }
+
+      // Return synthetic student resolution so the new student isn't kicked out
+      return {
+        accountType: "student",
+        adminProfile: null,
+        studentProfile: {
+          id: user.id,
+          full_name: fallbackName,
+          email: user.email.toLowerCase(),
+          phone: (user.user_metadata?.phone as string) || null,
+          date_of_birth: null,
+          school: (user.user_metadata?.school as string) || null,
+          target_exam: (user.user_metadata?.target_exam as string) || null,
+          target_university: null,
+          target_country: (user.user_metadata?.target_country as string) || null,
+          preferred_language: (user.user_metadata?.preferred_language as string) === "en" ? "en" : "tr",
+          active: true,
+          created_at: user.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as StudentAccountProfile,
+      };
     }
   } catch {
     /* database offline */
@@ -178,10 +223,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [isInitializing, setIsInitializing] = useState(true);
   const authOperationRef = useRef(false);
   const requestRef = useRef(0);
+  const sessionRef = useRef<Session | null>(null);
+  const accountTypeRef = useRef<AccountType>("unauthenticated");
 
   const clearAccount = useCallback(() => {
     setSession(null);
+    sessionRef.current = null;
     setAccountType("unauthenticated");
+    accountTypeRef.current = "unauthenticated";
     setAdminProfile(null);
     setStudentProfile(null);
     if (typeof window !== "undefined") {
@@ -193,14 +242,29 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const applySession = useCallback(async (nextSession: Session | null) => {
+  const applySession = useCallback(async (nextSession: Session | null, isBackground = false) => {
     const request = ++requestRef.current;
-    setIsInitializing(true);
+    if (!isBackground) {
+      setIsInitializing(true);
+    }
     if (!nextSession) {
       clearAccount();
       setIsInitializing(false);
       return;
     }
+
+    // If same user session in background and account is already resolved, avoid unmounting UI
+    if (
+      isBackground &&
+      sessionRef.current?.user?.id === nextSession.user.id &&
+      accountTypeRef.current !== "unauthenticated" &&
+      accountTypeRef.current !== "unknown"
+    ) {
+      setSession(nextSession);
+      sessionRef.current = nextSession;
+      return;
+    }
+
     const resolution = await resolveAccount(nextSession);
     if (request !== requestRef.current) return;
     if (resolution.accountType === "unknown") {
@@ -211,7 +275,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       return;
     }
     setSession(nextSession);
+    sessionRef.current = nextSession;
     setAccountType(resolution.accountType);
+    accountTypeRef.current = resolution.accountType;
     setAdminProfile(resolution.adminProfile);
     setStudentProfile(resolution.studentProfile);
     setIsInitializing(false);
@@ -231,7 +297,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           queueMicrotask(() => {
             if (!active) return;
             setSession(mock.session);
+            sessionRef.current = mock.session;
             setAccountType(parsed.accountType);
+            accountTypeRef.current = parsed.accountType;
             setAdminProfile(mock.adminProfile);
             setStudentProfile(mock.studentProfile);
             setIsInitializing(false);
@@ -249,12 +317,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
-      await applySession(data.session);
+      await applySession(data.session, false);
       if (!active) return;
       const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
         if (authOperationRef.current) return;
         if (!["SIGNED_IN", "SIGNED_OUT", "TOKEN_REFRESHED", "USER_UPDATED"].includes(event)) return;
-        queueMicrotask(() => { if (active) void applySession(nextSession); });
+        const isBackground = event === "TOKEN_REFRESHED" || (event === "SIGNED_IN" && !!sessionRef.current);
+        queueMicrotask(() => { if (active) void applySession(nextSession, isBackground); });
       });
       unsubscribe = () => listener.subscription.unsubscribe();
     }).catch(() => {

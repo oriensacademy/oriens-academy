@@ -5,6 +5,8 @@ import { AlertCircle, BellRing, CheckCircle2, RefreshCw, Tag, WalletCards } from
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { listAdminPayments, reviewManualBankTransfer, sendPaymentReminder, type AdminPaymentRow } from "@/lib/admin/payments";
 
+import { formatCurrency } from "@/lib/format/currency";
+
 const statusLabels: Record<string, { label: string; bg: string; text: string }> = {
   pending: { label: "Bekliyor", bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
   requires_action: { label: "Doğrulama Gerekli", bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
@@ -81,11 +83,7 @@ export default function AdminPaymentsPage() {
   }
 
   function money(amount: number, currency = "TRY") {
-    try {
-      return new Intl.NumberFormat("tr-TR", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-    } catch {
-      return `${amount} ${currency}`;
-    }
+    return formatCurrency(amount, { currency, locale: "tr" });
   }
 
   return (

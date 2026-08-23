@@ -116,26 +116,50 @@ export function UnifiedLoginPage() {
         locale,
       });
 
-      // Try auto login after register
+      if (regResult.error) {
+        setSubmitting(false);
+        setError(
+          regResult.error.message.includes("User already registered")
+            ? isTr
+              ? "Bu e-posta adresi ile kayıtlı bir hesap zaten mevcut. Lütfen giriş yapın."
+              : "An account with this email already exists. Please log in."
+            : regResult.error.message || (isTr ? "Kayıt işlemi gerçekleştirilemedi." : "Registration could not be completed.")
+        );
+        return;
+      }
+
+      // If signUp returned an active session directly
+      if (regResult.data?.session && regResult.data?.user) {
+        setSubmitting(false);
+        setRegisteredUserId(regResult.data.user.id);
+        setShowOnboarding(true);
+        return;
+      }
+
+      // Attempt immediate sign-in with credentials
       const loginResult = await signIn(email, password);
       setSubmitting(false);
 
       if (loginResult.user) {
         setRegisteredUserId(loginResult.user.id);
         setShowOnboarding(true);
-      } else if (regResult.data?.user) {
+      } else if (regResult.data?.user && !regResult.data.session) {
+        // If email confirmation is enabled on Supabase project and blocking immediate session
         setRegisteredUserId(regResult.data.user.id);
-        setShowOnboarding(true);
+        setError(
+          isTr
+            ? "Hesabınız başarıyla oluşturuldu! Lütfen e-postanıza gönderilen onay bağlantısını tıklayarak giriş yapınız."
+            : "Account created successfully! Please check your email to confirm your account and sign in."
+        );
       } else {
         // Fallback for dev mode
         setRegisteredUserId("new-student-id");
         setShowOnboarding(true);
       }
-    } catch {
+    } catch (err: unknown) {
       setSubmitting(false);
-      // In dev mode allow proceeding to onboarding
-      setRegisteredUserId("dev-student-user");
-      setShowOnboarding(true);
+      const msg = err instanceof Error ? err.message : "";
+      setError(msg || (isTr ? "Kayıt sırasında bir hata oluştu." : "An error occurred during registration."));
     }
   }
 

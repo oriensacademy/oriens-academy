@@ -19,7 +19,12 @@ import {
   toggleAdminCouponActive,
   updateAdminCoupon,
 } from "@/lib/coupons/client";
-import type { CreateCouponInput, DiscountCoupon } from "@/lib/coupons/types";
+import { formatCurrency } from "@/lib/format/currency";
+import type {
+  CreateCouponInput,
+  DiscountCoupon,
+  UpdateCouponInput,
+} from "@/lib/coupons/types";
 import { listAdminPricingPackages, type PricingPackageRow } from "@/lib/admin/pricing";
 
 export default function AdminCouponsPage() {
@@ -242,11 +247,7 @@ export default function AdminCouponsPage() {
   }, [coupons]);
 
   function money(val: number, cur = "TRY") {
-    try {
-      return new Intl.NumberFormat("tr-TR", { style: "currency", currency: cur, maximumFractionDigits: 0 }).format(val);
-    } catch {
-      return `${val} ${cur}`;
-    }
+    return formatCurrency(val, { currency: cur, locale: "tr" });
   }
 
   return (
