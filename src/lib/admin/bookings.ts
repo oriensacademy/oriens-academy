@@ -41,6 +41,7 @@ export interface CreateManualBookingParams {
   status: BookingStatus;
   privacyConsent: boolean;
   studentUserId?: string | null;
+  liveMeetingUrl?: string | null;
 }
 
 export async function createManualAdminBooking(
@@ -48,19 +49,25 @@ export async function createManualAdminBooking(
 ): Promise<{ bookingId: string | null; error: string | null }> {
   const supabase = getSupabaseClient();
   const rpcArgs = {
-    p_full_name: params.fullName,
-    p_email: params.email,
-    p_phone: params.phone,
-    p_exam: params.exam,
+    p_full_name: params.fullName.trim(),
+    p_email: params.email.trim().toLowerCase(),
+    p_phone: params.phone.trim(),
+    p_exam: params.exam.trim(),
     p_starts_at: params.startsAt,
     p_ends_at: params.endsAt,
     p_privacy_consent: params.privacyConsent,
-    p_notes: params.notes || "",
+    p_notes: params.notes?.trim() || "",
     p_status: params.status,
+    p_live_meeting_url: params.liveMeetingUrl?.trim() || null,
   };
+
   const { data, error } = params.studentUserId
-    ? await supabase.rpc("admin_create_student_booking", { ...rpcArgs, p_student_id: params.studentUserId, p_subject: params.subject })
-    : await supabase.rpc("admin_create_booking", rpcArgs);
+    ? await supabase.rpc("admin_create_student_booking" as unknown as "admin_create_booking", {
+        ...rpcArgs,
+        p_student_id: params.studentUserId,
+        p_subject: params.subject.trim(),
+      } as unknown as { p_full_name: string; p_email: string; p_phone: string; p_exam: string; p_starts_at: string; p_ends_at: string; p_privacy_consent: boolean; p_notes?: string; p_status?: string })
+    : await supabase.rpc("admin_create_booking", rpcArgs as unknown as { p_full_name: string; p_email: string; p_phone: string; p_exam: string; p_starts_at: string; p_ends_at: string; p_privacy_consent: boolean; p_notes?: string; p_status?: string });
 
   if (error) return { bookingId: null, error: error.message };
   const result = data as { success?: boolean; booking_id?: string; error_code?: string } | null;
@@ -72,10 +79,27 @@ export async function createManualAdminBooking(
         : "Randevu bilgileri geçersiz veya randevu zamanı geçmişte.",
     };
   }
-  if (result.booking_id && params.studentUserId) {
-    const { error: emailError } = await supabase.functions.invoke("send-student-appointment", { body: { bookingId: result.booking_id } });
-    if (emailError) console.error("[Admin Booking] Appointment created; localized email delivery could not be started.");
+
+  // Update live_meeting_url if not handled by older RPC version
+  if (result.booking_id && params.liveMeetingUrl) {
+    await supabase
+      .from("bookings")
+      .update({ live_meeting_url: params.liveMeetingUrl.trim() })
+      .eq("id", result.booking_id);
   }
+
+  // Send confirmation email via Edge Function
+  if (result.booking_id) {
+    try {
+      const { error: emailError } = await supabase.functions.invoke("send-student-appointment", {
+        body: { bookingId: result.booking_id },
+      });
+      if (emailError) console.error("[Admin Booking] Notification dispatch status:", emailError);
+    } catch {
+      // Safe fallback
+    }
+  }
+
   return { bookingId: result.booking_id || null, error: null };
 }
 

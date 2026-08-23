@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { Palette, Check, Sparkles } from "lucide-react";
+import { Check } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 
 export interface ThemeOption {
@@ -105,59 +105,39 @@ export function ThemeSelector() {
   };
 
   return (
-    <aside
-      aria-label={isTr ? "Renk Teması Önizleme Seçici" : "Theme Color Preview Selector"}
-      className="rounded-2xl border border-border bg-surface/90 p-4 shadow-sm backdrop-blur-md"
+    <div
+      aria-label={isTr ? "Renk Teması Seçici" : "Theme Palette"}
+      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-2.5 py-1 shadow-2xs backdrop-blur-xs"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-sage-soft text-ink">
-            <Palette className="size-4 text-primary" />
-          </span>
-          <div>
-            <h3 className="text-xs font-bold text-ink">
-              {isTr ? "Renk Teması Seçici" : "Theme Palette Selector"}
-            </h3>
-            <p className="text-[10px] text-muted-foreground">
-              {isTr ? "5 farklı premium renk paletini canlı deneyin" : "Preview 5 premium color palettes live"}
-            </p>
-          </div>
-        </div>
-        <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-sage-soft px-2 py-0.5 text-[10px] font-semibold text-primary">
-          <Sparkles className="size-3" />
-          {isTr ? "Canlı Önizleme" : "Live Preview"}
-        </span>
-      </div>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {isTr ? "Tema" : "Theme"}
+      </span>
+      <div className="flex items-center gap-1.5" role="radiogroup" aria-label={isTr ? "Renk Temaları" : "Color Themes"}>
         {THEME_OPTIONS.map((theme) => {
           const isSelected = activeTheme === theme.id;
+          const themeName = isTr ? theme.nameTr : theme.nameEn;
+
           return (
             <button
               key={theme.id}
               type="button"
+              role="radio"
+              aria-checked={isSelected}
               onClick={() => selectTheme(theme.id)}
-              aria-pressed={isSelected}
-              className={`group flex items-center justify-between gap-2.5 rounded-xl border p-2.5 text-left text-xs transition-all outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                isSelected
-                  ? "border-primary bg-sage-soft/70 font-bold text-ink shadow-xs ring-1 ring-primary/40"
-                  : "border-border bg-surface text-muted-foreground hover:border-primary/50 hover:bg-surface-muted hover:text-ink"
+              title={themeName}
+              aria-label={themeName}
+              className={`group relative flex size-4.5 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
+                isSelected ? "ring-2 ring-primary ring-offset-1" : "hover:ring-1 hover:ring-border-strong"
               }`}
+              style={{ backgroundColor: theme.dotColor }}
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className="flex size-4 shrink-0 items-center justify-center rounded-full border border-white shadow-xs"
-                  style={{ backgroundColor: theme.dotColor }}
-                />
-                <span className="truncate text-[11px]">
-                  {isTr ? theme.nameTr : theme.nameEn}
-                </span>
-              </div>
-              {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
+              {isSelected && (
+                <Check className="size-2.5 text-white drop-shadow-xs stroke-[3]" />
+              )}
             </button>
           );
         })}
       </div>
-    </aside>
+    </div>
   );
 }

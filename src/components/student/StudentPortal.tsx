@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ClipboardList, Copy, CreditCard, LayoutDashboard, LogOut, Package, RefreshCw, Save, UserRound } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ClipboardList, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, Package, RefreshCw, Save, UserRound, Video } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { localizedPath } from "@/lib/routes";
@@ -53,7 +53,85 @@ function Empty({ children }: { children: React.ReactNode }) { return <p classNam
 function fmt(value: string | null, locale: "tr" | "en", withTime = false) { if (!value) return "—"; return new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-GB", { dateStyle: "medium", ...(withTime ? { timeStyle: "short" as const } : {}) }).format(new Date(value)); }
 function status(value: string, locale: "tr" | "en") { const tr: Record<string,string> = { pending:"Bekliyor",confirmed:"Onaylandı",cancelled:"İptal",completed:"Tamamlandı",no_show:"Katılmadı",scheduled:"Planlandı",assigned:"Atandı",submitted:"Gönderildi",reviewed:"İncelendi",late:"Gecikti",paid:"Ödendi",failed:"Başarısız",processing:"İşleniyor",requires_action:"Doğrulama Gerekli",refunded:"İade" }; const en: Record<string,string> = { pending:"Pending",confirmed:"Confirmed",cancelled:"Cancelled",completed:"Completed",no_show:"No show",scheduled:"Scheduled",assigned:"Assigned",submitted:"Submitted",reviewed:"Reviewed",late:"Late",paid:"Paid",failed:"Failed",processing:"Processing",requires_action:"Verification required",refunded:"Refunded" }; return (locale === "tr" ? tr : en)[value] || value; }
 
-function Overview({ data, locale, onNavigate }: { data: StudentPortalData; locale: "tr"|"en"; onNavigate: (id: SectionId) => void }) { const purchase = data.purchases.find((p) => p.status === "active") || data.purchases[0]; const next = data.bookings.filter((b) => b.availability_slots && new Date(b.availability_slots.starts_at) > new Date() && !["cancelled","completed"].includes(b.status)).sort((a,b) => (a.availability_slots?.starts_at || "").localeCompare(b.availability_slots?.starts_at || ""))[0]; const activeHomework = data.homework.filter((h) => ["assigned","late","submitted"].includes(h.status)); const payment = data.payments[0]; return <div className="grid gap-5 sm:grid-cols-2"><button onClick={() => onNavigate("package")} className="rounded-2xl border border-border bg-forest p-6 text-left text-white sm:col-span-2"><p className="text-xs uppercase tracking-wider text-white/65">{locale === "tr" ? "Mevcut Paket" : "Current Package"}</p><h2 className="mt-2 font-heading text-3xl">{purchase ? (locale === "tr" ? purchase.pricing_packages?.name_tr : purchase.pricing_packages?.name_en) || purchase.package_id : "—"}</h2>{purchase && <><div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-warm-accent" style={{ width: `${Math.min(100, purchase.lesson_count ? purchase.lessons_used / purchase.lesson_count * 100 : 0)}%` }} /></div><p className="mt-2 text-sm text-white/75">{locale === "tr" ? "Tamamlanan Ders" : "Completed Lessons"}: {purchase.lessons_used} / {purchase.lesson_count} · {locale === "tr" ? "Kalan" : "Remaining"}: {Math.max(0, purchase.lesson_count - purchase.lessons_used)}</p></>}</button><Summary title={locale === "tr" ? "Sonraki Randevu" : "Next Appointment"} value={next ? fmt(next.availability_slots!.starts_at, locale, true) : "—"} onClick={() => onNavigate("appointments")} /><Summary title={locale === "tr" ? "Aktif Ödev" : "Active Homework"} value={String(activeHomework.length)} onClick={() => onNavigate("homework")} /><Summary title={locale === "tr" ? "Son Ödeme" : "Recent Payment"} value={payment ? status(payment.status, locale) : "—"} onClick={() => onNavigate("payments")} /><Summary title={locale === "tr" ? "Toplam Ders Kaydı" : "Lesson Records"} value={String(data.lessons.length)} onClick={() => onNavigate("lessons")} /></div>; }
+function Overview({ data, locale, onNavigate }: { data: StudentPortalData; locale: "tr"|"en"; onNavigate: (id: SectionId) => void }) {
+  const purchase = data.purchases.find((p) => p.status === "active") || data.purchases[0];
+  
+  const nextBooking = useMemo(() => {
+    return data.bookings
+      .filter((b) => b.availability_slots && new Date(b.availability_slots.starts_at) > new Date() && !["cancelled","completed"].includes(b.status))
+      .sort((a,b) => (a.availability_slots?.starts_at || "").localeCompare(b.availability_slots?.starts_at || ""))[0];
+  }, [data.bookings]);
+
+  const nextLesson = useMemo(() => {
+    return data.lessons
+      .filter((l) => l.status === "scheduled")
+      .sort((a, b) => a.lesson_date.localeCompare(b.lesson_date))[0];
+  }, [data.lessons]);
+
+  const activeHomework = data.homework.filter((h) => ["assigned","late","submitted"].includes(h.status));
+  const payment = data.payments[0];
+
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      {/* Current Package Banner */}
+      <button onClick={() => onNavigate("package")} className="rounded-2xl border border-border bg-forest p-6 text-left text-white sm:col-span-2 cursor-pointer hover:border-border-strong">
+        <p className="text-xs uppercase tracking-wider text-white/65">{locale === "tr" ? "Mevcut Paket" : "Current Package"}</p>
+        <h2 className="mt-2 font-heading text-3xl">{purchase ? (locale === "tr" ? purchase.pricing_packages?.name_tr : purchase.pricing_packages?.name_en) || purchase.package_id : "—"}</h2>
+        {purchase && (
+          <>
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
+              <div className="h-full rounded-full bg-warm-accent" style={{ width: `${Math.min(100, purchase.lesson_count ? purchase.lessons_used / purchase.lesson_count * 100 : 0)}%` }} />
+            </div>
+            <p className="mt-2 text-sm text-white/75">
+              {locale === "tr" ? "Tamamlanan Ders" : "Completed Lessons"}: {purchase.lessons_used} / {purchase.lesson_count} · {locale === "tr" ? "Kalan" : "Remaining"}: {Math.max(0, purchase.lesson_count - purchase.lessons_used)}
+            </p>
+          </>
+        )}
+      </button>
+
+      {/* Upcoming Live Lesson Banner if available */}
+      {nextLesson && (
+        <div className="rounded-2xl border border-primary/30 bg-surface p-5 sm:col-span-2 shadow-xs flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-blue-800">
+              <Video className="size-3.5 text-primary" />
+              {locale === "tr" ? "Yaklaşan Canlı Ders" : "Upcoming Live Lesson"}
+            </span>
+            <h3 className="mt-2 font-heading text-xl text-ink">{nextLesson.title}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {nextLesson.subject} · {fmt(nextLesson.lesson_date, locale, true)} ({nextLesson.duration_minutes} {locale === "tr" ? "dk" : "min"})
+            </p>
+          </div>
+          {nextLesson.live_meeting_url ? (
+            <a
+              href={nextLesson.live_meeting_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
+            >
+              <Video className="size-4 text-warm-accent" />
+              {locale === "tr" ? "Derse Katıl" : "Join Lesson"}
+              <ExternalLink className="size-3" />
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onNavigate("lessons")}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+            >
+              {locale === "tr" ? "Ders Detayı" : "View Lesson"}
+            </button>
+          )}
+        </div>
+      )}
+
+      <Summary title={locale === "tr" ? "Sonraki Randevu" : "Next Appointment"} value={nextBooking ? fmt(nextBooking.availability_slots!.starts_at, locale, true) : "—"} onClick={() => onNavigate("appointments")} />
+      <Summary title={locale === "tr" ? "Aktif Ödev" : "Active Homework"} value={String(activeHomework.length)} onClick={() => onNavigate("homework")} />
+      <Summary title={locale === "tr" ? "Son Ödeme" : "Recent Payment"} value={payment ? status(payment.status, locale) : "—"} onClick={() => onNavigate("payments")} />
+      <Summary title={locale === "tr" ? "Toplam Ders Kaydı" : "Lesson Records"} value={String(data.lessons.length)} onClick={() => onNavigate("lessons")} />
+    </div>
+  );
+}
 function Summary({ title, value, onClick }: { title:string; value:string; onClick:()=>void }) { return <button onClick={onClick} className="rounded-2xl border border-border bg-surface p-5 text-left hover:border-border-strong"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p><p className="mt-3 font-heading text-2xl text-ink">{value}</p></button>; }
 
 import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
@@ -296,8 +374,151 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
   );
 }
 
-function Appointments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) { return <Panel title={locale==="tr"?"Randevularım":"Appointments"}><div className="mb-5"><Link href={localizedPath("booking",locale)} className="inline-flex min-h-11 items-center rounded-lg bg-ink px-4 text-sm font-semibold text-white">{locale==="tr"?"Yeni Randevu Talep Et":"Request Appointment"}</Link></div>{data.bookings.length?<div className="grid gap-3 sm:grid-cols-2">{data.bookings.map(b=><article key={b.id} className="rounded-xl border border-border p-4"><div className="flex justify-between gap-3"><p className="font-semibold text-ink">{b.exam_code||b.custom_exam||(locale==="tr"?"Genel görüşme":"General consultation")}</p><span className="text-xs text-muted-foreground">{status(b.status,locale)}</span></div><time className="mt-3 block text-sm text-muted-foreground">{fmt(b.availability_slots?.starts_at||b.created_at,locale,true)}</time></article>)}</div>:<Empty>{locale==="tr"?"Hesabınıza bağlı randevu bulunmuyor.":"No appointments are linked to your account."}</Empty>}</Panel>; }
-function Lessons({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) { return <Panel title={locale==="tr"?"Derslerim":"Lessons"}>{data.lessons.length?<div className="grid gap-3 sm:grid-cols-2">{data.lessons.map(l=><article key={l.id} className="rounded-xl border border-border p-4"><div className="flex justify-between gap-3"><h3 className="font-semibold text-ink">{l.title}</h3><span className="text-xs text-muted-foreground">{status(l.status,locale)}</span></div><p className="mt-2 text-sm text-muted-foreground">{l.subject}{l.exam_code?` · ${l.exam_code.toUpperCase()}`:""}</p><p className="mt-2 text-xs text-muted-foreground">{fmt(l.lesson_date,locale,true)} · {l.duration_minutes} {locale==="tr"?"dk":"min"}</p>{l.teacher_note&&<p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-ink/75">{l.teacher_note}</p>}</article>)}</div>:<Empty>{locale==="tr"?"Henüz ders kaydı bulunmuyor.":"No lesson records yet."}</Empty>}</Panel>; }
+function Appointments({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
+  return (
+    <Panel title={locale === "tr" ? "Randevularım" : "Appointments"}>
+      <div className="mb-5">
+        <Link
+          href={localizedPath("booking", locale)}
+          className="inline-flex min-h-11 items-center rounded-lg bg-ink px-4 text-sm font-semibold text-white hover:bg-forest transition-colors"
+        >
+          {locale === "tr" ? "Yeni Randevu Talep Et" : "Request Appointment"}
+        </Link>
+      </div>
+      {data.bookings.length ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {data.bookings.map((b) => {
+            const bookingRecord = b as unknown as Record<string, unknown>;
+            const meetingUrl = typeof bookingRecord.live_meeting_url === "string" ? bookingRecord.live_meeting_url : null;
+
+            return (
+              <article key={b.id} className="rounded-xl border border-border p-4 shadow-xs">
+                <div className="flex justify-between gap-3">
+                  <p className="font-semibold text-ink">
+                    {b.exam_code || b.custom_exam || (locale === "tr" ? "Genel görüşme" : "General consultation")}
+                  </p>
+                  <span className="text-xs text-muted-foreground">{status(b.status, locale)}</span>
+                </div>
+                <time className="mt-3 block text-sm text-muted-foreground">
+                  {fmt(b.availability_slots?.starts_at || b.created_at, locale, true)}
+                </time>
+                {meetingUrl && b.status !== "cancelled" && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <a
+                      href={meetingUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest"
+                    >
+                      <Video className="size-3.5 text-warm-accent" />
+                      {locale === "tr" ? "Görüşmeye Katıl" : "Join Consultation"}
+                      <ExternalLink className="size-3" />
+                    </a>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <Empty>{locale === "tr" ? "Hesabınıza bağlı randevu bulunmuyor." : "No appointments are linked to your account."}</Empty>
+      )}
+    </Panel>
+  );
+}
+
+function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
+  const scheduled = data.lessons.filter((l) => l.status === "scheduled");
+  const history = data.lessons.filter((l) => l.status !== "scheduled");
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Scheduled Live Lessons */}
+      <Panel title={locale === "tr" ? "Planlanan Canlı Dersler" : "Scheduled Live Lessons"}>
+        {scheduled.length ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {scheduled.map((l) => (
+              <article
+                key={l.id}
+                className="rounded-xl border border-primary/20 bg-forest/5 p-4 shadow-xs flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex justify-between gap-3">
+                    <h3 className="font-semibold text-ink text-base">{l.title}</h3>
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                      {status(l.status, locale)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-primary font-medium">
+                    {l.subject}
+                    {l.exam_code ? ` · ${l.exam_code.toUpperCase()}` : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {fmt(l.lesson_date, locale, true)} · {l.duration_minutes} {locale === "tr" ? "dk" : "min"}
+                  </p>
+                  {l.teacher_note && (
+                    <p className="mt-3 rounded bg-white p-2.5 text-xs text-ink/80 border border-border">
+                      <strong>{locale === "tr" ? "Eğitmen Notu" : "Teacher Note"}:</strong> {l.teacher_note}
+                    </p>
+                  )}
+                </div>
+
+                {l.live_meeting_url && (
+                  <div className="mt-4 pt-3 border-t border-primary/10">
+                    <a
+                      href={l.live_meeting_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
+                    >
+                      <Video className="size-4 text-warm-accent" />
+                      {locale === "tr" ? "Canlı Derse Katıl" : "Join Live Lesson"}
+                      <ExternalLink className="size-3" />
+                    </a>
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>
+            {locale === "tr"
+              ? "Şu anda planlanmış aktif bir canlı dersiniz bulunmuyor."
+              : "No upcoming live lessons scheduled at this moment."}
+          </Empty>
+        )}
+      </Panel>
+
+      {/* 2. Completed Lesson History */}
+      <Panel title={locale === "tr" ? "Tamamlanan Ders Geçmişi" : "Lesson History"}>
+        {history.length ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {history.map((l) => (
+              <article key={l.id} className="rounded-xl border border-border p-4 bg-surface">
+                <div className="flex justify-between gap-3">
+                  <h3 className="font-semibold text-ink">{l.title}</h3>
+                  <span className="text-xs text-muted-foreground">{status(l.status, locale)}</span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {l.subject}
+                  {l.exam_code ? ` · ${l.exam_code.toUpperCase()}` : ""}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {fmt(l.lesson_date, locale, true)} · {l.duration_minutes} {locale === "tr" ? "dk" : "min"}
+                </p>
+                {l.teacher_note && (
+                  <p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-ink/75">{l.teacher_note}</p>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>{locale === "tr" ? "Henüz tamamlanmış ders kaydı yok." : "No completed lesson records yet."}</Empty>
+        )}
+      </Panel>
+    </div>
+  );
+}
 function Homework({data,locale,onReload}:{data:StudentPortalData;locale:"tr"|"en";onReload:()=>void}) { return <Panel title={locale==="tr"?"Ödevlerim":"Homework"}>{data.homework.length?<div className="space-y-4">{data.homework.map(h=><HomeworkCard key={h.id} item={h} locale={locale} onReload={onReload} />)}</div>:<Empty>{locale==="tr"?"Aktif veya geçmiş ödev bulunmuyor.":"No current or previous homework."}</Empty>}</Panel>; }
 function HomeworkCard({item,locale,onReload}:{item:StudentHomeworkRow;locale:"tr"|"en";onReload:()=>void}) { const [text,setText]=useState(item.submission_text||"");const [saving,setSaving]=useState(false);const [message,setMessage]=useState("");async function submit(){if(!text.trim())return;setSaving(true);const {error}=await submitStudentHomework(item.id,text.trim());setSaving(false);setMessage(error?(locale==="tr"?"Gönderilemedi.":"Could not submit."):(locale==="tr"?"Ödev gönderildi.":"Homework submitted."));if(!error)onReload();} return <article className="rounded-xl border border-border p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-semibold text-ink">{item.title}</h3><p className="mt-1 text-xs text-muted-foreground">{locale==="tr"?"Teslim":"Due"}: {fmt(item.due_date,locale,true)}</p></div><span className="rounded-full border border-border px-2 py-1 text-xs">{status(item.status,locale)}</span></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-ink/75">{item.description}</p>{item.teacher_feedback&&<div className="mt-3 rounded-lg bg-surface-muted p-3 text-xs leading-5"><strong>{locale==="tr"?"Öğretmen geri bildirimi":"Teacher feedback"}:</strong> {item.teacher_feedback}</div>}<label className="mt-4 block text-xs font-semibold">{locale==="tr"?"Yanıtınız":"Your response"}<textarea value={text} onChange={(e)=>setText(e.target.value)} rows={3} className="mt-1.5 w-full rounded-lg border border-input p-3 text-sm" /></label><button disabled={saving||!text.trim()} onClick={submit} className="mt-3 min-h-10 rounded-lg bg-ink px-4 text-xs font-semibold text-white disabled:opacity-40">{locale==="tr"?"Yanıtı Gönder":"Submit Response"}</button>{message&&<p role="status" className="mt-2 text-xs text-primary">{message}</p>}</article>; }
 function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {

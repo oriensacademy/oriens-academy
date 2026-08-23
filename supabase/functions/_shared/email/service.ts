@@ -27,6 +27,8 @@ import {
   renderStudentWelcomeEmail,
   renderAccountPasswordRecoveryEmail,
   renderAccountSecurityAlertEmail,
+  renderStudentLiveLessonLinkEmail,
+  renderStudentLessonCompletedEmail,
   type BookingEmailData,
   type ContactEmailData,
   type AppointmentEmailData,
@@ -40,6 +42,8 @@ import {
   type HomeworkEmailData,
   type WelcomeEmailData,
   type SecurityAlertEmailData,
+  type LiveLessonLinkEmailData,
+  type LessonCompletedEmailData,
 } from "./templates.ts";
 
 const DEFAULT_SENDER_NAME = "Oriens Academy";
@@ -846,3 +850,44 @@ export async function dispatchSecurityAlertEmail(
     idempotencyKey: `acc-security-${data.studentEmail}-${Date.now()}`,
   });
 }
+
+// ============================================================================
+// DISPATCHERS — CANLI DERS & DERS TAMAMLAMA (LIVE LESSONS & TRACKING)
+// ============================================================================
+
+export async function dispatchLiveLessonLinkEmail(
+  supabaseAdmin: SupabaseClient,
+  data: LiveLessonLinkEmailData
+) {
+  const template = renderStudentLiveLessonLinkEmail(data);
+  return sendTransactionalEmail({
+    supabaseAdmin,
+    to: data.studentEmail,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    eventType: data.isUpdate ? "lesson.link_updated.student" : "lesson.link_ready.student",
+    entityType: "student_lesson",
+    entityId: data.lessonId,
+    idempotencyKey: `lesson-link-${data.lessonId}-${Date.now()}`,
+  });
+}
+
+export async function dispatchLessonCompletedEmail(
+  supabaseAdmin: SupabaseClient,
+  data: LessonCompletedEmailData
+) {
+  const template = renderStudentLessonCompletedEmail(data);
+  return sendTransactionalEmail({
+    supabaseAdmin,
+    to: data.studentEmail,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    eventType: "lesson.completed.student",
+    entityType: "student_lesson",
+    entityId: data.lessonId,
+    idempotencyKey: `lesson-completed-${data.lessonId}`,
+  });
+}
+

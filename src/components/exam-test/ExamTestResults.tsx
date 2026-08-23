@@ -2,28 +2,33 @@ import type { TestResult } from "@/data/exam-tests";
 import { getExamTestCopy } from "@/content/exam-test";
 import type { Locale } from "@/content/dictionaries";
 
-export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { locale: Locale; result: TestResult; onRetry: () => void; onChangeExam: () => void }) {
+export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { locale: Locale; result?: TestResult | null; onRetry: () => void; onChangeExam: () => void }) {
   const copy = getExamTestCopy(locale);
-  const topics = result?.topics ?? [];
+  const topics = Array.isArray(result?.topics) ? result.topics : [];
   const strong = topics.filter((topic) => (topic?.accuracy ?? 0) >= 80);
   const improve = topics.filter((topic) => (topic?.accuracy ?? 0) < 60);
-  const accuracy = result?.accuracy ?? 0;
+  const totalQuestions = result?.total ?? 6;
+  const correctCount = result?.correct ?? 0;
+  const incorrectCount = result?.incorrect ?? Math.max(0, totalQuestions - correctCount);
+  const rawAccuracy = result?.accuracy ?? 0;
+  const accuracy = Number.isFinite(rawAccuracy) ? Math.min(100, Math.max(0, Math.round(rawAccuracy))) : 0;
+
   const recommendation = accuracy >= 80
-    ? (copy?.performance?.strong ?? "Güçlü performans.")
+    ? (copy?.performance?.strong ?? "Güçlü bir örnek performans.")
     : accuracy >= 60
-      ? (copy?.performance?.moderate ?? "Orta düzey performans.")
+      ? (copy?.performance?.moderate ?? "Orta düzey bir örnek performans.")
       : (copy?.performance?.foundation ?? "Temel tekrar önerilir.");
 
   return (
     <div aria-live="polite">
       <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
-        {result?.total ?? 6} {locale === "tr" ? "soruluk örnek test" : "question sample test"}
+        {totalQuestions} {locale === "tr" ? "soruluk örnek test" : "question sample test"}
       </p>
       <h2 className="mt-3 text-3xl text-ink md:text-4xl">{copy?.resultsTitle ?? "Sonuç Analizi"}</h2>
       <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-4">
         {[
-          [copy?.correct ?? "Doğru", `${result?.correct ?? 0} / ${result?.total ?? 6}`],
-          [copy?.incorrect ?? "Yanlış", `${result?.incorrect ?? 0} / ${result?.total ?? 6}`],
+          [copy?.correct ?? "Doğru", `${correctCount} / ${totalQuestions}`],
+          [copy?.incorrect ?? "Yanlış", `${incorrectCount} / ${totalQuestions}`],
           [copy?.accuracy ?? "Başarı Oranı", `${accuracy}%`],
         ].map(([label, value]) => (
           <div key={label} className="rounded-xl border border-border bg-surface-muted p-3 sm:p-5">
@@ -36,17 +41,21 @@ export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { loc
         <section className="mt-8" aria-labelledby="topic-results-title">
           <h3 id="topic-results-title" className="text-xl text-ink">{copy?.topicBreakdown ?? "Konu Dağılımı"}</h3>
           <div className="mt-4 space-y-3">
-            {topics.map((topic) => (
-              <div key={topic.category || topic.label} className="rounded-xl border border-border bg-surface p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-semibold text-ink">{topic.label}</span>
-                  <span className="tabular-nums text-muted-foreground">{topic.correct} / {topic.total}</span>
+            {topics.map((topic, idx) => {
+              const topicAccuracy = Number.isFinite(topic.accuracy) ? Math.min(100, Math.max(0, Math.round(topic.accuracy))) : 0;
+              const topicKey = topic.category || topic.label || `topic-${idx}`;
+              return (
+                <div key={topicKey} className="rounded-xl border border-border bg-surface p-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-semibold text-ink">{topic.label || "Konu"}</span>
+                    <span className="tabular-nums text-muted-foreground">{topic.correct ?? 0} / {topic.total ?? 0}</span>
+                  </div>
+                  <div className="mt-3 h-1.5 rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${topicAccuracy}%` }} />
+                  </div>
                 </div>
-                <div className="mt-3 h-1.5 rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, Math.max(0, topic.accuracy))}%` }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
@@ -54,13 +63,13 @@ export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { loc
         <section className="rounded-xl border border-border bg-surface p-5">
           <h3 className="text-lg text-ink">{copy?.strongAreas ?? "Güçlü Alanlar"}</h3>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            {strong.length ? strong.map((topic) => topic.label).join(" · ") : (copy?.emptyStrong ?? "Henüz güçlü alan oluşmadı.")}
+            {strong.length ? strong.map((t) => t.label).filter(Boolean).join(" · ") : (copy?.emptyStrong ?? "Henüz güçlü alan oluşmadı.")}
           </p>
         </section>
         <section className="rounded-xl border border-border bg-surface p-5">
           <h3 className="text-lg text-ink">{copy?.improveAreas ?? "Geliştirilmesi Gereken Alanlar"}</h3>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            {improve.length ? improve.map((topic) => topic.label).join(" · ") : (copy?.emptyImprove ?? "Belirgin bir gelişim alanı yok.")}
+            {improve.length ? improve.map((t) => t.label).filter(Boolean).join(" · ") : (copy?.emptyImprove ?? "Belirgin bir gelişim alanı yok.")}
           </p>
         </section>
       </div>
@@ -69,18 +78,22 @@ export function ExamTestResults({ locale, result, onRetry, onChangeExam }: { loc
         <p className="mt-2 text-sm leading-6 text-foreground">{recommendation}</p>
         {topics.length > 0 && (
           <ul className="mt-4 space-y-2">
-            {topics.map((topic) => (
-              <li key={topic.category || topic.label} className="flex flex-col gap-0.5 text-sm sm:flex-row sm:gap-2">
-                <span className="font-semibold text-ink">{topic.label}:</span>
-                <span className="text-foreground">
-                  {topic.accuracy >= 80
-                    ? (copy?.topicPerformance?.strong ?? "Güçlü alan.")
-                    : topic.accuracy >= 60
-                      ? (copy?.topicPerformance?.moderate ?? "Hedefli soru pratiği yapın.")
-                      : (copy?.topicPerformance?.review ?? "Temel kavramları gözden geçirin.")}
-                </span>
-              </li>
-            ))}
+            {topics.map((topic, idx) => {
+              const topicAcc = Number.isFinite(topic.accuracy) ? topic.accuracy : 0;
+              const topicKey = topic.category || topic.label || `topic-li-${idx}`;
+              return (
+                <li key={topicKey} className="flex flex-col gap-0.5 text-sm sm:flex-row sm:gap-2">
+                  <span className="font-semibold text-ink">{topic.label || "Konu"}:</span>
+                  <span className="text-foreground">
+                    {topicAcc >= 80
+                      ? (copy?.topicPerformance?.strong ?? "Güçlü alan.")
+                      : topicAcc >= 60
+                        ? (copy?.topicPerformance?.moderate ?? "Hedefli soru pratiği yapın.")
+                        : (copy?.topicPerformance?.review ?? "Temel kavramları gözden geçirin.")}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

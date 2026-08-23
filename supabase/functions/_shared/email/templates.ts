@@ -180,6 +180,36 @@ export type SecurityAlertEmailData = {
   locale: "tr" | "en";
 };
 
+export type LiveLessonLinkEmailData = {
+  lessonId: string;
+  studentName: string;
+  studentEmail: string;
+  lessonTitle: string;
+  subject: string;
+  examCode?: string | null;
+  lessonDate: string;
+  durationMinutes: number;
+  liveMeetingUrl: string;
+  teacherName?: string | null;
+  teacherNote?: string | null;
+  isUpdate?: boolean;
+  locale: "tr" | "en";
+};
+
+export type LessonCompletedEmailData = {
+  lessonId: string;
+  studentName: string;
+  studentEmail: string;
+  lessonTitle: string;
+  subject?: string | null;
+  lessonDate: string;
+  packageName: string;
+  remainingLessons: number;
+  totalLessons: number;
+  teacherNote?: string | null;
+  locale: "tr" | "en";
+};
+
 // ----------------------------------------------------------------------------
 // DESIGN TOKENS & VISUAL PALETTE
 // ----------------------------------------------------------------------------
@@ -1551,3 +1581,105 @@ export function renderAccountSecurityAlertEmail(data: SecurityAlertEmailData) {
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", data.actionDescription]);
   return { subject, html, text };
 }
+
+/**
+ * 27. Canlı Ders Bağlantısı — Öğrenciye
+ */
+export function renderStudentLiveLessonLinkEmail(data: LiveLessonLinkEmailData) {
+  const isTr = data.locale === "tr";
+  const subject = data.isUpdate
+    ? (isTr ? `Canlı Ders Bağlantınız Güncellendi: ${data.lessonTitle} | Oriens Academy` : `Your Live Lesson Link Has Been Updated: ${data.lessonTitle} | Oriens Academy`)
+    : (isTr ? `Canlı Ders Bağlantınız: ${data.lessonTitle} | Oriens Academy` : `Your Live Lesson Link: ${data.lessonTitle} | Oriens Academy`);
+
+  const formattedTime = formatDateTime(data.lessonDate, data.locale);
+
+  const cardHtml = summaryCard(isTr ? "Canlı Ders Bilgileri" : "Live Lesson Details", [
+    { label: isTr ? "Ders / Konu" : "Lesson Title", value: escapeHtml(data.lessonTitle) },
+    { label: isTr ? "Alan / Sınav" : "Subject & Exam", value: `${escapeHtml(data.subject)}${data.examCode ? ` (${data.examCode.toUpperCase()})` : ""}` },
+    { label: isTr ? "Tarih ve Saat" : "Date & Time", value: `<strong style="color:${PALETTE.goldDark};">${formattedTime}</strong>` },
+    { label: isTr ? "Süre" : "Duration", value: `${data.durationMinutes} ${isTr ? "Dakika" : "Minutes"}` },
+    { label: isTr ? "Eğitmen" : "Instructor", value: data.teacherName ? escapeHtml(data.teacherName) : "Oriens Faculty" },
+    { label: isTr ? "Bağlantı" : "Meeting Link", value: `<a href="${data.liveMeetingUrl}" target="_blank" style="color:${PALETTE.primary};font-weight:700;word-break:break-all;">${escapeHtml(data.liveMeetingUrl)} &rarr;</a>`, fullWidth: true },
+    data.teacherNote ? { label: isTr ? "Eğitmen Notu" : "Teacher Note", value: escapeHtml(data.teacherNote), fullWidth: true } : { label: "", value: "" },
+  ]);
+
+  const bodyHtml = `
+    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Yaklaşan birebir canlı dersinizin bağlantısı hazırlanmıştır. Ders saatinde aşağıdaki butona tıklayarak online ders odasına katılabilirsiniz.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>The link for your upcoming live 1-on-1 lesson is ready. You can join the online classroom at the scheduled time using the button below.`}</div>
+    ${cardHtml}
+    ${actionButton(isTr ? "Derse Katıl" : "Join Lesson", data.liveMeetingUrl)}
+    <div style="margin-top:18px;font-size:13px;color:${PALETTE.textMuted};">
+      ${isTr ? "Ders saatinden 5 dakika önce hazır olmanızı, kamera ve mikrofon bağlantılarınızı kontrol etmenizi öneririz." : "Please be ready 5 minutes prior to the lesson and verify your audio/video settings."}
+    </div>`;
+
+  const html = renderEmailShell({
+    locale: data.locale,
+    eyebrow: isTr ? "Canlı Ders" : "Live Lesson",
+    title: isTr ? "Canlı Ders Bağlantınız" : "Your Live Lesson Link",
+    bodyHtml,
+    footerNote: isTr ? "Ders saati veya bağlantıyla ilgili sorularınız için info@oriens-academy.com üzerinden bize ulaşabilirsiniz." : "For questions regarding your lesson link or schedule, contact info@oriens-academy.com.",
+  });
+
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`, "",
+    `${isTr ? "Ders" : "Lesson"}: ${data.lessonTitle}`,
+    `${isTr ? "Zaman" : "Time"}: ${formattedTime}`,
+    `${isTr ? "Derse Katıl" : "Join Lesson"}: ${data.liveMeetingUrl}`,
+    data.teacherNote ? `${isTr ? "Not" : "Note"}: ${data.teacherNote}` : null,
+  ]);
+
+  return { subject, html, text };
+}
+
+/**
+ * 28. Ders Tamamlandı — Öğrenciye
+ */
+export function renderStudentLessonCompletedEmail(data: LessonCompletedEmailData) {
+  const isTr = data.locale === "tr";
+  const subject = isTr
+    ? `Dersiniz Tamamlandı: ${data.lessonTitle} | Oriens Academy`
+    : `Your Lesson is Completed: ${data.lessonTitle} | Oriens Academy`;
+
+  const formattedDate = formatDate(data.lessonDate, data.locale);
+  const remaining = Math.max(0, data.remainingLessons);
+
+  const metricHtml = metricCard({
+    title: isTr ? "Paket Kullanım Durumu" : "Package Status",
+    metricValue: remaining > 0 ? `${remaining} ${isTr ? "Ders Kaldı" : "Lessons Left"}` : (isTr ? "Paket Tamamlandı" : "Package Complete"),
+    metricLabel: data.packageName,
+    badge: remaining > 0 ? (isTr ? "AKTİF" : "ACTIVE") : (isTr ? "TAMAMLANDI" : "COMPLETED"),
+    subtext: remaining > 0
+      ? (isTr ? `Bu ders ile birlikte paketinizde ${remaining} dersiniz kaldı.` : `You have ${remaining} lesson(s) remaining in your package.`)
+      : (isTr ? "Tebrikler! Paketinizdeki tüm dersleri başarıyla tamamladınız." : "Congratulations! You have completed all lessons in your package."),
+  });
+
+  const detailsCard = summaryCard(isTr ? "Ders Kaydı" : "Completed Session", [
+    { label: isTr ? "Tamamlanan Ders" : "Lesson", value: escapeHtml(data.lessonTitle) },
+    { label: isTr ? "Tarih" : "Date", value: formattedDate },
+    { label: isTr ? "İlişkili Paket" : "Package", value: escapeHtml(data.packageName) },
+    { label: isTr ? "Kalan Ders Kredisi" : "Remaining Credits", value: `${remaining} / ${data.totalLessons}` },
+    data.teacherNote ? { label: isTr ? "Eğitmen Notu" : "Teacher Note", value: escapeHtml(data.teacherNote), fullWidth: true } : { label: "", value: "" },
+  ]);
+
+  const bodyHtml = `
+    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br><strong>${escapeHtml(data.lessonTitle)}</strong> dersiniz başarıyla tamamlandı ve öğrenim geçmişinize kaydedildi.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your lesson <strong>${escapeHtml(data.lessonTitle)}</strong> has been marked as completed and added to your learning records.`}</div>
+    ${detailsCard}
+    ${metricHtml}
+    ${actionButton(isTr ? "Öğrenci Paneline Git" : "Go to Student Portal", `${BASE_URL}/${data.locale}/hesabim`)}`;
+
+  const html = renderEmailShell({
+    locale: data.locale,
+    eyebrow: isTr ? "Ders Takibi" : "Lesson Tracking",
+    title: isTr ? "Dersiniz Tamamlandı" : "Lesson Completed",
+    bodyHtml,
+  });
+
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`, "",
+    `${isTr ? "Tamamlanan Ders" : "Lesson"}: ${data.lessonTitle}`,
+    `${isTr ? "Kalan Ders" : "Remaining"}: ${remaining} / ${data.totalLessons}`,
+    `${BASE_URL}/${data.locale}/hesabim`,
+  ]);
+
+  return { subject, html, text };
+}
+

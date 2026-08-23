@@ -81,31 +81,48 @@ export const examTests: Record<ExamCode, ExamTest> = Object.fromEntries(
   examCodes.map((exam) => [exam, { exam, questions: Array.from({ length: 6 }, (_, index) => createQuestion(exam, index)) }])
 ) as Record<ExamCode, ExamTest>;
 
-export function calculateTestResult(test: ExamTest, answers: Record<string, AnswerId>, locale: Locale): TestResult {
+export function calculateTestResult(
+  test?: ExamTest | null,
+  answers: Record<string, AnswerId | undefined> = {},
+  locale: Locale = "tr"
+): TestResult {
   const topicMap = new Map<string, TopicResult>();
   let correct = 0;
+  let answered = 0;
   const questions = test?.questions ?? [];
+
   for (const question of questions) {
-    const isCorrect = answers[question.id] === question.correctAnswer;
+    if (!question) continue;
+    const selectedAnswer = answers[question.id];
+    if (selectedAnswer) answered += 1;
+    const isCorrect = Boolean(selectedAnswer && selectedAnswer === question.correctAnswer);
     if (isCorrect) correct += 1;
-    const existing = topicMap.get(question.recommendationCategory) ?? {
-      category: question.recommendationCategory,
-      label: question.topic?.[locale] ?? question.topic?.tr ?? "Genel",
+
+    const categoryKey = question.recommendationCategory || "topic-a";
+    const label = question.topic?.[locale] || question.topic?.tr || question.topic?.en || "Genel";
+    const existing = topicMap.get(categoryKey) ?? {
+      category: categoryKey,
+      label,
       correct: 0,
       total: 0,
       accuracy: 0,
     };
     existing.total += 1;
     if (isCorrect) existing.correct += 1;
-    existing.accuracy = Math.round((existing.correct / Math.max(1, existing.total)) * 100);
-    topicMap.set(question.recommendationCategory, existing);
+    existing.accuracy = existing.total > 0
+      ? Math.round((existing.correct / existing.total) * 100)
+      : 0;
+    topicMap.set(categoryKey, existing);
   }
+
   const total = Math.max(1, questions.length);
+  const accuracy = questions.length > 0 ? Math.round((correct / total) * 100) : 0;
+
   return {
     correct,
-    incorrect: questions.length - correct,
+    incorrect: Math.max(0, questions.length - correct),
     total: questions.length,
-    accuracy: Math.round((correct / total) * 100),
+    accuracy: Math.min(100, Math.max(0, accuracy)),
     topics: Array.from(topicMap.values()),
   };
 }

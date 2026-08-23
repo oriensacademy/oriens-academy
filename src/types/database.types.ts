@@ -1055,6 +1055,8 @@ export type Database = {
           status: string
           student_user_id: string | null
           appointment_subject: string | null
+          live_meeting_url: string | null
+          meeting_link_sent_at: string | null
           updated_at: string
         }
         Insert: {
@@ -1074,6 +1076,8 @@ export type Database = {
           status?: string
           student_user_id?: string | null
           appointment_subject?: string | null
+          live_meeting_url?: string | null
+          meeting_link_sent_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -1093,6 +1097,8 @@ export type Database = {
           status?: string
           student_user_id?: string | null
           appointment_subject?: string | null
+          live_meeting_url?: string | null
+          meeting_link_sent_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1214,9 +1220,9 @@ export type Database = {
         Relationships: []
       }
       student_lessons: {
-        Row: { id: string; student_user_id: string; booking_id: string | null; package_purchase_id: string | null; title: string; subject: string; exam_code: string | null; lesson_date: string; duration_minutes: number; status: string; teacher_note: string | null; created_at: string }
-        Insert: { id?: string; student_user_id: string; booking_id?: string | null; package_purchase_id?: string | null; title: string; subject: string; exam_code?: string | null; lesson_date: string; duration_minutes: number; status?: string; teacher_note?: string | null; created_at?: string }
-        Update: { id?: string; student_user_id?: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; created_at?: string }
+        Row: { id: string; student_user_id: string; booking_id: string | null; package_purchase_id: string | null; title: string; subject: string; exam_code: string | null; lesson_date: string; duration_minutes: number; status: string; teacher_note: string | null; live_meeting_url: string | null; meeting_link_sent_at: string | null; completed_at: string | null; created_at: string }
+        Insert: { id?: string; student_user_id: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; created_at?: string }
+        Update: { id?: string; student_user_id?: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; created_at?: string }
         Relationships: []
       }
       student_homework: {

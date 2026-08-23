@@ -23,13 +23,20 @@ export function ExamTestPage() {
   const [answers, setAnswers] = useState<Record<string, AnswerId>>({});
   const [result, setResult] = useState<TestResult | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
-  const test = examTests[selectedExam] ?? examTests[examRecords[0].code];
-  const current = test?.questions?.[index] ?? test?.questions?.[0];
+
+  const test = examTests[selectedExam] ?? examTests[examRecords[0].code] ?? { exam: "SAT" as ExamCode, questions: [] };
+  const questions = Array.isArray(test.questions) ? test.questions : [];
+  const safeIndex = Math.min(Math.max(0, index), Math.max(0, questions.length - 1));
+  const current = questions[safeIndex];
 
   useEffect(() => {
     try {
-      const code = window.location.hash.slice(1).toUpperCase() as ExamCode;
-      if (code in examTests) queueMicrotask(() => setSelectedExam(code));
+      if (typeof window !== "undefined" && window.location.hash) {
+        const code = window.location.hash.slice(1).toUpperCase() as ExamCode;
+        if (code in examTests) {
+          queueMicrotask(() => setSelectedExam(code));
+        }
+      }
     } catch {
       // Safe hash ignore
     }
@@ -61,8 +68,8 @@ export function ExamTestPage() {
       // Safe fallback result
       setResult({
         correct: 0,
-        incorrect: test?.questions?.length ?? 6,
-        total: test?.questions?.length ?? 6,
+        incorrect: questions.length || 6,
+        total: questions.length || 6,
         accuracy: 0,
         topics: [],
       });
@@ -83,25 +90,91 @@ export function ExamTestPage() {
           </header>
 
           <div className="mt-10 rounded-2xl border border-border bg-surface p-5 shadow-editorial sm:p-8 md:p-10">
-            {stage === "select" && <>
-              <h2 className="text-2xl text-ink">{copy.selectTitle}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy.selectHint}</p>
-              <div className="mt-7"><ExamTestSelector locale={locale} selected={selectedExam} onSelect={setSelectedExam} /></div>
-              <button type="button" onClick={start} className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-lg bg-ink px-6 py-3 text-sm font-semibold text-white hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">{copy.start}<ArrowRight className="size-4" aria-hidden="true" /></button>
-            </>}
+            {stage === "select" && (
+              <>
+                <h2 className="text-2xl text-ink">{copy.selectTitle}</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{copy.selectHint}</p>
+                <div className="mt-7">
+                  <ExamTestSelector locale={locale} selected={selectedExam} onSelect={setSelectedExam} />
+                </div>
+                <button
+                  type="button"
+                  onClick={start}
+                  className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-lg bg-ink px-6 py-3 text-sm font-semibold text-white hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
+                >
+                  {copy.start}
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </button>
+              </>
+            )}
 
-            {stage === "test" && <>
-              <div className="flex items-center justify-between gap-4"><span className="font-heading text-3xl text-ink">{selectedExam}</span><span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">{copy.question} {index + 1} {copy.of} {test.questions.length}</span></div>
-              <div className="mt-5"><ExamTestProgress current={index + 1} total={test.questions.length} label={copy.question} /></div>
-              <div className="mt-9"><ExamTestQuestion question={current} locale={locale} selected={answers[current.id]} onAnswer={(answer) => setAnswers((existing) => ({ ...existing, [current.id]: answer }))} /></div>
-              <p className="mt-3 min-h-5 text-xs text-muted-foreground" aria-live="polite">{!answers[current.id] ? copy.answerPrompt : ""}</p>
-              <div className="mt-7 flex flex-col-reverse justify-between gap-3 sm:flex-row">
-                <button type="button" disabled={index === 0} onClick={() => setIndex((value) => value - 1)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface px-5 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><ArrowLeft className="size-4" aria-hidden="true" />{copy.previous}</button>
-                {index < test.questions.length - 1 ? <button type="button" disabled={!answers[current.id]} onClick={() => setIndex((value) => value + 1)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{copy.next}<ArrowRight className="size-4" aria-hidden="true" /></button> : <button type="button" disabled={!answers[current.id]} onClick={finish} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{copy.finish}</button>}
-              </div>
-            </>}
+            {stage === "test" && current && (
+              <>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="font-heading text-3xl text-ink">{selectedExam}</span>
+                  <span className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                    {copy.question} {safeIndex + 1} {copy.of} {questions.length}
+                  </span>
+                </div>
+                <div className="mt-5">
+                  <ExamTestProgress current={safeIndex + 1} total={questions.length} label={copy.question} />
+                </div>
+                <div className="mt-9">
+                  <ExamTestQuestion
+                    question={current}
+                    locale={locale}
+                    selected={answers[current.id]}
+                    onAnswer={(answer) => setAnswers((existing) => ({ ...existing, [current.id]: answer }))}
+                  />
+                </div>
+                <p className="mt-3 min-h-5 text-xs text-muted-foreground" aria-live="polite">
+                  {!answers[current.id] ? copy.answerPrompt : ""}
+                </p>
+                <div className="mt-7 flex flex-col-reverse justify-between gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    disabled={safeIndex === 0}
+                    onClick={() => setIndex((value) => Math.max(0, value - 1))}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-strong bg-surface px-5 py-2.5 text-sm font-semibold text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                  >
+                    <ArrowLeft className="size-4" aria-hidden="true" />
+                    {copy.previous}
+                  </button>
+                  {safeIndex < questions.length - 1 ? (
+                    <button
+                      type="button"
+                      disabled={!answers[current.id]}
+                      onClick={() => setIndex((value) => Math.min(questions.length - 1, value + 1))}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                    >
+                      {copy.next}
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!answers[current.id] || isFinishing}
+                      onClick={finish}
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+                    >
+                      {copy.finish}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
 
-            {stage === "result" && result && <ExamTestResults locale={locale} result={result} onRetry={start} onChangeExam={() => { setStage("select"); setResult(null); }} />}
+            {stage === "result" && (
+              <ExamTestResults
+                locale={locale}
+                result={result}
+                onRetry={start}
+                onChangeExam={() => {
+                  setStage("select");
+                  setResult(null);
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

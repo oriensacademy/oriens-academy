@@ -13,7 +13,7 @@ Deno.serve(async(req:Request)=>{
   const body=await req.json().catch(()=>({}));const bookingId=String(body.bookingId||"");
   if(!UUID.test(bookingId))return buildJsonResponse({error_code:"INVALID_BOOKING"},400,req);
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
-  const {data,error}=await admin.from("bookings").select("id,full_name,email,phone,exam_code,custom_exam,notes,status,student_user_id,availability_slots(starts_at,ends_at)").eq("id",bookingId).single();
+  const {data,error}=await admin.from("bookings").select("id,full_name,email,phone,exam_code,custom_exam,notes,status,student_user_id,live_meeting_url,availability_slots(starts_at,ends_at)").eq("id",bookingId).single();
   if(error||!data)return buildJsonResponse({error_code:"BOOKING_NOT_FOUND"},404,req);
   const slot=Array.isArray(data.availability_slots)?data.availability_slots[0]:data.availability_slots;
   const {data:profile}=await admin.from("student_profiles").select("preferred_language").eq("id",data.student_user_id).maybeSingle();
@@ -27,7 +27,7 @@ Deno.serve(async(req:Request)=>{
       lessonTitle: data.exam_code ? `Sınav Hazırlığı (${data.exam_code.toUpperCase()})` : (data.custom_exam || "Birebir Akademik Danışmanlık"),
       startsAt: slot.starts_at,
       endsAt: slot.ends_at,
-      locationOrMeetingUrl: "https://oriens-academy.com/tr/hesabim",
+      locationOrMeetingUrl: data.live_meeting_url || (locale === "en" ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim"),
       notes: data.notes,
       locale,
     });

@@ -30,6 +30,8 @@ import {
   renderStudentWelcomeEmail,
   renderAccountPasswordRecoveryEmail,
   renderAccountSecurityAlertEmail,
+  renderStudentLiveLessonLinkEmail,
+  renderStudentLessonCompletedEmail,
 } from "../supabase/functions/_shared/email/templates.ts";
 
 const TARGET_EMAIL = "info@oriens-academy.com";
@@ -202,6 +204,17 @@ async function runEmailTestSuite() {
   testTemplate("26", "E. Hesap & Güvenlik", "Kullanıcı Güvenlik Bildirimi",
     () => renderAccountSecurityAlertEmail({ studentEmail: TARGET_EMAIL, actionTitle: "Hesap Şifresi Güncellendi", actionDescription: "Öğrenci portalı giriş şifreniz başarıyla değiştirildi.", timestamp: nowIso, device: "Chrome / Windows 11", ipAddress: "88.255.120.45", locale: "tr" }),
     () => renderAccountSecurityAlertEmail({ studentEmail: TARGET_EMAIL, actionTitle: "Password Updated", actionDescription: "Your account password was successfully updated.", timestamp: nowIso, device: "Chrome / Windows 11", ipAddress: "88.255.120.45", locale: "en" })
+  );
+
+  // 6. Live Lessons & Tracking
+  testTemplate("27", "F. Canlı Ders & Takip", "Canlı Ders Bağlantısı",
+    () => renderStudentLiveLessonLinkEmail({ lessonId: "lsn-1", studentName: "Ece Yılmaz", studentEmail: TARGET_EMAIL, lessonTitle: "Birebir SAT Matematik Dersi", subject: "Matematik", examCode: "SAT", lessonDate: "2026-08-28T16:00:00Z", durationMinutes: 60, liveMeetingUrl: "https://meet.google.com/abc-defg-hij", teacherName: "Dr. Selin Demir", teacherNote: "Derse başlamadan önce Deneme 3 çözümlerinizi hazır bulundurunuz.", locale: "tr" }),
+    () => renderStudentLiveLessonLinkEmail({ lessonId: "lsn-1", studentName: "Ece Yilmaz", studentEmail: TARGET_EMAIL, lessonTitle: "1-on-1 SAT Math Session", subject: "Mathematics", examCode: "SAT", lessonDate: "2026-08-28T16:00:00Z", durationMinutes: 60, liveMeetingUrl: "https://meet.google.com/abc-defg-hij", teacherName: "Dr. Selin Demir", teacherNote: "Please prepare your Practice Test 3 answers before the session.", locale: "en" })
+  );
+
+  testTemplate("28", "F. Canlı Ders & Takip", "Ders Tamamlandı & Kalan Ders",
+    () => renderStudentLessonCompletedEmail({ lessonId: "lsn-1", studentName: "Ece Yılmaz", studentEmail: TARGET_EMAIL, lessonTitle: "Birebir SAT Matematik Dersi", subject: "Matematik", lessonDate: "2026-08-28T16:00:00Z", packageName: "10 Derslik SAT Hazırlık Paketi", remainingLessons: 7, totalLessons: 10, teacherNote: "Fonksiyon grafikleri ve trigonometrik oranlar üzerinde çalışıldı.", locale: "tr" }),
+    () => renderStudentLessonCompletedEmail({ lessonId: "lsn-1", studentName: "Ece Yilmaz", studentEmail: TARGET_EMAIL, lessonTitle: "1-on-1 SAT Math Session", subject: "Mathematics", lessonDate: "2026-08-28T16:00:00Z", packageName: "10-Lesson SAT Prep Package", remainingLessons: 7, totalLessons: 10, teacherNote: "Reviewed function graphs and trigonometric ratios.", locale: "en" })
   );
 
   console.table(results.map(r => ({ "#": r.id, Category: r.category, Name: r.name, "TR Subject": r.trSubject, "EN Subject": r.enSubject, Status: "PASS" })));

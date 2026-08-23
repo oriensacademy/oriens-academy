@@ -9,4 +9,4 @@ grant all on public.discount_coupons, public.discount_coupon_packages, public.di
 
 -- 2. Ensure validate_checkout_coupon RPC is available to all callers (public/anon/authenticated) as SECURITY DEFINER
 grant execute on function public.validate_checkout_coupon(text, text, uuid) to anon, authenticated, service_role;
-grant execute on function public.create_student_checkout(text, text, text, text, text, text) to anon, authenticated, service_role;
+grant execute on function public.create_student_checkout(text, text, text, text, text, text, text) to anon, authenticated, service_role;

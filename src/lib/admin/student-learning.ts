@@ -31,6 +31,110 @@ export async function createStudentHomework(input: Pick<Tables<"student_homework
 export async function reviewStudentHomework(id:string,status:"reviewed"|"completed",teacherFeedback:string) {
   return getSupabaseClient().from("student_homework").update({status,teacher_feedback:teacherFeedback.trim()||null}).eq("id",id).select().single();
 }
+
+export async function upsertStudentLesson(input: {
+  studentId: string;
+  lessonId?: string | null;
+  packagePurchaseId?: string | null;
+  title: string;
+  subject: string;
+  examCode?: string | null;
+  lessonDate: string;
+  durationMinutes: number;
+  liveMeetingUrl?: string | null;
+  teacherNote?: string | null;
+  status?: "scheduled" | "completed" | "cancelled" | "no_show";
+}) {
+  const { data, error } = await getSupabaseClient().rpc("admin_upsert_student_lesson" as unknown as "admin_update_student_profile", {
+    p_student_id: input.studentId,
+    p_lesson_id: input.lessonId || null,
+    p_package_purchase_id: input.packagePurchaseId || null,
+    p_title: input.title,
+    p_subject: input.subject,
+    p_exam_code: input.examCode || null,
+    p_lesson_date: input.lessonDate,
+    p_duration_minutes: input.durationMinutes,
+    p_live_meeting_url: input.liveMeetingUrl || null,
+    p_teacher_note: input.teacherNote || null,
+    p_status: input.status || "scheduled",
+  } as unknown as { p_student_id: string; p_full_name: string; p_phone: string; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean });
+  return rpcResult(data, error);
+}
+
+export async function completeStudentLesson(input: {
+  lessonId: string;
+  packagePurchaseId?: string | null;
+  teacherNote?: string | null;
+}) {
+  const supabase = getSupabaseClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+
+  if (token) {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-live-lesson-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "complete_lesson",
+          lessonId: input.lessonId,
+          packagePurchaseId: input.packagePurchaseId || null,
+          teacherNote: input.teacherNote || null,
+        }),
+      });
+      const json = await response.json();
+      if (json.success) {
+        return { success: true, error: null, alreadyCompleted: Boolean(json.already_completed) };
+      }
+    } catch {
+      // Fallback to direct RPC
+    }
+  }
+
+  const { data, error } = await supabase.rpc("admin_complete_student_lesson" as unknown as "admin_update_student_profile", {
+    p_lesson_id: input.lessonId,
+    p_package_purchase_id: input.packagePurchaseId || null,
+    p_teacher_note: input.teacherNote || null,
+  } as unknown as { p_student_id: string; p_full_name: string; p_phone: string; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean });
+  return rpcResult(data, error);
+}
+
+export async function sendLessonMeetingLink(lessonId: string) {
+  const supabase = getSupabaseClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) return { success: false, error: "Oturum bulunamadı." };
+
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-live-lesson-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action: "send_link", lessonId }),
+    });
+    const json = await response.json();
+    if (!response.ok || !json.success) {
+      return { success: false, error: json.error_code || "E-posta gönderilemedi." };
+    }
+    return { success: true, error: null };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Bağlantı hatası." };
+  }
+}
+
+export async function cancelStudentLesson(lessonId: string, reason?: string | null) {
+  const { data, error } = await getSupabaseClient().rpc("admin_cancel_student_lesson" as unknown as "admin_update_student_profile", {
+    p_lesson_id: lessonId,
+    p_reason: reason || null,
+  } as unknown as { p_student_id: string; p_full_name: string; p_phone: string; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean });
+  return rpcResult(data, error);
+}
+
 export async function completeStudentAppointment(input:{bookingId:string;packagePurchaseId:string|null;title:string;subject:string;examCode:string;durationMinutes:number;teacherNote:string}) {
   const {data,error}=await getSupabaseClient().rpc("admin_complete_student_appointment",{p_booking_id:input.bookingId,p_package_purchase_id:input.packagePurchaseId,p_title:input.title,p_subject:input.subject,p_exam_code:input.examCode,p_duration_minutes:input.durationMinutes,p_teacher_note:input.teacherNote});
   return rpcResult(data,error);
@@ -45,3 +149,4 @@ export async function addStudentPrivateNote(studentUserId:string,note:string) {
   return supabase.from("student_admin_notes").insert({student_user_id:studentUserId,note:note.trim(),created_by:userData.user.id}).select().single();
 }
 function rpcResult(data:unknown,error:{message:string}|null){if(error)return{success:false,error:error.message};const value=data as {success?:boolean;error_code?:string;already_completed?:boolean}|null;return{success:Boolean(value?.success),error:value?.success?null:(value?.error_code||"İşlem tamamlanamadı."),alreadyCompleted:Boolean(value?.already_completed)}}
+

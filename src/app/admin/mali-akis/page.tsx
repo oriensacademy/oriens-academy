@@ -446,7 +446,7 @@ function MetricCard({
           <Icon className="size-4" />
         </span>
       </div>
-      <div className="mt-3 font-heading text-2xl font-bold text-ink">{value}</div>
+      <div className="mt-3 font-sans text-2xl font-bold tracking-tight text-ink tabular-nums">{value}</div>
       <p className="mt-1 text-[11px] text-muted-foreground">{subtext}</p>
     </div>
   );

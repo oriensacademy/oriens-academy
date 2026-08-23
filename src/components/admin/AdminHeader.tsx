@@ -55,7 +55,7 @@ export function AdminHeader() {
   };
 
   const displayName = profile?.display_name || "Oriens Academy Admin";
-  const email = user?.email || "oriensacademy@gmail.com";
+  const email = user?.email || "admin@oriens-academy.com";
 
   return (
     <>
