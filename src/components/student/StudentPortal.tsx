@@ -15,6 +15,7 @@ import { getStudentPortalData, submitStudentHomework, updateStudentProfile, type
 import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
 import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAttempt } from "@/lib/student/exam-history";
+import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { cn } from "@/lib/utils";
 
 const sectionIds = ["overview", "profile", "appointments", "lessons", "homework", "package", "payments", "exam_history", "support"] as const;
@@ -1384,58 +1385,26 @@ function ExamHistoryView({ userId, locale }: { userId: string; locale: "tr" | "e
               </div>
             )}
 
-            {/* Question Breakdown */}
-            <div className="mt-6 space-y-3">
-              <h4 className="text-sm font-bold text-ink">
-                {isTr ? "Soru ve Çözüm Detayları" : "Question Solutions"}
-              </h4>
-              <div className="space-y-3">
-                {(selectedAttempt.question_snapshots || []).map((q, idx) => (
-                  <div
-                    key={q.id || idx}
-                    className="rounded-2xl border border-border bg-surface p-4 space-y-2.5 text-xs"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-ink">
-                        {isTr ? `Soru ${idx + 1}` : `Question ${idx + 1}`} · <span className="text-muted-foreground font-normal">{q.topicLabel}</span>
-                      </span>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          q.wasCorrect ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {q.wasCorrect ? (isTr ? "✓ Doğru" : "✓ Correct") : (isTr ? "✕ Yanlış" : "✕ Incorrect")}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-ink/90 font-medium leading-relaxed">
-                      {q.prompt}
-                    </p>
-
-                    <div className="rounded-xl bg-surface-muted p-2.5 space-y-1 text-[11px]">
-                      <div>
-                        <strong>{isTr ? "Verdiğiniz Cevap:" : "Your Answer:"}</strong>{" "}
-                        <span className={q.wasCorrect ? "text-emerald-700 font-semibold" : "text-rose-700 font-semibold"}>
-                          {q.selectedAnswer || (isTr ? "Boş" : "Unanswered")}
-                        </span>
-                      </div>
-                      {!q.wasCorrect && (
-                        <div>
-                          <strong>{isTr ? "Doğru Cevap:" : "Correct Answer:"}</strong>{" "}
-                          <span className="text-emerald-700 font-semibold">{q.correctAnswer}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {q.explanation && (
-                      <p className="text-[11px] text-muted-foreground leading-relaxed pt-1 border-t border-border/60">
-                        <strong>{isTr ? "Açıklama:" : "Explanation:"}</strong> {q.explanation}
-                      </p>
-                    )}
-                  </div>
-                ))}
+            {/* Question Breakdown One-by-One Review */}
+            {selectedAttempt.question_snapshots && selectedAttempt.question_snapshots.length > 0 && (
+              <div className="mt-6">
+                <ExamQuestionReview
+                  items={selectedAttempt.question_snapshots.map((q, idx) => ({
+                    id: q.id || String(idx),
+                    questionNumber: idx + 1,
+                    topic: q.topicLabel,
+                    prompt: q.prompt,
+                    selectedAnswerId: null,
+                    correctAnswerId: "",
+                    selectedAnswerText: q.selectedAnswer,
+                    correctAnswerText: q.correctAnswer,
+                    isCorrect: q.wasCorrect,
+                    explanation: q.explanation,
+                  }))}
+                  locale={locale}
+                />
               </div>
-            </div>
+            )}
 
             {/* Modal Actions */}
             <div className="mt-8 flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">

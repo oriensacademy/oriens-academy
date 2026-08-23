@@ -38,6 +38,7 @@ import {
 } from "@/lib/admin/student-learning";
 import type { Tables } from "@/types/database.types";
 import { listStudentExamAttempts, type StudentExamAttempt } from "@/lib/student/exam-history";
+import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 
 export type LearningSection = "lessons" | "homework" | "packages" | "payments" | "notes" | "exam_history";
 
@@ -1738,28 +1739,26 @@ function AdminExamHistoryPanel({ userId }: { userId: string }) {
               </div>
             )}
 
-            {/* Question Breakdown */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-ink uppercase tracking-wider">Soru Detayları</h4>
-              <div className="space-y-2.5">
-                {(selectedAttempt.question_snapshots || []).map((q, idx) => (
-                  <div key={q.id || idx} className="rounded-xl border border-border p-3 text-xs space-y-1.5 bg-slate-50">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-ink">Soru {idx + 1} ({q.topicLabel})</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${q.wasCorrect ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"}`}>
-                        {q.wasCorrect ? "✓ Doğru" : "✕ Yanlış"}
-                      </span>
-                    </div>
-                    <p className="text-ink text-[11px]">{q.prompt}</p>
-                    <div className="text-[11px] text-muted-foreground bg-white p-2 rounded border border-border space-y-0.5">
-                      <div><strong>Öğrenci Cevabı:</strong> <span className={q.wasCorrect ? "text-emerald-700 font-semibold" : "text-rose-700 font-semibold"}>{q.selectedAnswer || "Boş"}</span></div>
-                      {!q.wasCorrect && <div><strong>Doğru Cevap:</strong> <span className="text-emerald-700 font-semibold">{q.correctAnswer}</span></div>}
-                      {q.explanation && <div className="pt-1 text-[10px] border-t border-border mt-1"><strong>Açıklama:</strong> {q.explanation}</div>}
-                    </div>
-                  </div>
-                ))}
+            {/* Question Breakdown One-by-One Review */}
+            {selectedAttempt.question_snapshots && selectedAttempt.question_snapshots.length > 0 && (
+              <div className="pt-2">
+                <ExamQuestionReview
+                  items={selectedAttempt.question_snapshots.map((q, idx) => ({
+                    id: q.id || String(idx),
+                    questionNumber: idx + 1,
+                    topic: q.topicLabel,
+                    prompt: q.prompt,
+                    selectedAnswerId: null,
+                    correctAnswerId: "",
+                    selectedAnswerText: q.selectedAnswer,
+                    correctAnswerText: q.correctAnswer,
+                    isCorrect: q.wasCorrect,
+                    explanation: q.explanation,
+                  }))}
+                  locale="tr"
+                />
               </div>
-            </div>
+            )}
 
             <div className="pt-3 border-t border-border flex justify-end">
               <button

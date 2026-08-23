@@ -86,13 +86,50 @@ async function completeTest(page, labels, answers, doubleSubmit = false) {
   assert.equal(new URL(page.url()).pathname, routeBeforeSubmit, "result must remain on the static test route");
 }
 
-async function assertResult(page, { correct, incorrect, accuracy }) {
+async function assertResult(page, { correct, incorrect, accuracy }, locale = "tr") {
   const result = page.getByTestId("exam-result");
   await result.waitFor();
   assert.equal((await page.getByTestId("exam-result-correct").innerText()).split("\n").at(-1), `${correct} / ${QUESTION_COUNT}`);
   assert.equal((await page.getByTestId("exam-result-incorrect").innerText()).split("\n").at(-1), `${incorrect} / ${QUESTION_COUNT}`);
   assert.equal((await page.getByTestId("exam-result-accuracy").innerText()).split("\n").at(-1), `${accuracy}%`);
   assert.equal(await result.locator("section").count() >= 4, true, "analysis and recommendation sections must render");
+
+  // Verify one-question-at-a-time review navigation
+  const nextBtnName = locale === "tr" ? "Sıradaki Soru" : "Next Question";
+  const prevBtnName = locale === "tr" ? "Önceki Soru" : "Previous Question";
+  const nextBtn = page.getByRole("button", { name: nextBtnName });
+  const prevBtn = page.getByRole("button", { name: prevBtnName });
+
+  // Initial is Question 1
+  const counter = page.getByTestId("question-review-counter");
+  assert(await counter.isVisible(), "Question counter must be visible initially");
+  assert((await counter.innerText()).includes("1"), "Counter must show Question 1 initially");
+
+  // Navigate to Question 2
+  if (await nextBtn.isVisible()) {
+    await nextBtn.click();
+    assert((await counter.innerText()).includes("2"), "Counter must show Question 2 after Next");
+  }
+
+  // Navigate directly to Question 5 via number pill
+  const pill5 = page.getByRole("tab", { name: /5\./ });
+  if (await pill5.isVisible()) {
+    await pill5.click();
+    assert((await counter.innerText()).includes("5"), "Counter must show Question 5 after clicking pill 5");
+  }
+
+  // Navigate back with Previous to Question 4
+  if (await prevBtn.isVisible()) {
+    await prevBtn.click();
+    assert((await counter.innerText()).includes("4"), "Counter must show Question 4 after Previous");
+  }
+
+  // Reset to Question 1 via pill 1
+  const pill1 = page.getByRole("tab", { name: /1\./ });
+  if (await pill1.isVisible()) {
+    await pill1.click();
+    assert((await counter.innerText()).includes("1"), "Counter must show Question 1 after resetting to pill 1");
+  }
 }
 
 async function outcomeScenario(browser, name, locale, answers, expected, options = {}) {
@@ -101,7 +138,7 @@ async function outcomeScenario(browser, name, locale, answers, expected, options
     const labels = await openTest(page, locale);
     await startTest(page, labels, options.exam);
     await completeTest(page, labels, answers, options.doubleSubmit);
-    await assertResult(page, expected);
+    await assertResult(page, expected, locale);
     await assertHealthy(page, errors, name);
     console.log(`PASS ${name}`);
   } finally {

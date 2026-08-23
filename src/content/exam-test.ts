@@ -61,6 +61,10 @@ const copy = {
     savingAttempt: "Sınav geçmişinize kaydediliyor...",
     attemptSaved: "Sonuç sınav geçmişinize kaydedildi.",
     attemptSaveFailed: "Sonucunuz görüntüleniyor ancak geçmişe kaydedilemedi. Tekrar deneyebilirsiniz.",
+    previousQuestion: "Önceki Soru",
+    nextQuestion: "Sıradaki Soru",
+    completeReview: "Sonraki Adım",
+    goToQuestion: "soruya git",
     performance: {
       strong: "Tebrikler! Güçlü bir temel gösterdiniz. Sınav stratejisi ve süre yönetimi odaklı ileri düzey çalışmalarla hedefinize hızla ulaşabilirsiniz.",
       moderate: "Temel yaklaşımınız iyi görünüyor ancak belirli konu alanlarında hedefli pratik ve soru analizi performansınızı belirgin şekilde artırabilir.",
@@ -132,6 +136,10 @@ const copy = {
     savingAttempt: "Saving to your exam history...",
     attemptSaved: "Result saved to your exam history.",
     attemptSaveFailed: "Your result is displayed, but could not be saved to history. You may retry.",
+    previousQuestion: "Previous Question",
+    nextQuestion: "Next Question",
+    completeReview: "Next Step",
+    goToQuestion: "Go to question",
     performance: {
       strong: "Well done! You demonstrated strong foundational mastery. Advanced practice focused on exam timing and strategy will help you reach top percentiles.",
       moderate: "You have a solid baseline. Targeted practice on specific weak topics and question review will significantly boost your score.",

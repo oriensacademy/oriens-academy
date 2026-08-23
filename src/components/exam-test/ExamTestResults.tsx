@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, ChevronDown, ChevronUp, Calendar, RefreshCcw, Award, Mail, ArrowRight, UserPlus } from "lucide-react";
+import { CheckCircle2, XCircle, Calendar, RefreshCcw, Award, Mail, ArrowRight, UserPlus } from "lucide-react";
 import type { TestResult, ExamTest, QuestionBreakdownItem, TopicResult } from "@/data/exam-tests";
 import { getExamTestCopy } from "@/content/exam-test";
 import type { Locale } from "@/content/dictionaries";
@@ -10,6 +10,7 @@ import { useAccount } from "@/lib/auth/account-context";
 import { submitContact } from "@/lib/contact/api";
 import { saveStudentExamAttempt, sendExamResultEmail, type QuestionSnapshot } from "@/lib/student/exam-history";
 import { localizedPath } from "@/lib/routes";
+import { ExamQuestionReview } from "./ExamQuestionReview";
 
 function normalizeTestResult(input?: TestResult | null): TestResult {
   const topics = Array.isArray(input?.topics) ? input.topics.filter(Boolean) : [];
@@ -58,7 +59,7 @@ export function ExamTestResults({
   const { user } = useAccount();
 
   const safeResult = normalizeTestResult(result);
-  const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
+  const consultationRef = useRef<HTMLElement>(null);
 
   // Auto-save state for authenticated students
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -122,10 +123,6 @@ export function ExamTestResults({
       });
   }, [user?.id, safeResult, locale, questionSnapshots]);
 
-  const toggleQuestion = (id: string) => {
-    setExpandedQuestions((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
   const topics = safeResult.topics;
   const strong = safeResult.strengths;
   const improve = safeResult.improvementAreas;
@@ -133,6 +130,27 @@ export function ExamTestResults({
   const correctCount = safeResult.correct;
   const incorrectCount = safeResult.incorrect;
   const accuracy = safeResult.accuracy;
+
+  const reviewItems = safeResult.breakdown.map((b: QuestionBreakdownItem, idx: number) => ({
+    id: b.id,
+    questionNumber: idx + 1,
+    topic: b.topic,
+    prompt: b.questionText,
+    selectedAnswerId: b.selectedAnswer,
+    correctAnswerId: b.correctAnswer,
+    selectedAnswerText: b.selectedAnswer ? b.selectedAnswer.toUpperCase() : null,
+    correctAnswerText: b.correctAnswer.toUpperCase(),
+    isCorrect: b.isCorrect,
+    explanation: b.explanation,
+    options: (b.answers || []).map((a) => ({
+      id: a.id,
+      label: a.label?.[locale] || a.id,
+    })),
+  }));
+
+  const handleCompleteReview = () => {
+    consultationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const recommendation =
     accuracy >= 75
@@ -416,104 +434,21 @@ export function ExamTestResults({
         </div>
       </section>
 
-      {/* Question Breakdown Accordion */}
-      {safeResult.breakdown.length > 0 && (
-        <section className="space-y-4">
-          <h3 className="text-base font-bold text-ink sm:text-lg">
-            {copy.questionBreakdown}
-          </h3>
-          <div className="divide-y divide-[#DDE4DC] rounded-2xl border border-[#DDE4DC] bg-surface overflow-hidden">
-            {safeResult.breakdown.map((item: QuestionBreakdownItem, idx: number) => {
-              const isOpen = expandedQuestions[item.id] ?? false;
-              const isCorrect = item.isCorrect;
-              const options = item.answers || [];
-
-              return (
-                <div key={item.id} className="p-4 sm:p-5 transition-colors hover:bg-[#FAFBF9]">
-                  <button
-                    type="button"
-                    onClick={() => toggleQuestion(item.id)}
-                    className="flex w-full items-start justify-between gap-3 text-left cursor-pointer focus-visible:outline-none"
-                  >
-                    <div className="flex items-start gap-3">
-                      {isCorrect ? (
-                        <CheckCircle2 className="size-5 text-emerald-600 shrink-0 mt-0.5" />
-                      ) : (
-                        <XCircle className="size-5 text-rose-600 shrink-0 mt-0.5" />
-                      )}
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          {copy.question} {idx + 1} · <span className="font-normal text-ink/70">{item.topic}</span>
-                        </span>
-                        <p className="text-sm font-semibold text-ink mt-0.5 line-clamp-2">
-                          {item.questionText}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          isCorrect ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {isCorrect ? copy.correct : copy.incorrect}
-                      </span>
-                      {isOpen ? (
-                        <ChevronUp className="size-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="size-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </button>
-
-                  {isOpen && (
-                    <div className="mt-4 pt-4 border-t border-[#EAEFE8] space-y-4 text-xs">
-                      {/* Options breakdown */}
-                      <div className="grid gap-2">
-                        {options.map((opt) => {
-                          const isSelected = item.selectedAnswer === opt.id;
-                          const isCorrectOpt = item.correctAnswer === opt.id;
-                          const label = opt.label?.[locale] || opt.id;
-
-                          let style = "border-border bg-surface text-ink/80";
-                          if (isCorrectOpt) {
-                            style = "border-emerald-500 bg-emerald-50/80 text-emerald-950 font-medium";
-                          } else if (isSelected && !isCorrectOpt) {
-                            style = "border-rose-500 bg-rose-50/80 text-rose-950 font-medium";
-                          }
-
-                          return (
-                            <div
-                              key={opt.id}
-                              className={`flex items-center gap-2 rounded-xl border p-3 text-xs ${style}`}
-                            >
-                              <span className="font-bold shrink-0 uppercase">{opt.id.toUpperCase()})</span>
-                              <span>{label}</span>
-                              {isCorrectOpt && <CheckCircle2 className="ml-auto size-3.5 text-emerald-600 shrink-0" />}
-                              {isSelected && !isCorrectOpt && <XCircle className="ml-auto size-3.5 text-rose-600 shrink-0" />}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {item.explanation && (
-                        <div className="rounded-xl bg-[#F4F6F1] p-3.5 text-ink leading-relaxed border border-[#E0E6DA]">
-                          <span className="font-semibold text-primary block mb-1">{copy.explanation}:</span>
-                          <p className="text-[11px] text-ink/80">{item.explanation}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      {/* One-Question-At-A-Time Review Component */}
+      {reviewItems.length > 0 && (
+        <ExamQuestionReview
+          items={reviewItems}
+          locale={locale}
+          onCompleteReview={handleCompleteReview}
+        />
       )}
 
       {/* Next Step / Email & Consultation CTAs */}
-      <section className="rounded-2xl border border-primary/40 bg-[#F4F6F0] p-6 sm:p-8 shadow-sm">
+      <section
+        ref={consultationRef}
+        id="consultation-section"
+        className="rounded-2xl border border-primary/40 bg-[#F4F6F0] p-6 sm:p-8 shadow-sm scroll-mt-6"
+      >
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2 max-w-xl">
             <span className="text-xs font-bold uppercase tracking-wider text-primary">
