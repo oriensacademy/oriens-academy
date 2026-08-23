@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 import { examRecords } from "@/content/exams";
 import { locales } from "@/content/dictionaries";
+import { SITE_URL } from "@/lib/routes";
 
 export const dynamic = "force-static";
 
-const BASE_URL = "https://oriens-academy.com";
+const BASE_URL = SITE_URL;
 
 const ROUTE_MAP: Array<{ tr: string; en: string }> = [
   { tr: "sinavlar", en: "exams" },

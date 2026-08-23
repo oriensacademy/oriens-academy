@@ -1,5 +1,7 @@
 import type { Locale } from "@/content/dictionaries";
 
+export const SITE_URL = "https://oriens-academy.com";
+
 export type LocalizedRouteId =
   | "home"
   | "exams"

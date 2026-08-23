@@ -1,10 +1,12 @@
+import { SITE_URL } from "@/lib/routes";
+
 export function JsonLd() {
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "EducationalOrganization",
     "name": "Oriens Academy",
-    "url": "https://oriens-academy.com",
-    "logo": "https://oriens-academy.com/logo.png",
+    "url": SITE_URL,
+    "logo": `${SITE_URL}/logo.png`,
     "description": "International Exam Preparation & Academic Consultancy for IB, SAT, and AP Diplomas.",
     "sameAs": [],
   };
@@ -13,7 +15,7 @@ export function JsonLd() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "Oriens Academy",
-    "url": "https://oriens-academy.com",
+    "url": SITE_URL,
     "inLanguage": ["tr", "en"],
   };
 

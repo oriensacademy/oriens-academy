@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/routes";
 
 export const dynamic = "force-static";
 
@@ -11,6 +12,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/admin/", "/admin/*"],
       },
     ],
-    sitemap: "https://oriens-academy.com/sitemap.xml",
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

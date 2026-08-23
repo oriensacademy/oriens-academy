@@ -6,6 +6,7 @@ import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { LocaleProvider } from "@/content/locale-context";
 import { getDictionary, isLocale, locales } from "@/content/dictionaries";
+import { SITE_URL } from "@/lib/routes";
 
 export async function generateStaticParams() {
   return locales.map((lang) => ({ lang }));
@@ -15,7 +16,7 @@ export const dynamicParams = false;
 
 type LangParam = { lang: string };
 
-const BASE_URL = "https://oriens-academy.com";
+const BASE_URL = SITE_URL;
 
 export async function generateMetadata({
   params,

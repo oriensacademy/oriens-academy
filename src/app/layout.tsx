@@ -23,8 +23,10 @@ const dmSerif = DM_Serif_Display({
   display: "swap",
 });
 
+import { SITE_URL } from "@/lib/routes";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://oriens-academy.com"),
+  metadataBase: new URL(SITE_URL),
   title: "Oriens Academy",
   description: "International Exam Preparation & Academic Consultancy",
 };
