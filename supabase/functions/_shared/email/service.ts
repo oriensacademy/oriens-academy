@@ -46,13 +46,95 @@ import {
   type LessonCompletedEmailData,
 } from "./templates.ts";
 
-const DEFAULT_SENDER_NAME = "Oriens Academy";
-const DEFAULT_SENDER_EMAIL = "info@oriens-academy.com";
+export type EmailChannel =
+  | "general"
+  | "contact"
+  | "support"
+  | "payments"
+  | "admin";
+
+export interface MailIdentity {
+  fromName: string;
+  fromEmail: string;
+  fromAddress: string;
+  replyTo: string;
+  internalRecipient: string;
+}
+
+export const MAIL_ADDRESSES = {
+  general: "info@oriens-academy.com",
+  contact: "contact@oriens-academy.com",
+  support: "support@oriens-academy.com",
+  payments: "payments@oriens-academy.com",
+  admin: "admin@oriens-academy.com",
+} as const;
+
+export const DEFAULT_FALLBACK_NAME = "Oriens Academy";
+export const DEFAULT_FALLBACK_EMAIL = "info@oriens-academy.com";
+export const DEFAULT_FALLBACK_FROM = `${DEFAULT_FALLBACK_NAME} <${DEFAULT_FALLBACK_EMAIL}>`;
+
+/**
+ * Resolves strongly-typed mail identity attributes by business channel.
+ */
+export function resolveMailIdentity(
+  channel: EmailChannel = "general",
+  locale: "tr" | "en" = "tr"
+): MailIdentity {
+  switch (channel) {
+    case "contact":
+      return {
+        fromName: "Oriens Academy",
+        fromEmail: "contact@oriens-academy.com",
+        fromAddress: "Oriens Academy <contact@oriens-academy.com>",
+        replyTo: "contact@oriens-academy.com",
+        internalRecipient: "contact@oriens-academy.com",
+      };
+    case "support": {
+      const supportName = locale === "en" ? "Oriens Academy Student Support" : "Oriens Academy Öğrenci Destek";
+      return {
+        fromName: supportName,
+        fromEmail: "support@oriens-academy.com",
+        fromAddress: `${supportName} <support@oriens-academy.com>`,
+        replyTo: "support@oriens-academy.com",
+        internalRecipient: "support@oriens-academy.com",
+      };
+    }
+    case "payments": {
+      const paymentsName = locale === "en" ? "Oriens Academy Payments" : "Oriens Academy Ödemeler";
+      return {
+        fromName: paymentsName,
+        fromEmail: "payments@oriens-academy.com",
+        fromAddress: `${paymentsName} <payments@oriens-academy.com>`,
+        replyTo: "payments@oriens-academy.com",
+        internalRecipient: "payments@oriens-academy.com",
+      };
+    }
+    case "admin":
+      return {
+        fromName: "Oriens Academy",
+        fromEmail: "info@oriens-academy.com", // admin@ is internal management mailbox, not customer-facing sender
+        fromAddress: "Oriens Academy <info@oriens-academy.com>",
+        replyTo: "admin@oriens-academy.com",
+        internalRecipient: "admin@oriens-academy.com",
+      };
+    case "general":
+    default:
+      return {
+        fromName: "Oriens Academy",
+        fromEmail: "info@oriens-academy.com",
+        fromAddress: "Oriens Academy <info@oriens-academy.com>",
+        replyTo: "info@oriens-academy.com",
+        internalRecipient: "info@oriens-academy.com",
+      };
+  }
+}
 
 export type EmailDeliveryResult = {
   status: "sent" | "failed";
   errorCode?: string;
   providerMessageId?: string;
+  channel?: EmailChannel;
+  usedFallback?: boolean;
 };
 
 /**
@@ -205,7 +287,7 @@ export async function logNotificationDelivery(params: {
 }
 
 /**
- * Sends a transactional email using Google Mail API (OAuth2) and logs delivery to DB.
+ * Sends a transactional email using Google Mail API (OAuth2) with centralized alias routing & fallback.
  */
 export async function sendTransactionalEmail(params: {
   supabaseAdmin: SupabaseClient;
@@ -218,6 +300,8 @@ export async function sendTransactionalEmail(params: {
   entityType: string;
   entityId: string;
   idempotencyKey?: string;
+  channel?: EmailChannel;
+  sender?: { name?: string; email?: string };
 }): Promise<EmailDeliveryResult> {
   const {
     supabaseAdmin,
@@ -229,11 +313,9 @@ export async function sendTransactionalEmail(params: {
     eventType,
     entityType,
     entityId,
+    channel = "general",
+    sender,
   } = params;
-
-  const senderName = Deno.env.get("MAIL_FROM_NAME") || DEFAULT_SENDER_NAME;
-  const senderEmail = Deno.env.get("MAIL_FROM_EMAIL") || DEFAULT_SENDER_EMAIL;
-  const fromAddress = `${senderName} <${senderEmail}>`;
 
   if (!to || !to.includes("@")) {
     console.warn(`[email/service] Recipient email not configured for ${eventType}`);
@@ -246,8 +328,15 @@ export async function sendTransactionalEmail(params: {
       status: "failed",
       lastErrorCode: "RECIPIENT_NOT_CONFIGURED",
     });
-    return { status: "failed", errorCode: "RECIPIENT_NOT_CONFIGURED" };
+    return { status: "failed", errorCode: "RECIPIENT_NOT_CONFIGURED", channel };
   }
+
+  // Resolve sender identity from channel or override
+  const resolvedIdentity = resolveMailIdentity(channel);
+  const targetFromName = sender?.name || resolvedIdentity.fromName;
+  const targetFromEmail = sender?.email || resolvedIdentity.fromEmail;
+  const targetReplyTo = replyTo || resolvedIdentity.replyTo;
+  const initialFromAddress = `${targetFromName} <${targetFromEmail}>`;
 
   const { token: accessToken, error: tokenError } = await getGoogleAccessToken();
 
@@ -265,7 +354,7 @@ export async function sendTransactionalEmail(params: {
         status: "sent",
         providerMessageId: mockId,
       });
-      return { status: "sent", providerMessageId: mockId };
+      return { status: "sent", providerMessageId: mockId, channel };
     }
 
     console.error(`[email/service] Google Mail credentials missing or invalid: ${tokenError}`);
@@ -278,19 +367,19 @@ export async function sendTransactionalEmail(params: {
       status: "failed",
       lastErrorCode: tokenError || "GOOGLE_AUTH_ERROR",
     });
-    return { status: "failed", errorCode: tokenError || "GOOGLE_AUTH_ERROR" };
+    return { status: "failed", errorCode: tokenError || "GOOGLE_AUTH_ERROR", channel };
   }
 
-  try {
+  // Helper function to send an RFC 822 MIME message to Gmail API
+  async function attemptSend(fromHdr: string, replyToHdr?: string) {
     const rawMime = buildRfc822Message({
-      from: fromAddress,
+      from: fromHdr,
       to,
-      replyTo,
+      replyTo: replyToHdr,
       subject,
       html,
       text,
     });
-
     const rawBase64Url = base64UrlEncode(rawMime);
 
     const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
@@ -299,12 +388,28 @@ export async function sendTransactionalEmail(params: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        raw: rawBase64Url,
-      }),
+      body: JSON.stringify({ raw: rawBase64Url }),
     });
 
     const json = await res.json();
+    return { res, json };
+  }
+
+  try {
+    let usedFallback = false;
+    let { res, json } = await attemptSend(initialFromAddress, targetReplyTo);
+
+    // If alias From is rejected by Gmail API (e.g. status 400/403 on unverified alias),
+    // automatically fallback to safe default From (info@oriens-academy.com) while keeping Reply-To set to the alias!
+    if (!res.ok && targetFromEmail !== DEFAULT_FALLBACK_EMAIL) {
+      console.warn(
+        `[email/service] Alias From "${initialFromAddress}" rejected by Gmail API (${json.error?.message || res.status}). Retrying with safe fallback From: "${DEFAULT_FALLBACK_FROM}" and Reply-To: "${targetReplyTo}"`
+      );
+      const fallbackResult = await attemptSend(DEFAULT_FALLBACK_FROM, targetReplyTo);
+      res = fallbackResult.res;
+      json = fallbackResult.json;
+      usedFallback = true;
+    }
 
     if (res.ok && json.id) {
       await logNotificationDelivery({
@@ -316,7 +421,7 @@ export async function sendTransactionalEmail(params: {
         status: "sent",
         providerMessageId: json.id,
       });
-      return { status: "sent", providerMessageId: json.id };
+      return { status: "sent", providerMessageId: json.id, channel, usedFallback };
     } else {
       const errorCode = json.error?.message || json.message || `HTTP_${res.status}`;
       console.error(`[email/service] Google Gmail API error:`, json);
@@ -329,7 +434,7 @@ export async function sendTransactionalEmail(params: {
         status: "failed",
         lastErrorCode: errorCode,
       });
-      return { status: "failed", errorCode };
+      return { status: "failed", errorCode, channel, usedFallback };
     }
   } catch (err) {
     console.error(`[email/service] Unexpected network error sending email:`, err);
@@ -342,12 +447,12 @@ export async function sendTransactionalEmail(params: {
       status: "failed",
       lastErrorCode: "NETWORK_ERROR",
     });
-    return { status: "failed", errorCode: "NETWORK_ERROR" };
+    return { status: "failed", errorCode: "NETWORK_ERROR", channel };
   }
 }
 
 // ============================================================================
-// DISPATCHERS — GÖRÜŞME & İLETİŞİM
+// DISPATCHERS — GÖRÜŞME & İLETİŞİM (CHANNEL: CONTACT)
 // ============================================================================
 
 export async function dispatchBookingEmails(
@@ -365,7 +470,7 @@ export async function dispatchBookingEmails(
 
   const configuredRecipient = adminEmailConfig?.email?.trim().toLowerCase();
   const adminRecipient = !configuredRecipient || configuredRecipient === "notifications@oriens-academy.com"
-    ? "info@oriens-academy.com"
+    ? "contact@oriens-academy.com"
     : configuredRecipient;
   const adminLocale = localeConfig?.locale ?? "tr";
 
@@ -377,6 +482,7 @@ export async function dispatchBookingEmails(
       supabaseAdmin,
       to: adminRecipient,
       replyTo: bookingData.email,
+      channel: "contact",
       subject: adminTemplate.subject,
       html: adminTemplate.html,
       text: adminTemplate.text,
@@ -388,6 +494,8 @@ export async function dispatchBookingEmails(
     sendTransactionalEmail({
       supabaseAdmin,
       to: bookingData.email,
+      replyTo: "contact@oriens-academy.com",
+      channel: "contact",
       subject: studentTemplate.subject,
       html: studentTemplate.html,
       text: studentTemplate.text,
@@ -420,7 +528,7 @@ export async function dispatchContactEmails(
 
   const configuredRecipient = adminEmailConfig?.email?.trim().toLowerCase();
   const adminRecipient = !configuredRecipient || configuredRecipient === "notifications@oriens-academy.com"
-    ? "info@oriens-academy.com"
+    ? "contact@oriens-academy.com"
     : configuredRecipient;
   const adminLocale = localeConfig?.locale ?? "tr";
 
@@ -432,6 +540,7 @@ export async function dispatchContactEmails(
       supabaseAdmin,
       to: adminRecipient,
       replyTo: contactData.email,
+      channel: "contact",
       subject: adminTemplate.subject,
       html: adminTemplate.html,
       text: adminTemplate.text,
@@ -447,6 +556,8 @@ export async function dispatchContactEmails(
     sendTransactionalEmail({
       supabaseAdmin,
       to: contactData.email,
+      replyTo: "contact@oriens-academy.com",
+      channel: "contact",
       subject: studentTemplate.subject,
       html: studentTemplate.html,
       text: studentTemplate.text,
@@ -469,21 +580,32 @@ export async function dispatchContactEmails(
 }
 
 // ============================================================================
-// DISPATCHERS — RANDEVU & DERSLER
+// DISPATCHERS — RANDEVU & DERSLER (CHANNEL: SUPPORT)
 // ============================================================================
 
 export async function dispatchAppointmentConfirmedEmails(
   supabaseAdmin: SupabaseClient,
   data: AppointmentEmailData
 ) {
+  const supportEmailConfig = await getPrivateSiteSetting<{ email: string }>(
+    supabaseAdmin,
+    "notification.support_email"
+  );
+  const bookingEmailConfig = await getPrivateSiteSetting<{ email: string }>(
+    supabaseAdmin,
+    "notification.booking_email"
+  );
+  const adminRecipient = supportEmailConfig?.email?.trim() || bookingEmailConfig?.email?.trim() || "support@oriens-academy.com";
+
   const adminTemplate = renderAdminAppointmentCreatedEmail(data, "tr");
   const studentTemplate = renderStudentAppointmentConfirmedEmail(data);
 
   const [admin, student] = await Promise.all([
     sendTransactionalEmail({
       supabaseAdmin,
-      to: "info@oriens-academy.com",
+      to: adminRecipient,
       replyTo: data.studentEmail,
+      channel: "support",
       subject: adminTemplate.subject,
       html: adminTemplate.html,
       text: adminTemplate.text,
@@ -495,6 +617,8 @@ export async function dispatchAppointmentConfirmedEmails(
     sendTransactionalEmail({
       supabaseAdmin,
       to: data.studentEmail,
+      replyTo: "support@oriens-academy.com",
+      channel: "support",
       subject: studentTemplate.subject,
       html: studentTemplate.html,
       text: studentTemplate.text,
@@ -516,6 +640,8 @@ export async function dispatchAppointmentUpdatedEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: studentTemplate.subject,
     html: studentTemplate.html,
     text: studentTemplate.text,
@@ -534,6 +660,8 @@ export async function dispatchAppointmentCancelledEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: studentTemplate.subject,
     html: studentTemplate.html,
     text: studentTemplate.text,
@@ -552,6 +680,8 @@ export async function dispatchAppointmentReminderEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: studentTemplate.subject,
     html: studentTemplate.html,
     text: studentTemplate.text,
@@ -563,7 +693,7 @@ export async function dispatchAppointmentReminderEmail(
 }
 
 // ============================================================================
-// DISPATCHERS — PAKETLER & ÖDEMELER
+// DISPATCHERS — PAKETLER & ÖDEMELER (CHANNEL: PAYMENTS)
 // ============================================================================
 
 export async function dispatchPackagePurchasedEmail(
@@ -574,6 +704,8 @@ export async function dispatchPackagePurchasedEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "payments@oriens-academy.com",
+    channel: "payments",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -592,6 +724,8 @@ export async function dispatchPaymentSuccessEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "payments@oriens-academy.com",
+    channel: "payments",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -610,6 +744,8 @@ export async function dispatchBankTransferPendingEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "payments@oriens-academy.com",
+    channel: "payments",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -628,6 +764,8 @@ export async function dispatchPaymentReminderEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "payments@oriens-academy.com",
+    channel: "payments",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -646,6 +784,8 @@ export async function dispatchBankTransferApprovedEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "payments@oriens-academy.com",
+    channel: "payments",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -660,11 +800,18 @@ export async function dispatchAdminPaymentAlert(
   supabaseAdmin: SupabaseClient,
   data: AdminPaymentNotificationData
 ) {
-  const template = renderAdminPaymentNotificationEmail(data, "tr");
+  const paymentEmailConfig = await getPrivateSiteSetting<{ email: string }>(
+    supabaseAdmin,
+    "notification.payment_email"
+  );
+  const adminRecipient = paymentEmailConfig?.email?.trim() || "payments@oriens-academy.com";
+
+  const template = renderAdminPaymentNotificationEmail(data, data.locale || "tr");
   return sendTransactionalEmail({
     supabaseAdmin,
-    to: "info@oriens-academy.com",
+    to: adminRecipient,
     replyTo: data.payerEmail,
+    channel: "payments",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -701,6 +848,8 @@ export async function dispatchPackageStatusEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "payments@oriens-academy.com",
+    channel: "payments",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -712,7 +861,7 @@ export async function dispatchPackageStatusEmail(
 }
 
 // ============================================================================
-// DISPATCHERS — ÖDEVLER & AKADEMİK TAKİP
+// DISPATCHERS — ÖDEVLER & AKADEMİK TAKİP (CHANNEL: SUPPORT)
 // ============================================================================
 
 export async function dispatchHomeworkAssignedEmail(
@@ -723,6 +872,8 @@ export async function dispatchHomeworkAssignedEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -741,6 +892,8 @@ export async function dispatchHomeworkDueReminderEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -755,11 +908,18 @@ export async function dispatchHomeworkSubmittedEmail(
   supabaseAdmin: SupabaseClient,
   data: HomeworkEmailData
 ) {
+  const supportEmailConfig = await getPrivateSiteSetting<{ email: string }>(
+    supabaseAdmin,
+    "notification.support_email"
+  );
+  const recipient = supportEmailConfig?.email?.trim() || "support@oriens-academy.com";
+
   const template = renderTeacherHomeworkSubmittedEmail(data, "tr");
   return sendTransactionalEmail({
     supabaseAdmin,
-    to: "info@oriens-academy.com",
+    to: recipient,
     replyTo: data.studentEmail,
+    channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -778,6 +938,8 @@ export async function dispatchHomeworkReviewedEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -789,7 +951,7 @@ export async function dispatchHomeworkReviewedEmail(
 }
 
 // ============================================================================
-// DISPATCHERS — HESAP & GÜVENLİK
+// DISPATCHERS — HESAP & GÜVENLİK (CHANNELS: GENERAL & SUPPORT)
 // ============================================================================
 
 export async function dispatchWelcomeEmail(
@@ -800,6 +962,8 @@ export async function dispatchWelcomeEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "general",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -823,6 +987,8 @@ export async function dispatchPasswordResetEmail(params: {
   return sendTransactionalEmail({
     supabaseAdmin,
     to,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -841,6 +1007,8 @@ export async function dispatchSecurityAlertEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "admin@oriens-academy.com",
+    channel: "admin",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -852,7 +1020,7 @@ export async function dispatchSecurityAlertEmail(
 }
 
 // ============================================================================
-// DISPATCHERS — CANLI DERS & DERS TAMAMLAMA (LIVE LESSONS & TRACKING)
+// DISPATCHERS — CANLI DERS & DERS TAMAMLAMA (CHANNEL: SUPPORT)
 // ============================================================================
 
 export async function dispatchLiveLessonLinkEmail(
@@ -863,6 +1031,8 @@ export async function dispatchLiveLessonLinkEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -881,6 +1051,8 @@ export async function dispatchLessonCompletedEmail(
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
@@ -890,4 +1062,5 @@ export async function dispatchLessonCompletedEmail(
     idempotencyKey: `lesson-completed-${data.lessonId}`,
   });
 }
+
 

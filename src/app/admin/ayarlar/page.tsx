@@ -39,6 +39,9 @@ function SettingsContent() {
   // Form State for Known Settings
   const [contactEmail, setContactEmail] = useState("");
   const [bookingEmail, setBookingEmail] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [paymentEmail, setPaymentEmail] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
   const [adminLocale, setAdminLocale] = useState("tr");
   const [showPricing, setShowPricing] = useState(true);
   const [bankAccountHolder, setBankAccountHolder] = useState("");
@@ -48,6 +51,9 @@ function SettingsContent() {
   // Track initial values for dirty state checking
   const [initialContactEmail, setInitialContactEmail] = useState("");
   const [initialBookingEmail, setInitialBookingEmail] = useState("");
+  const [initialSupportEmail, setInitialSupportEmail] = useState("");
+  const [initialPaymentEmail, setInitialPaymentEmail] = useState("");
+  const [initialAdminEmail, setInitialAdminEmail] = useState("");
   const [initialAdminLocale, setInitialAdminLocale] = useState("tr");
   const [initialShowPricing, setInitialShowPricing] = useState(true);
   const [initialBankAccountHolder, setInitialBankAccountHolder] = useState("");
@@ -65,6 +71,21 @@ function SettingsContent() {
         const email = String((r.value as { email: string }).email);
         setBookingEmail(email);
         setInitialBookingEmail(email);
+      }
+      if (r.key === "notification.support_email" && typeof r.value === "object" && r.value !== null && "email" in r.value) {
+        const email = String((r.value as { email: string }).email);
+        setSupportEmail(email);
+        setInitialSupportEmail(email);
+      }
+      if (r.key === "notification.payment_email" && typeof r.value === "object" && r.value !== null && "email" in r.value) {
+        const email = String((r.value as { email: string }).email);
+        setPaymentEmail(email);
+        setInitialPaymentEmail(email);
+      }
+      if (r.key === "notification.admin_email" && typeof r.value === "object" && r.value !== null && "email" in r.value) {
+        const email = String((r.value as { email: string }).email);
+        setAdminEmail(email);
+        setInitialAdminEmail(email);
       }
       if (r.key === "notification.admin_locale" && typeof r.value === "object" && r.value !== null && "locale" in r.value) {
         const loc = String((r.value as { locale: string }).locale);
@@ -248,24 +269,49 @@ function SettingsContent() {
             <div className="border-b border-border pb-3">
               <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <Mail className="size-4 text-[#10271B]" />
-                <span>E-Posta Bildirim Alıcıları / Notification Recipients</span>
+                <span>E-Posta Yönlendirme ve Bildirim Alıcıları / Workspace Email Routing</span>
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Form gönderimlerinde yöneticilere iletilecek bildirim e-posta adresleri.
+                Google Workspace alias yapısına göre ayrıştırılmış bildirim alıcı e-posta adresleri.
               </p>
+            </div>
+
+            {/* General Main Email (Reference / Read-Only) */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/30">
+              <div className="space-y-1 max-w-sm">
+                <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <span>Genel / Birincil Posta Kutusu</span>
+                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Birincil Hesap</span>
+                </div>
+                <div className="text-[11px] font-mono text-muted-foreground">
+                  info@oriens-academy.com
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Google Workspace OAuth ana kimliği ve genel iletişim e-posta adresi.
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="email"
+                  value="info@oriens-academy.com"
+                  disabled
+                  className="w-full sm:w-64 rounded-lg border border-input bg-gray-100 px-3 py-2 text-xs text-muted-foreground cursor-not-allowed"
+                />
+              </div>
             </div>
 
             {/* Contact Email Setting */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
               <div className="space-y-1 max-w-sm">
                 <div className="text-xs font-bold text-foreground">
-                  İletişim Formu Bildirim Alıcısı
+                  İletişim & Danışmanlık Bildirim Alıcısı
                 </div>
                 <div className="text-[11px] font-mono text-muted-foreground">
                   notification.contact_email
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  Web sitesi iletişim formundan gelen iletiler bu adrese gönderilir.
+                  İletişim formu, hızlı iletişim ve ön danışmanlık bildirimleri bu adrese yönlendirilir.
                 </div>
               </div>
 
@@ -274,7 +320,7 @@ function SettingsContent() {
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="bildirim@ornek.com"
+                  placeholder="contact@oriens-academy.com"
                   className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
                 />
                 <button
@@ -303,7 +349,7 @@ function SettingsContent() {
                   notification.booking_email
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  Yeni randevu talepleri ve seans rezervasyon bildirimi bu adrese gönderilir.
+                  Yeni randevu talepleri ve takvim seans bildirimleri bu adrese gönderilir.
                 </div>
               </div>
 
@@ -312,7 +358,7 @@ function SettingsContent() {
                   type="email"
                   value={bookingEmail}
                   onChange={(e) => setBookingEmail(e.target.value)}
-                  placeholder="notifications@oriens-academy.com"
+                  placeholder="support@oriens-academy.com"
                   className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
                 />
                 <button
@@ -322,6 +368,120 @@ function SettingsContent() {
                   className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
                 >
                   {savingKey === "notification.booking_email" ? (
+                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                  ) : (
+                    <Save className="size-3.5" />
+                  )}
+                  <span>Kaydet</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Student Support Email Setting */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
+              <div className="space-y-1 max-w-sm">
+                <div className="text-xs font-bold text-foreground">
+                  Öğrenci Destek & Ödev Bildirim Alıcısı
+                </div>
+                <div className="text-[11px] font-mono text-muted-foreground">
+                  notification.support_email
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Ödev teslimleri, canlı ders bildirimleri ve öğrenci destek talepleri bu adrese yönlendirilir.
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="email"
+                  value={supportEmail}
+                  onChange={(e) => setSupportEmail(e.target.value)}
+                  placeholder="support@oriens-academy.com"
+                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                />
+                <button
+                  type="button"
+                  disabled={savingKey === "notification.support_email" || supportEmail === initialSupportEmail}
+                  onClick={() => handleSaveSetting("notification.support_email", { email: supportEmail.trim() })}
+                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                >
+                  {savingKey === "notification.support_email" ? (
+                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                  ) : (
+                    <Save className="size-3.5" />
+                  )}
+                  <span>Kaydet</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Payment Email Setting */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
+              <div className="space-y-1 max-w-sm">
+                <div className="text-xs font-bold text-foreground">
+                  Ödeme & Finans Bildirim Alıcısı
+                </div>
+                <div className="text-[11px] font-mono text-muted-foreground">
+                  notification.payment_email
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Banka havalesi bildirimleri, başarılı ödemeler ve finansal uyarılar bu adrese iletilir.
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="email"
+                  value={paymentEmail}
+                  onChange={(e) => setPaymentEmail(e.target.value)}
+                  placeholder="payments@oriens-academy.com"
+                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                />
+                <button
+                  type="button"
+                  disabled={savingKey === "notification.payment_email" || paymentEmail === initialPaymentEmail}
+                  onClick={() => handleSaveSetting("notification.payment_email", { email: paymentEmail.trim() })}
+                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                >
+                  {savingKey === "notification.payment_email" ? (
+                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                  ) : (
+                    <Save className="size-3.5" />
+                  )}
+                  <span>Kaydet</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Admin Security Email Setting */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
+              <div className="space-y-1 max-w-sm">
+                <div className="text-xs font-bold text-foreground">
+                  Yönetim & Güvenlik Bildirim Alıcısı
+                </div>
+                <div className="text-[11px] font-mono text-muted-foreground">
+                  notification.admin_email
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Kritik sistem alarmları, yönetici güvenlik bildirimleri ve dahili yönetim mesajları bu adrese gider.
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="admin@oriens-academy.com"
+                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                />
+                <button
+                  type="button"
+                  disabled={savingKey === "notification.admin_email" || adminEmail === initialAdminEmail}
+                  onClick={() => handleSaveSetting("notification.admin_email", { email: adminEmail.trim() })}
+                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                >
+                  {savingKey === "notification.admin_email" ? (
                     <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
                   ) : (
                     <Save className="size-3.5" />
