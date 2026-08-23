@@ -6,7 +6,10 @@ export type StudentProfileRow = Tables<"student_profiles">;
 export type StudentLessonRow = Tables<"student_lessons">;
 export type StudentHomeworkRow = Tables<"student_homework">;
 export type StudentBooking = Pick<Tables<"bookings">, "id" | "status" | "exam_code" | "custom_exam" | "created_at"> & { availability_slots: { starts_at: string; ends_at: string } | null };
-export type StudentPurchase = Tables<"student_package_purchases"> & { pricing_packages: { name_tr: string | null; name_en: string | null } | null };
+export type StudentPurchase = Tables<"student_package_purchases"> & {
+  pricing_packages: { name_tr: string | null; name_en: string | null } | null;
+  custom_package_name?: string | null;
+};
 export type StudentPayment = Pick<Tables<"payment_transactions">, "id" | "package_id" | "amount" | "currency" | "payment_method" | "status" | "created_at" | "public_reference" | "metadata">;
 
 export interface StudentPortalData {

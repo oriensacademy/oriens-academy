@@ -8,6 +8,34 @@ import type { Locale } from "@/content/dictionaries";
 import { useAccount } from "@/lib/auth/account-context";
 import { submitContact } from "@/lib/contact/api";
 
+function normalizeTestResult(input?: TestResult | null): TestResult {
+  const topics = Array.isArray(input?.topics) ? input.topics.filter(Boolean) : [];
+  const breakdown = Array.isArray(input?.breakdown) ? input.breakdown.filter(Boolean) : [];
+  const strengths = Array.isArray(input?.strengths) ? input.strengths.filter(Boolean) : [];
+  const improvementAreas = Array.isArray(input?.improvementAreas) ? input.improvementAreas.filter(Boolean) : [];
+  const total = Number.isFinite(input?.total) ? Math.max(0, input!.total) : 0;
+  const correct = Number.isFinite(input?.correct) ? Math.max(0, input!.correct) : 0;
+  const incorrect = Number.isFinite(input?.incorrect) ? Math.max(0, input!.incorrect) : 0;
+  const unanswered = Number.isFinite(input?.unanswered) ? Math.max(0, input!.unanswered) : 0;
+  const rawAccuracy = input?.accuracy;
+  const accuracy = Number.isFinite(rawAccuracy) ? Math.min(100, Math.max(0, Math.round(rawAccuracy!))) : 0;
+  const performanceTier = input?.performanceTier || (accuracy >= 75 ? "strong" : accuracy >= 40 ? "moderate" : "foundation");
+
+  return {
+    examCode: input?.examCode || "SAT",
+    total,
+    correct,
+    incorrect,
+    unanswered,
+    accuracy,
+    performanceTier,
+    topics,
+    strengths,
+    improvementAreas,
+    breakdown,
+  };
+}
+
 export function ExamTestResults({
   locale,
   result,
@@ -23,6 +51,7 @@ export function ExamTestResults({
   const isTr = locale === "tr";
   const { user } = useAccount();
 
+  const safeResult = normalizeTestResult(result);
   const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
   const [showSendModal, setShowSendModal] = useState(false);
   const [senderName, setSenderName] = useState(() => user?.user_metadata?.full_name || "");
@@ -36,14 +65,13 @@ export function ExamTestResults({
     setExpandedQuestions((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const topics = Array.isArray(result.topics) ? result.topics : [];
+  const topics = safeResult.topics;
   const strong = topics.filter((topic) => (topic?.accuracy ?? 0) >= 80);
   const improve = topics.filter((topic) => (topic?.accuracy ?? 0) < 60);
-  const totalQuestions = Number.isFinite(result.total) ? Math.max(0, result.total) : 0;
-  const correctCount = Number.isFinite(result.correct) ? Math.max(0, result.correct) : 0;
-  const incorrectCount = Number.isFinite(result.incorrect) ? Math.max(0, result.incorrect) : 0;
-  const rawAccuracy = result.accuracy;
-  const accuracy = Number.isFinite(rawAccuracy) ? Math.min(100, Math.max(0, Math.round(rawAccuracy))) : 0;
+  const totalQuestions = safeResult.total;
+  const correctCount = safeResult.correct;
+  const incorrectCount = safeResult.incorrect;
+  const accuracy = safeResult.accuracy;
 
   const recommendation =
     accuracy >= 75
@@ -61,7 +89,7 @@ export function ExamTestResults({
 
     setSendError("");
     startSendTransition(async () => {
-      const examName = (result.examCode || "Exam").toUpperCase();
+      const examName = (safeResult.examCode || "Exam").toUpperCase();
       const topicSummary = topics
         .map((t) => `${t.label}: %${t.accuracy} (${t.correct}/${t.total})`)
         .join(" | ");
@@ -102,7 +130,7 @@ export function ExamTestResults({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EBF0E6] px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#2E4A36]">
             <Award className="size-3.5" />
-            {result.examCode?.toUpperCase()} · {totalQuestions} {isTr ? "Soruluk Değerlendirme" : "Question Diagnostic"}
+            {safeResult.examCode?.toUpperCase()} · {totalQuestions} {isTr ? "Soruluk Değerlendirme" : "Question Diagnostic"}
           </span>
           <span className="text-xs font-semibold text-muted-foreground">
             {isTr ? "Tamamlandı" : "Completed"}
@@ -241,7 +269,7 @@ export function ExamTestResults({
       </div>
 
       {/* Question-by-Question Detailed Breakdown */}
-      {result.breakdown && result.breakdown.length > 0 && (
+      {safeResult.breakdown && safeResult.breakdown.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold text-ink">
@@ -253,7 +281,7 @@ export function ExamTestResults({
           </div>
 
           <div className="space-y-3">
-            {result.breakdown.map((item) => {
+            {safeResult.breakdown.map((item) => {
               const isExpanded = expandedQuestions[item.id] ?? true;
               return (
                 <div

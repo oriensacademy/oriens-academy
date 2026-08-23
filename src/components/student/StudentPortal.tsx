@@ -78,7 +78,11 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
       {/* Current Package Banner */}
       <button onClick={() => onNavigate("package")} className="rounded-2xl border border-border bg-forest p-6 text-left text-white sm:col-span-2 cursor-pointer hover:border-border-strong">
         <p className="text-xs uppercase tracking-wider text-white/65">{locale === "tr" ? "Mevcut Paket" : "Current Package"}</p>
-        <h2 className="mt-2 font-heading text-3xl">{purchase ? (locale === "tr" ? purchase.pricing_packages?.name_tr : purchase.pricing_packages?.name_en) || purchase.package_id : "—"}</h2>
+        <h2 className="mt-2 font-heading text-3xl">
+          {purchase
+            ? purchase.custom_package_name || (locale === "tr" ? purchase.pricing_packages?.name_tr : purchase.pricing_packages?.name_en) || purchase.package_id
+            : "—"}
+        </h2>
         {purchase && (
           <>
             <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
@@ -562,7 +566,7 @@ function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
     <Panel title={locale === "tr" ? "Paketim" : "My Package"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h3 className="font-heading text-3xl text-ink">
-          {(locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
+          {p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
         </h3>
         {complete && (
           <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
@@ -579,7 +583,7 @@ function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
       </div>
 
       <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Metric label={locale === "tr" ? "Paket / Kurs Türü" : "Package / Course Type"} value={(locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id} />
+        <Metric label={locale === "tr" ? "Paket / Kurs Türü" : "Package / Course Type"} value={p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id} />
         <Metric label={locale === "tr" ? "Toplam Ders" : "Total Lessons"} value={p.lesson_count} />
         <Metric label={locale === "tr" ? "Tamamlanan" : "Completed"} value={p.lessons_used} />
         <Metric label={locale === "tr" ? "Kalan" : "Remaining"} value={remaining} />

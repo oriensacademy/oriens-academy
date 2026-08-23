@@ -173,16 +173,30 @@ export function ExamTestPage() {
               </>
             )}
 
-            {stage === "result" && result && (
-              <ExamTestResults
-                locale={locale}
-                result={result}
-                onRetry={start}
-                onChangeExam={() => {
-                  setStage("select");
-                  setResult(null);
-                }}
-              />
+            {stage === "result" && (
+              result ? (
+                <ExamTestResults
+                  locale={locale}
+                  result={result}
+                  onRetry={start}
+                  onChangeExam={() => {
+                    finishLock.current = false;
+                    setStage("select");
+                    setResult(null);
+                  }}
+                />
+              ) : (
+                <div className="text-center py-8 space-y-4">
+                  <p className="text-sm text-muted-foreground">{copy.resultsTitle}</p>
+                  <button
+                    type="button"
+                    onClick={start}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-forest cursor-pointer"
+                  >
+                    {copy.retry}
+                  </button>
+                </div>
+              )
             )}
           </div>
         </div>
