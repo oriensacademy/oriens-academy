@@ -138,10 +138,9 @@ try {
   await unknown.locator("#account-email").fill("unknown@example.test");
   await unknown.locator("#account-password").fill("Password1!");
   await unknown.getByRole("button", { name: "Oturum Aç", exact: true }).click();
-  const unknownAlert = unknown.locator('[role="alert"]').filter({ hasText: "aktif bir Oriens Academy profili" });
-  await unknownAlert.waitFor();
-  check("unknown account denied with safe error", await unknownAlert.isVisible());
-  check("unknown account never reaches admin", pathOf(unknown.url()) === "/tr/giris");
+  await unknown.waitForURL((url) => url.pathname.replace(/\/$/, "") === "/tr/hesabim");
+  check("authenticated account receives student fallback", pathOf(unknown.url()) === "/tr/hesabim");
+  check("unknown account never reaches admin", !pathOf(unknown.url()).startsWith("/admin"));
   await unknownContext.close();
 } finally {
   await browser.close();

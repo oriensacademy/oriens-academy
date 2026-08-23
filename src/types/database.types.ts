@@ -1055,6 +1055,7 @@ export type Database = {
           status: string
           student_user_id: string | null
           appointment_subject: string | null
+          event_type: string
           live_meeting_url: string | null
           meeting_link_sent_at: string | null
           updated_at: string
@@ -1076,6 +1077,7 @@ export type Database = {
           status?: string
           student_user_id?: string | null
           appointment_subject?: string | null
+          event_type?: string
           live_meeting_url?: string | null
           meeting_link_sent_at?: string | null
           updated_at?: string
@@ -1097,6 +1099,7 @@ export type Database = {
           status?: string
           student_user_id?: string | null
           appointment_subject?: string | null
+          event_type?: string
           live_meeting_url?: string | null
           meeting_link_sent_at?: string | null
           updated_at?: string
@@ -1208,9 +1211,9 @@ export type Database = {
         Relationships: []
       }
       student_profiles: {
-        Row: { id: string; full_name: string; email: string; phone: string | null; date_of_birth: string | null; preferred_language: string; school: string | null; target_country: string | null; target_university: string | null; target_exam: string | null; active: boolean; created_at: string; updated_at: string }
-        Insert: { id: string; full_name: string; email: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_university?: string | null; target_exam?: string | null; active?: boolean; created_at?: string; updated_at?: string }
-        Update: { id?: string; full_name?: string; email?: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_university?: string | null; target_exam?: string | null; active?: boolean; created_at?: string; updated_at?: string }
+        Row: { id: string; full_name: string; email: string; phone: string | null; date_of_birth: string | null; preferred_language: string; school: string | null; target_country: string | null; target_countries: string[]; target_university: string | null; target_exam: string | null; target_exams: string[]; onboarding_completed: boolean; active: boolean; created_at: string; updated_at: string }
+        Insert: { id: string; full_name: string; email: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_countries?: string[]; target_university?: string | null; target_exam?: string | null; target_exams?: string[]; onboarding_completed?: boolean; active?: boolean; created_at?: string; updated_at?: string }
+        Update: { id?: string; full_name?: string; email?: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_countries?: string[]; target_university?: string | null; target_exam?: string | null; target_exams?: string[]; onboarding_completed?: boolean; active?: boolean; created_at?: string; updated_at?: string }
         Relationships: []
       }
       student_admin_notes: {

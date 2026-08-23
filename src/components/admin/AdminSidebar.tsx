@@ -25,6 +25,7 @@ export interface NavItem {
   icon: typeof LayoutDashboard;
   enabled: boolean;
   badge?: string;
+  group: "GENEL" | "ÖĞRENCİ YÖNETİMİ" | "FİNANS" | "İÇERİK" | "SİSTEM";
 }
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
@@ -34,13 +35,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin",
     icon: LayoutDashboard,
     enabled: true,
-  },
-  {
-    label: "Randevular",
-    labelEn: "Bookings",
-    href: "/admin/randevular",
-    icon: CalendarCheck,
-    enabled: true,
+    group: "GENEL",
   },
   {
     label: "Öğrenciler",
@@ -48,20 +43,23 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/ogrenciler",
     icon: Users,
     enabled: true,
+    group: "ÖĞRENCİ YÖNETİMİ",
   },
   {
-    label: "Destek",
-    labelEn: "Support",
-    href: "/admin/destek",
-    icon: MessageSquare,
+    label: "Ders & Randevular",
+    labelEn: "Lessons & Appointments",
+    href: "/admin/randevular",
+    icon: CalendarCheck,
     enabled: true,
+    group: "ÖĞRENCİ YÖNETİMİ",
   },
   {
-    label: "İletişim",
-    labelEn: "Contacts",
-    href: "/admin/iletisim",
+    label: "İletişim & Destek",
+    labelEn: "Communication & Support",
+    href: "/admin/iletisim-destek",
     icon: MessageSquare,
     enabled: true,
+    group: "ÖĞRENCİ YÖNETİMİ",
   },
   {
     label: "Fiyatlandırma",
@@ -69,6 +67,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/fiyatlandirma",
     icon: CreditCard,
     enabled: true,
+    group: "FİNANS",
   },
   {
     label: "İndirim Kuponları",
@@ -76,6 +75,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/indirim-kuponlari",
     icon: FileText,
     enabled: true,
+    group: "FİNANS",
   },
   {
     label: "Ödemeler",
@@ -83,6 +83,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/odemeler",
     icon: WalletCards,
     enabled: true,
+    group: "FİNANS",
   },
   {
     label: "Mali Akış",
@@ -90,6 +91,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/mali-akis",
     icon: TrendingUp,
     enabled: true,
+    group: "FİNANS",
   },
   {
     label: "İçerik",
@@ -97,6 +99,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/icerik",
     icon: FileText,
     enabled: true,
+    group: "İÇERİK",
   },
   {
     label: "Bildirimler",
@@ -104,6 +107,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/bildirimler",
     icon: Bell,
     enabled: true,
+    group: "İÇERİK",
   },
   {
     label: "Denetim Logları",
@@ -111,6 +115,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/denetim",
     icon: FileCheck,
     enabled: true,
+    group: "SİSTEM",
   },
   {
     label: "Ayarlar",
@@ -118,6 +123,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     href: "/admin/ayarlar",
     icon: Settings,
     enabled: true,
+    group: "SİSTEM",
   },
 ];
 
@@ -133,10 +139,10 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
 
   return (
     <aside
-      className={`flex flex-col border-r border-[#DDE4DC] bg-white text-[#10271B] ${className}`}
+      className={`flex flex-col border-r border-border bg-white text-ink ${className}`}
     >
       {/* Brand Header */}
-      <div className="flex h-16 items-center gap-3 border-b border-[#DDE4DC] px-6">
+      <div className="flex h-16 items-center gap-3 border-b border-border px-6">
         <Image
           src="/brand/oriens-logo-v2.png"
           alt="Oriens Academy"
@@ -148,7 +154,11 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
 
       {/* Navigation Links */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {ADMIN_NAV_ITEMS.map((item) => {
+        {(["GENEL", "ÖĞRENCİ YÖNETİMİ", "FİNANS", "İÇERİK", "SİSTEM"] as const).map((group) => (
+          <div key={group} className="mb-3 last:mb-0">
+            <p className="mb-1 px-3 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">{group}</p>
+            <div className="space-y-0.5">
+        {ADMIN_NAV_ITEMS.filter((item) => item.group === group).map((item) => {
           const Icon = item.icon;
           const isActive =
             normalizedPathname === item.href ||
@@ -159,17 +169,17 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
             return (
               <div
                 key={item.href}
-                className="group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-medium text-[#68756C] cursor-not-allowed opacity-60 transition-colors"
+                className="group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-medium text-muted-foreground cursor-not-allowed opacity-60 transition-colors"
                 title={`${item.label} (${item.badge || "Yakında"})`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="size-4 text-[#68756C]" />
+                  <Icon className="size-4 text-muted-foreground" />
                   <span>{item.label}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Lock className="size-3 text-[#68756C]" />
+                  <Lock className="size-3 text-muted-foreground" />
                   {item.badge && (
-                    <span className="rounded bg-[#EFF2ED] px-1.5 py-0.5 text-[10px] font-normal text-[#68756C]">
+                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                       {item.badge}
                     </span>
                   )}
@@ -187,24 +197,27 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
               aria-current={isActive ? "page" : undefined}
               className={`relative flex items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-ui transition-[background-color,border-color,color] duration-200 ${
                 isActive
-                  ? "border-[#D6DED5] bg-[#EEF2EC] font-semibold text-[#10271B]"
-                  : "border-transparent font-medium text-[#68756C] hover:bg-[#F2F5EF] hover:text-[#10271B]"
+                  ? "border-border bg-muted font-semibold text-ink"
+                  : "border-transparent font-medium text-muted-foreground hover:bg-surface-muted hover:text-ink"
               }`}
             >
               <div className="flex items-center gap-3">
                 <Icon
                   className={`size-4 ${
-                    isActive ? "text-[#10271B]" : "text-[#68756C]"
+                    isActive ? "text-ink" : "text-muted-foreground"
                   }`}
                 />
                 <span>{item.label}</span>
               </div>
               {isActive && (
-                <div className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-[#819586]" />
+                <div className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-primary" />
               )}
             </Link>
           );
         })}
+            </div>
+          </div>
+        ))}
       </nav>
 
     </aside>

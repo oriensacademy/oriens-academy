@@ -5,7 +5,7 @@ import type { Tables } from "@/types/database.types";
 export type StudentProfileRow = Tables<"student_profiles">;
 export type StudentLessonRow = Tables<"student_lessons">;
 export type StudentHomeworkRow = Tables<"student_homework">;
-export type StudentBooking = Pick<Tables<"bookings">, "id" | "status" | "exam_code" | "custom_exam" | "created_at"> & { availability_slots: { starts_at: string; ends_at: string } | null };
+export type StudentBooking = Pick<Tables<"bookings">, "id" | "status" | "exam_code" | "custom_exam" | "created_at" | "appointment_subject" | "event_type" | "live_meeting_url"> & { availability_slots: { starts_at: string; ends_at: string } | null };
 export type StudentPurchase = Tables<"student_package_purchases"> & {
   pricing_packages: { name_tr: string | null; name_en: string | null } | null;
   custom_package_name?: string | null;
@@ -20,12 +20,9 @@ export interface StudentPortalData {
 
 export async function getStudentPortalData(userId: string): Promise<{ data: StudentPortalData | null; error: string | null }> {
   const supabase = getSupabaseClient();
-  const selectFrom = supabase.from as unknown as (table: string) => { select: (cols: string) => { eq: (col: string, val: string) => Promise<{ data: Array<Record<string, unknown>> | null }> } };
-  const [profile, examPrefs, destPrefs, bookings, lessons, homework, purchases, payments, bankDetails] = await Promise.all([
+  const [profile, bookings, lessons, homework, purchases, payments, bankDetails] = await Promise.all([
     supabase.from("student_profiles").select("*").eq("id", userId).maybeSingle(),
-    selectFrom("student_exam_preferences").select("exam_code").eq("student_user_id", userId),
-    selectFrom("student_destination_preferences").select("destination_code").eq("student_user_id", userId),
-    supabase.from("bookings").select("id,status,exam_code,custom_exam,created_at,availability_slots(starts_at,ends_at)").eq("student_user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("bookings").select("id,status,exam_code,custom_exam,created_at,appointment_subject,event_type,live_meeting_url,availability_slots(starts_at,ends_at)").eq("student_user_id", userId).order("created_at", { ascending: false }),
     supabase.from("student_lessons").select("*").eq("student_user_id", userId).order("lesson_date", { ascending: false }),
     supabase.from("student_homework").select("*").eq("student_user_id", userId).order("due_date", { ascending: true, nullsFirst: false }),
     supabase.from("student_package_purchases").select("*,pricing_packages(name_tr,name_en)").eq("student_user_id", userId).order("created_at", { ascending: false }),
@@ -35,20 +32,15 @@ export async function getStudentPortalData(userId: string): Promise<{ data: Stud
   const firstError = profile.error || bookings.error || lessons.error || homework.error || purchases.error || payments.error;
   if (firstError || !profile.data) return { data: null, error: firstError?.message || "STUDENT_PROFILE_NOT_FOUND" };
 
-  // Harmonize preferences across column arrays and relational tables
+  // student_profiles is the canonical profile and preference source.
   const profileRecord = profile.data as unknown as Record<string, unknown>;
   const columnExams = Array.isArray(profileRecord.target_exams) ? (profileRecord.target_exams as string[]) : [];
-  const relExams = (examPrefs.data || []).map((r) => String(r.exam_code || ""));
-  const mergedExams = Array.from(new Set([...columnExams, ...relExams].filter(Boolean)));
-
   const columnDests = Array.isArray(profileRecord.target_countries) ? (profileRecord.target_countries as string[]) : [];
-  const relDests = (destPrefs.data || []).map((r) => String(r.destination_code || ""));
-  const mergedDests = Array.from(new Set([...columnDests, ...relDests].filter(Boolean)));
 
   const harmonizedProfile = {
     ...profile.data,
-    target_exams: mergedExams.length > 0 ? mergedExams : (profile.data.target_exam ? [profile.data.target_exam] : []),
-    target_countries: mergedDests.length > 0 ? mergedDests : (profile.data.target_country ? [profile.data.target_country] : []),
+    target_exams: columnExams.length > 0 ? columnExams : (profile.data.target_exam ? [profile.data.target_exam] : []),
+    target_countries: columnDests.length > 0 ? columnDests : (profile.data.target_country ? [profile.data.target_country] : []),
   };
 
   return {
@@ -72,8 +64,7 @@ export type StudentProfileUpdate = Partial<StudentProfileRow> & {
 };
 export async function updateStudentProfile(userId: string, input: StudentProfileUpdate) {
   const client = getSupabaseClient();
-  const updateFn = client.from("student_profiles").update as unknown as (values: unknown) => { eq: (col: string, val: string) => { select: () => { single: () => Promise<{ data: StudentProfileRow | null; error: { message: string } | null }> } } };
-  return updateFn(input).eq("id", userId).select().single();
+  return client.from("student_profiles").update(input).eq("id", userId).select().single();
 }
 export interface StudentHomeworkSubmissionInput {
   submissionText: string;
@@ -87,7 +78,13 @@ export async function submitStudentHomework(
   id: string,
   input: string | StudentHomeworkSubmissionInput
 ) {
-  const payload = typeof input === "string" ? { submission_text: input } : {
+  const payload = typeof input === "string" ? {
+    submission_text: input,
+    submission_attachment_path: null,
+    submission_attachment_name: null,
+    submission_attachment_size: null,
+    submission_attachment_mime: null,
+  } : {
     submission_text: input.submissionText,
     submission_attachment_path: input.attachmentPath || null,
     submission_attachment_name: input.attachmentName || null,
@@ -96,18 +93,9 @@ export async function submitStudentHomework(
   };
 
   const client = getSupabaseClient();
-  const updateFn = client.from("student_homework").update as unknown as (values: unknown) => {
-    eq: (col: string, val: string) => {
-      select: () => {
-        single: () => Promise<{ data: StudentHomeworkRow | null; error: { message: string } | null }>;
-      };
-    };
-  };
-
-  return updateFn({
+  return client.from("student_homework").update({
     ...payload,
     status: "submitted",
     submitted_at: new Date().toISOString(),
-  }).eq("id", id).select().single();
+  } as never).eq("id", id).select().single();
 }
-

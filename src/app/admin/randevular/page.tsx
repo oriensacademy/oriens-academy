@@ -32,13 +32,13 @@ export default function AdminBookingsPage() {
       <div className="border-b border-border pb-5">
         <div className="flex items-center gap-2">
           <CalendarCheck className="size-6 text-[#819586]" />
-          <h1 className="text-xl font-bold tracking-tight text-[#10271B]">Randevular</h1>
+          <h1 className="text-xl font-bold tracking-tight text-[#10271B]">Ders & Randevular</h1>
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">Randevuları ve uygunluk takvimini tek çalışma alanından yönetin.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Dersleri, ön görüşmeleri ve danışmanlık randevularını tek çalışma alanından yönetin.</p>
       </div>
       <div className="inline-flex w-full rounded-xl border border-border bg-white p-1 shadow-xs sm:w-auto">
         <button type="button" onClick={() => setActiveTab("list")} className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold sm:flex-none ${activeTab === "list" ? "bg-[#10271B] text-white" : "text-muted-foreground hover:bg-muted"}`}>
-          <List className="size-4" /> Randevular
+          <List className="size-4" /> Ders & Randevular
         </button>
         <button type="button" onClick={() => setActiveTab("availability")} className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold sm:flex-none ${activeTab === "availability" ? "bg-[#10271B] text-white" : "text-muted-foreground hover:bg-muted"}`}>
           <Clock className="size-4" /> Takvim / Müsaitlik
@@ -129,11 +129,11 @@ function BookingsContent() {
           <div className="flex items-center gap-2">
             <CalendarCheck className="size-6 text-[#819586]" />
             <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              Randevu Listesi
+              Planlanan Etkinlikler
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Tüm randevu taleplerini inceleyin, onaylayın veya durumlarını güncelleyin.
+            Tüm ders ve görüşmeleri inceleyin, planlayın veya durumlarını güncelleyin.
           </p>
         </div>
 
@@ -143,7 +143,7 @@ function BookingsContent() {
             <span>Yenile</span>
           </button>
           <button type="button" onClick={() => setCreateModalOpen(true)} className="inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C]">
-            <Plus className="size-4 text-amber-400" /><span>Randevu Oluştur</span>
+            <Plus className="size-4 text-amber-400" /><span>Ders / Görüşme Planla</span>
           </button>
         </div>
       </div>

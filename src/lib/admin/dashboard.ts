@@ -86,7 +86,7 @@ export async function getAdminDashboardMetrics(): Promise<{
         .select("id", { count: "exact", head: true })
         .gte("lesson_date", startOfToday())
         .lt("lesson_date", endOfToday()),
-      supabase.from("student_homework").select("id", { count: "exact", head: true }).in("status", ["assigned", "submitted", "late"]),
+      supabase.from("student_homework").select("id", { count: "exact", head: true }).in("status", ["assigned", "in_progress", "submitted", "overdue"]),
       supabase.from("student_package_purchases").select("id", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("payment_transactions").select("id", { count: "exact", head: true }).in("status", ["pending", "requires_action", "processing"]),
       supabase.from("student_package_purchases").select("id", { count: "exact", head: true }).eq("status", "completed"),

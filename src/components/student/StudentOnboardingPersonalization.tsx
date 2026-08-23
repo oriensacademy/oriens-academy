@@ -57,13 +57,10 @@ export function StudentOnboardingPersonalization({
       setSaving(true);
       setError("");
       const result = await saveStudentPreferences(targetUserId, selectedExams, selectedCountries, true);
-      if (!result.success && result.error) {
-        console.warn("[Onboarding] saveStudentPreferences error:", result.error);
-      }
+      if (!result.success) throw new Error(result.error || (isTr ? "Tercihler kaydedilemedi." : "Preferences could not be saved."));
       onComplete(selectedExams, selectedCountries);
     } catch (err) {
-      console.error("[Onboarding] Save error:", err);
-      onComplete(selectedExams, selectedCountries);
+      setError(err instanceof Error ? err.message : (isTr ? "Tercihler kaydedilemedi." : "Preferences could not be saved."));
     } finally {
       setSaving(false);
     }
@@ -111,7 +108,7 @@ export function StudentOnboardingPersonalization({
                 key={exam.id}
                 type="button"
                 onClick={() => toggleExam(exam.id)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all duration-150 ${
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 ${
                   isSelected
                     ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary/20"
                     : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-surface-muted"
@@ -151,7 +148,7 @@ export function StudentOnboardingPersonalization({
                 key={dest.id}
                 type="button"
                 onClick={() => toggleCountry(dest.id)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all duration-150 ${
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 ${
                   isSelected
                     ? "border-emerald-600 bg-emerald-50 text-emerald-900 shadow-xs ring-1 ring-emerald-600/20"
                     : "border-border bg-background text-foreground hover:border-emerald-600/40 hover:bg-surface-muted"

@@ -38,54 +38,42 @@ export async function saveStudentPreferences(
   exams: string[],
   countries: string[],
   markOnboardingCompleted = true
-): Promise<{ success: boolean; error: string | null }> {
+): Promise<{ success: boolean; profile: Record<string, unknown> | null; error: string | null }> {
   const supabase = getSupabaseClient();
+  const normalizedExams = Array.from(new Set(exams.map((value) => value.trim()).filter(Boolean)));
+  const normalizedCountries = Array.from(new Set(countries.map((value) => value.trim()).filter(Boolean)));
 
   try {
-    const rpcFn = supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-    const { error: rpcError } = await rpcFn("save_student_preferences", {
+    const rpcFn = supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
+    const { data, error } = await rpcFn("save_student_preferences", {
       p_student_id: studentId,
-      p_exams: exams,
-      p_countries: countries,
+      p_exams: normalizedExams,
+      p_countries: normalizedCountries,
       p_mark_onboarding_completed: markOnboardingCompleted,
     });
-
-    if (rpcError) {
-      // Fallback direct table update if RPC migration is still being applied locally
-      const updateFn = supabase.from("student_profiles").update as unknown as (data: Record<string, unknown>) => { eq: (column: string, val: string) => Promise<{ error: { message: string } | null }> };
-      const { error: directError } = await updateFn({
-        target_exams: exams,
-        target_countries: countries,
-        target_exam: exams[0] || null,
-        target_country: countries[0] || null,
-        onboarding_completed: markOnboardingCompleted,
-        updated_at: new Date().toISOString(),
-      }).eq("id", studentId);
-
-      if (directError) {
-        return { success: false, error: directError.message };
-      }
+    if (error) return { success: false, profile: null, error: error.message };
+    if (!data || data.success !== true || !data.profile) {
+      return { success: false, profile: null, error: "Tercihler veritabanı tarafından doğrulanamadı." };
     }
-
-    return { success: true, error: null };
+    return { success: true, profile: data.profile as Record<string, unknown>, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Tercihler kaydedilemedi.";
-    return { success: false, error: message };
+    return { success: false, profile: null, error: message };
   }
 }
 
 export function formatExamBadges(exams: string[] | null | undefined): string[] {
   if (!exams || exams.length === 0) return [];
-  return exams.map((id) => {
+  return Array.from(new Set(exams.map((id) => {
     const found = SUPPORTED_EXAMS.find((e) => e.id.toLowerCase() === id.toLowerCase());
     return found ? found.name_tr : id;
-  });
+  })));
 }
 
 export function formatDestinationBadges(countries: string[] | null | undefined, locale: "tr" | "en" = "tr"): string[] {
   if (!countries || countries.length === 0) return [];
-  return countries.map((id) => {
+  return Array.from(new Set(countries.map((id) => {
     const found = SUPPORTED_DESTINATIONS.find((d) => d.id.toLowerCase() === id.toLowerCase() || d.name_en.toLowerCase() === id.toLowerCase());
     return found ? (locale === "tr" ? found.name_tr : found.name_en) : id;
-  });
+  })));
 }

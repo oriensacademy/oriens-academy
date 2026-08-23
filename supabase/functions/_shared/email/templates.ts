@@ -1326,7 +1326,7 @@ export function renderStudentPackageRenewalEmail(data: PackageStatusEmailData) {
 export function renderStudentHomeworkAssignedEmail(data: HomeworkEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? `Yeni Ödev Atandı: ${data.assignmentTitle} | Oriens Academy`
+    ? "Yeni Ödeviniz Var | Oriens Academy"
     : `New Homework Assigned: ${data.assignmentTitle} | Oriens Academy`;
 
   const formattedDueDate = formatDate(data.dueDate, data.locale);
@@ -1433,7 +1433,7 @@ export function renderTeacherHomeworkSubmittedEmail(data: HomeworkEmailData, adm
 export function renderStudentHomeworkReviewedEmail(data: HomeworkEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? `Ödeviniz İncelendi: ${data.assignmentTitle} | Oriens Academy`
+    ? "Ödeviniz Değerlendirildi | Oriens Academy"
     : `Homework Feedback Ready: ${data.assignmentTitle} | Oriens Academy`;
 
   const feedbackHtml = data.teacherFeedback ? `
@@ -1711,4 +1711,3 @@ export function renderStudentLessonCompletedEmail(data: LessonCompletedEmailData
 
   return { subject, html, text };
 }
-

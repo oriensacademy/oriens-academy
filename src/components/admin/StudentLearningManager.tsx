@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  AlertCircle,
   CheckCircle2,
-  ClipboardList,
   Copy,
   Download,
   ExternalLink,
@@ -13,8 +11,6 @@ import {
   Plus,
   Send,
   StickyNote,
-  Trash2,
-  Upload,
   Video,
   XCircle,
   Sparkles,
@@ -29,9 +25,7 @@ import {
   addStudentExtraLessons,
   cancelStudentLesson,
   completeStudentLesson,
-  createStudentHomework,
   listStudentLearning,
-  reviewStudentHomework,
   sendLessonMeetingLink,
   upsertStudentLesson,
   type PackageOption,
@@ -39,6 +33,8 @@ import {
   type PackageAdjustment,
   type StudentPayment,
 } from "@/lib/admin/student-learning";
+import { HomeworkBuilderDrawer } from "@/components/admin/HomeworkBuilderDrawer";
+import { HomeworkSubmissionReview } from "@/components/admin/HomeworkSubmissionReview";
 import type { Tables } from "@/types/database.types";
 import { listStudentExamAttempts, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
@@ -47,12 +43,16 @@ export type LearningSection = "lessons" | "homework" | "packages" | "payments" |
 
 export function StudentLearningManager({
   userId,
+  studentName = "Seçili öğrenci",
   section,
   onChanged,
+  onPlan,
 }: {
   userId: string;
+  studentName?: string;
   section: LearningSection;
   onChanged?: () => void;
+  onPlan?: () => void;
 }) {
   const [lessons, setLessons] = useState<Tables<"student_lessons">[]>([]);
   const [homework, setHomework] = useState<Tables<"student_homework">[]>([]);
@@ -111,6 +111,7 @@ export function StudentLearningManager({
         setBusy={setBusy}
         setError={setError}
         changed={changed}
+        onPlan={onPlan}
       />
     );
   }
@@ -121,6 +122,7 @@ export function StudentLearningManager({
         homework={homework}
         lessons={lessons}
         userId={userId}
+        studentName={studentName}
         busy={busy}
         setBusy={setBusy}
         setError={setError}
@@ -198,6 +200,7 @@ function LessonsPanel({
   setBusy,
   setError,
   changed,
+  onPlan,
 }: {
   lessons: Tables<"student_lessons">[];
   purchases: PackagePurchase[];
@@ -206,6 +209,7 @@ function LessonsPanel({
   setBusy: (v: boolean) => void;
   setError: (v: string) => void;
   changed: () => void;
+  onPlan?: () => void;
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [completeTarget, setCompleteTarget] = useState<Tables<"student_lessons"> | null>(null);
@@ -342,16 +346,16 @@ function LessonsPanel({
         </h4>
         <button
           type="button"
-          onClick={() => setIsCreating(!isCreating)}
+          onClick={() => onPlan ? onPlan() : setIsCreating(!isCreating)}
           className="inline-flex items-center gap-1 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer"
         >
           <Plus className="size-3.5" />
-          {isCreating ? "Formu Kapat" : "Yeni Canlı Ders Planla"}
+          {onPlan ? "Ders / Görüşme Planla" : isCreating ? "Formu Kapat" : "Ders / Görüşme Planla"}
         </button>
       </div>
 
       {/* New Live Lesson Form */}
-      {isCreating && (
+      {isCreating && !onPlan && (
         <form onSubmit={handleCreateLesson} className="grid gap-3 rounded-xl border border-primary/20 bg-surface p-4 text-xs shadow-xs">
           <div className="font-bold text-ink">Canlı Ders Planla</div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -634,358 +638,34 @@ function HomeworkPanel({
   homework,
   lessons,
   userId,
-  busy,
-  setBusy,
-  setError,
+  studentName,
   changed,
 }: {
   homework: Tables<"student_homework">[];
   lessons: Tables<"student_lessons">[];
   userId: string;
+  studentName: string;
   busy: boolean;
   setBusy: (v: boolean) => void;
   setError: (v: string) => void;
   changed: () => void;
 }) {
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    dueDate: "",
-    lessonId: "",
-    fileUrl: "",
-  });
-  const [resourceType, setResourceType] = useState<"file" | "url">("file");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string; description?: string; file?: string }>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg", ".webp"];
-  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
-
-  function validateFile(file: File): string | null {
-    const ext = `.${file.name.split(".").pop()?.toLowerCase()}`;
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      return "Yalnızca PDF, Word, PowerPoint, Excel ve görsel dosyaları yüklenebilir.";
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      return "Dosya boyutu 20 MB sınırını aşamaz.";
-    }
-    return null;
-  }
-
-  function handleFileSelect(file: File | null) {
-    if (!file) {
-      setSelectedFile(null);
-      setErrors((prev) => ({ ...prev, file: undefined }));
-      return;
-    }
-    const err = validateFile(file);
-    if (err) {
-      setErrors((prev) => ({ ...prev, file: err }));
-      setSelectedFile(null);
-    } else {
-      setSelectedFile(file);
-      setErrors((prev) => ({ ...prev, file: undefined }));
-    }
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const newErrors: { title?: string; description?: string; file?: string } = {};
-
-    if (!form.title.trim()) {
-      newErrors.title = "Başlık gereklidir.";
-    }
-    if (!form.description.trim()) {
-      newErrors.description = "Açıklama gereklidir.";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setBusy(true);
-    setError("");
-
-    let attachmentPath: string | null = null;
-    let attachmentName: string | null = null;
-    let attachmentSize: number | null = null;
-    let attachmentMime: string | null = null;
-
-    if (resourceType === "file" && selectedFile) {
-      setUploading(true);
-      const cleanFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const filePath = `${userId}/${Date.now()}_${cleanFileName}`;
-
-      const { error: uploadError } = await getSupabaseClient()
-        .storage
-        .from("homework-attachments")
-        .upload(filePath, selectedFile, { upsert: true });
-
-      setUploading(false);
-
-      if (uploadError) {
-        setBusy(false);
-        setError(`Dosya yüklenemedi: ${uploadError.message}`);
-        return;
-      }
-
-      attachmentPath = filePath;
-      attachmentName = selectedFile.name;
-      attachmentSize = selectedFile.size;
-      attachmentMime = selectedFile.type || "application/octet-stream";
-    }
-
-    const { error: homeworkError } = await createStudentHomework({
-      student_user_id: userId,
-      title: form.title.trim(),
-      description: form.description.trim(),
-      due_date: form.dueDate ? new Date(form.dueDate).toISOString() : null,
-      lesson_id: form.lessonId || null,
-      assignment_file_url: resourceType === "url" ? form.fileUrl.trim() || null : null,
-      attachment_path: attachmentPath,
-      attachment_name: attachmentName,
-      attachment_size: attachmentSize,
-      attachment_mime: attachmentMime,
-    });
-
-    setBusy(false);
-    if (homeworkError) {
-      setError(homeworkError.message);
-    } else {
-      setForm({ title: "", description: "", dueDate: "", lessonId: "", fileUrl: "" });
-      setSelectedFile(null);
-      setErrors({});
-      changed();
-    }
-  }
-
-  function formatBytes(bytes: number) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
+  const [builderOpen, setBuilderOpen] = useState(false);
   return (
     <div className="space-y-4">
-      <form
-        noValidate
-        onSubmit={submit}
-        className="grid gap-3.5 rounded-2xl border border-border bg-background-soft/40 p-4 shadow-xs text-xs"
-      >
-        <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
-          <h4 className="flex items-center gap-2 font-bold text-ink text-sm">
-            <ClipboardList className="size-4 text-primary" />
-            Ödev Ata
-          </h4>
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-sm font-bold text-ink">Ödevler</h3>
+          <p className="text-xs text-muted-foreground">Etkileşimli sorular, kaynaklar, taslaklar ve teslimleri yönetin.</p>
         </div>
-
-        {/* Title Field with Inline Validation */}
-        <div className="space-y-1">
-          <label className="block font-semibold text-muted-foreground">
-            Başlık <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={form.title}
-            onChange={(e) => {
-              setForm({ ...form, title: e.target.value });
-              if (errors.title) setErrors({ ...errors, title: undefined });
-            }}
-            placeholder="Örn: SAT Math / Geometri Çalışması"
-            aria-invalid={Boolean(errors.title)}
-            className={`min-h-9 w-full rounded-lg border bg-white px-3 text-xs outline-hidden transition-colors ${
-              errors.title
-                ? "border-red-400 bg-red-50/30 focus:border-red-500"
-                : "border-input focus:border-primary"
-            }`}
-          />
-          {errors.title && (
-            <p className="flex items-center gap-1 text-[11px] font-medium text-red-600">
-              <AlertCircle className="size-3 shrink-0" />
-              {errors.title}
-            </p>
-          )}
-        </div>
-
-        {/* Description Field with Inline Validation */}
-        <div className="space-y-1">
-          <label className="block font-semibold text-muted-foreground">
-            Açıklama / Yönergeler <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            rows={3}
-            value={form.description}
-            onChange={(e) => {
-              setForm({ ...form, description: e.target.value });
-              if (errors.description) setErrors({ ...errors, description: undefined });
-            }}
-            placeholder="Ödev detayları, çözülmesi gereken sorular veya yönergeler..."
-            aria-invalid={Boolean(errors.description)}
-            className={`w-full rounded-lg border bg-white p-3 text-xs outline-hidden transition-colors ${
-              errors.description
-                ? "border-red-400 bg-red-50/30 focus:border-red-500"
-                : "border-input focus:border-primary"
-            }`}
-          />
-          {errors.description && (
-            <p className="flex items-center gap-1 text-[11px] font-medium text-red-600">
-              <AlertCircle className="size-3 shrink-0" />
-              {errors.description}
-            </p>
-          )}
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="block font-semibold text-muted-foreground">Son Teslim Tarihi & Saati</label>
-            <input
-              type="datetime-local"
-              value={form.dueDate}
-              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className={field}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="block font-semibold text-muted-foreground">İlişkili Canlı Ders (İsteğe Bağlı)</label>
-            <select
-              value={form.lessonId}
-              onChange={(e) => setForm({ ...form, lessonId: e.target.value })}
-              className={field}
-            >
-              <option value="">Ders bağlantısı yok</option>
-              {lessons.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.title} ({new Date(l.lesson_date).toLocaleDateString("tr-TR")})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Resource Attachment Section */}
-        <div className="space-y-2 rounded-xl border border-border/80 bg-surface-muted/50 p-3">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-ink flex items-center gap-1.5">
-              <FileText className="size-3.5 text-primary" />
-              Dosya / Kaynak Ekle (İsteğe Bağlı)
-            </span>
-            <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={() => setResourceType("file")}
-                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
-                  resourceType === "file"
-                    ? "bg-primary text-white"
-                    : "bg-white text-muted-foreground hover:text-ink"
-                }`}
-              >
-                Dosya Yükle
-              </button>
-              <button
-                type="button"
-                onClick={() => setResourceType("url")}
-                className={`rounded-md px-2 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer ${
-                  resourceType === "url"
-                    ? "bg-primary text-white"
-                    : "bg-white text-muted-foreground hover:text-ink"
-                }`}
-              >
-                Harici Bağlantı (URL)
-              </button>
-            </div>
-          </div>
-
-          {resourceType === "file" ? (
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
-                onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
-                className="hidden"
-              />
-
-              {selectedFile ? (
-                <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 p-2.5">
-                  <div className="flex items-center gap-2 truncate">
-                    <FileText className="size-4 text-primary shrink-0" />
-                    <div className="truncate">
-                      <span className="font-semibold text-ink block truncate">{selectedFile.name}</span>
-                      <span className="text-[10px] text-muted-foreground">{formatBytes(selectedFile.size)}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleFileSelect(null)}
-                    className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
-                    aria-label="Dosyayı kaldır"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const file = e.dataTransfer.files?.[0];
-                    if (file) handleFileSelect(file);
-                  }}
-                  className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-white p-4 text-center cursor-pointer hover:border-primary/50 hover:bg-forest/5 transition-colors"
-                >
-                  <Upload className="size-5 text-muted-foreground mb-1" />
-                  <p className="text-xs font-semibold text-ink">
-                    Dosya seçin veya buraya sürükleyip bırakın
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    PDF, DOC, DOCX, PPT, XLS, Görsel (Maks. 20 MB)
-                  </p>
-                </div>
-              )}
-
-              {errors.file && (
-                <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-red-600">
-                  <AlertCircle className="size-3 shrink-0" />
-                  {errors.file}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <input
-                type="url"
-                placeholder="https://drive.google.com/... veya dosya bağlantısı"
-                value={form.fileUrl}
-                onChange={(e) => setForm({ ...form, fileUrl: e.target.value })}
-                className={field}
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <Submit busy={busy || uploading}>
-            {uploading ? "Dosya Yükleniyor..." : "Ödevi Ata"}
-          </Submit>
-        </div>
-      </form>
-
-      <div className="space-y-2.5">
-        <h5 className="text-xs font-bold text-ink">Atanan Ödevler ({homework.length})</h5>
-        {homework.length ? (
-          homework.map((h) => <HomeworkReview key={h.id} item={h} changed={changed} />)
-        ) : (
-          <Empty>Henüz ödev kaydı bulunmuyor.</Empty>
-        )}
+        <button type="button" onClick={() => setBuilderOpen(true)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-xs font-semibold text-white hover:bg-forest">
+          <Plus className="size-4" /> Ödev Oluştur
+        </button>
       </div>
+      <div className="space-y-2.5">
+        {homework.length ? homework.map((item) => <HomeworkReview key={item.id} item={item} changed={changed} />) : <Empty>Henüz ödev kaydı bulunmuyor.</Empty>}
+      </div>
+      <HomeworkBuilderDrawer open={builderOpen} onClose={() => setBuilderOpen(false)} studentId={userId} studentName={studentName} lessons={lessons.map((lesson) => ({ id: lesson.id, title: lesson.title }))} onCreated={changed} />
     </div>
   );
 }
@@ -997,10 +677,8 @@ function HomeworkReview({
   item: Tables<"student_homework">;
   changed: () => void;
 }) {
-  const [feedback, setFeedback] = useState(item.teacher_feedback || "");
   const [downloading, setDownloading] = useState(false);
   const [subDownloading, setSubDownloading] = useState(false);
-  const [busy, setBusy] = useState(false);
 
   const raw = item as unknown as Record<string, unknown>;
   const attachmentPath = raw.attachment_path as string | undefined;
@@ -1117,44 +795,7 @@ function HomeworkReview({
         </div>
       )}
 
-      <div className="mt-3 space-y-1.5">
-        <label className="block text-[11px] font-semibold text-muted-foreground">
-          Eğitmen Geri Bildirimi / Değerlendirme
-        </label>
-        <textarea
-          value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
-          placeholder="Öğrenci için değerlendirme notu..."
-          className={`${field} min-h-16`}
-        />
-      </div>
-
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        <button
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            await reviewStudentHomework(item.id, "reviewed", feedback);
-            setBusy(false);
-            changed();
-          }}
-          className="rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold hover:bg-surface-muted cursor-pointer disabled:opacity-50"
-        >
-          {busy ? "İşleniyor..." : "İncelendi Olarak İşaretle"}
-        </button>
-        <button
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            await reviewStudentHomework(item.id, "completed", feedback);
-            setBusy(false);
-            changed();
-          }}
-          className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 cursor-pointer disabled:opacity-50"
-        >
-          {busy ? "İşleniyor..." : "Tamamlandı Olarak İşaretle"}
-        </button>
-      </div>
+      <HomeworkSubmissionReview homeworkId={item.id} onChanged={changed} />
     </Card>
   );
 }
@@ -1368,14 +1009,14 @@ function PackagePanel({
                     : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
                 }`}
               >
-                Özel Tanımlı Paket
+                Özel Paket
               </button>
             </div>
 
             {assignMode === "catalog" ? (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Paket Seçin</label>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Paket</label>
                   <select
                     required
                     value={packageForm.packageId}
@@ -1399,29 +1040,6 @@ function PackagePanel({
                     </span>
                   </div>
                 )}
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Başlangıç Tarihi</label>
-                    <input
-                      required
-                      type="date"
-                      value={packageForm.startDate}
-                      onChange={(e) => setPackageForm({ ...packageForm, startDate: e.target.value })}
-                      className={field}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Bitiş Tarihi (Opsiyonel)</label>
-                    <input
-                      type="date"
-                      min={packageForm.startDate}
-                      value={packageForm.endDate}
-                      onChange={(e) => setPackageForm({ ...packageForm, endDate: e.target.value })}
-                      className={field}
-                    />
-                  </div>
-                </div>
 
                 <div>
                   <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
@@ -1471,26 +1089,6 @@ function PackagePanel({
                       min="0"
                       value={packageForm.price}
                       onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
-                      className={field}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Başlangıç Tarihi</label>
-                    <input
-                      required
-                      type="date"
-                      value={packageForm.startDate}
-                      onChange={(e) => setPackageForm({ ...packageForm, startDate: e.target.value })}
-                      className={field}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Bitiş Tarihi (Opsiyonel)</label>
-                    <input
-                      type="date"
-                      min={packageForm.startDate}
-                      value={packageForm.endDate}
-                      onChange={(e) => setPackageForm({ ...packageForm, endDate: e.target.value })}
                       className={field}
                     />
                   </div>
@@ -1799,7 +1397,7 @@ function PackagePanel({
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
+                      className={`h-full rounded-full transition-[width] duration-300 ${
                         remaining === 0 ? "bg-slate-400" : "bg-primary"
                       }`}
                       style={{ width: `${pct}%` }}
@@ -2196,4 +1794,3 @@ function AdminExamHistoryPanel({ userId }: { userId: string }) {
     </div>
   );
 }
-

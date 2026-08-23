@@ -3,16 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, Download, ExternalLink, FileText, LayoutDashboard, LogOut, MessageCircle, Package, Paperclip, Plus, RefreshCw, Save, Send, Upload, UserRound, Video, Award, X } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { localizedPath } from "@/lib/routes";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { updateStudentEmail, updateStudentPassword } from "@/lib/student/auth";
 import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
-import { getStudentPortalData, submitStudentHomework, updateStudentProfile, type StudentHomeworkRow, type StudentPortalData } from "@/lib/student/data";
+import { getStudentPortalData, updateStudentProfile, type StudentPortalData } from "@/lib/student/data";
+import { InteractiveHomework } from "@/components/student/InteractiveHomework";
 import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
 import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAttempt } from "@/lib/student/exam-history";
@@ -69,7 +69,7 @@ export function StudentPortal() {
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</nav>
       <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "exam_history" && <ExamHistoryView userId={userId} locale={locale} />}{section === "support" && <SupportSection userId={userId} locale={locale} />}</main>
     </div>
-  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 overflow-x-auto border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="mx-auto flex min-w-max justify-center gap-1">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px]", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</div></nav></section>;
+  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px]", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</div></nav></section>;
 }
 
 function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-7"><div className="font-heading text-2xl text-ink">{title}</div><div className="mt-5">{children}</div></section>; }
@@ -92,7 +92,7 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
       .sort((a, b) => a.lesson_date.localeCompare(b.lesson_date))[0];
   }, [data.lessons]);
 
-  const activeHomework = data.homework.filter((h) => ["assigned","late","submitted"].includes(h.status));
+  const activeHomework = data.homework.filter((h) => ["assigned", "in_progress", "overdue", "submitted"].includes(h.status));
   const payment = data.payments[0];
 
   return (
@@ -160,7 +160,7 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
     </div>
   );
 }
-import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
+import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS } from "@/lib/student/preferences";
 
 function Summary({ title, value, onClick }: { title:string; value:string; onClick:()=>void }) { return <button onClick={onClick} className="rounded-2xl border border-border bg-surface p-5 text-left hover:border-border-strong"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p><p className="mt-3 font-heading text-2xl text-ink">{value}</p></button>; }
 
@@ -209,7 +209,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
     try {
       setSaving(true);
       setMessage("");
-      const { error: profileError } = await updateStudentProfile(userId, {
+      const { data: canonicalProfile, error: profileError } = await updateStudentProfile(userId, {
         full_name: form.full_name.trim(),
         phone: form.phone.trim() || null,
         school: form.school.trim() || null,
@@ -225,10 +225,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
         throw new Error(profileError.message || (isTr ? "Profil kaydedilemedi." : "Profile could not be saved."));
       }
 
-      const prefResult = await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
-      if (!prefResult.success && prefResult.error) {
-        throw new Error(prefResult.error);
-      }
+      if (!canonicalProfile) throw new Error(isTr ? "Profil veritabanı tarafından doğrulanamadı." : "The database did not confirm the profile update.");
 
       setMessage(isTr ? "Profiliniz başarıyla kaydedildi." : "Profile saved successfully.");
       onReload();
@@ -429,6 +426,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
 }
 
 function Appointments({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
+  const appointments = data.bookings.filter((booking) => booking.event_type !== "lesson");
   return (
     <Panel title={locale === "tr" ? "Randevularım" : "Appointments"}>
       <div className="mb-5">
@@ -439,9 +437,9 @@ function Appointments({ data, locale }: { data: StudentPortalData; locale: "tr" 
           {locale === "tr" ? "Yeni Randevu Talep Et" : "Request Appointment"}
         </Link>
       </div>
-      {data.bookings.length ? (
+      {appointments.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          {data.bookings.map((b) => {
+          {appointments.map((b) => {
             const bookingRecord = b as unknown as Record<string, unknown>;
             const meetingUrl = typeof bookingRecord.live_meeting_url === "string" ? bookingRecord.live_meeting_url : null;
 
@@ -484,13 +482,15 @@ function Appointments({ data, locale }: { data: StudentPortalData; locale: "tr" 
 function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
   const scheduled = data.lessons.filter((l) => l.status === "scheduled");
   const history = data.lessons.filter((l) => l.status !== "scheduled");
+  const scheduledBookings = data.bookings.filter((booking) => booking.event_type === "lesson" && !["completed", "cancelled", "no_show"].includes(booking.status));
 
   return (
     <div className="space-y-6">
       {/* 1. Scheduled Live Lessons */}
       <Panel title={locale === "tr" ? "Planlanan Canlı Dersler" : "Scheduled Live Lessons"}>
-        {scheduled.length ? (
+        {scheduled.length || scheduledBookings.length ? (
           <div className="grid gap-4 sm:grid-cols-2">
+            {scheduledBookings.map((booking) => <article key={booking.id} className="flex flex-col justify-between rounded-xl border border-primary/20 bg-forest/5 p-4 shadow-xs"><div><div className="flex justify-between gap-3"><h3 className="text-base font-semibold text-ink">{booking.appointment_subject || (locale === "tr" ? "Canlı Ders" : "Live Lesson")}</h3><span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">{status(booking.status, locale)}</span></div><p className="mt-2 text-sm font-medium text-primary">{booking.exam_code || booking.custom_exam || "—"}</p><p className="mt-1 text-xs text-muted-foreground">{fmt(booking.availability_slots?.starts_at || booking.created_at, locale, true)}</p></div>{booking.live_meeting_url && <a href={booking.live_meeting_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 self-start rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white"><Video className="size-4 text-warm-accent" />{locale === "tr" ? "Canlı Derse Katıl" : "Join Live Lesson"}</a>}</article>)}
             {scheduled.map((l) => (
               <article
                 key={l.id}
@@ -582,318 +582,9 @@ function Homework({
   locale: "tr" | "en";
   onReload: () => void;
 }) {
-  const isTr = locale === "tr";
-  return (
-    <Panel title={isTr ? "Ödevlerim" : "Homework"}>
-      {data.homework.length ? (
-        <div className="space-y-4">
-          {data.homework.map((h) => (
-            <HomeworkCard key={h.id} item={h} locale={locale} onReload={onReload} />
-          ))}
-        </div>
-      ) : (
-        <Empty>{isTr ? "Aktif veya geçmiş ödev bulunmuyor." : "No current or previous homework."}</Empty>
-      )}
-    </Panel>
-  );
+  return <InteractiveHomework items={data.homework} lessons={data.lessons} userId={data.profile.id} locale={locale} onReload={onReload} />;
 }
 
-function HomeworkCard({
-  item,
-  locale,
-  onReload,
-}: {
-  item: StudentHomeworkRow;
-  locale: "tr" | "en";
-  onReload: () => void;
-}) {
-  const isTr = locale === "tr";
-  const [text, setText] = useState(item.submission_text || "");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [downloading, setDownloading] = useState(false);
-  const [subDownloading, setSubDownloading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const rawItem = item as unknown as Record<string, unknown>;
-  const attachmentPath = rawItem.attachment_path as string | undefined;
-  const attachmentName = (rawItem.attachment_name as string | undefined) || (isTr ? "Ödev Eki / Dosya" : "Assignment Attachment");
-  const submissionAttachmentPath = rawItem.submission_attachment_path as string | undefined;
-  const submissionAttachmentName = (rawItem.submission_attachment_name as string | undefined) || (isTr ? "Teslim Edilen Ödev Dosyası" : "Submitted Assignment File");
-  const fileUrl = item.assignment_file_url;
-
-  async function handleDownloadAttachment() {
-    if (!attachmentPath) return;
-    try {
-      setDownloading(true);
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.storage.from("homework-attachments").createSignedUrl(attachmentPath, 3600);
-      if (error || !data?.signedUrl) {
-        throw new Error(error?.message || "Download failed");
-      }
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-    } catch {
-      alert(isTr ? "Dosya indirilemedi." : "Could not download file.");
-    } finally {
-      setDownloading(false);
-    }
-  }
-
-  async function handleDownloadSubmissionAttachment() {
-    if (!submissionAttachmentPath) return;
-    try {
-      setSubDownloading(true);
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.storage.from("homework-attachments").createSignedUrl(submissionAttachmentPath, 3600);
-      if (error || !data?.signedUrl) {
-        throw new Error(error?.message || "Download failed");
-      }
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-    } catch {
-      alert(isTr ? "Ödev dosyanız indirilemedi." : "Could not download submitted file.");
-    } finally {
-      setSubDownloading(false);
-    }
-  }
-
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Check 20MB limit
-    if (file.size > 20 * 1024 * 1024) {
-      setMessage(isTr ? "Dosya boyutu en fazla 20 MB olabilir." : "File size cannot exceed 20 MB.");
-      return;
-    }
-
-    setSelectedFile(file);
-    setMessage("");
-  }
-
-  async function submit() {
-    if (!text.trim() && !selectedFile) {
-      setMessage(isTr ? "Lütfen bir ödev yanıtı yazın veya dosya ekleyin." : "Please provide a written response or attach a file.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setMessage("");
-
-      let uploadedPath: string | null = null;
-      let uploadedName: string | null = null;
-      let uploadedSize: number | null = null;
-      let uploadedMime: string | null = null;
-
-      if (selectedFile) {
-        const supabase = getSupabaseClient();
-        const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const filePath = `${item.student_user_id}/${Date.now()}-${safeName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("homework-attachments")
-          .upload(filePath, selectedFile, {
-            upsert: true,
-            contentType: selectedFile.type || "application/octet-stream",
-          });
-
-        if (uploadError) {
-          throw new Error(isTr ? `Dosya yüklenemedi: ${uploadError.message}` : `File upload failed: ${uploadError.message}`);
-        }
-
-        uploadedPath = filePath;
-        uploadedName = selectedFile.name;
-        uploadedSize = selectedFile.size;
-        uploadedMime = selectedFile.type || "application/octet-stream";
-      }
-
-      const { error } = await submitStudentHomework(item.id, {
-        submissionText: text.trim(),
-        attachmentPath: uploadedPath || submissionAttachmentPath,
-        attachmentName: uploadedName || submissionAttachmentName,
-        attachmentSize: uploadedSize,
-        attachmentMime: uploadedMime,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setMessage(isTr ? "Ödeviniz başarıyla gönderildi." : "Homework submitted successfully.");
-      onReload();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : (isTr ? "Ödev gönderilemedi." : "Could not submit homework.");
-      setMessage(msg);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <article className="rounded-2xl border border-border bg-white p-5 shadow-xs">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-heading text-lg font-bold text-ink">{item.title}</h3>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {isTr ? "Son Teslim Tarihi" : "Due Date"}: {fmt(item.due_date, locale, true)}
-          </p>
-        </div>
-        <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold">
-          {status(item.status, locale)}
-        </span>
-      </div>
-
-      <p className="mt-3.5 whitespace-pre-wrap text-sm leading-6 text-ink/80">
-        {item.description}
-      </p>
-
-      {/* Teacher Assignment File Download */}
-      {(attachmentPath || fileUrl) && (
-        <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-forest/5 p-3 text-xs">
-          <FileText className="size-4 text-primary shrink-0" />
-          <span className="font-semibold text-ink">
-            {isTr ? "Ödev Dosyası / Kaynağı:" : "Assignment Resource:"}
-          </span>
-          {attachmentPath ? (
-            <button
-              type="button"
-              disabled={downloading}
-              onClick={handleDownloadAttachment}
-              className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline cursor-pointer disabled:opacity-50"
-            >
-              <Download className="size-3.5" />
-              <span>{attachmentName}</span>
-              {downloading && <span className="text-[10px]">({isTr ? "İndiriliyor..." : "Downloading..."})</span>}
-            </button>
-          ) : fileUrl ? (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-            >
-              <ExternalLink className="size-3.5" />
-              <span>{isTr ? "Bağlantıyı Aç" : "Open Link"}</span>
-            </a>
-          ) : null}
-        </div>
-      )}
-
-      {/* Previously Submitted Student Attachment */}
-      {submissionAttachmentPath && (
-        <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs">
-          <FileText className="size-4 text-emerald-700 shrink-0" />
-          <span className="font-semibold text-ink">
-            {isTr ? "Teslim Ettiğiniz Dosya:" : "Your Submitted Attachment:"}
-          </span>
-          <button
-            type="button"
-            disabled={subDownloading}
-            onClick={handleDownloadSubmissionAttachment}
-            className="inline-flex items-center gap-1.5 font-medium text-emerald-800 hover:underline cursor-pointer disabled:opacity-50"
-          >
-            <Download className="size-3.5" />
-            <span>{submissionAttachmentName}</span>
-            {subDownloading && <span className="text-[10px]">({isTr ? "İndiriliyor..." : "Downloading..."})</span>}
-          </button>
-        </div>
-      )}
-
-      {item.teacher_feedback && (
-        <div className="mt-3.5 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs leading-5 text-emerald-950">
-          <strong className="block font-bold text-emerald-900 mb-0.5">
-            {isTr ? "Eğitmen Değerlendirmesi / Geri Bildirim:" : "Teacher Feedback:"}
-          </strong>
-          {item.teacher_feedback}
-        </div>
-      )}
-
-      <div className="mt-4 space-y-3">
-        <label className="block text-xs font-semibold text-ink">
-          {isTr ? "Ödev Yanıtınız / Teslim Notunuz" : "Your Submission / Notes"}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={3}
-            placeholder={isTr ? "Ödev yanıtınızı veya teslim detaylarınızı buraya yazın..." : "Write your submission or answers here..."}
-            className="mt-1.5 w-full rounded-xl border border-input p-3 text-sm focus:border-primary focus:outline-hidden"
-          />
-        </label>
-
-        {/* File Upload Section */}
-        <div>
-          <label className="block text-xs font-semibold text-ink mb-1.5">
-            {isTr ? "Ödev Dosyası Ekle (PDF, Word, Excel, Görsel, ZIP - maks. 20 MB)" : "Attach Homework File (PDF, Word, Excel, Image, ZIP - max 20 MB)"}
-          </label>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.zip,.rar"
-            className="hidden"
-            id={`hw-upload-${item.id}`}
-          />
-
-          {selectedFile ? (
-            <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
-              <div className="flex items-center gap-2 min-w-0">
-                <Paperclip className="size-4 text-primary shrink-0" />
-                <span className="font-semibold text-ink truncate">{selectedFile.name}</span>
-                <span className="text-[11px] text-muted-foreground shrink-0">
-                  ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedFile(null);
-                  if (fileInputRef.current) fileInputRef.current.value = "";
-                }}
-                className="p-1 text-muted-foreground hover:text-destructive rounded-lg transition-colors cursor-pointer"
-                title={isTr ? "Dosyayı kaldır" : "Remove file"}
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          ) : (
-            <label
-              htmlFor={`hw-upload-${item.id}`}
-              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border p-3.5 text-xs text-muted-foreground hover:border-primary/50 hover:bg-surface-muted transition-colors cursor-pointer"
-            >
-              <Upload className="size-4 text-primary" />
-              <span>{isTr ? "Bilgisayarınızdan dosya seçin veya buraya tıklayın" : "Select file from your device or click here"}</span>
-            </label>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
-          disabled={saving || (!text.trim() && !selectedFile)}
-          onClick={submit}
-          className="min-h-10 inline-flex items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-40 cursor-pointer"
-        >
-          <Send className="size-3.5" />
-          {saving ? (isTr ? "Gönderiliyor..." : "Submitting...") : (isTr ? "Ödevi Gönder" : "Submit Homework")}
-        </button>
-        {message && (
-          <p
-            role="status"
-            className={cn("text-xs font-medium", message.includes("başarıyla") || message.includes("successfully") ? "text-emerald-700" : "text-destructive")}
-          >
-            {message}
-          </p>
-        )}
-      </div>
-    </article>
-  );
-}
 function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
   const p = data.purchases.find((x) => x.status === "active") || data.purchases[0];
   if (!p) {
@@ -1277,7 +968,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                   onKeyDown={handleKeyDown}
                   rows={3}
                   placeholder={isTr ? "Mesajınızı yazın… (Göndermek için Enter, yeni satır için Shift+Enter)" : "Write your message… (Enter to send, Shift+Enter for newline)"}
-                  className="w-full rounded-xl border border-input bg-surface p-3 text-sm leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-xl border border-input bg-surface p-3 text-sm leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus-visible:ring-2 focus-visible:ring-primary"
                 />
                 <div className="flex justify-between items-center">
                   <span className="text-[11px] text-muted-foreground">
@@ -1342,7 +1033,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as SupportCategory)}
-                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     {SUPPORT_CATEGORIES.map((cat) => (
                       <option key={cat.id} value={cat.id}>
@@ -1360,7 +1051,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
                     placeholder={isTr ? "Örn: IB Matematik ders programı hakkında" : "e.g. Question about IB Mathematics schedule"}
-                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   />
                 </label>
               </div>
@@ -1373,7 +1064,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                   value={newInitialMsg}
                   onChange={(e) => setNewInitialMsg(e.target.value)}
                   placeholder={isTr ? "Talebinizi ve sormak istediklerinizi detaylıca belirtin…" : "Describe your inquiry in detail…"}
-                  className="mt-1.5 w-full rounded-xl border border-input bg-surface p-3 text-sm text-ink focus:border-primary focus:outline-none"
+                  className="mt-1.5 w-full rounded-xl border border-input bg-surface p-3 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 />
               </label>
 
@@ -1764,4 +1455,3 @@ function ExamHistoryView({ userId, locale }: { userId: string; locale: "tr" | "e
     </div>
   );
 }
-

@@ -1,24 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarPlus, Check, Globe, GraduationCap, Mail, Phone, X, BookOpen, ClipboardList, Package, CreditCard, Award, StickyNote, CalendarDays, UserRound, LayoutDashboard } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
+import { CalendarPlus, Mail, Phone, X, BookOpen, ClipboardList, Package, Award, StickyNote, UserRound, LayoutDashboard } from "lucide-react";
 import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
-import { completeStudentAppointment, updateAdminStudentProfile } from "@/lib/admin/student-learning";
+import { completeStudentAppointment } from "@/lib/admin/student-learning";
 import { updateAdminBookingStatus } from "@/lib/admin/bookings";
 import type { StudentProfile } from "@/lib/admin/students";
-import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, formatExamBadges, formatDestinationBadges, saveStudentPreferences } from "@/lib/student/preferences";
+import { formatExamBadges, formatDestinationBadges } from "@/lib/student/preferences";
 
-type Tab = "overview" | "profile" | "appointments" | LearningSection;
+type Tab = "overview" | "profile" | "education" | "homework" | "packages" | "exam_history" | "notes";
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: "overview", label: "Genel Bakış", icon: LayoutDashboard },
-  { id: "profile", label: "Profil & Tercihler", icon: UserRound },
-  { id: "lessons", label: "Eğitim & Canlı Dersler", icon: BookOpen },
-  { id: "appointments", label: "Randevular", icon: CalendarDays },
+  { id: "overview", label: "Genel", icon: LayoutDashboard },
+  { id: "profile", label: "Profil", icon: UserRound },
+  { id: "education", label: "Eğitim", icon: BookOpen },
   { id: "homework", label: "Ödevler", icon: ClipboardList },
-  { id: "packages", label: "Paket & Ders Hakları", icon: Package },
-  { id: "payments", label: "Ödemeler", icon: CreditCard },
-  { id: "exam_history", label: "Sınav Geçmişi", icon: Award },
-  { id: "notes", label: "Özel Notlar", icon: StickyNote },
+  { id: "packages", label: "Paket & Ödeme", icon: Package },
+  { id: "exam_history", label: "Sınavlar", icon: Award },
+  { id: "notes", label: "Notlar", icon: StickyNote },
 ];
 
 export function StudentDetailSheet({
@@ -34,14 +33,23 @@ export function StudentDetailSheet({
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const [message, setMessage] = useState("");
-  if (!student) return null;
+  const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
+  useEffect(() => {
+    if (!student) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKeyDown);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", onKeyDown); document.body.style.overflow = previous; };
+  }, [student, onClose]);
+  if (!student || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="student-detail-title">
       {/* Fixed backdrop - clicking backdrop does NOT accidentally close the modal */}
-      <div className="fixed inset-0 bg-[#0c1c14]/55 backdrop-blur-xs transition-opacity cursor-default" />
+      <div className="fixed inset-0 bg-ink/55 backdrop-blur-xs transition-opacity cursor-default" />
 
-      <div className="relative z-10 flex flex-col w-[min(1200px,94vw)] h-[min(880px,92vh)] rounded-3xl border border-border bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative z-10 flex h-[min(900px,92vh)] w-[min(1280px,94vw)] flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         <header className="shrink-0 border-b border-border bg-surface px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
@@ -50,7 +58,7 @@ export function StudentDetailSheet({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-heading text-xl font-bold text-ink">{student.fullName}</h2>
+                  <h2 id="student-detail-title" className="font-heading text-xl font-bold text-ink">{student.fullName}</h2>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                       student.active
@@ -104,34 +112,18 @@ export function StudentDetailSheet({
             </div>
           )}
           {tab === "overview" && <Overview student={student} onCreateBooking={onCreateBooking} />}
-          {tab === "profile" && (
-            <ProfileForm
-              student={student}
-              onDone={() => {
-                setMessage("Öğrenci profili başarıyla güncellendi.");
-                onChanged?.();
-              }}
-            />
+          {tab === "profile" && <ProfileView student={student} />}
+          {tab === "education" && <div className="space-y-6"><Appointments student={student} onCreateBooking={onCreateBooking} onDone={(text) => { setMessage(text); onChanged?.(); }} />{student.userId && <StudentLearningManager userId={student.userId} section="lessons" onChanged={onChanged} onPlan={onCreateBooking} />}</div>}
+          {tab === "packages" && student.userId && <div className="space-y-6"><StudentLearningManager userId={student.userId} section="packages" onChanged={onChanged} /><StudentLearningManager userId={student.userId} section="payments" onChanged={onChanged} /></div>}
+          {(["homework", "exam_history", "notes"] as Tab[]).includes(tab) && student.userId && (
+            <StudentLearningManager userId={student.userId} studentName={student.fullName} section={tab as LearningSection} onChanged={onChanged} />
           )}
-          {tab === "appointments" && (
-            <Appointments
-              student={student}
-              onCreateBooking={onCreateBooking}
-              onDone={(text) => {
-                setMessage(text);
-                onChanged?.();
-              }}
-            />
-          )}
-          {(["lessons", "homework", "packages", "payments", "exam_history", "notes"] as Tab[]).includes(tab) && student.userId && (
-            <StudentLearningManager userId={student.userId} section={tab as LearningSection} onChanged={onChanged} />
-          )}
-          {(["lessons", "homework", "packages", "payments", "exam_history", "notes"] as Tab[]).includes(tab) && !student.userId && (
+          {(["education", "homework", "packages", "exam_history", "notes"] as Tab[]).includes(tab) && !student.userId && (
             <NoAccount />
           )}
         </div>
       </div>
-    </div>
+    </div>, document.body
   );
 }
 
@@ -222,7 +214,7 @@ function Overview({ student, onCreateBooking }: { student: StudentProfile; onCre
           className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink px-3 text-xs font-semibold text-white hover:bg-forest"
         >
           <CalendarPlus className="size-4" />
-          Randevu Oluştur
+          Ders / Görüşme Planla
         </button>
       </div>
 
@@ -236,177 +228,24 @@ function Overview({ student, onCreateBooking }: { student: StudentProfile; onCre
   );
 }
 
-function ProfileForm({ student, onDone }: { student: StudentProfile; onDone: () => void }) {
-  const [form, setForm] = useState({
-    fullName: student.fullName,
-    phone: student.phone || "",
-    school: student.school || "",
-    targetExam: student.targetExam || "",
-    targetUniversity: student.targetUniversity || "",
-    targetCountry: student.targetCountry || "",
-    preferredLanguage: student.preferredLanguage,
-    active: student.active,
-  });
+function ProfileView({ student }: { student: StudentProfile }) {
+  const exams = formatExamBadges(student.targetExams);
+  const countries = formatDestinationBadges(student.targetCountries);
+  const value = (input: string | null | undefined) => input?.trim() || "Belirtilmemiş";
+  return <div className="space-y-6">
+    <ReadOnlySection title="Kişisel Bilgiler"><Info label="Ad Soyad" value={value(student.fullName)} /><Info label="E-posta" value={value(student.email)} /><Info label="Telefon" value={value(student.phone)} /></ReadOnlySection>
+    <ReadOnlySection title="Eğitim Bilgileri"><Info label="Okul" value={value(student.school)} /><Info label="Hedef Üniversite" value={value(student.targetUniversity)} /><Info label="Tercih Edilen Dil" value={student.preferredLanguage === "en" ? "English" : "Türkçe"} /></ReadOnlySection>
+    <BadgeSection title="Hedef Sınavlar" values={exams} />
+    <BadgeSection title="Hedef Ülkeler" values={countries} />
+  </div>;
+}
 
-  const [selectedExams, setSelectedExams] = useState<string[]>(
-    student.targetExams && student.targetExams.length > 0
-      ? student.targetExams
-      : student.targetExam
-      ? [student.targetExam]
-      : []
-  );
+function ReadOnlySection({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section><h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{title}</h3><div className="grid gap-3 sm:grid-cols-3">{children}</div></section>;
+}
 
-  const [selectedCountries, setSelectedCountries] = useState<string[]>(
-    student.targetCountries && student.targetCountries.length > 0
-      ? student.targetCountries
-      : student.targetCountry
-      ? [student.targetCountry]
-      : []
-  );
-
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  if (!student.userId) return <NoAccount />;
-
-  const toggleExam = (id: string) => {
-    setSelectedExams((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const toggleCountry = (id: string) => {
-    setSelectedCountries((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!student.userId) return;
-    setBusy(true);
-    setError("");
-
-    try {
-      const r = await updateAdminStudentProfile(student.userId, {
-        ...form,
-        targetExam: selectedExams[0] || form.targetExam,
-        targetCountry: selectedCountries[0] || form.targetCountry,
-      });
-
-      if (r.error) {
-        setError(r.error);
-        return;
-      }
-
-      await saveStudentPreferences(student.userId, selectedExams, selectedCountries, true);
-      onDone();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Profil güncellenemedi.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Ad soyad" value={form.fullName} onChange={(v) => setForm({ ...form, fullName: v })} required />
-        <Field label="Telefon" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
-        <Field label="Okul" value={form.school} onChange={(v) => setForm({ ...form, school: v })} />
-        <Field
-          label="Hedef üniversite"
-          value={form.targetUniversity}
-          onChange={(v) => setForm({ ...form, targetUniversity: v })}
-        />
-        <label className="space-y-1 text-xs font-semibold text-muted-foreground">
-          Tercih edilen dil
-          <select
-            value={form.preferredLanguage}
-            onChange={(e) => setForm({ ...form, preferredLanguage: e.target.value })}
-            className={input}
-          >
-            <option value="tr">Türkçe</option>
-            <option value="en">English</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2 rounded-lg border border-border p-3 text-xs font-semibold">
-          <input
-            type="checkbox"
-            checked={form.active}
-            onChange={(e) => setForm({ ...form, active: e.target.checked })}
-          />
-          Aktif öğrenci
-        </label>
-      </div>
-
-      {/* Target Exams Multi-Selection */}
-      <div className="rounded-xl border border-border p-3.5 space-y-2">
-        <label className="flex items-center gap-1.5 text-xs font-bold text-ink">
-          <GraduationCap className="size-4 text-primary" />
-          <span>Hedef Sınavlar ({selectedExams.length} seçili)</span>
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {SUPPORTED_EXAMS.map((ex) => {
-            const isSelected = selectedExams.includes(ex.id);
-            return (
-              <button
-                key={ex.id}
-                type="button"
-                onClick={() => toggleExam(ex.id)}
-                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                  isSelected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
-                }`}
-              >
-                {isSelected && <Check className="size-3" />}
-                <span>{ex.name_tr}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Target Destinations Multi-Selection */}
-      <div className="rounded-xl border border-border p-3.5 space-y-2">
-        <label className="flex items-center gap-1.5 text-xs font-bold text-ink">
-          <Globe className="size-4 text-emerald-700" />
-          <span>Hedef Ülkeler ({selectedCountries.length} seçili)</span>
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {SUPPORTED_DESTINATIONS.map((dest) => {
-            const isSelected = selectedCountries.includes(dest.id);
-            return (
-              <button
-                key={dest.id}
-                type="button"
-                onClick={() => toggleCountry(dest.id)}
-                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                  isSelected
-                    ? "border-emerald-700 bg-emerald-700 text-white"
-                    : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
-                }`}
-              >
-                {isSelected && <Check className="size-3" />}
-                <span>{dest.name_tr}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <p className="text-[11px] text-muted-foreground">
-        E-posta, doğrulanmış kimlik hesabına bağlıdır ve bu formdan değiştirilemez.
-      </p>
-      {error && <p className="text-xs text-red-700">{error}</p>}
-      <button
-        disabled={busy}
-        className="rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"
-      >
-        {busy ? "Kaydediliyor…" : "Profili Kaydet"}
-      </button>
-    </form>
-  );
+function BadgeSection({ title, values }: { title: string; values: string[] }) {
+  return <section><h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{title}</h3><div className="flex min-h-12 flex-wrap gap-2 rounded-xl border border-border bg-white p-3">{values.length ? values.map((item) => <span key={item} className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{item}</span>) : <span className="text-sm text-muted-foreground">Belirtilmemiş</span>}</div></section>;
 }
 
 function Appointments({
@@ -454,11 +293,12 @@ function Appointments({
         className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-ink px-3 text-xs font-semibold text-white hover:bg-forest"
       >
         <CalendarPlus className="size-4" />
-        Yeni Randevu
+        Ders / Görüşme Planla
       </button>
       {error && <p className="rounded bg-red-50 p-2 text-xs text-red-700">{error}</p>}
-      {student.bookings.length ? (
-        student.bookings.map((b) => (
+      <h3 className="text-xs font-bold text-ink">Yaklaşan Ders / Randevu</h3>
+      {student.bookings.some((b) => !["completed", "cancelled", "no_show"].includes(b.status)) ? (
+        student.bookings.filter((b) => !["completed", "cancelled", "no_show"].includes(b.status)).map((b) => (
           <div key={b.id} className="rounded-xl border border-border p-3 text-xs">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -490,9 +330,9 @@ function Appointments({
             </div>
           </div>
         ))
-      ) : (
-        <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">Randevu kaydı yok.</div>
-      )}
+      ) : <div className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">Yaklaşan ders veya randevu yok.</div>}
+      <h3 className="pt-2 text-xs font-bold text-ink">Geçmiş Ders / Randevular</h3>
+      {student.bookings.filter((b) => ["completed", "cancelled", "no_show"].includes(b.status)).map((b) => <div key={b.id} className="rounded-xl border border-border p-3 text-xs"><strong>{b.appointment_subject || b.exam_code || b.custom_exam || "Genel danışmanlık"}</strong><p className="mt-1 text-muted-foreground">{date(b.availability_slots?.starts_at || b.created_at)} · {b.status}</p></div>)}
     </div>
   );
 }
@@ -513,26 +353,6 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-function Field({
-  label,
-  value,
-  onChange,
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-}) {
-  return (
-    <label className="space-y-1 text-xs font-semibold text-muted-foreground">
-      {label}
-      <input required={required} value={value} onChange={(e) => onChange(e.target.value)} className={input} />
-    </label>
-  );
-}
-const input =
-  "min-h-9 w-full rounded-lg border border-input bg-white px-3 text-xs text-foreground focus:border-primary focus:outline-hidden";
 const action = "inline-flex min-h-9 items-center gap-2 rounded-lg border border-border px-3 text-xs font-semibold hover:bg-muted";
 function date(value: string | null) {
   return value

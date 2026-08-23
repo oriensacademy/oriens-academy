@@ -7,6 +7,7 @@ export type BookingStatus =
   | "cancelled"
   | "completed"
   | "no_show";
+export type ScheduleEventType = "lesson" | "discovery" | "consultation" | "other";
 
 export type BookingWithSlot = Tables<"bookings"> & {
   availability_slots: {
@@ -42,6 +43,7 @@ export interface CreateManualBookingParams {
   privacyConsent: boolean;
   studentUserId?: string | null;
   liveMeetingUrl?: string | null;
+  eventType: ScheduleEventType;
 }
 
 export async function createManualAdminBooking(
@@ -81,10 +83,13 @@ export async function createManualAdminBooking(
   }
 
   // Update live_meeting_url if not handled by older RPC version
-  if (result.booking_id && params.liveMeetingUrl) {
+  if (result.booking_id) {
     await supabase
       .from("bookings")
-      .update({ live_meeting_url: params.liveMeetingUrl.trim() })
+      .update({
+        live_meeting_url: params.liveMeetingUrl?.trim() || null,
+        event_type: params.eventType,
+      } as never)
       .eq("id", result.booking_id);
   }
 

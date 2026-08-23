@@ -32,11 +32,11 @@ import {
 } from "@/lib/support/types";
 import { cn } from "@/lib/utils";
 
-export default function AdminSupportPage() {
+export default function AdminSupportPage({ initialThreadId = null, embedded = false }: { initialThreadId?: string | null; embedded?: boolean }) {
   const { user } = useAccount();
   const [threads, setThreads] = useState<SupportThread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(initialThreadId);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -175,7 +175,7 @@ export default function AdminSupportPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+      {!embedded && <div className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
             <MessageSquare className="size-6 text-[#819586]" />
@@ -195,7 +195,7 @@ export default function AdminSupportPage() {
           <RefreshCw className="size-3.5" />
           Yenile
         </button>
-      </div>
+      </div>}
 
       {/* Main Split Layout */}
       <div className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)] xl:grid-cols-[26rem_minmax(0,1fr)]">

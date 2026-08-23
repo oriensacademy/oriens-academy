@@ -167,6 +167,7 @@ export function CreateBookingModal({
       privacyConsent: Boolean(privacyConsent || studentUserId),
       studentUserId,
       liveMeetingUrl: liveMeetingUrl.trim() || null,
+      eventType,
     });
 
     setSubmitting(false);
@@ -197,7 +198,7 @@ export function CreateBookingModal({
         <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <CalendarPlus className="size-5 text-[#819586]" />
-            <h2 className="text-base font-bold text-ink">Randevu & Ders Planla</h2>
+            <h2 className="text-base font-bold text-ink">Ders / Görüşme Planla</h2>
           </div>
           <button
             type="button"
@@ -443,7 +444,7 @@ export function CreateBookingModal({
                   <span>Oluşturuluyor…</span>
                 </>
               ) : (
-                "Randevuyu Oluştur"
+                "Etkinliği Planla"
               )}
             </button>
           </div>

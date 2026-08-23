@@ -19,8 +19,8 @@ import {
   Inbox,
 } from "lucide-react";
 
-export default function AdminContactsPage() {
-  return <ContactsContent />;
+export default function AdminContactsPage({ initialContactId = null, embedded = false }: { initialContactId?: string | null; embedded?: boolean }) {
+  return <ContactsContent initialContactId={initialContactId} embedded={embedded} />;
 }
 
 const STATUS_OPTIONS: Array<{ value: ContactStatus | "all"; label: string }> = [
@@ -31,7 +31,7 @@ const STATUS_OPTIONS: Array<{ value: ContactStatus | "all"; label: string }> = [
   { value: "spam", label: "Spam (Spam)" },
 ];
 
-function ContactsContent() {
+function ContactsContent({ initialContactId, embedded }: { initialContactId: string | null; embedded: boolean }) {
   const [contacts, setContacts] = useState<ContactRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -77,6 +77,7 @@ function ContactsContent() {
             setErrorMsg(error);
           } else {
             setContacts(data);
+            if (initialContactId) setSelectedContact(data.find((item) => item.id === initialContactId) || null);
           }
         }
       });
@@ -86,7 +87,7 @@ function ContactsContent() {
       mounted = false;
       clearTimeout(timer);
     };
-  }, [statusFilter, searchTerm, startDate, endDate]);
+  }, [statusFilter, searchTerm, startDate, endDate, initialContactId]);
 
   const handleStatusUpdated = () => {
     fetchContacts();
@@ -96,7 +97,7 @@ function ContactsContent() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
+      {!embedded && <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
         <div>
           <div className="flex items-center gap-2">
             <MessageSquare className="size-6 text-[#819586]" />
@@ -118,7 +119,7 @@ function ContactsContent() {
           {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
           <span>Yenile / Refresh</span>
         </button>
-      </div>
+      </div>}
 
       {/* Filter Bar */}
       <div className="rounded-xl border border-border bg-white p-4 shadow-xs space-y-3">

@@ -114,7 +114,7 @@ export function ThemeSelector({ locale = "tr" }: { locale?: "tr" | "en" }) {
         {locale === "tr" ? "Tema" : "Theme"}
       </span>
       <div className="flex items-center gap-1.5">
-        {THEMES.map((theme) => {
+        {THEMES.map((theme, index) => {
           const isSelected = activeTheme === theme.id;
           const label = locale === "tr" ? theme.nameTr : theme.nameEn;
 
@@ -138,7 +138,10 @@ export function ThemeSelector({ locale = "tr" }: { locale?: "tr" | "en" }) {
                 <Check className="size-2.5 text-white stroke-[3]" />
               )}
               {/* Accessible Hover Tooltip */}
-              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black/90 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 z-50">
+              <span className={cn(
+                "pointer-events-none absolute -top-8 whitespace-nowrap rounded-md bg-black/90 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 z-50",
+                index === THEMES.length - 1 ? "right-0" : "left-1/2 -translate-x-1/2",
+              )}>
                 {label}
               </span>
             </button>

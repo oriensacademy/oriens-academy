@@ -49,7 +49,7 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
     supabase.from("bookings").select("*, availability_slots(id, starts_at, ends_at, status)").order("created_at", { ascending: false }).limit(1000),
     supabase.from("notification_deliveries").select("*").order("created_at", { ascending: false }).limit(2000),
     supabase.from("student_package_purchases").select("id,student_user_id,lesson_count,lessons_used,status,pricing_packages(name_tr,name_en)").order("created_at", { ascending: false }).limit(2000),
-    supabase.from("student_homework").select("student_user_id,status").in("status", ["assigned", "submitted", "late"]),
+    supabase.from("student_homework").select("student_user_id,status").in("status", ["assigned", "in_progress", "submitted", "overdue"]),
   ]);
 
   const firstError = profilesResult.error || contactsResult.error || bookingsResult.error || deliveriesResult.error || purchasesResult.error || homeworkResult.error;
