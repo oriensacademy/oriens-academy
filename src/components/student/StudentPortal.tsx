@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ClipboardList, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, Package, RefreshCw, Save, UserRound, Video } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { localizedPath } from "@/lib/routes";
@@ -12,11 +12,13 @@ import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { getStudentPortalData, submitStudentHomework, updateStudentProfile, type StudentHomeworkRow, type StudentPortalData } from "@/lib/student/data";
+import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
+import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
 import { cn } from "@/lib/utils";
 
-const sectionIds = ["overview", "profile", "appointments", "lessons", "homework", "package", "payments"] as const;
+const sectionIds = ["overview", "profile", "appointments", "lessons", "homework", "package", "payments", "support"] as const;
 type SectionId = typeof sectionIds[number];
-const icons = [LayoutDashboard, UserRound, CalendarDays, BookOpen, ClipboardList, Package, CreditCard];
+const icons = [LayoutDashboard, UserRound, CalendarDays, BookOpen, ClipboardList, Package, CreditCard, MessageCircle];
 
 export function StudentPortal() {
   const locale = useLocale(); const copy = getStudentCopy(locale); const router = useRouter();
@@ -43,12 +45,12 @@ export function StudentPortal() {
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Öğrenci Hesabı" : "Student Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {data.profile.full_name.split(" ")[0]}</h1></div><div className="flex gap-2"><button onClick={() => load(userId)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><RefreshCw className="size-4" />{locale === "tr" ? "Yenile" : "Refresh"}</button><button onClick={logout} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></div></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}</main>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={userId} locale={locale} />}</main>
     </div>
   </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 overflow-x-auto border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="mx-auto flex min-w-max justify-center gap-1">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px]", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</div></nav></section>;
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-7"><h2 className="font-heading text-2xl text-ink">{title}</h2><div className="mt-5">{children}</div></section>; }
+function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-7"><div className="font-heading text-2xl text-ink">{title}</div><div className="mt-5">{children}</div></section>; }
 function Empty({ children }: { children: React.ReactNode }) { return <p className="rounded-xl border border-dashed border-border p-5 text-sm leading-6 text-muted-foreground">{children}</p>; }
 function fmt(value: string | null, locale: "tr" | "en", withTime = false) { if (!value) return "—"; return new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-GB", { dateStyle: "medium", ...(withTime ? { timeStyle: "short" as const } : {}) }).format(new Date(value)); }
 function status(value: string, locale: "tr" | "en") { const tr: Record<string,string> = { pending:"Bekliyor",confirmed:"Onaylandı",cancelled:"İptal",completed:"Tamamlandı",no_show:"Katılmadı",scheduled:"Planlandı",assigned:"Atandı",submitted:"Gönderildi",reviewed:"İncelendi",late:"Gecikti",paid:"Ödendi",failed:"Başarısız",processing:"İşleniyor",requires_action:"Doğrulama Gerekli",refunded:"İade" }; const en: Record<string,string> = { pending:"Pending",confirmed:"Confirmed",cancelled:"Cancelled",completed:"Completed",no_show:"No show",scheduled:"Scheduled",assigned:"Assigned",submitted:"Submitted",reviewed:"Reviewed",late:"Late",paid:"Paid",failed:"Failed",processing:"Processing",requires_action:"Verification required",refunded:"Refunded" }; return (locale === "tr" ? tr : en)[value] || value; }
@@ -684,6 +686,417 @@ function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
               <Check className="size-4" />
               {locale === "tr" ? "IBAN kopyalandı." : "IBAN copied."}
             </span>
+          )}
+        </Panel>
+      )}
+    </div>
+  );
+}
+
+function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en" }) {
+  const isTr = locale === "tr";
+  const [threads, setThreads] = useState<SupportThread[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
+  // Form states
+  const [newSubject, setNewSubject] = useState("");
+  const [newCategory, setNewCategory] = useState<SupportCategory>("general");
+  const [newInitialMsg, setNewInitialMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  // Composer
+  const [composerText, setComposerText] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const activeThread = threads.find((t) => t.id === activeThreadId) || null;
+
+  // Load threads
+  const loadThreads = useCallback(async () => {
+    if (!userId) return;
+    const res = await listStudentThreads(userId);
+    if (res.data) setThreads(res.data);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    let ignore = false;
+    listStudentThreads(userId).then((res) => {
+      if (!ignore) {
+        if (res.data) setThreads(res.data);
+        setLoading(false);
+      }
+    });
+    const unsub = subscribeToStudentThreads(userId, () => {
+      listStudentThreads(userId).then((res) => {
+        if (!ignore && res.data) setThreads(res.data);
+      });
+    });
+    return () => {
+      ignore = true;
+      unsub();
+    };
+  }, [userId]);
+
+  // Load messages when activeThreadId changes
+  useEffect(() => {
+    if (!activeThreadId) return;
+    let ignore = false;
+    markThreadReadByStudent(activeThreadId);
+
+    listThreadMessages(activeThreadId).then((res) => {
+      if (!ignore) {
+        if (res.data) setMessages(res.data);
+        setLoadingMessages(false);
+      }
+    });
+
+    const unsub = subscribeToThreadMessages(activeThreadId, (newMsg) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
+      markThreadReadByStudent(activeThreadId);
+    });
+
+    return () => {
+      ignore = true;
+      unsub();
+    };
+  }, [activeThreadId]);
+
+  // Scroll to bottom when messages update
+  useEffect(() => {
+    if (activeThreadId && messages.length) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, activeThreadId]);
+
+  // Handle new thread creation
+  const handleCreateThread = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubject.trim() || !newInitialMsg.trim()) {
+      setFormError(isTr ? "Lütfen konu ve mesaj alanlarını doldurun." : "Please fill in subject and message.");
+      return;
+    }
+    setIsSubmitting(true);
+    setFormError("");
+    const res = await createSupportThread({
+      student_user_id: userId,
+      subject: newSubject.trim(),
+      category: newCategory,
+      initial_message: newInitialMsg.trim(),
+    });
+    setIsSubmitting(false);
+
+    if (res.error || !res.data) {
+      setFormError(res.error || (isTr ? "Talep oluşturulamadı." : "Could not create request."));
+      return;
+    }
+
+    setNewSubject("");
+    setNewInitialMsg("");
+    setIsCreating(false);
+    await loadThreads();
+    setActiveThreadId(res.data.thread.id);
+  };
+
+  // Handle sending reply
+  const handleSendMessage = async () => {
+    if (!activeThreadId || !composerText.trim() || isSending) return;
+    const text = composerText.trim();
+    setComposerText("");
+    setIsSending(true);
+
+    const res = await sendStudentMessage(activeThreadId, userId, text);
+    setIsSending(false);
+
+    if (res.data) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === res.data!.id)) return prev;
+        return [...prev, res.data!];
+      });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 1. If viewing a specific thread conversation */}
+      {activeThread ? (
+        <Panel
+          title={
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveThreadId(null)}
+                  className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-ink hover:bg-surface transition-colors"
+                  aria-label={isTr ? "Geri" : "Back"}
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-sage-soft px-2 py-0.5 text-[11px] font-bold text-ink">
+                      {SUPPORT_CATEGORIES.find((c) => c.id === activeThread.category)?.[isTr ? "labelTr" : "labelEn"] || activeThread.category}
+                    </span>
+                    <span className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {SUPPORT_STATUS_LABELS[activeThread.status]?.[locale] || activeThread.status}
+                    </span>
+                  </div>
+                  <h3 className="mt-1 font-heading text-xl text-ink">{activeThread.subject}</h3>
+                </div>
+              </div>
+            </div>
+          }
+        >
+          {/* Chat message stream */}
+          <div className="flex flex-col space-y-4 max-h-[480px] min-h-[260px] overflow-y-auto pr-1 py-2">
+            {loadingMessages ? (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                {isTr ? "Mesajlar yükleniyor…" : "Loading conversation…"}
+              </div>
+            ) : messages.length ? (
+              messages.map((m) => {
+                const isStudent = m.sender_type === "student";
+                return (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "flex flex-col max-w-[85%] sm:max-w-[75%]",
+                      isStudent ? "ml-auto items-end" : "mr-auto items-start"
+                    )}
+                  >
+                    <span className="mb-1 text-[11px] font-medium text-muted-foreground">
+                      {isStudent ? (isTr ? "Siz" : "You") : "Oriens Destek"} · {fmt(m.created_at, locale, true)}
+                    </span>
+                    <div
+                      className={cn(
+                        "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-xs",
+                        isStudent
+                          ? "bg-primary text-primary-foreground rounded-tr-xs"
+                          : "bg-surface-muted border border-border text-ink rounded-tl-xs"
+                      )}
+                    >
+                      {m.body}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                {isTr ? "Henüz mesaj bulunmuyor." : "No messages yet."}
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Composer */}
+          <div className="mt-4 border-t border-border pt-4">
+            {activeThread.status === "closed" ? (
+              <div className="rounded-xl border border-border bg-surface-muted p-4 text-center text-xs text-muted-foreground">
+                {isTr ? "Bu destek talebi kapatılmıştır." : "This support request is closed."}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <textarea
+                  value={composerText}
+                  onChange={(e) => setComposerText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={3}
+                  placeholder={isTr ? "Mesajınızı yazın… (Göndermek için Enter, yeni satır için Shift+Enter)" : "Write your message… (Enter to send, Shift+Enter for newline)"}
+                  className="w-full rounded-xl border border-input bg-surface p-3 text-sm leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-muted-foreground">
+                    {isTr ? "Enter: Gönder · Shift+Enter: Alt satır" : "Enter: Send · Shift+Enter: Newline"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleSendMessage}
+                    disabled={isSending || !composerText.trim()}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-40 transition-colors shadow-xs"
+                  >
+                    <Send className="size-3.5" />
+                    {isSending ? (isTr ? "Gönderiliyor…" : "Sending…") : (isTr ? "Gönder" : "Send")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Panel>
+      ) : (
+        /* 2. Thread List / New Request Panel */
+        <Panel
+          title={
+            <div className="flex items-center justify-between gap-4">
+              <span>{isTr ? "Destek Taleplerim" : "My Support Requests"}</span>
+              <button
+                type="button"
+                onClick={() => setIsCreating(!isCreating)}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors shadow-xs"
+              >
+                <Plus className="size-3.5" />
+                {isTr ? "Yeni Destek Talebi" : "New Support Request"}
+              </button>
+            </div>
+          }
+        >
+          {/* New Request Modal/Card if open */}
+          {isCreating && (
+            <form onSubmit={handleCreateThread} className="mb-6 rounded-2xl border border-primary/30 bg-surface-muted p-5 space-y-4 shadow-xs">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h3 className="font-heading text-lg text-ink">
+                  {isTr ? "Yeni Destek Talebi Oluştur" : "Create Support Request"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsCreating(false)}
+                  className="text-xs text-muted-foreground hover:text-ink"
+                >
+                  {isTr ? "Vazgeç" : "Cancel"}
+                </button>
+              </div>
+
+              {formError && (
+                <div className="rounded-lg bg-destructive/10 p-3 text-xs font-medium text-destructive">
+                  {formError}
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-xs font-semibold text-ink">
+                  {isTr ? "Kategori" : "Category"}
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as SupportCategory)}
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
+                  >
+                    {SUPPORT_CATEGORIES.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {isTr ? cat.labelTr : cat.labelEn}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="text-xs font-semibold text-ink">
+                  {isTr ? "Konu" : "Subject"}
+                  <input
+                    type="text"
+                    required
+                    value={newSubject}
+                    onChange={(e) => setNewSubject(e.target.value)}
+                    placeholder={isTr ? "Örn: IB Matematik ders programı hakkında" : "e.g. Question about IB Mathematics schedule"}
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none"
+                  />
+                </label>
+              </div>
+
+              <label className="block text-xs font-semibold text-ink">
+                {isTr ? "Mesajınız" : "Message"}
+                <textarea
+                  required
+                  rows={4}
+                  value={newInitialMsg}
+                  onChange={(e) => setNewInitialMsg(e.target.value)}
+                  placeholder={isTr ? "Talebinizi ve sormak istediklerinizi detaylıca belirtin…" : "Describe your inquiry in detail…"}
+                  className="mt-1.5 w-full rounded-xl border border-input bg-surface p-3 text-sm text-ink focus:border-primary focus:outline-none"
+                />
+              </label>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreating(false)}
+                  className="min-h-11 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface transition-colors"
+                >
+                  {isTr ? "İptal" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="min-h-11 rounded-xl bg-ink px-6 text-xs font-semibold text-white hover:bg-forest disabled:opacity-40 transition-colors shadow-xs"
+                >
+                  {isSubmitting ? (isTr ? "Oluşturuluyor…" : "Creating…") : (isTr ? "Talebi Gönder" : "Submit Request")}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Ticket list */}
+          {loading ? (
+            <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
+              {isTr ? "Destek talepleri yükleniyor…" : "Loading support requests…"}
+            </div>
+          ) : threads.length ? (
+            <div className="grid gap-3">
+              {threads.map((t) => {
+                const categoryObj = SUPPORT_CATEGORIES.find((c) => c.id === t.category);
+                const statusObj = SUPPORT_STATUS_LABELS[t.status];
+                return (
+                  <article
+                    key={t.id}
+                    onClick={() => setActiveThreadId(t.id)}
+                    className={cn(
+                      "cursor-pointer rounded-2xl border p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-xs",
+                      t.unread_for_student
+                        ? "border-primary/40 bg-surface-muted"
+                        : "border-border bg-surface"
+                    )}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-sage-soft px-2 py-0.5 text-[11px] font-bold text-ink">
+                            {categoryObj?.[isTr ? "labelTr" : "labelEn"] || t.category}
+                          </span>
+                          <span className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                            {statusObj?.[locale] || t.status}
+                          </span>
+                          {t.unread_for_student && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                              <MessageCircle className="size-3" />
+                              {isTr ? "Yeni Yanıt" : "New Reply"}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="mt-2 font-heading text-lg text-ink font-semibold">{t.subject}</h4>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Clock className="size-3" />
+                          <span>{fmt(t.last_message_at, locale, true)}</span>
+                        </div>
+                        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                          {isTr ? "Görüntüle" : "View"}
+                          <ArrowRight className="size-3" />
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <Empty>
+              {isTr
+                ? "Henüz açık veya tamamlanmış bir destek talebiniz bulunmuyor."
+                : "You don't have any support requests yet."}
+            </Empty>
           )}
         </Panel>
       )}

@@ -1,16 +1,16 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import { Sigma, Atom, FlaskConical, Leaf, ChartNoAxesCombined, ChartColumn } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
-import { AcademicIcon, type AcademicIconType } from "@/components/academic/AcademicIcon";
 
-const subjects: Array<{ tr: string; en: string; type: AcademicIconType; accent: string }> = [
-  { tr: "Matematik", en: "Mathematics", type: "analysis", accent: "#819586" },
-  { tr: "Fizik", en: "Physics", type: "physics", accent: "#D6B56D" },
-  { tr: "Kimya", en: "Chemistry", type: "chemistry", accent: "#819586" },
-  { tr: "Biyoloji", en: "Biology", type: "biology", accent: "#D6B56D" },
-  { tr: "Ekonomi", en: "Economics", type: "analysis", accent: "#819586" },
-  { tr: "İstatistik", en: "Statistics", type: "assessment", accent: "#D6B56D" },
+const subjects = [
+  { tr: "Matematik", en: "Mathematics", icon: Sigma },
+  { tr: "Fizik", en: "Physics", icon: Atom },
+  { tr: "Kimya", en: "Chemistry", icon: FlaskConical },
+  { tr: "Biyoloji", en: "Biology", icon: Leaf },
+  { tr: "Ekonomi", en: "Economics", icon: ChartNoAxesCombined },
+  { tr: "İstatistik", en: "Statistics", icon: ChartColumn },
 ];
 
 export function AcademicSubjectMotifs() {
@@ -20,11 +20,11 @@ export function AcademicSubjectMotifs() {
   return (
     <div
       data-subject-panel
-      className="grid w-full max-w-[510px] grid-cols-2 gap-3 rounded-[1.75rem] border border-[#DDE5DC] bg-white p-3 sm:grid-cols-3 sm:p-4"
+      className="grid w-full max-w-[510px] grid-cols-2 gap-3 rounded-[1.75rem] border border-border bg-surface p-3 sm:grid-cols-3 sm:p-4 shadow-xs"
       role="list"
       aria-label={locale === "tr" ? "Akademik ders alanları" : "Academic subject areas"}
     >
-      {subjects.map(({ tr, en, type, accent }, index) => (
+      {subjects.map(({ tr, en, icon: IconComponent }, index) => (
         <motion.div
           key={en}
           role="listitem"
@@ -33,15 +33,14 @@ export function AcademicSubjectMotifs() {
           viewport={{ once: true }}
           whileHover={reduced ? undefined : { y: -2, scale: 1.025 }}
           transition={{ duration: reduced ? 0 : 0.26, delay: reduced ? 0 : index * 0.035, ease: [0.22, 1, 0.36, 1] }}
-          className="group flex min-h-[116px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#DDE5DC] bg-[#F6F8F3] px-3 py-4 text-center transition-colors duration-300 hover:bg-[#EFF3EE] sm:min-h-[124px]"
+          className="group flex min-h-[116px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-border bg-surface-muted px-3 py-4 text-center transition-colors duration-300 hover:border-primary/40 sm:min-h-[124px]"
         >
           <span
-            className="flex size-12 items-center justify-center rounded-full border border-[#D6DED6] bg-white text-[#10271B] shadow-[0_7px_18px_rgba(16,39,27,.06)] transition-all duration-300 group-hover:border-[#819586] group-hover:shadow-[0_10px_24px_rgba(16,39,27,.11)]"
-            style={{ color: accent }}
+            className="flex size-11 items-center justify-center rounded-full border border-border bg-surface text-primary shadow-xs transition-all duration-300 group-hover:border-primary group-hover:scale-105 group-hover:shadow-sm"
           >
-            <AcademicIcon type={type} size={25} className="transition-transform duration-300 group-hover:-translate-y-0.5" />
+            <IconComponent className="size-5 text-primary stroke-[1.8] transition-transform duration-300 group-hover:-translate-y-0.5" />
           </span>
-          <p className="mt-3 truncate text-[10px] font-bold tracking-[0.12em] text-[#405249] uppercase sm:text-[11px]">
+          <p className="mt-3 truncate text-[10px] font-bold tracking-[0.12em] text-foreground/85 uppercase sm:text-[11px]">
             {locale === "tr" ? tr : en}
           </p>
         </motion.div>

@@ -1,64 +1,56 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { Check } from "lucide-react";
-import { useLocale } from "@/content/locale-context";
+import { cn } from "@/lib/utils";
 
-export interface ThemeOption {
-  id: string;
+export type ThemeId = "theme-1" | "theme-2" | "theme-3" | "theme-4" | "theme-5";
+
+const THEMES: Array<{
+  id: ThemeId;
   nameTr: string;
   nameEn: string;
-  dotColor: string;
-  accentColor: string;
-  bgColor: string;
-}
-
-export const THEME_OPTIONS: ThemeOption[] = [
+  color: string;
+  borderColor: string;
+}> = [
   {
     id: "theme-1",
-    nameTr: "1. Klasik Sage & Fildişi",
-    nameEn: "1. Classic Sage & Ivory",
-    dotColor: "#5A7762",
-    accentColor: "#C5B58A",
-    bgColor: "#F6F8F3",
+    nameTr: "Klasik Sage & Fildişi",
+    nameEn: "Classic Sage & Ivory",
+    color: "#5A7762",
+    borderColor: "#4B6452",
   },
   {
     id: "theme-2",
-    nameTr: "2. Sage & Kraliyet Mavisi",
-    nameEn: "2. Sage & Royal Blue",
-    dotColor: "#1C5182",
-    accentColor: "#658876",
-    bgColor: "#F4F7F5",
+    nameTr: "Kraliyet Mavisi",
+    nameEn: "Royal Blue",
+    color: "#1E40AF",
+    borderColor: "#1D4ED8",
   },
   {
     id: "theme-3",
-    nameTr: "3. Gece Laciverti & Şampanya",
-    nameEn: "3. Midnight Navy & Champagne",
-    dotColor: "#B2883B",
-    accentColor: "#0A192F",
-    bgColor: "#F6F8FA",
+    nameTr: "Gece Laciverti",
+    nameEn: "Midnight Navy",
+    color: "#0F172A",
+    borderColor: "#D97706",
   },
   {
     id: "theme-4",
-    nameTr: "4. Koyu Teal & Kobalt",
-    nameEn: "4. Deep Teal & Cobalt",
-    dotColor: "#0D697C",
-    accentColor: "#588C95",
-    bgColor: "#F3F8F8",
+    nameTr: "Koyu Teal",
+    nameEn: "Dark Teal",
+    color: "#0D9488",
+    borderColor: "#0F766E",
   },
   {
     id: "theme-5",
-    nameTr: "5. Orman & Sıcak Terracotta",
-    nameEn: "5. Forest & Warm Terracotta",
-    dotColor: "#B25332",
-    accentColor: "#5F7A69",
-    bgColor: "#F8F6F2",
+    nameTr: "Sıcak Terracotta",
+    nameEn: "Warm Terracotta",
+    color: "#C2410C",
+    borderColor: "#9A3412",
   },
 ];
 
-const STORAGE_KEY = "oriens-theme-preview";
-
-function subscribe(callback: () => void) {
+function subscribeToTheme(callback: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("storage", callback);
   window.addEventListener("oriens-theme-change", callback);
@@ -68,72 +60,87 @@ function subscribe(callback: () => void) {
   };
 }
 
-function getSnapshot(): string {
+function getThemeSnapshot(): ThemeId {
   if (typeof window === "undefined") return "theme-1";
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved && THEME_OPTIONS.some((t) => t.id === saved) ? saved : "theme-1";
-  } catch {
-    return "theme-1";
-  }
+  return (localStorage.getItem("oriens-theme") as ThemeId) || "theme-1";
 }
 
-function getServerSnapshot(): string {
+function getThemeServerSnapshot(): ThemeId {
   return "theme-1";
 }
 
-export function ThemeSelector() {
-  const locale = useLocale();
-  const isTr = locale === "tr";
-  const activeTheme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+function useHasMounted() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+}
 
-  useEffect(() => {
-    try {
-      document.documentElement.dataset.theme = activeTheme;
-    } catch {
-      // Safe ignore
-    }
-  }, [activeTheme]);
+export function ThemeSelector({ locale = "tr" }: { locale?: "tr" | "en" }) {
+  const activeTheme = useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getThemeServerSnapshot);
+  const mounted = useHasMounted();
 
-  const selectTheme = (themeId: string) => {
+  const selectTheme = (id: ThemeId) => {
+    document.documentElement.setAttribute("data-theme", id);
     try {
-      localStorage.setItem(STORAGE_KEY, themeId);
+      localStorage.setItem("oriens-theme", id);
       window.dispatchEvent(new Event("oriens-theme-change"));
     } catch {
-      // Safe ignore
+      // Ignore storage errors in private browsing
     }
   };
 
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-1.5 py-1">
+        <span className="text-[11px] font-medium text-white/50">{locale === "tr" ? "Tema" : "Theme"}</span>
+        <div className="flex items-center gap-1.5">
+          {THEMES.map((t) => (
+            <span
+              key={t.id}
+              className="inline-block size-4 rounded-full border border-white/20 opacity-60"
+              style={{ backgroundColor: t.color }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      aria-label={isTr ? "Renk Teması Seçici" : "Theme Palette"}
-      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-2.5 py-1 shadow-2xs backdrop-blur-xs"
-    >
-      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-        {isTr ? "Tema" : "Theme"}
+    <div className="flex items-center gap-2" role="group" aria-label={locale === "tr" ? "Tema Seçimi" : "Theme Selection"}>
+      <span className="text-[11px] font-medium text-white/60 select-none">
+        {locale === "tr" ? "Tema" : "Theme"}
       </span>
-      <div className="flex items-center gap-1.5" role="radiogroup" aria-label={isTr ? "Renk Temaları" : "Color Themes"}>
-        {THEME_OPTIONS.map((theme) => {
+      <div className="flex items-center gap-1.5">
+        {THEMES.map((theme) => {
           const isSelected = activeTheme === theme.id;
-          const themeName = isTr ? theme.nameTr : theme.nameEn;
+          const label = locale === "tr" ? theme.nameTr : theme.nameEn;
 
           return (
             <button
               key={theme.id}
               type="button"
-              role="radio"
-              aria-checked={isSelected}
               onClick={() => selectTheme(theme.id)}
-              title={themeName}
-              aria-label={themeName}
-              className={`group relative flex size-4.5 cursor-pointer items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary ${
-                isSelected ? "ring-2 ring-primary ring-offset-1" : "hover:ring-1 hover:ring-border-strong"
-              }`}
-              style={{ backgroundColor: theme.dotColor }}
+              title={label}
+              aria-label={label}
+              aria-pressed={isSelected}
+              className={cn(
+                "group relative flex size-4.5 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
+                isSelected
+                  ? "ring-2 ring-white ring-offset-1 ring-offset-black/40 scale-105"
+                  : "opacity-75 hover:opacity-100"
+              )}
+              style={{ backgroundColor: theme.color }}
             >
               {isSelected && (
-                <Check className="size-2.5 text-white drop-shadow-xs stroke-[3]" />
+                <Check className="size-2.5 text-white stroke-[3]" />
               )}
+              {/* Accessible Hover Tooltip */}
+              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-black/90 px-2 py-0.5 text-[10px] font-medium text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 z-50">
+                {label}
+              </span>
             </button>
           );
         })}
@@ -141,3 +148,5 @@ export function ThemeSelector() {
     </div>
   );
 }
+
+export default ThemeSelector;

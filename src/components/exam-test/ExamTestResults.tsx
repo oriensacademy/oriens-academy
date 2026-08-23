@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronUp, Send, Calendar, RefreshCcw, BookOpen, Sparkles, Award } from "lucide-react";
 import type { TestResult } from "@/data/exam-tests";
 import { getExamTestCopy } from "@/content/exam-test";

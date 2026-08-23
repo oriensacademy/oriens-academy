@@ -61,15 +61,19 @@ html[data-oriens-loader-skip="1"] [data-initial-loader] {
 
 :root,
 html[data-theme="theme-1"] {
-  /* OPTION 1: Editorial Ivory + Refreshed Sage Academic (Default) */
+  /* THEME 1: Klasik Sage & Fildişi (Default Oriens Academic) */
   --background: #F6F8F3;
   --background-soft: #F9FAF6;
+  --background-muted: #EBF0EA;
   --foreground: #10271B;
+  --foreground-muted: #57655B;
   --forest: #0D2A1C;
   --ink: #10271B;
   --card: #FFFFFF;
   --card-foreground: #10271B;
+  --card-background: #FFFFFF;
   --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
   --surface-muted: #F3F6F1;
   --primary: #5A7762;
   --primary-hover: #4B6452;
@@ -92,6 +96,12 @@ html[data-theme="theme-1"] {
   --popover-foreground: #10271B;
   --destructive: #B91C1C;
   --destructive-foreground: #FFFFFF;
+  --header-background: rgba(246, 248, 243, 0.92);
+  --footer-background: #0D2A1C;
+  --button-primary: #0D2A1C;
+  --button-hover: #1A3D2C;
+  --sidebar-active: #0D2A1C;
+  --icon-accent: #5A7762;
 
   --destination-uk: #3D5A70;
   --destination-uk-soft: #E4ECF2;
@@ -110,183 +120,223 @@ html[data-theme="theme-1"] {
 }
 
 html[data-theme="theme-2"] {
-  /* OPTION 2: Premium Sage + Royal Blue (Modern Academic Luxe) */
-  --background: #F4F7F5;
-  --background-soft: #F8FAF9;
-  --foreground: #0B2217;
-  --forest: #0B2217;
-  --ink: #0B2217;
-  --card: #FFFFFF;
-  --card-foreground: #0B2217;
-  --surface: #FFFFFF;
-  --surface-muted: #EBF1EE;
-  --primary: #1C5182;
-  --primary-hover: #143F66;
-  --primary-foreground: #FFFFFF;
-  --secondary: #658876;
-  --secondary-foreground: #FFFFFF;
-  --sage-soft: #DFECE5;
-  --accent: #1C5182;
-  --accent-foreground: #FFFFFF;
-  --warm-accent: #D1B87A;
-  --brand-accent: #1C5182;
-  --brand-accent-foreground: #FFFFFF;
-  --muted: #E8EFEA;
-  --muted-foreground: #53675C;
-  --border: #CFDCD3;
-  --border-strong: #96B2A0;
-  --input: #C7D8CC;
-  --ring: #1C5182;
-  --popover: #FFFFFF;
-  --popover-foreground: #0B2217;
-  --destructive: #B91C1C;
-  --destructive-foreground: #FFFFFF;
-
-  --destination-uk: #1C5182;
-  --destination-uk-soft: #E2EDF7;
-  --destination-europe: #47796B;
-  --destination-europe-soft: #E1EFEA;
-  --destination-us: #285E8C;
-  --destination-us-soft: #E4EEF7;
-  --destination-canada: #8E4C56;
-  --destination-canada-soft: #F6EAEB;
-  --destination-other: #78694B;
-  --destination-other-soft: #F3ECE0;
-}
-
-html[data-theme="theme-3"] {
-  /* OPTION 3: Midnight Navy + Champagne Gold (Classic Prestige) */
-  --background: #F6F8FA;
-  --background-soft: #FAFBFD;
+  /* THEME 2: Kraliyet Mavisi & Porcelain (Clearly Royal Blue) */
+  --background: #F4F7FC;
+  --background-soft: #F8FAFD;
+  --background-muted: #E2E8F0;
   --foreground: #0A192F;
-  --forest: #0A192F;
+  --foreground-muted: #475569;
+  --forest: #0B1E36;
   --ink: #0A192F;
   --card: #FFFFFF;
   --card-foreground: #0A192F;
+  --card-background: #FFFFFF;
   --surface: #FFFFFF;
-  --surface-muted: #EEF2F6;
-  --primary: #B2883B;
-  --primary-hover: #98722C;
+  --surface-elevated: #FFFFFF;
+  --surface-muted: #EDF2F9;
+  --primary: #1E40AF;
+  --primary-hover: #1D4ED8;
   --primary-foreground: #FFFFFF;
-  --secondary: #647B95;
+  --secondary: #3B82F6;
   --secondary-foreground: #FFFFFF;
-  --sage-soft: #E5ECF4;
-  --accent: #B2883B;
+  --sage-soft: #DBEAFE;
+  --accent: #1E40AF;
   --accent-foreground: #FFFFFF;
-  --warm-accent: #D4B26F;
-  --brand-accent: #B2883B;
+  --warm-accent: #D97706;
+  --brand-accent: #1E40AF;
   --brand-accent-foreground: #FFFFFF;
-  --muted: #E9EFF5;
-  --muted-foreground: #506173;
-  --border: #D3DEEB;
-  --border-strong: #98B1CC;
-  --input: #CAD7E6;
-  --ring: #B2883B;
+  --muted: #E2E8F0;
+  --muted-foreground: #475569;
+  --border: #CBD5E1;
+  --border-strong: #94A3B8;
+  --input: #CBD5E1;
+  --ring: #1E40AF;
   --popover: #FFFFFF;
   --popover-foreground: #0A192F;
   --destructive: #B91C1C;
   --destructive-foreground: #FFFFFF;
+  --header-background: rgba(244, 247, 252, 0.92);
+  --footer-background: #0B1E36;
+  --button-primary: #0B1E36;
+  --button-hover: #1E3A5F;
+  --sidebar-active: #0B1E36;
+  --icon-accent: #1E40AF;
 
-  --destination-uk: #204B73;
-  --destination-uk-soft: #E1EAF4;
-  --destination-europe: #386E64;
-  --destination-europe-soft: #E0EFEA;
-  --destination-us: #1A3E61;
-  --destination-us-soft: #DFE8F2;
+  --destination-uk: #1E40AF;
+  --destination-uk-soft: #DBEAFE;
+  --destination-europe: #2563EB;
+  --destination-europe-soft: #EFF6FF;
+  --destination-us: #1D4ED8;
+  --destination-us-soft: #E0E7FF;
+  --destination-canada: #8E4C56;
+  --destination-canada-soft: #F6EAEB;
+  --destination-other: #D97706;
+  --destination-other-soft: #FEF3C7;
+}
+
+html[data-theme="theme-3"] {
+  /* THEME 3: Gece Laciverti & Şampanya (Midnight Navy & Champagne Gold) */
+  --background: #F1F5F9;
+  --background-soft: #F8FAFC;
+  --background-muted: #E2E8F0;
+  --foreground: #0F172A;
+  --foreground-muted: #64748B;
+  --forest: #0F172A;
+  --ink: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --card-background: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-muted: #E2E8F0;
+  --primary: #D97706;
+  --primary-hover: #B45309;
+  --primary-foreground: #FFFFFF;
+  --secondary: #334155;
+  --secondary-foreground: #FFFFFF;
+  --sage-soft: #FEF3C7;
+  --accent: #D97706;
+  --accent-foreground: #FFFFFF;
+  --warm-accent: #F59E0B;
+  --brand-accent: #D97706;
+  --brand-accent-foreground: #FFFFFF;
+  --muted: #E2E8F0;
+  --muted-foreground: #64748B;
+  --border: #CBD5E1;
+  --border-strong: #94A3B8;
+  --input: #CBD5E1;
+  --ring: #D97706;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
+  --header-background: rgba(241, 245, 249, 0.92);
+  --footer-background: #090D16;
+  --button-primary: #0F172A;
+  --button-hover: #1E293B;
+  --sidebar-active: #0F172A;
+  --icon-accent: #D97706;
+
+  --destination-uk: #1E293B;
+  --destination-uk-soft: #E2E8F0;
+  --destination-europe: #334155;
+  --destination-europe-soft: #F1F5F9;
+  --destination-us: #0F172A;
+  --destination-us-soft: #E2E8F0;
   --destination-canada: #844853;
   --destination-canada-soft: #F5EAEB;
-  --destination-other: #8A6E3B;
-  --destination-other-soft: #F6EFE2;
+  --destination-other: #D97706;
+  --destination-other-soft: #FEF3C7;
 }
 
 html[data-theme="theme-4"] {
-  /* OPTION 4: Deep Teal + Cobalt (Contemporary Global) */
-  --background: #F3F8F8;
-  --background-soft: #F8FBFC;
-  --foreground: #0B2529;
-  --forest: #081F22;
-  --ink: #0B2529;
+  /* THEME 4: Koyu Teal & Kobalt (Deep Teal & Petrol) */
+  --background: #F0FDFA;
+  --background-soft: #F5FEFD;
+  --background-muted: #CCFBF1;
+  --foreground: #042F2E;
+  --foreground-muted: #115E59;
+  --forest: #042F2E;
+  --ink: #042F2E;
   --card: #FFFFFF;
-  --card-foreground: #0B2529;
+  --card-foreground: #042F2E;
+  --card-background: #FFFFFF;
   --surface: #FFFFFF;
-  --surface-muted: #E7F1F2;
-  --primary: #0D697C;
-  --primary-hover: #094F5E;
+  --surface-elevated: #FFFFFF;
+  --surface-muted: #E6FFFA;
+  --primary: #0D9488;
+  --primary-hover: #0F766E;
   --primary-foreground: #FFFFFF;
-  --secondary: #588C95;
+  --secondary: #2563EB;
   --secondary-foreground: #FFFFFF;
-  --sage-soft: #DEEFF1;
-  --accent: #0D697C;
+  --sage-soft: #CCFBF1;
+  --accent: #2563EB;
   --accent-foreground: #FFFFFF;
-  --warm-accent: #C7AA6E;
-  --brand-accent: #0D697C;
+  --warm-accent: #14B8A6;
+  --brand-accent: #0D9488;
   --brand-accent-foreground: #FFFFFF;
-  --muted: #E4EFF0;
-  --muted-foreground: #4B6367;
-  --border: #CBE1E3;
-  --border-strong: #8FBCBF;
-  --input: #C3DCDE;
-  --ring: #0D697C;
+  --muted: #CCFBF1;
+  --muted-foreground: #115E59;
+  --border: #99F6E4;
+  --border-strong: #5EEAD4;
+  --input: #99F6E4;
+  --ring: #0D9488;
   --popover: #FFFFFF;
-  --popover-foreground: #0B2529;
+  --popover-foreground: #042F2E;
   --destructive: #B91C1C;
   --destructive-foreground: #FFFFFF;
+  --header-background: rgba(240, 253, 250, 0.92);
+  --footer-background: #042F2E;
+  --button-primary: #042F2E;
+  --button-hover: #115E59;
+  --sidebar-active: #042F2E;
+  --icon-accent: #0D9488;
 
-  --destination-uk: #1E5C77;
-  --destination-uk-soft: #E0EEF4;
-  --destination-europe: #1D6B66;
-  --destination-europe-soft: #DFEFEA;
-  --destination-us: #154F6A;
-  --destination-us-soft: #DFEAF1;
+  --destination-uk: #0F766E;
+  --destination-uk-soft: #CCFBF1;
+  --destination-europe: #0D9488;
+  --destination-europe-soft: #E6FFFA;
+  --destination-us: #2563EB;
+  --destination-us-soft: #EFF6FF;
   --destination-canada: #844654;
   --destination-canada-soft: #F5EAEB;
-  --destination-other: #7B6846;
-  --destination-other-soft: #F4EFE3;
+  --destination-other: #14B8A6;
+  --destination-other-soft: #F0FDFA;
 }
 
 html[data-theme="theme-5"] {
-  /* OPTION 5: Forest + Warm Terracotta (Heritage Warmth) */
-  --background: #F8F6F2;
-  --background-soft: #FCFAF7;
-  --foreground: #14241B;
-  --forest: #0F1D15;
-  --ink: #14241B;
+  /* THEME 5: Orman & Sıcak Terracotta (Heritage Warmth) */
+  --background: #FFFDF7;
+  --background-soft: #FFFDF9;
+  --background-muted: #FEF3C7;
+  --foreground: #1C1917;
+  --foreground-muted: #78716C;
+  --forest: #1E3A2F;
+  --ink: #1C1917;
   --card: #FFFFFF;
-  --card-foreground: #14241B;
+  --card-foreground: #1C1917;
+  --card-background: #FFFFFF;
   --surface: #FFFFFF;
-  --surface-muted: #F1ECE3;
-  --primary: #B25332;
-  --primary-hover: #964024;
+  --surface-elevated: #FFFFFF;
+  --surface-muted: #FFF7ED;
+  --primary: #C2410C;
+  --primary-hover: #9A3412;
   --primary-foreground: #FFFFFF;
-  --secondary: #5F7A69;
+  --secondary: #15803D;
   --secondary-foreground: #FFFFFF;
-  --sage-soft: #EAE6DB;
-  --accent: #B25332;
+  --sage-soft: #FFEDD5;
+  --accent: #C2410C;
   --accent-foreground: #FFFFFF;
-  --warm-accent: #B25332;
-  --brand-accent: #B25332;
+  --warm-accent: #EA580C;
+  --brand-accent: #C2410C;
   --brand-accent-foreground: #FFFFFF;
-  --muted: #EFE9DE;
-  --muted-foreground: #615E55;
-  --border: #DFD7C9;
-  --border-strong: #AEA08A;
-  --input: #D9CFBF;
-  --ring: #B25332;
+  --muted: #FEF3C7;
+  --muted-foreground: #78716C;
+  --border: #FED7AA;
+  --border-strong: #FDBA74;
+  --input: #FED7AA;
+  --ring: #C2410C;
   --popover: #FFFFFF;
-  --popover-foreground: #14241B;
+  --popover-foreground: #1C1917;
   --destructive: #B91C1C;
   --destructive-foreground: #FFFFFF;
+  --header-background: rgba(255, 253, 247, 0.92);
+  --footer-background: #1C1917;
+  --button-primary: #C2410C;
+  --button-hover: #9A3412;
+  --sidebar-active: #C2410C;
+  --icon-accent: #C2410C;
 
-  --destination-uk: #3A556B;
-  --destination-uk-soft: #E3EBF1;
-  --destination-europe: #4A6E58;
-  --destination-europe-soft: #E2ECE5;
-  --destination-us: #425F78;
-  --destination-us-soft: #E4ECF2;
-  --destination-canada: #B25332;
-  --destination-canada-soft: #F7EAE5;
-  --destination-other: #826E4B;
-  --destination-other-soft: #F3ECE1;
+  --destination-uk: #15803D;
+  --destination-uk-soft: #DCFCE7;
+  --destination-europe: #166534;
+  --destination-europe-soft: #F0FDF4;
+  --destination-us: #C2410C;
+  --destination-us-soft: #FFEDD5;
+  --destination-canada: #EA580C;
+  --destination-canada-soft: #FFF7ED;
+  --destination-other: #D97706;
+  --destination-other-soft: #FEF3C7;
 }
 
 @layer base {

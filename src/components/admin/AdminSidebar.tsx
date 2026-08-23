@@ -50,6 +50,13 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     enabled: true,
   },
   {
+    label: "Destek",
+    labelEn: "Support",
+    href: "/admin/destek",
+    icon: MessageSquare,
+    enabled: true,
+  },
+  {
     label: "İletişim",
     labelEn: "Contacts",
     href: "/admin/iletisim",

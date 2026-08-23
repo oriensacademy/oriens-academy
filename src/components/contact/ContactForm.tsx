@@ -16,29 +16,23 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const isTr = locale === "tr";
   const { user, accountType } = useAccount();
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState(() => user?.user_metadata?.full_name || "");
+  const [email, setEmail] = useState(() => user?.email || "");
+  const [phone, setPhone] = useState(() => user?.user_metadata?.phone || "");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
 
   // Prefill for authenticated student
   useEffect(() => {
-    if (user) {
-      if (user.user_metadata?.full_name) setFullName(user.user_metadata.full_name);
-      if (user.email) setEmail(user.email);
-      if (user.user_metadata?.phone) setPhone(user.user_metadata.phone);
-
-      if (accountType === "student") {
-        getStudentPortalData(user.id).then((res) => {
-          if (res.data?.profile) {
-            if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
-            if (res.data.profile.email) setEmail(res.data.profile.email);
-            if (res.data.profile.phone) setPhone(res.data.profile.phone);
-          }
-        });
-      }
+    if (user && accountType === "student") {
+      getStudentPortalData(user.id).then((res) => {
+        if (res.data?.profile) {
+          if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
+          if (res.data.profile.email) setEmail(res.data.profile.email);
+          if (res.data.profile.phone) setPhone(res.data.profile.phone);
+        }
+      });
     }
   }, [user, accountType]);
 
