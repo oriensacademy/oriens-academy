@@ -22,7 +22,7 @@ export interface PricingCardProps {
 export function PricingCard({
   planName,
   price,
-  currency = "₺",
+  currency = "TL",
   priceFrequency,
   description,
   features,
@@ -59,15 +59,15 @@ export function PricingCard({
           </p>
         )}
 
-        <div className="mt-6 flex items-baseline gap-1">
-          {currency && (
-            <span className="text-2xl font-bold text-ink font-sans">
-              {currency}
-            </span>
-          )}
+        <div className="mt-6 flex items-baseline gap-1.5">
           <span className="text-4xl sm:text-5xl font-bold tracking-tight text-ink font-sans tabular-nums">
             {price}
           </span>
+          {currency && (
+            <span className="text-lg font-bold text-ink font-sans">
+              {currency}
+            </span>
+          )}
           {priceFrequency && (
             <span className="ml-1 text-sm font-medium text-muted-foreground font-sans">
               {priceFrequency}

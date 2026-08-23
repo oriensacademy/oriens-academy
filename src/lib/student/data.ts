@@ -31,9 +31,15 @@ export async function getStudentPortalData(userId: string): Promise<{ data: Stud
   return { data: { profile: profile.data, bookings: (bookings.data || []) as unknown as StudentBooking[], lessons: lessons.data || [], homework: homework.data || [], purchases: (purchases.data || []) as unknown as StudentPurchase[], payments: payments.data || [], bankDetails }, error: null };
 }
 
-export type StudentProfileUpdate = Pick<StudentProfileRow, "full_name" | "phone" | "school" | "target_exam" | "target_university" | "target_country" | "preferred_language">;
+export type StudentProfileUpdate = Partial<StudentProfileRow> & {
+  target_exams?: string[];
+  target_countries?: string[];
+  onboarding_completed?: boolean;
+};
 export async function updateStudentProfile(userId: string, input: StudentProfileUpdate) {
-  return getSupabaseClient().from("student_profiles").update(input).eq("id", userId).select().single();
+  const client = getSupabaseClient();
+  const updateFn = client.from("student_profiles").update as unknown as (values: unknown) => { eq: (col: string, val: string) => { select: () => { single: () => Promise<{ data: StudentProfileRow | null; error: { message: string } | null }> } } };
+  return updateFn(input).eq("id", userId).select().single();
 }
 export async function submitStudentHomework(id: string, submissionText: string) {
   return getSupabaseClient().from("student_homework").update({ submission_text: submissionText, status: "submitted", submitted_at: new Date().toISOString() }).eq("id", id).select().single();

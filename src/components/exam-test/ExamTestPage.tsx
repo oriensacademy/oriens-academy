@@ -71,12 +71,17 @@ export function ExamTestPage() {
       console.error("Failed to compute test result:", err);
       // Safe fallback result
       setResult({
+        examCode: selectedExam,
         correct: 0,
         incorrect: 0,
         unanswered: questions.length,
         total: questions.length,
         accuracy: 0,
+        performanceTier: "foundation",
         topics: [],
+        strengths: [],
+        improvementAreas: [],
+        breakdown: [],
       });
       setStage("result");
     }

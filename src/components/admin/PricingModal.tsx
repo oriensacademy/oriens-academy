@@ -272,7 +272,7 @@ export function PricingModal({
               >
                 <option value="EUR">EUR (€)</option>
                 <option value="USD">USD ($)</option>
-                <option value="TRY">TRY (₺)</option>
+                <option value="TRY">TRY (TL)</option>
               </select>
             </div>
           </div>

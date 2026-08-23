@@ -11,10 +11,13 @@ import { getPublicAvailability, submitBooking } from "@/lib/booking/api";
 import type { PublicAvailabilitySlot, SupportType, BookingResult } from "@/lib/booking/types";
 import { BookingStepper } from "./BookingStepper";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
+import { useAccount } from "@/lib/auth/account-context";
+import { getStudentPortalData } from "@/lib/student/data";
 
 export function BookingFlow() {
   const { bookingFlow } = useHomeContent();
   const locale = useLocale();
+  const { user, accountType } = useAccount();
 
   // Turnstile security state
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -23,7 +26,7 @@ export function BookingFlow() {
   // Stepper state
   const [currentStep, setCurrentStep] = useState(0);
 
-  // Form state
+  // Form selections & values
   const [supportType, setSupportType] = useState<SupportType>("exam_preparation");
   const [exam, setExam] = useState<ExamSelectorValue>(null);
   const [notes, setNotes] = useState("");
@@ -35,6 +38,28 @@ export function BookingFlow() {
   const [phone, setPhone] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
+
+  // Prefill for authenticated student
+  useEffect(() => {
+    if (user) {
+      if (user.user_metadata?.full_name) setFullName(user.user_metadata.full_name);
+      if (user.email) setEmail(user.email);
+      if (user.user_metadata?.phone) setPhone(user.user_metadata.phone);
+
+      if (accountType === "student") {
+        getStudentPortalData(user.id).then((res) => {
+          if (res.data?.profile) {
+            if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
+            if (res.data.profile.email) setEmail(res.data.profile.email);
+            if (res.data.profile.phone) setPhone(res.data.profile.phone);
+            if (res.data.profile.target_exam) {
+              setExam({ type: "exam", code: res.data.profile.target_exam.toLowerCase() });
+            }
+          }
+        });
+      }
+    }
+  }, [user, accountType]);
 
   // Availability & loading states
   const [slots, setSlots] = useState<PublicAvailabilitySlot[]>([]);
@@ -496,6 +521,7 @@ export function BookingFlow() {
                 <input
                   id="phone"
                   type="tel"
+                  placeholder={locale === "tr" ? "0555 555 55 55" : "Phone number"}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"

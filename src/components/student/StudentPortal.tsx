@@ -43,7 +43,7 @@ export function StudentPortal() {
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Öğrenci Hesabı" : "Student Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {data.profile.full_name.split(" ")[0]}</h1></div><div className="flex gap-2"><button onClick={() => load(userId)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><RefreshCw className="size-4" />{locale === "tr" ? "Yenile" : "Refresh"}</button><button onClick={logout} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></div></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}</main>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}</main>
     </div>
   </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 overflow-x-auto border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="mx-auto flex min-w-max justify-center gap-1">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px]", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</div></nav></section>;
 }
@@ -132,9 +132,9 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
     </div>
   );
 }
-function Summary({ title, value, onClick }: { title:string; value:string; onClick:()=>void }) { return <button onClick={onClick} className="rounded-2xl border border-border bg-surface p-5 text-left hover:border-border-strong"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p><p className="mt-3 font-heading text-2xl text-ink">{value}</p></button>; }
-
 import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
+
+function Summary({ title, value, onClick }: { title:string; value:string; onClick:()=>void }) { return <button onClick={onClick} className="rounded-2xl border border-border bg-surface p-5 text-left hover:border-border-strong"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p><p className="mt-3 font-heading text-2xl text-ink">{value}</p></button>; }
 
 function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; userId: string; locale: "tr" | "en"; onReload: () => void }) {
   const isTr = locale === "tr";
@@ -179,19 +179,22 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
 
   async function save() {
     setSaving(true);
+    setMessage("");
     const { error: profileError } = await updateStudentProfile(userId, {
       ...form,
+      target_exams: selectedExams,
+      target_countries: selectedCountries,
       target_exam: selectedExams[0] || null,
       target_country: selectedCountries[0] || null,
     });
-    await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
+    const { error: prefError } = await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
     setSaving(false);
-    setMessage(
-      profileError
-        ? isTr ? "Profil kaydedilemedi." : "Profile could not be saved."
-        : isTr ? "Profil başarıyla güncellendi." : "Profile updated successfully."
-    );
-    if (!profileError) onReload();
+    if (profileError || prefError) {
+      setMessage(isTr ? "Profil kaydedilemedi." : "Profile could not be saved.");
+    } else {
+      setMessage(isTr ? "Profil başarıyla güncellendi." : "Profile updated successfully.");
+      onReload();
+    }
   }
 
   return (
@@ -211,6 +214,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
             {isTr ? "Telefon" : "Phone"}
             <input
               value={form.phone}
+              placeholder={isTr ? "0555 555 55 55" : "Phone number"}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
             />
@@ -263,7 +267,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
                   key={exam.id}
                   type="button"
                   onClick={() => toggleExam(exam.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                     isSelected
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
@@ -293,7 +297,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
                   key={dest.id}
                   type="button"
                   onClick={() => toggleCountry(dest.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                     isSelected
                       ? "border-emerald-700 bg-emerald-700 text-white"
                       : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
@@ -307,14 +311,21 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
           </div>
         </div>
 
-        <button
-          onClick={save}
-          disabled={saving}
-          className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-forest disabled:opacity-45"
-        >
-          <Save className="size-4" />
-          {saving ? (isTr ? "Kaydediliyor..." : "Saving...") : (isTr ? "Profili Kaydet" : "Save Profile")}
-        </button>
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-forest disabled:opacity-45 cursor-pointer"
+          >
+            <Save className="size-4" />
+            {saving ? (isTr ? "Kaydediliyor..." : "Saving...") : (isTr ? "Profili Kaydet" : "Save Profile")}
+          </button>
+          {message && (
+            <p className={cn("text-xs font-medium", message.includes("başarıyla") || message.includes("successfully") ? "text-emerald-700" : "text-destructive")}>
+              {message}
+            </p>
+          )}
+        </div>
       </Panel>
 
       <Panel title={isTr ? "Hesap Güvenliği" : "Account Security"}>

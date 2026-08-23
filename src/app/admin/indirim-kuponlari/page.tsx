@@ -329,7 +329,7 @@ export default function AdminCouponsPage() {
           >
             <option value="all">Tüm Türler</option>
             <option value="percentage">Yüzdelik (%)</option>
-            <option value="fixed">Sabit Tutar (₺)</option>
+            <option value="fixed">Sabit Tutar (TL)</option>
           </select>
 
           <select

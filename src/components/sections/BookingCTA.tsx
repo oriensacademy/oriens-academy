@@ -11,6 +11,8 @@ import { useHomeContent, useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
 import { Wave } from "@/components/ui/wave";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { useAccount } from "@/lib/auth/account-context";
+import { getStudentPortalData } from "@/lib/student/data";
 
 const CONSULTATION_PACKAGE_IDS = new Set(["single", "package5", "package10", "package20", "package30"]);
 
@@ -18,6 +20,7 @@ export function BookingCTA() {
   const { bookingCTA } = useHomeContent();
   const locale = useLocale();
   const isTr = locale === "tr";
+  const { user, accountType } = useAccount();
   const [submitted, setSubmitted] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [exam, setExam] = useState<ExamSelectorValue>(null);
@@ -27,9 +30,31 @@ export function BookingCTA() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<PublicPricingPackage | null>(null);
+
+  // Form field states for controlled prefill
+  const [nameVal, setNameVal] = useState(() => user?.user_metadata?.full_name || "");
+  const [emailVal, setEmailVal] = useState(() => user?.email || "");
+  const [phoneVal, setPhoneVal] = useState(() => user?.user_metadata?.phone || "");
+
   const summaryRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const turnstileRef = useRef<TurnstileWidgetRef>(null);
+
+  // Prefill for authenticated student
+  useEffect(() => {
+    if (user && accountType === "student") {
+      getStudentPortalData(user.id).then((res) => {
+        if (res.data?.profile) {
+          if (res.data.profile.full_name) setNameVal(res.data.profile.full_name);
+          if (res.data.profile.email) setEmailVal(res.data.profile.email);
+          if (res.data.profile.phone) setPhoneVal(res.data.profile.phone);
+          if (res.data.profile.target_exam) {
+            setExam({ type: "exam", code: res.data.profile.target_exam.toLowerCase() });
+          }
+        }
+      });
+    }
+  }, [user, accountType]);
 
   useEffect(() => {
     const packageId = new URLSearchParams(window.location.search).get("package");
@@ -53,19 +78,18 @@ export function BookingCTA() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const name = nameVal.trim();
+    const email = emailVal.trim();
+    const phone = phoneVal.trim();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const name = String(data.get("name") ?? "").trim();
-    const email = String(data.get("email") ?? "").trim();
-    const phone = String(data.get("phone") ?? "").trim();
     const interest = String(data.get("interest") ?? "");
     const message = String(data.get("message") ?? "").trim();
     const nextErrors: Record<string, string> = {};
 
-    if (!name) nextErrors.name = bookingCTA.form.nameRequired;
-    if (!email) nextErrors.email = bookingCTA.form.emailRequired;
-    else if (!(form.elements.namedItem("email") as HTMLInputElement | null)?.validity.valid) nextErrors.email = bookingCTA.form.emailInvalid;
-    if (!phone || phone.length < 5) nextErrors.phone = isTr ? "Telefon alanı zorunludur." : "Phone is required.";
+    if (!name || name.length < 2) nextErrors.name = bookingCTA.form.nameRequired;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = bookingCTA.form.emailRequired;
+    if (!phone || phone.length < 5) nextErrors.phone = isTr ? "Geçerli bir telefon numarası girin." : "Enter a valid phone number.";
     if (!privacyConsent) nextErrors.privacy = isTr ? "Gizlilik onayı zorunludur." : "Privacy consent is required.";
     if (!turnstileToken) nextErrors.turnstile = isTr ? "Güvenlik doğrulamasını tamamlayın." : "Complete the security verification.";
 
@@ -179,10 +203,10 @@ export function BookingCTA() {
                 </div>
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div><label htmlFor="consultation-name" className="text-sm font-medium text-ink">{bookingCTA.form.name} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-name" data-locale-field="consultation-name" name="name" type="text" required onInput={() => clearError("name")} autoComplete="name" className={fieldClass} />{errors.name && <p className="mt-2 text-sm text-destructive">{errors.name}</p>}</div>
-                <div><label htmlFor="consultation-email" className="text-sm font-medium text-ink">{bookingCTA.form.email} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-email" data-locale-field="consultation-email" name="email" type="email" required onInput={() => clearError("email")} autoComplete="email" className={fieldClass} />{errors.email && <p className="mt-2 text-sm text-destructive">{errors.email}</p>}</div>
+                <div><label htmlFor="consultation-name" className="text-sm font-medium text-ink">{bookingCTA.form.name} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-name" data-locale-field="consultation-name" name="name" type="text" value={nameVal} onChange={(e) => { setNameVal(e.target.value); clearError("name"); }} placeholder={isTr ? "Adınız Soyadınız" : "Your Full Name"} required autoComplete="name" className={fieldClass} />{errors.name && <p className="mt-2 text-sm text-destructive">{errors.name}</p>}</div>
+                <div><label htmlFor="consultation-email" className="text-sm font-medium text-ink">{bookingCTA.form.email} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-email" data-locale-field="consultation-email" name="email" type="email" value={emailVal} onChange={(e) => { setEmailVal(e.target.value); clearError("email"); }} placeholder="ornek@email.com" required autoComplete="email" className={fieldClass} />{errors.email && <p className="mt-2 text-sm text-destructive">{errors.email}</p>}</div>
                 <div><label htmlFor="interest" className="text-sm font-medium text-ink">{bookingCTA.form.interestLabel}</label><select id="interest" data-locale-field="consultation-interest" name="interest" defaultValue={bookingCTA.form.interestOptions[0].value} className={fieldClass}>{bookingCTA.form.interestOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-                <div><label htmlFor="consultation-phone" className="text-sm font-medium text-ink">{isTr ? "Telefon (zorunlu)" : "Phone (required)"}</label><input id="consultation-phone" data-locale-field="consultation-phone" name="phone" type="tel" required onInput={() => clearError("phone")} autoComplete="tel" className={fieldClass} />{errors.phone && <p className="mt-2 text-sm text-destructive">{errors.phone}</p>}</div>
+                <div><label htmlFor="consultation-phone" className="text-sm font-medium text-ink">{isTr ? "Telefon (zorunlu)" : "Phone (required)"}</label><input id="consultation-phone" data-locale-field="consultation-phone" name="phone" type="tel" value={phoneVal} onChange={(e) => { setPhoneVal(e.target.value); clearError("phone"); }} placeholder={isTr ? "0555 555 55 55" : "Phone number"} required autoComplete="tel" className={fieldClass} />{errors.phone && <p className="mt-2 text-sm text-destructive">{errors.phone}</p>}</div>
                 <div className="sm:col-span-2"><ExamSelector value={exam} onChange={setExam} /></div>
                 <div className="sm:col-span-2"><label htmlFor="consultation-message" className="text-sm font-medium text-ink">{bookingCTA.form.messageLabel} <span className="font-normal text-muted-foreground">{bookingCTA.form.messageOptional}</span></label><textarea id="consultation-message" data-locale-field="consultation-message" name="message" rows={3} className={`${fieldClass} resize-y py-2.5`} /></div>
                 <div className="sm:col-span-2 border-t border-border pt-4"><label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink/75"><input type="checkbox" data-locale-field="consultation-privacy" checked={privacyConsent} onChange={(event) => { setPrivacyConsent(event.target.checked); clearError("privacy"); }} className="mt-1 size-4" /><span>{isTr ? "Tanışma görüşmesi talebimin yanıtlanması için iletişim bilgilerimin işlenmesini kabul ediyorum." : "I agree to the processing of my contact details for this consultation request."}</span></label>{errors.privacy && <p className="mt-2 text-sm text-destructive">{errors.privacy}</p>}</div>

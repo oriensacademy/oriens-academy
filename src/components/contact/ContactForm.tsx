@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useRef, useTransition, type FormEvent } from "react";
+import { useCallback, useEffect, useState, useRef, useTransition, type FormEvent } from "react";
 import { CheckCircle2, ArrowRight, MessageCircle, Phone } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { useLocale } from "@/content/locale-context";
@@ -8,10 +8,13 @@ import { submitContact } from "@/lib/contact/api";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import Link from "next/link";
 import { Wave } from "@/components/ui/wave";
+import { useAccount } from "@/lib/auth/account-context";
+import { getStudentPortalData } from "@/lib/student/data";
 
 export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const locale = useLocale();
   const isTr = locale === "tr";
+  const { user, accountType } = useAccount();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,6 +22,25 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
+
+  // Prefill for authenticated student
+  useEffect(() => {
+    if (user) {
+      if (user.user_metadata?.full_name) setFullName(user.user_metadata.full_name);
+      if (user.email) setEmail(user.email);
+      if (user.user_metadata?.phone) setPhone(user.user_metadata.phone);
+
+      if (accountType === "student") {
+        getStudentPortalData(user.id).then((res) => {
+          if (res.data?.profile) {
+            if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
+            if (res.data.profile.email) setEmail(res.data.profile.email);
+            if (res.data.profile.phone) setPhone(res.data.profile.phone);
+          }
+        });
+      }
+    }
+  }, [user, accountType]);
 
   const [turnstileToken, setTurnstileToken] = useState("");
   const turnstileRef = useRef<TurnstileWidgetRef>(null);
