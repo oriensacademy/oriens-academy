@@ -11,7 +11,7 @@ import {
 } from "./templates.ts";
 
 const DEFAULT_SENDER_NAME = "Oriens Academy";
-const DEFAULT_SENDER_EMAIL = "notifications@oriens-academy.com";
+const DEFAULT_SENDER_EMAIL = "info@oriens-academy.com";
 
 export type EmailDeliveryResult = {
   status: "sent" | "failed";
@@ -328,7 +328,7 @@ export async function dispatchBookingEmails(
 
   const configuredRecipient = adminEmailConfig?.email?.trim().toLowerCase();
   const adminRecipient = !configuredRecipient || configuredRecipient === "notifications@oriens-academy.com"
-    ? "oriensacademy@gmail.com"
+    ? "info@oriens-academy.com"
     : configuredRecipient;
   const adminLocale = localeConfig?.locale ?? "tr";
 
@@ -386,7 +386,7 @@ export async function dispatchContactEmails(
 
   const configuredRecipient = adminEmailConfig?.email?.trim().toLowerCase();
   const adminRecipient = !configuredRecipient || configuredRecipient === "notifications@oriens-academy.com"
-    ? "oriensacademy@gmail.com"
+    ? "info@oriens-academy.com"
     : configuredRecipient;
   const adminLocale = localeConfig?.locale ?? "tr";
 
