@@ -6,7 +6,7 @@ const copy = {
     title: "Kendini Dene",
     lead: "Bir sınav seçin ve örnek değerlendirme akışını deneyin.",
     selectTitle: "Sınavınızı seçin",
-    selectHint: "Tüm desteklenen sınavlarda 8 soruluk örnek test yapısı bulunur.",
+    selectHint: "Tüm desteklenen sınavlarda 6 soruluk örnek test yapısı bulunur.",
     start: "Testi Başlat",
     question: "Soru",
     of: "/",
@@ -39,7 +39,7 @@ const copy = {
     title: "Test Yourself",
     lead: "Choose an exam and experience the sample assessment flow.",
     selectTitle: "Choose your exam",
-    selectHint: "Every supported exam has an eight-question placeholder assessment shell.",
+    selectHint: "Every supported exam has a six-question placeholder assessment shell.",
     start: "Start Test",
     question: "Question",
     of: "of",
@@ -69,4 +69,4 @@ const copy = {
   },
 } as const;
 
-export function getExamTestCopy(locale: Locale) { return copy[locale]; }
+export function getExamTestCopy(locale: Locale) { return copy[locale] || copy.tr; }

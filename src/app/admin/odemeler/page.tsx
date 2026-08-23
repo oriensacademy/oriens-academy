@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, RefreshCw, Tag, WalletCards } from "lucide-react";
+import { AlertCircle, BellRing, CheckCircle2, RefreshCw, Tag, WalletCards } from "lucide-react";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
-import { listAdminPayments, reviewManualBankTransfer, type AdminPaymentRow } from "@/lib/admin/payments";
+import { listAdminPayments, reviewManualBankTransfer, sendPaymentReminder, type AdminPaymentRow } from "@/lib/admin/payments";
 
 const statusLabels: Record<string, { label: string; bg: string; text: string }> = {
   pending: { label: "Bekliyor", bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
@@ -19,6 +19,8 @@ export default function AdminPaymentsPage() {
   const [rows, setRows] = useState<AdminPaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewing, setReviewing] = useState("");
+  const [reminding, setReminding] = useState("");
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -50,10 +52,32 @@ export default function AdminPaymentsPage() {
         : `"${row.public_reference}" numaralı havale talebini reddetmek istediğinize emin misiniz?`;
     if (!window.confirm(prompt)) return;
     setReviewing(row.id);
+    setMessage("");
     const r = await reviewManualBankTransfer(row.id, decision);
     setReviewing("");
-    if (r.error) setError(r.error);
-    else void load();
+    if (r.error) {
+      setError(r.error);
+    } else {
+      setMessage(`"${row.public_reference}" işlemi başarıyla ${decision === "approved" ? "onaylandı ve paket aktif edildi" : "reddedildi"}.`);
+      void load();
+    }
+  }
+
+  async function handleSendReminder(row: AdminPaymentRow) {
+    if (!window.confirm(`"${row.payer_email || row.payer_name}" adresine "${row.public_reference}" numaralı işlem için banka havalesi ödeme hatırlatma e-postası gönderilsin mi?`)) {
+      return;
+    }
+    setReminding(row.id);
+    setMessage("");
+    setError("");
+    const r = await sendPaymentReminder(row.id);
+    setReminding("");
+    if (r.error) {
+      setError(r.error);
+    } else {
+      setMessage(`"${row.public_reference}" işlemi için ödeme hatırlatma e-postası başarıyla gönderildi (Toplam ${r.reminderCount}. hatırlatma).`);
+      void load();
+    }
   }
 
   function money(amount: number, currency = "TRY") {
@@ -73,7 +97,7 @@ export default function AdminPaymentsPage() {
             <h1 className="text-xl font-bold text-[#10271B]">Ödemeler / Payments</h1>
           </div>
           <p className="mt-1 text-xs text-[#68756C]">
-            Öğrenci paket satın alma ve ödeme işlemlerini inceleyin; manuel havaleleri doğrulayarak sonuçlandırın.
+            Öğrenci paket satın alma ve ödeme işlemlerini inceleyin; manuel havaleleri doğrulayarak sonuçlandırın veya hatırlatma gönderin.
           </p>
         </div>
         <button
@@ -86,9 +110,16 @@ export default function AdminPaymentsPage() {
         </button>
       </header>
 
+      {message && (
+        <div role="status" className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-800">
+          <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+          {message}
+        </div>
+      )}
+
       {error && (
         <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800">
-          <AlertCircle className="size-4" />
+          <AlertCircle className="size-4 shrink-0 text-red-600" />
           {error}
         </div>
       )}
@@ -113,7 +144,7 @@ export default function AdminPaymentsPage() {
                   <th className="px-4 py-3.5">Ödeme Yöntemi</th>
                   <th className="px-4 py-3.5">Sağlayıcı</th>
                   <th className="px-4 py-3.5">Durum</th>
-                  <th className="px-4 py-3.5">Tarih</th>
+                  <th className="px-4 py-3.5">Tarih / Hatırlatma</th>
                   <th className="px-4 py-3.5">Referans / İşlem</th>
                 </tr>
               </thead>
@@ -123,6 +154,8 @@ export default function AdminPaymentsPage() {
                   const couponCode = meta.coupon_code;
                   const discountAmount = meta.discount_amount ? Number(meta.discount_amount) : 0;
                   const baseAmount = meta.base_amount ? Number(meta.base_amount) : row.amount;
+                  const reminderCount = meta.reminder_count ? Number(meta.reminder_count) : 0;
+                  const lastReminder = meta.last_reminder_sent_at ? new Date(meta.last_reminder_sent_at).toLocaleString("tr-TR") : null;
                   const st = statusLabels[row.status] || { label: row.status, bg: "bg-surface-muted", text: "text-ink" };
                   const reviewable =
                     row.payment_method === "bank_transfer" &&
@@ -168,15 +201,22 @@ export default function AdminPaymentsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-[11px] text-[#68756C]">
-                        {new Date(row.created_at).toLocaleString("tr-TR")}
+                        <div>{new Date(row.created_at).toLocaleString("tr-TR")}</div>
+                        {reminderCount > 0 && (
+                          <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-800 font-medium">
+                            <BellRing className="size-3" />
+                            <span>{reminderCount}x Hatırlatma</span>
+                            {lastReminder && <span className="text-[#819586]">({lastReminder})</span>}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="font-mono font-bold text-[11px] text-[#10271B]">{row.public_reference}</span>
                         {reviewable && (
-                          <div className="mt-2 flex gap-1.5">
+                          <div className="mt-2 flex flex-wrap gap-1.5">
                             <button
                               type="button"
-                              disabled={reviewing === row.id}
+                              disabled={reviewing === row.id || reminding === row.id}
                               onClick={() => void review(row, "approved")}
                               className="rounded-lg bg-[#10271B] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs hover:bg-[#203D2D] disabled:opacity-50"
                             >
@@ -184,7 +224,15 @@ export default function AdminPaymentsPage() {
                             </button>
                             <button
                               type="button"
-                              disabled={reviewing === row.id}
+                              disabled={reviewing === row.id || reminding === row.id}
+                              onClick={() => void handleSendReminder(row)}
+                              className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                            >
+                              {reminding === row.id ? "Gönderiliyor…" : "Hatırlatma Gönder"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={reviewing === row.id || reminding === row.id}
                               onClick={() => void review(row, "rejected")}
                               className="rounded-lg border border-[#DDE4DC] px-2 py-1 text-[11px] text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                             >
@@ -204,7 +252,7 @@ export default function AdminPaymentsPage() {
 
       <p className="text-[11px] leading-5 text-[#68756C]">
         Kart numarası, CVV veya banka parolası saklanmaz. Kart işlemleri bu panelden manuel olarak ödendi durumuna getirilemez.
-        Tüm tahsilat onaylama ve reddetme işlemleri sistem denetim kaydına yazılır.
+        Tüm tahsilat onaylama, reddetme ve hatırlatma işlemleri sistem denetim kaydına yazılır.
       </p>
     </div>
   );

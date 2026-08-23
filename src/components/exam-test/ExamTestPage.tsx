@@ -22,16 +22,55 @@ export function ExamTestPage() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerId>>({});
   const [result, setResult] = useState<TestResult | null>(null);
-  const test = examTests[selectedExam];
-  const current = test.questions[index];
+  const [isFinishing, setIsFinishing] = useState(false);
+  const test = examTests[selectedExam] ?? examTests[examRecords[0].code];
+  const current = test?.questions?.[index] ?? test?.questions?.[0];
 
   useEffect(() => {
-    const code = window.location.hash.slice(1).toUpperCase() as ExamCode;
-    if (code in examTests) queueMicrotask(() => setSelectedExam(code));
+    try {
+      const code = window.location.hash.slice(1).toUpperCase() as ExamCode;
+      if (code in examTests) queueMicrotask(() => setSelectedExam(code));
+    } catch {
+      // Safe hash ignore
+    }
   }, []);
 
-  function start() { setAnswers({}); setIndex(0); setResult(null); setStage("test"); window.scrollTo({ top: 0, behavior: "smooth" }); }
-  function finish() { setResult(calculateTestResult(test, answers, locale)); setStage("result"); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  function start() {
+    setAnswers({});
+    setIndex(0);
+    setResult(null);
+    setIsFinishing(false);
+    setStage("test");
+    if (typeof window !== "undefined") {
+      try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+    }
+  }
+
+  function finish() {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    try {
+      const computedResult = calculateTestResult(test, answers, locale);
+      setResult(computedResult);
+      setStage("result");
+      if (typeof window !== "undefined") {
+        try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
+      }
+    } catch (err) {
+      console.error("Failed to compute test result:", err);
+      // Safe fallback result
+      setResult({
+        correct: 0,
+        incorrect: test?.questions?.length ?? 6,
+        total: test?.questions?.length ?? 6,
+        accuracy: 0,
+        topics: [],
+      });
+      setStage("result");
+    } finally {
+      setIsFinishing(false);
+    }
+  }
 
   return (
     <section className="min-h-[calc(100vh-5rem)] border-b border-border bg-background pt-28 pb-20 md:pt-36 md:pb-28">

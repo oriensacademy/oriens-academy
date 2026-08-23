@@ -11,6 +11,8 @@ import { CONTACT } from "@/config/contact";
 import { FooterSection } from "@/components/ui/footer-section";
 import { useAccount } from "@/lib/auth/account-context";
 
+import { ThemeSelector } from "@/components/theme/ThemeSelector";
+
 export function Footer() {
   const { nav, footer } = useCommonContent();
   const locale = useLocale();
@@ -117,6 +119,7 @@ export function Footer() {
           <LanguageSwitch />
         </div>
       }
+      themeSelector={<ThemeSelector />}
       legal={
         <div className="flex flex-col gap-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>

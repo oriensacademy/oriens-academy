@@ -91,8 +91,8 @@ export function PricingPage() {
       color: item.id === "package10" ? "gold" : item.id === "package30" ? "forest" : item.id === "package20" ? "ivory" : "sage",
       ctaLabel: locale === "tr" ? "Görüşme Planla" : "Book a Consultation",
       ctaHref: `${localizedPath("home", locale)}?package=${encodeURIComponent(item.id)}#consultation-form`,
-      purchaseLabel: item.purchase_mode === "purchasable" ? (locale === "tr" ? "Eğitim Satın Al" : "Purchase Package") : undefined,
-      purchaseHref: item.purchase_mode === "purchasable" ? `${localizedPath("payment", locale)}?package=${encodeURIComponent(item.id)}` : undefined,
+      purchaseLabel: locale === "tr" ? "Eğitim Satın Al" : "Purchase Package",
+      purchaseHref: `${localizedPath("payment", locale)}?package=${encodeURIComponent(item.id)}`,
     };
   });
 

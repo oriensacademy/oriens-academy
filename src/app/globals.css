@@ -59,8 +59,9 @@ html[data-oriens-loader-skip="1"] [data-initial-loader] {
   --radius-3xl: 24px;
 }
 
-:root {
-  /* Primitive & Semantic tokens — Editorial Ivory + Sage Academic Palette */
+:root,
+html[data-theme="theme-1"] {
+  /* OPTION 1: Editorial Ivory + Refreshed Sage Academic (Default) */
   --background: #F6F8F3;
   --background-soft: #F9FAF6;
   --foreground: #10271B;
@@ -69,43 +70,223 @@ html[data-oriens-loader-skip="1"] [data-initial-loader] {
   --card: #FFFFFF;
   --card-foreground: #10271B;
   --surface: #FFFFFF;
-  --surface-muted: #F6F8F3;
-  --primary: #819586;
-  --primary-hover: #718678;
+  --surface-muted: #F3F6F1;
+  --primary: #5A7762;
+  --primary-hover: #4B6452;
   --primary-foreground: #FFFFFF;
-  --secondary: #A8B7AA;
+  --secondary: #90A494;
   --secondary-foreground: #FFFFFF;
-  --sage-soft: #E8EEE8;
-  --accent: #819586;
+  --sage-soft: #E5EDE6;
+  --accent: #5A7762;
   --accent-foreground: #FFFFFF;
   --warm-accent: #C5B58A;
-  --brand-accent: #819586;
+  --brand-accent: #5A7762;
   --brand-accent-foreground: #FFFFFF;
-  --muted: #EFF2ED;
-  --muted-foreground: #68756C;
-  --border: #DDE4DC;
-  --border-strong: #AAB8AC;
-  --input: #D6DED6;
-  --ring: #819586;
+  --muted: #EBF0EA;
+  --muted-foreground: #57655B;
+  --border: #D3DFD4;
+  --border-strong: #9CB2A0;
+  --input: #CDDCD0;
+  --ring: #5A7762;
   --popover: #FFFFFF;
   --popover-foreground: #10271B;
   --destructive: #B91C1C;
   --destructive-foreground: #FFFFFF;
 
-  --destination-uk: #53697A;
-  --destination-uk-soft: #E9EFF2;
-  --destination-europe: #6F8B82;
-  --destination-europe-soft: #EAF1EE;
-  --destination-us: #667F98;
-  --destination-us-soft: #EBF0F5;
-  --destination-canada: #8A6268;
-  --destination-canada-soft: #F3EBEC;
-  --destination-other: #877A5F;
-  --destination-other-soft: #F2EFE8;
+  --destination-uk: #3D5A70;
+  --destination-uk-soft: #E4ECF2;
+  --destination-europe: #4A7A6E;
+  --destination-europe-soft: #E2EFEA;
+  --destination-us: #4E6E8E;
+  --destination-us-soft: #E4EDF5;
+  --destination-canada: #8A4F59;
+  --destination-canada-soft: #F5EAEB;
+  --destination-other: #78694B;
+  --destination-other-soft: #F3ECE0;
 
   --font-display: var(--font-dm-serif);
   --font-ui: var(--font-manrope);
   --font-body: var(--font-inter);
+}
+
+html[data-theme="theme-2"] {
+  /* OPTION 2: Premium Sage + Royal Blue (Modern Academic Luxe) */
+  --background: #F4F7F5;
+  --background-soft: #F8FAF9;
+  --foreground: #0B2217;
+  --forest: #0B2217;
+  --ink: #0B2217;
+  --card: #FFFFFF;
+  --card-foreground: #0B2217;
+  --surface: #FFFFFF;
+  --surface-muted: #EBF1EE;
+  --primary: #1C5182;
+  --primary-hover: #143F66;
+  --primary-foreground: #FFFFFF;
+  --secondary: #658876;
+  --secondary-foreground: #FFFFFF;
+  --sage-soft: #DFECE5;
+  --accent: #1C5182;
+  --accent-foreground: #FFFFFF;
+  --warm-accent: #D1B87A;
+  --brand-accent: #1C5182;
+  --brand-accent-foreground: #FFFFFF;
+  --muted: #E8EFEA;
+  --muted-foreground: #53675C;
+  --border: #CFDCD3;
+  --border-strong: #96B2A0;
+  --input: #C7D8CC;
+  --ring: #1C5182;
+  --popover: #FFFFFF;
+  --popover-foreground: #0B2217;
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
+
+  --destination-uk: #1C5182;
+  --destination-uk-soft: #E2EDF7;
+  --destination-europe: #47796B;
+  --destination-europe-soft: #E1EFEA;
+  --destination-us: #285E8C;
+  --destination-us-soft: #E4EEF7;
+  --destination-canada: #8E4C56;
+  --destination-canada-soft: #F6EAEB;
+  --destination-other: #78694B;
+  --destination-other-soft: #F3ECE0;
+}
+
+html[data-theme="theme-3"] {
+  /* OPTION 3: Midnight Navy + Champagne Gold (Classic Prestige) */
+  --background: #F6F8FA;
+  --background-soft: #FAFBFD;
+  --foreground: #0A192F;
+  --forest: #0A192F;
+  --ink: #0A192F;
+  --card: #FFFFFF;
+  --card-foreground: #0A192F;
+  --surface: #FFFFFF;
+  --surface-muted: #EEF2F6;
+  --primary: #B2883B;
+  --primary-hover: #98722C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #647B95;
+  --secondary-foreground: #FFFFFF;
+  --sage-soft: #E5ECF4;
+  --accent: #B2883B;
+  --accent-foreground: #FFFFFF;
+  --warm-accent: #D4B26F;
+  --brand-accent: #B2883B;
+  --brand-accent-foreground: #FFFFFF;
+  --muted: #E9EFF5;
+  --muted-foreground: #506173;
+  --border: #D3DEEB;
+  --border-strong: #98B1CC;
+  --input: #CAD7E6;
+  --ring: #B2883B;
+  --popover: #FFFFFF;
+  --popover-foreground: #0A192F;
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
+
+  --destination-uk: #204B73;
+  --destination-uk-soft: #E1EAF4;
+  --destination-europe: #386E64;
+  --destination-europe-soft: #E0EFEA;
+  --destination-us: #1A3E61;
+  --destination-us-soft: #DFE8F2;
+  --destination-canada: #844853;
+  --destination-canada-soft: #F5EAEB;
+  --destination-other: #8A6E3B;
+  --destination-other-soft: #F6EFE2;
+}
+
+html[data-theme="theme-4"] {
+  /* OPTION 4: Deep Teal + Cobalt (Contemporary Global) */
+  --background: #F3F8F8;
+  --background-soft: #F8FBFC;
+  --foreground: #0B2529;
+  --forest: #081F22;
+  --ink: #0B2529;
+  --card: #FFFFFF;
+  --card-foreground: #0B2529;
+  --surface: #FFFFFF;
+  --surface-muted: #E7F1F2;
+  --primary: #0D697C;
+  --primary-hover: #094F5E;
+  --primary-foreground: #FFFFFF;
+  --secondary: #588C95;
+  --secondary-foreground: #FFFFFF;
+  --sage-soft: #DEEFF1;
+  --accent: #0D697C;
+  --accent-foreground: #FFFFFF;
+  --warm-accent: #C7AA6E;
+  --brand-accent: #0D697C;
+  --brand-accent-foreground: #FFFFFF;
+  --muted: #E4EFF0;
+  --muted-foreground: #4B6367;
+  --border: #CBE1E3;
+  --border-strong: #8FBCBF;
+  --input: #C3DCDE;
+  --ring: #0D697C;
+  --popover: #FFFFFF;
+  --popover-foreground: #0B2529;
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
+
+  --destination-uk: #1E5C77;
+  --destination-uk-soft: #E0EEF4;
+  --destination-europe: #1D6B66;
+  --destination-europe-soft: #DFEFEA;
+  --destination-us: #154F6A;
+  --destination-us-soft: #DFEAF1;
+  --destination-canada: #844654;
+  --destination-canada-soft: #F5EAEB;
+  --destination-other: #7B6846;
+  --destination-other-soft: #F4EFE3;
+}
+
+html[data-theme="theme-5"] {
+  /* OPTION 5: Forest + Warm Terracotta (Heritage Warmth) */
+  --background: #F8F6F2;
+  --background-soft: #FCFAF7;
+  --foreground: #14241B;
+  --forest: #0F1D15;
+  --ink: #14241B;
+  --card: #FFFFFF;
+  --card-foreground: #14241B;
+  --surface: #FFFFFF;
+  --surface-muted: #F1ECE3;
+  --primary: #B25332;
+  --primary-hover: #964024;
+  --primary-foreground: #FFFFFF;
+  --secondary: #5F7A69;
+  --secondary-foreground: #FFFFFF;
+  --sage-soft: #EAE6DB;
+  --accent: #B25332;
+  --accent-foreground: #FFFFFF;
+  --warm-accent: #B25332;
+  --brand-accent: #B25332;
+  --brand-accent-foreground: #FFFFFF;
+  --muted: #EFE9DE;
+  --muted-foreground: #615E55;
+  --border: #DFD7C9;
+  --border-strong: #AEA08A;
+  --input: #D9CFBF;
+  --ring: #B25332;
+  --popover: #FFFFFF;
+  --popover-foreground: #14241B;
+  --destructive: #B91C1C;
+  --destructive-foreground: #FFFFFF;
+
+  --destination-uk: #3A556B;
+  --destination-uk-soft: #E3EBF1;
+  --destination-europe: #4A6E58;
+  --destination-europe-soft: #E2ECE5;
+  --destination-us: #425F78;
+  --destination-us-soft: #E4ECF2;
+  --destination-canada: #B25332;
+  --destination-canada-soft: #F7EAE5;
+  --destination-other: #826E4B;
+  --destination-other-soft: #F3ECE1;
 }
 
 @layer base {

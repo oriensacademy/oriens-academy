@@ -35,7 +35,7 @@ export function Navbar() {
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
   const isStudent = accountType === "student";
-  const showPricing = isStudent;
+  const showPricing = !isInitializing && isStudent;
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement>(null);

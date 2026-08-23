@@ -5,12 +5,14 @@ export function FooterSection({
   navigation,
   contact,
   language,
+  themeSelector,
   legal,
 }: {
   brand: ReactNode;
   navigation: ReactNode;
   contact: ReactNode;
   language: ReactNode;
+  themeSelector?: ReactNode;
   legal: ReactNode;
 }) {
   return (
@@ -22,6 +24,7 @@ export function FooterSection({
           <div>{contact}</div>
           <div>{language}</div>
         </div>
+        {themeSelector && <div className="mt-8 border-t border-border pt-6">{themeSelector}</div>}
         <div className="mt-8 border-t border-border pt-5">{legal}</div>
       </div>
     </footer>

@@ -15,6 +15,7 @@ import {
   Lock,
   FileCheck,
   WalletCards,
+  TrendingUp,
 } from "lucide-react";
 
 export interface NavItem {
@@ -74,6 +75,13 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     labelEn: "Payments",
     href: "/admin/odemeler",
     icon: WalletCards,
+    enabled: true,
+  },
+  {
+    label: "Mali Akış",
+    labelEn: "Financial Flow",
+    href: "/admin/mali-akis",
+    icon: TrendingUp,
     enabled: true,
   },
   {

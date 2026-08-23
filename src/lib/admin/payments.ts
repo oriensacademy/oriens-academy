@@ -21,6 +21,8 @@ export interface AdminPaymentRow {
     coupon_code?: string;
     coupon_id?: string;
     locale?: string;
+    reminder_count?: number;
+    last_reminder_sent_at?: string;
   } | null;
 }
 
@@ -49,5 +51,24 @@ export async function reviewManualBankTransfer(paymentId: string, decision: "app
     success: Boolean(result?.success),
     error: result?.success ? null : result?.error_code || "Ödeme incelemesi tamamlanamadı.",
     alreadyReviewed: Boolean(result?.already_reviewed),
+  };
+}
+
+export async function sendPaymentReminder(paymentId: string) {
+  const client = getSupabaseClient();
+  const caller = client.rpc as unknown as (
+    fn: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  const { data, error } = await caller("admin_send_payment_reminder", {
+    p_payment_id: paymentId,
+  });
+  if (error) return { success: false, error: error.message };
+  const result = data as { success?: boolean; error_code?: string; reminder_count?: number; last_reminder_sent_at?: string } | null;
+  return {
+    success: Boolean(result?.success),
+    error: result?.success ? null : result?.error_code || "Hatırlatma gönderilemedi.",
+    reminderCount: result?.reminder_count,
+    lastReminderSentAt: result?.last_reminder_sent_at,
   };
 }
