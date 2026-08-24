@@ -1,8 +1,39 @@
+import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 
 const base = process.env.QA_BASE_URL || "http://127.0.0.1:3010";
+const env = readFileSync(".env.local", "utf8");
+const supabaseUrl = env.match(/^NEXT_PUBLIC_SUPABASE_URL=(.+)$/m)?.[1]?.trim().replace(/^['"]|['"]$/g, "") || "";
+const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+const userId = "22222222-2222-4222-8222-222222222222";
+const now = Math.floor(Date.now() / 1000);
+const b64 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ aud: "authenticated", exp: now + 3600, sub: userId, role: "authenticated", app_metadata: { provider: "email", providers: ["email"] } })}.qa`;
+const user = {
+  id: userId,
+  aud: "authenticated",
+  role: "authenticated",
+  email: "payment.qa@example.test",
+  email_confirmed_at: new Date().toISOString(),
+  app_metadata: { provider: "email", providers: ["email"] },
+  user_metadata: { full_name: "Payment QA" },
+  identities: [],
+  created_at: new Date().toISOString(),
+};
+const session = {
+  access_token: jwt,
+  token_type: "bearer",
+  expires_in: 3600,
+  expires_at: now + 3600,
+  refresh_token: "qa-refresh-token",
+  user,
+};
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
+await context.addInitScript(
+  ({ key, value }) => localStorage.setItem(key, JSON.stringify(value)),
+  { key: `sb-${projectRef}-auth-token`, value: session },
+);
 await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: base });
 const page = await context.newPage();
 const issues = [];
@@ -17,6 +48,26 @@ page.on("console", (message) => {
   const isTurnstileDiagnostic = sourceUrl.startsWith("https://challenges.cloudflare.com/");
   if (message.type() === "error" && !value.includes("Turnstile") && !value.includes("challenges.cloudflare.com") && !isTurnstileDiagnostic) issues.push(`console: ${value}`);
 });
+
+await page.route("**/auth/v1/user*", (route) => route.fulfill({
+  status: 200,
+  contentType: "application/json",
+  body: JSON.stringify(user),
+}));
+await page.route("**/rest/v1/student_profiles*", (route) => route.fulfill({
+  status: 200,
+  headers: { "content-type": "application/vnd.pgrst.object+json" },
+  body: JSON.stringify({
+    id: userId,
+    full_name: "Payment QA",
+    email: user.email,
+    phone: "+90 555 000 00 00",
+    preferred_language: "tr",
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }),
+}));
 
 await page.route("**/rest/v1/pricing_packages*", (route) => route.fulfill({
   status: 200,
@@ -47,8 +98,9 @@ for (const locale of ["tr", "en"]) {
 
   const pendingText = locale === "tr" ? "Kartlı ödeme, resmî banka" : "Card payments will be enabled";
   await page.waitForTimeout(1200);
+  await page.getByRole("radio", { name: locale === "tr" ? "Kart ile Ödeme" : "Pay by Card" }).click();
   check((await page.getByText(pendingText, { exact: false }).count()) > 0, `${locale} pending bank credential notice is missing`);
-  check(await page.getByRole("button", { name: locale === "tr" ? "Ödemeye Devam Et" : "Continue to Payment" }).isDisabled(), `${locale} card submit is not disabled while credentials are pending`);
+  check(await page.getByRole("button", { name: locale === "tr" ? /Ödemeyi Tamamla/ : /^Pay \(/ }).isDisabled(), `${locale} card submit is not disabled while credentials are pending`);
   check((await page.locator('input[autocomplete="cc-number"], input[autocomplete="cc-csc"], input[name*="card" i], input[name*="cvv" i]').count()) === 0, `${locale} page contains a raw card input`);
   check((await page.locator('img[src*="supported-card-networks"]').count()) === 0, `${locale} page claims unconfirmed card-network support`);
 

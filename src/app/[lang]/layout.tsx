@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LanguageTransitionProvider } from "@/components/brand/LanguageTransitionProvider";
-import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
-import { GoogleTagManager } from "@/components/analytics/GoogleTagManager";
+import { GoogleTags } from "@/components/analytics/GoogleTags";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { LocaleProvider } from "@/content/locale-context";
 import { getDictionary, isLocale, locales } from "@/content/dictionaries";
@@ -70,8 +69,7 @@ export default async function LangLayout({
   return (
     <>
       <JsonLd />
-      <GoogleTagManager />
-      <GoogleAnalytics />
+      <GoogleTags />
       <LocaleProvider locale={lang}>
         <LanguageTransitionProvider>
           <a

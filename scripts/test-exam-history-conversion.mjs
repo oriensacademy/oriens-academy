@@ -43,8 +43,9 @@ async function runTests() {
       console.log("✓ Email modal opened");
 
       // Type email and name
-      await page.locator('input[placeholder="ornek@email.com"]').fill("test-student-flow@oriens-academy.com");
-      await page.locator('input[placeholder="Adınız Soyadınız"]').fill("Test Öğrenci");
+      const emailDialog = page.getByRole("dialog");
+      await emailDialog.locator('input[type="email"]').fill("test-student-flow@oriens-academy.com");
+      await emailDialog.locator('input[type="text"]').fill("Test Öğrenci");
 
       // Mock the Edge Function network response to verify conversion UI in test sandbox
       await page.route("**/functions/v1/send-exam-result-email", async (route) => {
@@ -115,7 +116,7 @@ async function runTests() {
       console.log("✓ EN Email modal opened");
 
       // Type email
-      await page.locator('input[placeholder="ornek@email.com"]').fill("en-student@oriens-academy.com");
+      await page.getByRole("dialog").locator('input[type="email"]').fill("en-student@oriens-academy.com");
 
       // Mock the Edge Function network response
       await page.route("**/functions/v1/send-exam-result-email", async (route) => {

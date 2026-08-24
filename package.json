@@ -10,6 +10,8 @@
     "lint": "eslint",
     "test:search:api": "node scripts/search-api-regression.mjs",
     "test:search:browser": "node scripts/search-browser-qa.mjs",
+    "test:search:phase01": "node scripts/phase01-search-regression.mjs",
+    "test:ui:phase01": "node scripts/phase01-ui-regression.mjs",
     "test:exam:browser": "node scripts/test-all-exam-scenarios.mjs",
     "test:exam:conversion": "node scripts/test-exam-history-conversion.mjs",
     "local:supabase:start": "npx supabase start",

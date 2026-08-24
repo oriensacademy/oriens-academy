@@ -30,6 +30,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Oriens Academy",
   description: "International Exam Preparation & Academic Consultancy",
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 import { PublicSettingsProvider } from "@/lib/settings/public-settings-context";

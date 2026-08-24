@@ -43,6 +43,7 @@ yarn-error.log*
 /.gemini/
 /.agent/
 /scratch/
+/local-backups/
 
 # env files (can opt-in for committing if needed)
 .env*

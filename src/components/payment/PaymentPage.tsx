@@ -564,6 +564,7 @@ export function PaymentPage() {
                       locale={locale}
                       mockAction={mockCardAction}
                       onMockActionChange={setMockCardAction}
+                      enabled={canSubmitCard}
                     />
                   ) : (
                     <BankTransferPanel locale={locale} details={bankDetails} />

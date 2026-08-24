@@ -72,6 +72,8 @@ The package manager is npm (`package-lock.json`). Static output is generated in 
 
 The safe, commented inventory is [.env.example](.env.example). Browser variables configure Supabase public access and Turnstile. Privileged variables belong in Supabase Edge Function secrets or local untracked files. Supabase supplies `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to deployed functions.
 
+Google Search Console verification, GTM/GA4 ownership, Consent Mode and future Ads conversion labels are documented in [Google Services Setup](docs/GOOGLE_SERVICES_SETUP.md). The Phase 01 read-only production inventory and deletion order are in [Cleanup Manifest](docs/PHASE_01_CLEANUP_MANIFEST.md); it is a plan only and does not authorize cleanup.
+
 ## Public Routes and Internationalization
 
 The locale prefix is mandatory. Turkish is the default redirect target (`public/_redirects`).

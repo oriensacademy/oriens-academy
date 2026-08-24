@@ -1,43 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  AlertCircle,
-  BookOpen,
-  CheckCircle2,
-  Edit2,
-  Layers,
-  Plus,
-  Search,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, Archive, BookOpen, CheckCircle2, ChevronDown, Copy, Edit2, Eye, Layers, Plus, Search, X } from "lucide-react";
 import {
   archiveQuestionBankItem,
   getQuestionBankItems,
   saveQuestionBankItem,
   type HomeworkOption,
   type HomeworkQuestionType,
-  type QuestionDifficulty,
   type QuestionBankItem,
+  type QuestionDifficulty,
   type QuestionLanguage,
 } from "@/lib/homework";
 
-const EXAM_PRESETS = [
-  "SAT",
-  "AP Calculus",
-  "AP Physics",
-  "AP Chemistry",
-  "AP Biology",
-  "AP Economics",
-  "IB Math",
-  "IB Physics",
-  "IB English",
-  "IELTS",
-  "TOEFL",
-  "Genel",
-];
+const EXAM_PRESETS = ["SAT", "IB", "AP", "ESAT", "TMUA", "IMAT", "UCAT", "OMPT", "GRE", "GMAT", "Genel"];
+
+const QUESTION_TYPE_LABELS: Record<HomeworkQuestionType, string> = {
+  multiple_choice: "Çoktan Seçmeli",
+  short_answer: "Kısa Cevap",
+  long_answer: "Uzun Cevap / Essay",
+};
 
 const emptyOptions = (): HomeworkOption[] => [
   { option_key: "A", option_text: "", is_correct: true },
@@ -46,379 +28,228 @@ const emptyOptions = (): HomeworkOption[] => [
   { option_key: "D", option_text: "", is_correct: false },
 ];
 
-export function QuestionBankManager({
-  onCreateTemplateWithQuestions,
-}: {
-  onCreateTemplateWithQuestions?: (questions: QuestionBankItem[]) => void;
-}) {
+function createDraft(questionType: HomeworkQuestionType): Partial<QuestionBankItem> {
+  return {
+    code: "",
+    exam: "SAT",
+    topic: "",
+    difficulty: "medium",
+    language: "tr",
+    question_type: questionType,
+    prompt: "",
+    options: questionType === "multiple_choice" ? emptyOptions() : [],
+    reference_answer: "",
+    explanation: "",
+  };
+}
+
+function compactId(item: QuestionBankItem) {
+  return item.code || item.id.slice(0, 8).toUpperCase();
+}
+
+export function QuestionBankManager() {
   const [items, setItems] = useState<QuestionBankItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedExam, setSelectedExam] = useState("");
   const [selectedType, setSelectedType] = useState("");
-  const [selectedLang, setSelectedLang] = useState("");
-
-  // Editor Modal
+  const [selectedTopic, setSelectedTopic] = useState("");
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Partial<QuestionBankItem> | null>(null);
+  const [viewingItem, setViewingItem] = useState<QuestionBankItem | null>(null);
 
-  // Selection for bulk actions
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const refreshData = () => {
+    setLoading(true);
+    getQuestionBankItems().then((res) => {
+      if (res.error) setError(res.error);
+      else setItems(res.data);
+      setLoading(false);
+    });
+  };
 
   useEffect(() => {
     let active = true;
-    getQuestionBankItems({
-      exam: selectedExam || undefined,
-      question_type: selectedType || undefined,
-      language: selectedLang || undefined,
-      query: searchQuery || undefined,
-    }).then((res) => {
+    getQuestionBankItems().then((res) => {
       if (!active) return;
       if (res.error) setError(res.error);
       else setItems(res.data);
       setLoading(false);
     });
-    return () => {
-      active = false;
-    };
-  }, [selectedExam, selectedType, selectedLang, searchQuery]);
+    return () => { active = false; };
+  }, []);
 
-  const refreshData = () => {
-    setLoading(true);
-    getQuestionBankItems({
-      exam: selectedExam || undefined,
-      question_type: selectedType || undefined,
-      language: selectedLang || undefined,
-      query: searchQuery || undefined,
-    }).then((res) => {
-      if (res.error) setError(res.error);
-      else setItems(res.data);
-      setLoading(false);
+  const exams = useMemo(
+    () => Array.from(new Set(items.map((item) => item.exam))).sort((a, b) => a.localeCompare(b, "tr")),
+    [items]
+  );
+  const topics = useMemo(
+    () => Array.from(new Set(items.map((item) => item.topic))).sort((a, b) => a.localeCompare(b, "tr")),
+    [items]
+  );
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase("tr-TR");
+    return items.filter((item) => {
+      const matchesQuery = !query ||
+        item.id.toLowerCase().includes(query) ||
+        (item.code || "").toLocaleLowerCase("tr-TR").includes(query) ||
+        item.prompt.toLocaleLowerCase("tr-TR").includes(query) ||
+        item.exam.toLocaleLowerCase("tr-TR").includes(query) ||
+        item.topic.toLocaleLowerCase("tr-TR").includes(query);
+      return matchesQuery &&
+        (!selectedType || item.question_type === selectedType) &&
+        (!selectedExam || item.exam === selectedExam) &&
+        (!selectedTopic || item.topic === selectedTopic);
     });
-  };
+  }, [items, searchQuery, selectedExam, selectedTopic, selectedType]);
 
-  const handleOpenCreate = () => {
-    setEditingItem({
-      code: "",
-      exam: "SAT",
-      topic: "",
-      difficulty: "medium",
-      language: "en",
-      question_type: "multiple_choice",
-      prompt: "",
-      options: emptyOptions(),
-      reference_answer: "",
-      explanation: "",
-    });
+  const openCreate = (type: HomeworkQuestionType) => {
+    setEditingItem(createDraft(type));
+    setCreateMenuOpen(false);
     setEditorOpen(true);
   };
 
-  const handleOpenEdit = (item: QuestionBankItem) => {
+  const openEdit = (item: QuestionBankItem) => {
     setEditingItem({
       ...item,
-      options:
-        item.options && item.options.length === 4
-          ? item.options
-          : emptyOptions(),
+      options: item.question_type === "multiple_choice" && item.options.length === 4 ? item.options : emptyOptions(),
     });
     setEditorOpen(true);
   };
 
-  const handleArchive = async (id: string) => {
-    if (!confirm("Bu soruyu arşivlemek istediğinize emin misiniz?")) return;
-    const res = await archiveQuestionBankItem(id);
-    if (res.error) {
-      setError(res.error);
-    } else {
+  const duplicate = async (item: QuestionBankItem) => {
+    const result = await saveQuestionBankItem({
+      ...item,
+      id: undefined,
+      code: item.code ? `${item.code}-COPY` : null,
+      status: "active",
+    });
+    if (result.error) setError(result.error);
+    else {
+      setMessage("Soru çoğaltıldı. Yeni kayıt bağımsız olarak düzenlenebilir.");
+      refreshData();
+    }
+  };
+
+  const archive = async (id: string) => {
+    if (!window.confirm("Bu soruyu arşivlemek istediğinize emin misiniz?")) return;
+    const result = await archiveQuestionBankItem(id);
+    if (result.error) setError(result.error);
+    else {
       setMessage("Soru arşivlendi.");
       refreshData();
     }
   };
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
   return (
     <div className="space-y-5">
-      {/* Top Header & Actions */}
-      <div className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-5 sm:flex-row sm:items-center sm:justify-between shadow-xs">
+      <section className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Layers className="size-5 text-[#819586]" />
-            <h2 className="text-lg font-bold text-ink">Soru Bankası</h2>
-            <span className="rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-              {items.length} Soru
-            </span>
+            <Layers className="size-5 text-primary" />
+            <h2 className="text-lg font-bold text-ink">Soru Kütüphanesi</h2>
+            <span className="rounded-full bg-surface-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">{filteredItems.length} soru</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Sınav, konu ve zorluk seviyelerine göre yapılandırılmış merkezi soru havuzu.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Ödev ve materyallerde tekrar kullanılabilen canonical soru kayıtlarını yönetin.</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.length > 0 && onCreateTemplateWithQuestions && (
-            <button
-              type="button"
-              onClick={() => {
-                const selected = items.filter((i) => selectedIds.includes(i.id));
-                onCreateTemplateWithQuestions(selected);
-              }}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-3.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-            >
-              <Sparkles className="size-4" />
-              Seçilenlerle Şablon Oluştur ({selectedIds.length})
-            </button>
-          )}
+        <div className="relative self-start sm:self-auto">
           <button
             type="button"
-            onClick={handleOpenCreate}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer shadow-xs"
+            aria-haspopup="menu"
+            aria-expanded={createMenuOpen}
+            onClick={() => setCreateMenuOpen((open) => !open)}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-forest"
           >
-            <Plus className="size-4" />
-            Yeni Soru Ekle
+            <Plus className="size-4" /> Yeni Soru <ChevronDown className="size-3.5" />
           </button>
+          {createMenuOpen && (
+            <div role="menu" className="absolute right-0 top-full z-30 mt-2 w-56 rounded-2xl border border-border bg-white p-1.5 shadow-xl">
+              {(Object.keys(QUESTION_TYPE_LABELS) as HomeworkQuestionType[]).map((type) => (
+                <button key={type} type="button" role="menuitem" onClick={() => openCreate(type)} className="block w-full rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surface-muted">
+                  {QUESTION_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
-      {/* Alerts */}
-      {message && (
-        <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 font-medium">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
-            <span>{message}</span>
-          </div>
-          <button onClick={() => setMessage("")} className="text-emerald-800 hover:text-emerald-950">
-            <X className="size-3.5" />
-          </button>
-        </div>
-      )}
-      {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 font-medium">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="size-4 shrink-0 text-red-700" />
-            <span>{error}</span>
-          </div>
-          <button onClick={() => setError("")} className="text-red-800 hover:text-red-950">
-            <X className="size-3.5" />
-          </button>
-        </div>
-      )}
+      {message && <Notice tone="success" onClose={() => setMessage("")}>{message}</Notice>}
+      {error && <Notice tone="error" onClose={() => setError("")}>{error}</Notice>}
 
-      {/* Filter Bar */}
-      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-border bg-white p-4 sm:grid-cols-4">
-        <div className="relative">
+      <section aria-label="Soru kütüphanesi filtreleri" className="grid gap-3 rounded-2xl border border-border bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="relative sm:col-span-2 xl:col-span-1">
+          <span className="sr-only">Soru ara</span>
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Soru metni, kod veya konu ara..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-input bg-white pl-9 pr-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-          />
-        </div>
+          <input type="search" placeholder="Soru metni, konu veya ID" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="min-h-10 w-full min-w-0 rounded-xl border border-input bg-white pl-9 pr-3 text-xs text-ink outline-hidden focus-visible:ring-2 focus-visible:ring-primary" />
+        </label>
+        <FilterSelect label="Soru Tipi" value={selectedType} onChange={setSelectedType}>
+          <option value="">Tüm soru tipleri</option>
+          {(Object.keys(QUESTION_TYPE_LABELS) as HomeworkQuestionType[]).map((type) => <option key={type} value={type}>{QUESTION_TYPE_LABELS[type]}</option>)}
+        </FilterSelect>
+        <FilterSelect label="Sınav" value={selectedExam} onChange={setSelectedExam}>
+          <option value="">Tüm sınavlar</option>
+          {exams.map((exam) => <option key={exam} value={exam}>{exam}</option>)}
+        </FilterSelect>
+        <FilterSelect label="Konu" value={selectedTopic} onChange={setSelectedTopic}>
+          <option value="">Tüm konular</option>
+          {topics.map((topic) => <option key={topic} value={topic}>{topic}</option>)}
+        </FilterSelect>
+      </section>
 
-        <select
-          value={selectedExam}
-          onChange={(e) => setSelectedExam(e.target.value)}
-          className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-        >
-          <option value="">Tüm Sınavlar</option>
-          {EXAM_PRESETS.map((ex) => (
-            <option key={ex} value={ex}>
-              {ex}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-          className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-        >
-          <option value="">Tüm Soru Tipleri</option>
-          <option value="multiple_choice">Çoktan Seçmeli</option>
-          <option value="short_answer">Kısa Cevap</option>
-          <option value="long_answer">Uzun Cevap</option>
-        </select>
-
-        <select
-          value={selectedLang}
-          onChange={(e) => setSelectedLang(e.target.value)}
-          className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-        >
-          <option value="">Tüm Diller</option>
-          <option value="en">İngilizce (EN)</option>
-          <option value="tr">Türkçe (TR)</option>
-        </select>
-      </div>
-
-      {/* Question Cards Grid */}
       {loading ? (
-        <div className="rounded-3xl border border-border bg-white p-12 text-center text-xs text-muted-foreground">
-          Soru bankası yükleniyor...
-        </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-border bg-white p-12 text-center space-y-3">
+        <div className="rounded-3xl border border-border bg-white p-12 text-center text-xs text-muted-foreground">Soru kütüphanesi yükleniyor…</div>
+      ) : filteredItems.length === 0 ? (
+        <div className="space-y-3 rounded-3xl border border-dashed border-border bg-white p-12 text-center">
           <BookOpen className="mx-auto size-8 text-muted-foreground/50" />
-          <div className="text-sm font-semibold text-ink">Kayıtlı soru bulunamadı</div>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Arama kriterlerinizi değiştirebilir veya sağ üstteki butondan yeni bir soru oluşturabilirsiniz.
-          </p>
-          <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest"
-          >
-            <Plus className="size-4" /> Soru Ekle
-          </button>
+          <p className="text-sm font-semibold text-ink">Bu kriterlere uyan soru bulunamadı</p>
+          <p className="mx-auto max-w-sm text-xs text-muted-foreground">Filtreleri temizleyin veya “Yeni Soru” menüsünden soru tipini seçerek ilk kaydı oluşturun.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {items.map((item) => {
-            const isSelected = selectedIds.includes(item.id);
-            return (
-              <div
-                key={item.id}
-                className={`flex flex-col justify-between rounded-2xl border bg-white p-5 transition-all shadow-xs ${
-                  isSelected ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-border/80"
-                }`}
-              >
-                <div>
-                  {/* Card Header & Badges */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelect(item.id)}
-                        className="rounded border-border text-primary focus:ring-primary size-4 cursor-pointer"
-                      />
-                      {item.code && (
-                        <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {item.code}
-                        </span>
-                      )}
-                      <span className="rounded-md bg-forest/5 border border-forest/15 px-2 py-0.5 text-[11px] font-bold text-forest">
-                        {item.exam}
-                      </span>
-                      <span className="text-[11px] font-medium text-muted-foreground">
-                        {item.topic}
-                      </span>
+        <div className="overflow-x-auto rounded-2xl border border-border bg-white shadow-xs">
+          <table className="w-full min-w-[920px] border-collapse text-left text-xs">
+            <thead className="bg-surface-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 font-semibold">ID</th>
+                <th className="px-4 py-3 font-semibold">Soru özeti</th>
+                <th className="px-4 py-3 font-semibold">Tip</th>
+                <th className="px-4 py-3 font-semibold">Sınav</th>
+                <th className="px-4 py-3 font-semibold">Konu</th>
+                <th className="px-4 py-3 font-semibold">Son güncelleme</th>
+                <th className="px-4 py-3 text-right font-semibold">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredItems.map((item) => (
+                <tr key={item.id} className="align-top hover:bg-surface-muted/25">
+                  <td className="px-4 py-3 font-mono text-[11px] font-semibold text-muted-foreground" title={item.id}>{compactId(item)}</td>
+                  <td className="max-w-sm px-4 py-3 font-medium leading-5 text-ink"><span className="line-clamp-2">{item.prompt}</span></td>
+                  <td className="px-4 py-3 text-muted-foreground">{QUESTION_TYPE_LABELS[item.question_type]}</td>
+                  <td className="px-4 py-3 font-semibold text-ink">{item.exam}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{item.topic}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(new Date(item.updated_at))}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1">
+                      <ActionButton label="Görüntüle" onClick={() => setViewingItem(item)}><Eye className="size-3.5" /></ActionButton>
+                      <ActionButton label="Düzenle" onClick={() => openEdit(item)}><Edit2 className="size-3.5" /></ActionButton>
+                      <ActionButton label="Çoğalt" onClick={() => void duplicate(item)}><Copy className="size-3.5" /></ActionButton>
+                      <ActionButton label="Arşivle" danger onClick={() => void archive(item.id)}><Archive className="size-3.5" /></ActionButton>
                     </div>
-
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold">
-                      <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground uppercase">
-                        {item.language}
-                      </span>
-                      <span
-                        className={`rounded px-2 py-0.5 uppercase ${
-                          item.difficulty === "hard"
-                            ? "bg-red-50 text-red-700 border border-red-200"
-                            : item.difficulty === "easy"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-amber-50 text-amber-800 border border-amber-200"
-                        }`}
-                      >
-                        {item.difficulty === "hard" ? "Zor" : item.difficulty === "easy" ? "Kolay" : "Orta"}
-                      </span>
-                      <span className="rounded bg-surface-muted px-2 py-0.5 text-ink">
-                        {item.question_type === "multiple_choice"
-                          ? "Çoktan Seçmeli"
-                          : item.question_type === "short_answer"
-                          ? "Kısa Cevap"
-                          : "Uzun Cevap"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Question Prompt */}
-                  <div className="mt-3 text-xs font-semibold leading-relaxed text-ink whitespace-pre-wrap">
-                    {item.prompt}
-                  </div>
-
-                  {/* Options Preview for Multiple Choice */}
-                  {item.question_type === "multiple_choice" && item.options && item.options.length > 0 && (
-                    <div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                      {item.options.map((opt) => (
-                        <div
-                          key={opt.option_key}
-                          className={`flex items-center gap-2 rounded-xl border p-2 text-xs transition-colors ${
-                            opt.is_correct
-                              ? "border-emerald-300 bg-emerald-50/50 text-emerald-950 font-semibold"
-                              : "border-border bg-surface-muted/40 text-muted-foreground"
-                          }`}
-                        >
-                          <span
-                            className={`flex size-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold ${
-                              opt.is_correct
-                                ? "bg-emerald-600 text-white"
-                                : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {opt.option_key}
-                          </span>
-                          <span className="truncate">{opt.option_text || "—"}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Reference Answer for open questions */}
-                  {item.question_type !== "multiple_choice" && item.reference_answer && (
-                    <div className="mt-3 rounded-xl border border-dashed border-border bg-surface-muted/30 p-2.5 text-[11px] text-muted-foreground">
-                      <span className="font-bold text-ink">Referans Cevap: </span>
-                      <span className="whitespace-pre-wrap">{item.reference_answer}</span>
-                    </div>
-                  )}
-
-                  {/* Explanation */}
-                  {item.explanation && (
-                    <div className="mt-2.5 text-[11px] text-muted-foreground/90 italic">
-                      <span className="font-semibold text-ink not-italic">Çözüm / Açıklama: </span>
-                      {item.explanation}
-                    </div>
-                  )}
-                </div>
-
-                {/* Card Bottom Actions */}
-                <div className="mt-4 flex items-center justify-end gap-2 border-t border-border pt-3">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(item)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-surface-muted transition-colors cursor-pointer"
-                  >
-                    <Edit2 className="size-3.5 text-muted-foreground" />
-                    Düzenle
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleArchive(item.id)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="size-3.5" />
-                    Arşivle
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Full Centered Question Editor Modal */}
       {editorOpen && editingItem && (
         <QuestionEditorModal
           initialItem={editingItem}
-          onClose={() => {
-            setEditorOpen(false);
-            setEditingItem(null);
-          }}
+          onClose={() => { setEditorOpen(false); setEditingItem(null); }}
           onSaved={() => {
             setEditorOpen(false);
             setEditingItem(null);
@@ -427,314 +258,126 @@ export function QuestionBankManager({
           }}
         />
       )}
+      {viewingItem && <QuestionViewModal item={viewingItem} onClose={() => setViewingItem(null)} />}
     </div>
   );
 }
 
-function QuestionEditorModal({
-  initialItem,
-  onClose,
-  onSaved,
-}: {
-  initialItem: Partial<QuestionBankItem>;
-  onClose: () => void;
-  onSaved: (item: QuestionBankItem) => void;
-}) {
+function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
+  return (
+    <label className="min-w-0">
+      <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 w-full min-w-0 rounded-xl border border-input bg-white px-3 text-xs text-ink outline-hidden focus-visible:ring-2 focus-visible:ring-primary">{children}</select>
+    </label>
+  );
+}
+
+function ActionButton({ label, onClick, danger = false, children }: { label: string; onClick: () => void; danger?: boolean; children: React.ReactNode }) {
+  return <button type="button" title={label} aria-label={label} onClick={onClick} className={`rounded-lg border p-2 transition-colors ${danger ? "border-red-200 text-red-700 hover:bg-red-50" : "border-border text-muted-foreground hover:bg-surface-muted hover:text-ink"}`}>{children}</button>;
+}
+
+function Notice({ tone, onClose, children }: { tone: "success" | "error"; onClose: () => void; children: React.ReactNode }) {
+  const Icon = tone === "success" ? CheckCircle2 : AlertCircle;
+  return <div className={`flex items-center justify-between rounded-2xl border p-3.5 text-xs font-medium ${tone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}><span className="flex items-center gap-2"><Icon className="size-4 shrink-0" />{children}</span><button type="button" onClick={onClose} aria-label="Bildirimi kapat"><X className="size-3.5" /></button></div>;
+}
+
+function QuestionEditorModal({ initialItem, onClose, onSaved }: { initialItem: Partial<QuestionBankItem>; onClose: () => void; onSaved: (item: QuestionBankItem) => void }) {
   const [form, setForm] = useState<Partial<QuestionBankItem>>({ ...initialItem });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.prompt?.trim()) {
-      setError("Soru metni zorunludur.");
-      return;
-    }
-    if (!form.exam?.trim() || !form.topic?.trim()) {
-      setError("Sınav ve konu alanları zorunludur.");
-      return;
-    }
+  const setQuestionType = (type: HomeworkQuestionType) => {
+    setForm((current) => ({ ...current, question_type: type, options: type === "multiple_choice" ? (current.options?.length === 4 ? current.options : emptyOptions()) : [] }));
+  };
+  const updateOptionText = (key: string, text: string) => setForm((current) => ({ ...current, options: (current.options || emptyOptions()).map((option) => option.option_key === key ? { ...option, option_text: text } : option) }));
+  const setCorrectOption = (key: string) => setForm((current) => ({ ...current, options: (current.options || emptyOptions()).map((option) => ({ ...option, is_correct: option.option_key === key })) }));
 
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.prompt?.trim() || !form.exam?.trim() || !form.topic?.trim() || !form.question_type) {
+      setError("Soru metni, sınav, konu ve soru tipi zorunludur.");
+      return;
+    }
     if (form.question_type === "multiple_choice") {
-      const opts = form.options || [];
-      if (opts.some((o) => !o.option_text?.trim())) {
-        setError("Çoktan seçmeli soru için tüm 4 seçeneği doldurunuz.");
-        return;
-      }
-      if (!opts.some((o) => o.is_correct)) {
-        setError("Lütfen en az bir doğru seçenek belirleyiniz.");
+      const options = form.options || [];
+      if (options.length !== 4 || options.some((option) => !option.option_text.trim()) || options.filter((option) => option.is_correct).length !== 1) {
+        setError("A/B/C/D seçeneklerini doldurun ve tek bir doğru cevap seçin.");
         return;
       }
     }
-
     setBusy(true);
     setError("");
-
-    const res = await saveQuestionBankItem(
-      form as Parameters<typeof saveQuestionBankItem>[0]
-    );
+    const result = await saveQuestionBankItem(form as Parameters<typeof saveQuestionBankItem>[0]);
     setBusy(false);
-
-    if (res.error || !res.data) {
-      setError(res.error || "Soru kaydedilemedi.");
-    } else {
-      onSaved(res.data);
-    }
-  };
-
-  const updateOptionText = (key: string, text: string) => {
-    setForm((prev) => ({
-      ...prev,
-      options: (prev.options || emptyOptions()).map((opt) =>
-        opt.option_key === key ? { ...opt, option_text: text } : opt
-      ),
-    }));
-  };
-
-  const setCorrectOption = (key: string) => {
-    setForm((prev) => ({
-      ...prev,
-      options: (prev.options || emptyOptions()).map((opt) => ({
-        ...opt,
-        is_correct: opt.option_key === key,
-      })),
-    }));
+    if (result.error || !result.data) setError(result.error || "Soru kaydedilemedi.");
+    else onSaved(result.data);
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="relative my-auto w-full max-w-2xl rounded-3xl border border-border bg-white p-6 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2">
-            <BookOpen className="size-5 text-[#819586]" />
-            <h2 className="text-base font-bold text-ink">
-              {form.id ? "Soruyu Düzenle" : "Soru Bankasına Yeni Soru Ekle"}
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-border p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {error && (
-          <div className="mb-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-            <AlertCircle className="size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                Soru Kodu (İsteğe Bağlı)
-              </label>
-              <input
-                type="text"
-                value={form.code || ""}
-                onChange={(e) => setForm({ ...form, code: e.target.value })}
-                placeholder="Örn: SAT-MATH-01"
-                className="w-full rounded-xl border border-input px-3 py-2 text-xs text-ink outline-hidden focus:border-primary font-mono uppercase"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                Sınav Türü
-              </label>
-              <input
-                type="text"
-                list="exam-presets-list"
-                value={form.exam || ""}
-                onChange={(e) => setForm({ ...form, exam: e.target.value })}
-                placeholder="Örn: SAT, AP Calculus"
-                required
-                className="w-full rounded-xl border border-input px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-              />
-              <datalist id="exam-presets-list">
-                {EXAM_PRESETS.map((p) => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                Konu / Başlık
-              </label>
-              <input
-                type="text"
-                value={form.topic || ""}
-                onChange={(e) => setForm({ ...form, topic: e.target.value })}
-                placeholder="Örn: Quadratic Equations"
-                required
-                className="w-full rounded-xl border border-input px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                Soru Dili
-              </label>
-              <select
-                value={form.language || "en"}
-                onChange={(e) => setForm({ ...form, language: e.target.value as QuestionLanguage })}
-                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-              >
-                <option value="en">İngilizce (English)</option>
-                <option value="tr">Türkçe</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                Zorluk Seviyesi
-              </label>
-              <select
-                value={form.difficulty || "medium"}
-                onChange={(e) => setForm({ ...form, difficulty: e.target.value as QuestionDifficulty })}
-                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-              >
-                <option value="easy">Kolay (Easy)</option>
-                <option value="medium">Orta (Medium)</option>
-                <option value="hard">Zor (Hard)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                Soru Tipi
-              </label>
-              <select
-                value={form.question_type || "multiple_choice"}
-                onChange={(e) =>
-                  setForm({ ...form, question_type: e.target.value as HomeworkQuestionType })
-                }
-                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-              >
-                <option value="multiple_choice">Çoktan Seçmeli</option>
-                <option value="short_answer">Kısa Cevap</option>
-                <option value="long_answer">Uzun Cevap / Essay</option>
-              </select>
-            </div>
-          </div>
-
+    <div className="fixed inset-0 z-[160] flex min-h-[100dvh] w-screen items-center justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-xs sm:p-6" role="dialog" aria-modal="true" aria-labelledby="question-editor-title">
+      <div className="relative my-auto flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-2xl">
+        <header className="flex items-center justify-between border-b border-border bg-surface px-5 py-4 sm:px-7">
           <div>
-            <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-              Soru Metni & Yönergesi
-            </label>
-            <textarea
-              rows={4}
-              value={form.prompt || ""}
-              onChange={(e) => setForm({ ...form, prompt: e.target.value })}
-              placeholder="Soruyu buraya yazınız..."
-              required
-              className="w-full rounded-xl border border-input p-3 text-xs text-ink outline-hidden focus:border-primary"
-            />
+            <h3 id="question-editor-title" className="font-heading text-lg font-bold text-ink">{form.id ? "Soruyu Düzenle" : `Yeni ${QUESTION_TYPE_LABELS[form.question_type || "multiple_choice"]} Soru`}</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">Kayıt aynı canonical soru sistemi içinde ödev ve materyallerde yeniden kullanılabilir.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-surface-muted" aria-label="Kapat"><X className="size-4" /></button>
+        </header>
+
+        <form onSubmit={submit} className="space-y-5 overflow-y-auto p-5 sm:p-7">
+          {error && <Notice tone="error" onClose={() => setError("")}>{error}</Notice>}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Soru Kodu (opsiyonel)"><input value={form.code || ""} onChange={(event) => setForm({ ...form, code: event.target.value })} placeholder="SAT-MATH-001" className={inputClass} /></Field>
+            <Field label="Soru Tipi"><select value={form.question_type || "multiple_choice"} onChange={(event) => setQuestionType(event.target.value as HomeworkQuestionType)} className={inputClass}>{(Object.keys(QUESTION_TYPE_LABELS) as HomeworkQuestionType[]).map((type) => <option key={type} value={type}>{QUESTION_TYPE_LABELS[type]}</option>)}</select></Field>
+            <Field label="Sınav"><input required list="question-exam-presets" value={form.exam || ""} onChange={(event) => setForm({ ...form, exam: event.target.value })} className={inputClass} /><datalist id="question-exam-presets">{EXAM_PRESETS.map((exam) => <option key={exam} value={exam} />)}</datalist></Field>
+            <Field label="Konu"><input required value={form.topic || ""} onChange={(event) => setForm({ ...form, topic: event.target.value })} className={inputClass} /></Field>
+            <Field label="Dil"><select value={form.language || "tr"} onChange={(event) => setForm({ ...form, language: event.target.value as QuestionLanguage })} className={inputClass}><option value="tr">Türkçe</option><option value="en">English</option></select></Field>
+            <Field label="Zorluk"><select value={form.difficulty || "medium"} onChange={(event) => setForm({ ...form, difficulty: event.target.value as QuestionDifficulty })} className={inputClass}><option value="easy">Kolay</option><option value="medium">Orta</option><option value="hard">Zor</option></select></Field>
           </div>
 
-          {/* Multiple Choice Options */}
+          <Field label="Soru Metni"><textarea required rows={5} value={form.prompt || ""} onChange={(event) => setForm({ ...form, prompt: event.target.value })} className={inputClass} /></Field>
+
           {form.question_type === "multiple_choice" && (
-            <div className="space-y-2 rounded-2xl border border-border bg-surface-muted/40 p-4">
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase">
-                Seçenekler ve Doğru Cevap (Doğru seçeneği işaretleyin)
-              </label>
-              <div className="grid grid-cols-1 gap-2.5">
-                {(form.options || emptyOptions()).map((opt) => (
-                  <div
-                    key={opt.option_key}
-                    className={`flex items-center gap-3 rounded-xl border p-2.5 transition-colors bg-white ${
-                      opt.is_correct ? "border-emerald-400 ring-1 ring-emerald-300" : "border-border"
-                    }`}
-                  >
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="correct-option-radio"
-                        checked={opt.is_correct}
-                        onChange={() => setCorrectOption(opt.option_key)}
-                        className="text-emerald-600 focus:ring-emerald-500 size-4 cursor-pointer"
-                      />
-                      <span
-                        className={`flex size-6 items-center justify-center rounded-lg text-xs font-bold ${
-                          opt.is_correct
-                            ? "bg-emerald-600 text-white"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {opt.option_key}
-                      </span>
-                    </label>
-                    <input
-                      type="text"
-                      value={opt.option_text}
-                      onChange={(e) => updateOptionText(opt.option_key, e.target.value)}
-                      placeholder={`${opt.option_key} seçeneğinin içeriği...`}
-                      className="flex-1 rounded-lg border border-input px-3 py-1.5 text-xs text-ink outline-hidden focus:border-primary"
-                    />
-                  </div>
+            <fieldset className="space-y-3 rounded-2xl border border-border bg-surface-muted/35 p-4">
+              <legend className="px-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">A/B/C/D Seçenekleri ve Doğru Cevap</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(form.options || emptyOptions()).map((option) => (
+                  <label key={option.option_key} className={`flex min-w-0 items-center gap-2 rounded-xl border bg-white p-2.5 ${option.is_correct ? "border-emerald-400 ring-1 ring-emerald-200" : "border-border"}`}>
+                    <input type="radio" name="correct-option" checked={Boolean(option.is_correct)} onChange={() => setCorrectOption(option.option_key)} />
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-bold">{option.option_key}</span>
+                    <input value={option.option_text} onChange={(event) => updateOptionText(option.option_key, event.target.value)} className="min-w-0 flex-1 rounded-sm bg-transparent text-xs text-ink outline-hidden focus-visible:ring-2 focus-visible:ring-primary/30" placeholder={`${option.option_key} seçeneği`} />
+                  </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
           )}
 
-          {/* Short & Long Answer Reference */}
           {form.question_type !== "multiple_choice" && (
-            <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-                Eğitmen Referans Cevabı (Yalnızca Yönetici Görür)
-              </label>
-              <textarea
-                rows={2}
-                value={form.reference_answer || ""}
-                onChange={(e) => setForm({ ...form, reference_answer: e.target.value })}
-                placeholder="Beklenen referans cevabı buraya yazabilirsiniz..."
-                className="w-full rounded-xl border border-input p-3 text-xs text-ink outline-hidden focus:border-primary"
-              />
-            </div>
+            <Field label={form.question_type === "long_answer" ? "Referans Cevap / Rubrik (opsiyonel)" : "Kabul Edilen / Referans Cevap"}>
+              <textarea rows={3} value={form.reference_answer || ""} onChange={(event) => setForm({ ...form, reference_answer: event.target.value })} className={inputClass} />
+            </Field>
           )}
 
-          <div>
-            <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-              Çözüm Adımları & Açıklama (İsteğe Bağlı)
-            </label>
-            <textarea
-              rows={2}
-              value={form.explanation || ""}
-              onChange={(e) => setForm({ ...form, explanation: e.target.value })}
-              placeholder="Öğrenciye değerlendirme sonrası gösterilebilecek detaylı çözüm açıklaması..."
-              className="w-full rounded-xl border border-input p-3 text-xs text-ink outline-hidden focus:border-primary"
-            />
-          </div>
+          <Field label={form.question_type === "long_answer" ? "Öğretmen Açıklaması (opsiyonel)" : "Açıklama / Çözüm (opsiyonel)"}>
+            <textarea rows={3} value={form.explanation || ""} onChange={(event) => setForm({ ...form, explanation: event.target.value })} className={inputClass} />
+          </Field>
 
-          <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
-            >
-              İptal
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {busy ? "Kaydediliyor..." : form.id ? "Güncelle" : "Soru Bankasına Kaydet"}
-            </button>
-          </div>
+          <footer className="sticky bottom-0 -mx-5 -mb-5 flex justify-end gap-2 border-t border-border bg-white px-5 py-4 sm:-mx-7 sm:-mb-7 sm:px-7">
+            <button type="button" onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted">Vazgeç</button>
+            <button type="submit" disabled={busy} className="rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50">{busy ? "Kaydediliyor…" : form.id ? "Soruyu Güncelle" : "Soru Kütüphanesine Kaydet"}</button>
+          </footer>
         </form>
       </div>
     </div>
   );
 }
+
+function QuestionViewModal({ item, onClose }: { item: QuestionBankItem; onClose: () => void }) {
+  return <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs" role="dialog" aria-modal="true"><article className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-white p-6 shadow-2xl"><header className="flex items-start justify-between gap-4 border-b border-border pb-4"><div><p className="font-mono text-[11px] text-muted-foreground">{item.id}</p><h3 className="mt-1 font-heading text-xl font-bold text-ink">{compactId(item)} · {QUESTION_TYPE_LABELS[item.question_type]}</h3></div><button type="button" onClick={onClose} aria-label="Kapat" className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-surface-muted"><X className="size-4" /></button></header><dl className="mt-5 grid gap-3 text-xs sm:grid-cols-3"><div><dt className="font-bold text-muted-foreground">Sınav</dt><dd className="mt-1 text-ink">{item.exam}</dd></div><div><dt className="font-bold text-muted-foreground">Konu</dt><dd className="mt-1 text-ink">{item.topic}</dd></div><div><dt className="font-bold text-muted-foreground">Son Güncelleme</dt><dd className="mt-1 text-ink">{new Intl.DateTimeFormat("tr-TR", { dateStyle: "long" }).format(new Date(item.updated_at))}</dd></div></dl><div className="mt-5 rounded-2xl border border-border bg-surface p-4 text-sm leading-6 text-ink whitespace-pre-wrap">{item.prompt}</div>{item.question_type === "multiple_choice" && <div className="mt-4 grid gap-2 sm:grid-cols-2">{item.options.map((option) => <div key={option.option_key} className={`rounded-xl border p-3 text-xs ${option.is_correct ? "border-emerald-300 bg-emerald-50 font-semibold text-emerald-900" : "border-border"}`}><span className="mr-2 font-bold">{option.option_key}</span>{option.option_text}</div>)}</div>}{item.reference_answer && <p className="mt-4 rounded-xl border border-border p-3 text-xs leading-5"><strong>Referans cevap / rubrik:</strong> {item.reference_answer}</p>}{item.explanation && <p className="mt-3 rounded-xl border border-border p-3 text-xs leading-5"><strong>Açıklama / çözüm:</strong> {item.explanation}</p>}</article></div>;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block min-w-0"><span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>{children}</label>;
+}
+
+const inputClass = "min-h-10 w-full min-w-0 rounded-xl border border-input bg-white px-3 py-2 text-xs text-ink outline-hidden focus-visible:ring-2 focus-visible:ring-primary";

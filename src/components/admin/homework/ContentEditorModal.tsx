@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   AlertCircle,
@@ -175,6 +175,19 @@ function ContentEditorForm({
   const [poolItems, setPoolItems] = useState<QuestionBankItem[]>([]);
   const [poolLoading, setPoolLoading] = useState(false);
   const [poolSearch, setPoolSearch] = useState("");
+  const [newQuestionMenuOpen, setNewQuestionMenuOpen] = useState(false);
+  const newQuestionMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!newQuestionMenuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!newQuestionMenuRef.current?.contains(event.target as Node)) {
+        setNewQuestionMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [newQuestionMenuOpen]);
 
   // Load question pool
   const openQuestionPool = async () => {
@@ -187,6 +200,7 @@ function ContentEditorForm({
 
   const handleAddQuestionFromPool = (item: QuestionBankItem) => {
     const newQ: HomeworkQuestion = {
+      question_bank_id: item.id,
       position: questions.length,
       question_type: item.question_type,
       prompt: item.prompt,
@@ -219,6 +233,7 @@ function ContentEditorForm({
       explanation: "",
     };
     setQuestions([...questions, newQ]);
+    setNewQuestionMenuOpen(false);
   };
 
   // Update Question Field
@@ -354,7 +369,7 @@ function ContentEditorForm({
                   key={item.type}
                   type="button"
                   onClick={() => setContentType(item.type)}
-                  className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-colors cursor-pointer ${
                     isSelected
                       ? "border-primary bg-primary/5 text-primary shadow-xs ring-1 ring-primary"
                       : "border-border bg-surface text-ink hover:border-border-strong hover:bg-surface-muted"
@@ -387,7 +402,7 @@ function ContentEditorForm({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="örn. IB Math HL — Calculus & Limits Özeti"
-                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-xs text-ink focus:border-primary focus:outline-none"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               />
             </div>
 
@@ -397,7 +412,7 @@ function ContentEditorForm({
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as QuestionLanguage)}
-                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-xs text-ink focus:border-primary focus:outline-none"
+                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 <option value="tr">Türkçe</option>
                 <option value="en">English</option>
@@ -410,7 +425,7 @@ function ContentEditorForm({
               <select
                 value={exam}
                 onChange={(e) => setExam(e.target.value)}
-                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-xs text-ink focus:border-primary focus:outline-none"
+                className="w-full rounded-xl border border-border bg-white px-3 py-2 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 {SUPPORTED_EXAM_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -428,7 +443,7 @@ function ContentEditorForm({
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="örn. Matematik, Fizik, Essay Writing"
-                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-xs text-ink focus:border-primary focus:outline-none"
+                className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               />
             </div>
 
@@ -444,7 +459,7 @@ function ContentEditorForm({
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                   placeholder="örn. 45"
-                  className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-xs text-ink focus:border-primary focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-white px-3.5 py-2 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 />
               </div>
             )}
@@ -460,7 +475,7 @@ function ContentEditorForm({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Öğrencinin göreceği yönergeler veya doğrudan ders notu metni..."
-              className="w-full rounded-xl border border-border bg-white p-3 text-xs text-ink focus:border-primary focus:outline-none"
+              className="w-full rounded-xl border border-border bg-white p-3 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             />
           </div>
         </div>
@@ -528,7 +543,7 @@ function ContentEditorForm({
                   value={externalLink}
                   onChange={(e) => setExternalLink(e.target.value)}
                   placeholder="https://..."
-                  className="w-full rounded-xl border border-border bg-white pl-9 pr-3.5 py-2 text-xs text-ink focus:border-primary focus:outline-none"
+                  className="w-full rounded-xl border border-border bg-white pl-9 pr-3.5 py-2 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 />
               </div>
             </div>
@@ -558,16 +573,19 @@ function ContentEditorForm({
                   Kayıtlı Sorudan Seç
                 </button>
 
-                <div className="relative group">
+                <div ref={newQuestionMenuRef} className="relative">
                   <button
                     type="button"
+                    aria-haspopup="menu"
+                    aria-expanded={newQuestionMenuOpen}
+                    onClick={() => setNewQuestionMenuOpen((open) => !open)}
                     className="inline-flex min-h-8 items-center gap-1.5 rounded-xl bg-ink px-3 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors"
                   >
                     <Plus className="size-3.5" />
                     Yeni Soru Ekle
                     <ChevronDown className="size-3" />
                   </button>
-                  <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col w-44 rounded-xl border border-border bg-white shadow-lg p-1 z-20">
+                  {newQuestionMenuOpen && <div role="menu" className="absolute right-0 top-full z-20 mt-1 flex w-44 flex-col rounded-xl border border-border bg-white p-1 shadow-lg">
                     <button
                       type="button"
                       onClick={() => handleAddBlankQuestion("multiple_choice")}
@@ -589,7 +607,7 @@ function ContentEditorForm({
                     >
                       Uzun Cevap / Essay
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </div>
             </div>
@@ -636,7 +654,7 @@ function ContentEditorForm({
                         value={q.prompt}
                         onChange={(e) => updateQuestion(qIdx, { prompt: e.target.value })}
                         placeholder="Soru yönergesi veya soruyu buraya yazın..."
-                        className="w-full rounded-xl border border-border bg-surface p-2.5 text-xs text-ink focus:border-primary focus:outline-none"
+                        className="w-full rounded-xl border border-border bg-surface p-2.5 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                       />
                     </div>
 
@@ -679,7 +697,7 @@ function ContentEditorForm({
                                   updateQuestion(qIdx, { options: updatedOpts });
                                 }}
                                 placeholder={`Seçenek ${opt.option_key}`}
-                                className="w-full bg-transparent text-xs text-ink focus:outline-none"
+                                className="w-full rounded-sm bg-transparent text-xs text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                               />
                             </div>
                           ))}
@@ -698,7 +716,7 @@ function ContentEditorForm({
                           value={q.reference_answer || ""}
                           onChange={(e) => updateQuestion(qIdx, { reference_answer: e.target.value })}
                           placeholder="Değerlendirme için referans cevap"
-                          className="w-full rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+                          className="w-full rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         />
                       </div>
                       <div>
@@ -710,7 +728,7 @@ function ContentEditorForm({
                           value={q.explanation || ""}
                           onChange={(e) => updateQuestion(qIdx, { explanation: e.target.value })}
                           placeholder="Öğrencinin göreceği çözüm açıklaması"
-                          className="w-full rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-ink focus:border-primary focus:outline-none"
+                          className="w-full rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-ink focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                         />
                       </div>
                     </div>
@@ -775,7 +793,7 @@ function ContentEditorForm({
                 value={poolSearch}
                 onChange={(e) => setPoolSearch(e.target.value)}
                 placeholder="Konu, sınav veya soru metni ile ara..."
-                className="w-full rounded-xl border border-border px-3.5 py-2 text-xs focus:border-primary focus:outline-none"
+                className="w-full rounded-xl border border-border px-3.5 py-2 text-xs focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               />
             </div>
 
@@ -789,7 +807,10 @@ function ContentEditorForm({
                   .filter(
                     (item) =>
                       !poolSearch ||
+                      item.id.toLowerCase().includes(poolSearch.toLowerCase()) ||
+                      (item.code || "").toLowerCase().includes(poolSearch.toLowerCase()) ||
                       item.prompt.toLowerCase().includes(poolSearch.toLowerCase()) ||
+                      item.exam.toLowerCase().includes(poolSearch.toLowerCase()) ||
                       item.topic.toLowerCase().includes(poolSearch.toLowerCase())
                   )
                   .map((item) => (

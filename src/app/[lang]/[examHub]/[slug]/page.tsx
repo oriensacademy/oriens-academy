@@ -12,8 +12,9 @@ type Params = { lang: string; examHub: string; slug: string };
 
 const ALL_EXAM_STATIC_SLUGS = Array.from(new Set([
   ...examRecords.map((e) => e.slug),
-  ...examRecords.map((e) => e.code.toLowerCase()),
-  ...examRecords.map((e) => e.code.toUpperCase()),
+  // Never emit case-only aliases (for example `sat` and `SAT`). On
+  // case-insensitive build filesystems they target the same output file and
+  // the alias redirect can overwrite the canonical static HTML.
   "ucat",
   "ib-diploma",
   "ib-dp",

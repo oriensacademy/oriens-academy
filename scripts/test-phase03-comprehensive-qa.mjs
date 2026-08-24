@@ -120,12 +120,13 @@ test("3. Security Extension Blocking on Attachment Uploads", () => {
 });
 
 // 4. Content Library IA & Tab Structure Verification
-test("4. Content Library 3-Tab Architecture", () => {
-  const primaryTabs = ["content", "assignments", "submissions"];
-  assert.equal(primaryTabs.length, 3, "There must be exactly 3 primary tabs in /admin/odevler");
+test("4. Content Library 4-Tab Architecture", () => {
+  const primaryTabs = ["content", "questions", "assignments", "submissions"];
+  assert.equal(primaryTabs.length, 4, "There must be exactly 4 primary tabs in /admin/odevler");
   assert.ok(primaryTabs.includes("content"), "Primary tab 1: İçerikler");
-  assert.ok(primaryTabs.includes("assignments"), "Primary tab 2: Atamalar");
-  assert.ok(primaryTabs.includes("submissions"), "Primary tab 3: Teslimler");
+  assert.ok(primaryTabs.includes("questions"), "Primary tab 2: Soru Kütüphanesi");
+  assert.ok(primaryTabs.includes("assignments"), "Primary tab 3: Atamalar");
+  assert.ok(primaryTabs.includes("submissions"), "Primary tab 4: Teslimler");
 });
 
 // 5. Scenario Simulation: Content Creation, Assignment & Student View Segregation

@@ -54,6 +54,7 @@ export interface HomeworkOption {
 
 export interface HomeworkQuestion {
   id?: string;
+  question_bank_id?: string | null;
   position: number;
   question_type: HomeworkQuestionType;
   prompt: string;
@@ -277,6 +278,7 @@ export async function getHomeworkTemplates(): Promise<{ data: HomeworkTemplate[]
       .filter((q) => q.template_id === t.id)
       .map((q) => ({
         id: q.id as string,
+        question_bank_id: (q.question_bank_id as string) || null,
         position: (q.position as number) || 0,
         question_type: q.question_type as HomeworkQuestionType,
         prompt: (q.prompt as string) || "",
@@ -347,6 +349,7 @@ export async function saveHomeworkTemplate(input: {
   if (input.questions && input.questions.length > 0) {
     const questionsPayload = input.questions.map((q, idx) => ({
       template_id: templateId,
+      question_bank_id: q.question_bank_id || null,
       position: idx,
       question_type: q.question_type,
       prompt: q.prompt.trim(),
@@ -393,6 +396,7 @@ export async function duplicateHomeworkTemplate(id: string): Promise<{ data: Hom
     instructor_note: (rawOriginal.instructor_note as string) || null,
     questions: rawQuestions.map((q) => ({
       position: (q.position as number) || 0,
+      question_bank_id: (q.question_bank_id as string) || null,
       question_type: q.question_type as HomeworkQuestionType,
       prompt: (q.prompt as string) || "",
       reference_answer: (q.reference_answer as string) || null,

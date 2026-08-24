@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 import { retrieveSearchResultsFromDatabase } from "@/lib/search/db-retrieval-service";
 import { retrieveSearchResults } from "@/lib/search/retrieval-engine";
+import { localizedPath, resolveExamRoute } from "@/lib/routes";
 
 export type SearchResultType = "UNIVERSITY" | "PROGRAM" | "COUNTRY" | "QUALIFICATION";
 
@@ -182,11 +183,10 @@ export function GooeySearchBar() {
   }, []);
 
   const getTargetHref = (item: SearchResultItem): string => {
-    const prefix = currentLocale === "tr" ? "/tr" : "/en";
     if (item.type === "QUALIFICATION") {
-      return `${prefix}/sinavlar/${item.slug}`;
+      return resolveExamRoute(currentLocale, item.slug);
     }
-    return `${prefix}/universite-destegi`;
+    return localizedPath("universitySupport", currentLocale);
   };
 
   const handleSelectItem = (item: SearchResultItem) => {

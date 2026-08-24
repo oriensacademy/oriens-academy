@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   CalendarPlus,
   ClipboardList,
+  LibraryBig,
   Layers,
   Plus,
 } from "lucide-react";
@@ -12,9 +13,10 @@ import { ContentLibraryManager } from "@/components/admin/homework/ContentLibrar
 import { ContentEditorModal } from "@/components/admin/homework/ContentEditorModal";
 import { AssignedHomeworkList } from "@/components/admin/homework/AssignedHomeworkList";
 import { AssignHomeworkModal } from "@/components/admin/homework/AssignHomeworkModal";
+import { QuestionBankManager } from "@/components/admin/homework/QuestionBankManager";
 import type { HomeworkTemplate } from "@/lib/homework";
 
-type HomeworkTab = "content" | "assignments" | "submissions";
+type HomeworkTab = "content" | "questions" | "assignments" | "submissions";
 
 export default function AdminHomeworkPage() {
   const [activeTab, setActiveTab] = useState<HomeworkTab>("content");
@@ -29,6 +31,7 @@ export default function AdminHomeworkPage() {
 
   const tabs: Array<{ id: HomeworkTab; label: string; icon: typeof ClipboardList }> = [
     { id: "content", label: "İçerikler & Materyaller", icon: Layers },
+    { id: "questions", label: "Soru Kütüphanesi", icon: LibraryBig },
     { id: "assignments", label: "Atamalar", icon: CalendarCheck },
     { id: "submissions", label: "Teslimler & Değerlendirme", icon: ClipboardList },
   ];
@@ -92,7 +95,7 @@ export default function AdminHomeworkPage() {
         </div>
       </div>
 
-      {/* Tabs Navigation (Only 3 Primary Tabs) */}
+      {/* Primary management tabs */}
       <div className="flex border-b border-border overflow-x-auto gap-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -123,6 +126,8 @@ export default function AdminHomeworkPage() {
             onCreateNew={handleCreateNewContent}
           />
         )}
+
+        {activeTab === "questions" && <QuestionBankManager />}
 
         {activeTab === "assignments" && (
           <AssignedHomeworkList

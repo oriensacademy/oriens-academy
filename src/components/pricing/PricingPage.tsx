@@ -11,7 +11,6 @@ import { CreativePricing, type PricingTier } from "@/components/ui/creative-pric
 import { useLocale, usePricingContent } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
-import { useAccount } from "@/lib/auth/account-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { CONTACT } from "@/config/contact";
@@ -23,7 +22,6 @@ function indexOf(position: number) {
 export function PricingPage() {
   const locale = useLocale();
   const content = usePricingContent();
-  const { accountType, isInitializing } = useAccount();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [dbPackages, setDbPackages] = useState<PublicPricingPackage[]>([]);
   const [pricingLoaded, setPricingLoaded] = useState(false);
@@ -86,12 +84,11 @@ export function PricingPage() {
     };
   });
 
-  if (isInitializing || settingsLoading) {
+  if (settingsLoading) {
     return <AccountWaveLoader />;
   }
 
-  // When pricing is toggled OFF and user is not admin
-  if (!showPricing && accountType !== "admin") {
+  if (!showPricing) {
     return (
       <section className="min-h-[70vh] bg-[#F6F8F3] pt-32 pb-20 md:pt-40 md:pb-28">
         <div className="mx-auto max-w-4xl px-6 text-center">
@@ -124,19 +121,6 @@ export function PricingPage() {
   return (
     <>
       <section id="packages" className="section-offset relative overflow-hidden border-b border-border bg-[#F6F8F3] pt-24 pb-16 md:pt-28 md:pb-24">
-        {accountType === "admin" && (
-          <div className="mx-auto max-w-[1380px] px-6 mb-6">
-            <div className="flex items-center justify-between rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
-              <span className="flex items-center gap-2 font-medium">
-                <ShieldAlert className="size-4 text-amber-700" />
-                {locale === "tr" ? "Yönetici Önizleme Modu: Öğrenci paket fiyatlarını görüntülüyorsunuz." : "Admin Preview Mode: Viewing student package pricing."}
-              </span>
-              <Link href="/admin/fiyatlandirma" className="rounded-lg bg-ink px-3 py-1.5 font-semibold text-white hover:bg-forest">
-                {locale === "tr" ? "Fiyatlandırma Yönetimi" : "Manage Pricing"}
-              </Link>
-            </div>
-          </div>
-        )}
         <div className="relative mx-auto max-w-[1380px] px-6 md:px-8">
           <nav aria-label={content.breadcrumb.ariaLabel}>
             <ol className="flex min-h-11 flex-wrap items-center gap-2 text-sm text-muted-foreground">

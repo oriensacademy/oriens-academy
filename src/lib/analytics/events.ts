@@ -1,3 +1,5 @@
+import { googleTagConfig } from "@/lib/analytics/config";
+
 /**
  * Privacy-safe Google Analytics 4 & GTM Event Helpers.
  * Transmits ONLY non-PII operational event signals (language, exam code).
@@ -22,8 +24,8 @@ export function trackContactSuccess(params: { locale: string; subjectCategory?: 
     contact_category: params.subjectCategory || "general",
   });
 
-  // 2. Direct gtag event if active
-  if (typeof window.gtag === "function") {
+  // Standalone GA4 only. In GTM mode the dataLayer event is the single source.
+  if (!googleTagConfig.gtmId && typeof window.gtag === "function") {
     window.gtag("event", "contact_submit_success", {
       event_category: "engagement",
       event_label: params.locale,
@@ -42,8 +44,7 @@ export function trackBookingSuccess(params: { locale: string; examCode?: string 
     booking_exam_code: params.examCode || "custom",
   });
 
-  // 2. Direct gtag event if active
-  if (typeof window.gtag === "function") {
+  if (!googleTagConfig.gtmId && typeof window.gtag === "function") {
     window.gtag("event", "booking_submit_success", {
       event_category: "conversion",
       event_label: params.examCode || "custom",

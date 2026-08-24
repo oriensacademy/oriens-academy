@@ -15,6 +15,8 @@ These files take precedence over older phase documents when implementation detai
 - `SUPABASE_SETUP.md`, `LOCAL_ADMIN_SETUP.md`, `TURNSTILE_SETUP.md`, `CLOUDFLARE_DEPLOYMENT.md`
 - `BACKEND.md`, `BOOKING.md`, `EMAIL_NOTIFICATIONS.md`
 - `UNIVERSITY_DATA_SOURCE.md`
+- `GOOGLE_SERVICES_SETUP.md` — Search Console, GTM/GA4, consent and Ads configuration.
+- `PHASE_01_CLEANUP_MANIFEST.md` — read-only handover inventory and Prompt 2 safety/order plan.
 
 Some of these retain phase terminology or historical rationale. Verify commands and schema claims against the canonical handoff and latest migrations before operating a remote environment.
 

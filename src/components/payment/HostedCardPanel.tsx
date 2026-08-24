@@ -9,10 +9,12 @@ export function HostedCardPanel({
   locale,
   mockAction,
   onMockActionChange,
+  enabled,
 }: {
   locale: Locale;
   mockAction?: "success" | "failure" | "cancel";
   onMockActionChange?: (action: "success" | "failure" | "cancel") => void;
+  enabled: boolean;
 }) {
   const copy = getPaymentCopy(locale);
   const isTr = locale === "tr";
@@ -44,6 +46,15 @@ export function HostedCardPanel({
     const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
     setCvv(raw);
   };
+
+  if (!enabled) {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950">
+        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden="true" />
+        <p className="leading-relaxed">{copy.cardPending}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -242,4 +253,3 @@ export function HostedCardPanel({
     </div>
   );
 }
-

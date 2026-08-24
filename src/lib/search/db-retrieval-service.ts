@@ -32,6 +32,11 @@ const DEFAULT_LIMITS: SearchLimits = {
   countries: 3,
 };
 
+// The public search must stay usable when the remote autocomplete RPC is slow
+// or unavailable. After this bounded wait the deterministic local index below
+// supplies the same canonical exam results.
+const SEARCH_RPC_TIMEOUT_MS = 5_000;
+
 function emptyResults(rawQuery: string): GroupedSearchResults {
   const parsedQuery = parseQuery(rawQuery, { includePredefinedUniversities: false });
 
@@ -107,13 +112,22 @@ export async function retrieveSearchResultsFromDatabase(
   try {
     const supabase = getSupabaseClient();
     const settledResponses = await Promise.allSettled(
-      searchTerms.map((term) =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase as any).rpc("search_autocomplete_entities", {
-          p_query: term,
-          p_limit: perTypeLimit,
-        })
-      )
+      searchTerms.map(async (term) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), SEARCH_RPC_TIMEOUT_MS);
+
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return await (supabase as any)
+            .rpc("search_autocomplete_entities", {
+              p_query: term,
+              p_limit: perTypeLimit,
+            })
+            .abortSignal(controller.signal);
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      })
     );
 
     for (let responseIndex = 0; responseIndex < settledResponses.length; responseIndex++) {

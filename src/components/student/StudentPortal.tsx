@@ -484,10 +484,10 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
 
       {/* 3. HESAP GÜVENLİĞİ (SAME PAGE) */}
       <Panel title={locale === "tr" ? "Hesap Güvenliği" : "Account Security"}>
-        <div className="grid gap-6 sm:grid-cols-2">
-          <form onSubmit={saveEmail} className="space-y-3">
+        <div className="grid min-w-0 gap-5 md:grid-cols-2 md:items-stretch">
+          <form onSubmit={saveEmail} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/50 p-4 sm:p-5">
             <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "E-posta Değiştir" : "Change Email"}</h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs leading-5 text-muted-foreground md:min-h-10">
               {locale === "tr"
                 ? "E-posta adresinizi değiştirdiğinizde yeni adrese onay bağlantısı gönderilecektir."
                 : "A verification link will be sent to the new email address."}
@@ -497,20 +497,20 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
               type="email"
               value={emailForm.email}
               onChange={(e) => setEmailForm({ email: e.target.value })}
-              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="min-h-11 w-full min-w-0 rounded-xl border border-input bg-white px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
             <button
               type="submit"
               disabled={emailBusy}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer"
+              className="mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer sm:w-auto sm:self-start"
             >
               {emailBusy ? (locale === "tr" ? "Gönderiliyor…" : "Sending…") : (locale === "tr" ? "E-posta Güncelle" : "Update Email")}
             </button>
           </form>
 
-          <form onSubmit={savePassword} className="space-y-3">
+          <form onSubmit={savePassword} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/50 p-4 sm:p-5">
             <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "Şifre Belirle" : "Update Password"}</h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs leading-5 text-muted-foreground md:min-h-10">
               {locale === "tr"
                 ? "Hesabınız için güçlü ve benzersiz bir şifre belirleyin."
                 : "Choose a strong and unique password for your account."}
@@ -522,12 +522,12 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
               placeholder={locale === "tr" ? "En az 8 karakter" : "Minimum 8 characters"}
               value={passwordForm.password}
               onChange={(e) => setPasswordForm({ password: e.target.value })}
-              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="min-h-11 w-full min-w-0 rounded-xl border border-input bg-white px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
             <button
               type="submit"
               disabled={passwordBusy}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer"
+              className="mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer sm:w-auto sm:self-start"
             >
               {passwordBusy ? (locale === "tr" ? "Güncelleniyor…" : "Updating…") : (locale === "tr" ? "Şifreyi Değiştir" : "Update Password")}
             </button>
