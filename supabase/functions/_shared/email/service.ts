@@ -982,18 +982,24 @@ export async function dispatchWelcomeEmail(
   data: WelcomeEmailData
 ) {
   const template = renderStudentWelcomeEmail(data);
+  const studentIdentifier = data.studentUserId || data.studentEmail;
+
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
     replyTo: "support@oriens-academy.com",
     channel: "general",
+    sender: {
+      name: "Oriens Academy",
+      email: "info@oriens-academy.com",
+    },
     subject: template.subject,
     html: template.html,
     text: template.text,
-    eventType: "account.welcome.student",
-    entityType: "account_auth",
-    entityId: data.studentEmail,
-    idempotencyKey: `acc-welcome-${data.studentEmail}`,
+    eventType: "student.welcome_email",
+    entityType: "student_profile",
+    entityId: studentIdentifier,
+    idempotencyKey: `student-welcome-${studentIdentifier}`,
   });
 }
 

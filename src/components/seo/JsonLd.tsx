@@ -8,6 +8,13 @@ export function JsonLd() {
     "url": SITE_URL,
     "logo": `${SITE_URL}/logo.png`,
     "description": "International Exam Preparation & Academic Consultancy for IB, SAT, and AP Diplomas.",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82",
+      "addressLocality": "Üsküdar",
+      "addressRegion": "İstanbul",
+      "addressCountry": "TR",
+    },
     "sameAs": [],
   };
 

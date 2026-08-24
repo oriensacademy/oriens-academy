@@ -337,7 +337,6 @@ export function CreateBookingModal({
                       setPhone(e.target.value);
                       if (errors.phone) setErrors({ ...errors, phone: undefined });
                     }}
-                    placeholder="+90 5XX XXX XX XX"
                     className={inputClass(Boolean(errors.phone))}
                   />
                 </Field>

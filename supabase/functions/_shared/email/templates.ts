@@ -164,6 +164,7 @@ export type HomeworkEmailData = {
 };
 
 export type WelcomeEmailData = {
+  studentUserId?: string;
   studentName: string;
   studentEmail: string;
   temporaryPassword?: string | null;
@@ -527,8 +528,8 @@ export function renderEmailShell(opts: {
                   <div style="font-size:12px;color:${PALETTE.textMuted};margin-top:3px;">
                     <a href="mailto:${escapeHtml(footerEmail)}" style="color:${PALETTE.textMuted};text-decoration:none;">${escapeHtml(footerEmail)}</a> &middot; +90 544 293 90 40
                   </div>
-                  <div style="font-size:11px;color:${PALETTE.sage};margin-top:4px;">
-                    ${isTr ? "Kolektif House Levent, Esentepe Mah. Talatpaşa Cad. No: 5, Şişli / İstanbul" : "Kolektif House Levent, Istanbul, Turkey"}
+                  <div style="font-size:11px;color:${PALETTE.sage};margin-top:4px;line-height:1.4;">
+                    ${isTr ? "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul" : "Emaar Square, The Heights E Block, Ünalan Neighborhood, Libadiye Street No:82, Üsküdar / Istanbul"}
                   </div>
                 </td>
               </tr>
@@ -1515,43 +1516,106 @@ export function renderStudentHomeworkRevisionRequestedEmail(data: HomeworkEmailD
 export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? "Oriens Academy'ye Hoş Geldiniz | Öğrenci Portalı"
-    : "Welcome to Oriens Academy | Student Portal";
+    ? "Oriens Academy’ye Hoş Geldiniz"
+    : "Welcome to Oriens Academy";
 
-  const passwordBlock = data.temporaryPassword ? `
-    <div style="margin-top:20px;background-color:${PALETTE.surfaceGold};border:1px solid ${PALETTE.borderGold};border-radius:12px;padding:16px 18px;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${PALETTE.goldDark};">${isTr ? "Geçici Giriş Şifreniz" : "Temporary Sign-In Password"}</div>
-      <div style="font-family:Consolas,Menlo,monospace;font-size:20px;font-weight:700;letter-spacing:.06em;color:${PALETTE.primary};margin-top:6px;">${escapeHtml(data.temporaryPassword)}</div>
-      <div style="font-size:12px;color:${PALETTE.textMuted};margin-top:4px;">${isTr ? "Giriş yaptıktan sonra şifrenizi değiştirebilirsiniz." : "You can change your password after logging in."}</div>
-    </div>` : "";
+  const studentName = data.studentName || (isTr ? "Öğrenci" : "Student");
+  const portalAccountUrl = isTr
+    ? "https://oriens-academy.com/tr/hesabim/"
+    : "https://oriens-academy.com/en/account/";
 
-  const cardHtml = summaryCard(isTr ? "Öğrenci Portalı Olanakları" : "Your Student Portal", [
-    { label: isTr ? "Ders Takvimi" : "Appointments", value: isTr ? "Derslerinizi ve randevularınızı yönetin" : "Schedule and manage your sessions" },
-    { label: isTr ? "Ödev ve Takip" : "Homework & Progress", value: isTr ? "Ödevlerinizi teslim edin, geri bildirimleri görün" : "Submit tasks and view feedback" },
-    { label: isTr ? "Paket ve Ödemeler" : "Packages & Payments", value: isTr ? "Kalan ders kredilerinizi takip edin" : "Track lesson balance and receipts" },
-    { label: isTr ? "Akademik Kayıtlar" : "Lesson History", value: isTr ? "Geçmiş ders notlarına dilediğiniz an erişin" : "Access past study notes anytime" },
-  ]);
+  const ctaLabel = isTr ? "Hesabıma Git" : "Go to My Account";
 
-  const bodyHtml = `
-    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Oriens Academy ailesine hoş geldiniz! Uluslararası sınavlar, üniversite ders desteği ve akademik danışmanlık süreçlerinizi tek noktadan yöneteceğiniz Öğrenci Portalınız hazır.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Welcome to Oriens Academy! Your unified Student Portal is ready to manage your international exams, university coursework, and academic tracking in one place.`}</div>
-    ${passwordBlock}
-    ${cardHtml}
-    ${actionButton(isTr ? "Öğrenci Portalına Giriş Yap" : "Sign In to Student Portal", `${BASE_URL}/${data.locale}/giris`)}`;
+  const bodyHtml = isTr
+    ? `
+    <div style="font-size:14px;line-height:1.65;color:${PALETTE.primary};">
+      <p style="margin:0 0 16px 0;">Merhaba <strong>${escapeHtml(studentName)}</strong>,</p>
+      <p style="margin:0 0 12px 0;">Oriens Academy hesabınız başarıyla oluşturuldu.</p>
+      <p style="margin:0 0 16px 0;">Artık öğrenci hesabınız üzerinden sınav hazırlık sürecinizi ve eğitim planınızı tek yerden yönetebilirsiniz.</p>
+      
+      <p style="margin:0 0 8px 0;font-weight:600;color:${PALETTE.primary};">Hesabınız üzerinden:</p>
+      <ul style="margin:0 0 20px 0;padding-left:20px;font-size:14px;line-height:1.75;color:${PALETTE.primary};">
+        <li style="margin-bottom:4px;">sınav geçmişinizi görüntüleyebilir,</li>
+        <li style="margin-bottom:4px;">ders ve randevularınızı takip edebilir,</li>
+        <li style="margin-bottom:4px;">ödevlerinizi görüntüleyip teslim edebilir,</li>
+        <li style="margin-bottom:4px;">paket ve ödeme bilgilerinizi inceleyebilir,</li>
+        <li style="margin-bottom:4px;">destek ekibimizle iletişime geçebilirsiniz.</li>
+      </ul>
+      ${actionButton(ctaLabel, portalAccountUrl)}
+    </div>`
+    : `
+    <div style="font-size:14px;line-height:1.65;color:${PALETTE.primary};">
+      <p style="margin:0 0 16px 0;">Hello <strong>${escapeHtml(studentName)}</strong>,</p>
+      <p style="margin:0 0 12px 0;">Your Oriens Academy account has been created successfully.</p>
+      <p style="margin:0 0 16px 0;">You can now manage your academic journey from your student account.</p>
+      
+      <p style="margin:0 0 8px 0;font-weight:600;color:${PALETTE.primary};">From your account, you can:</p>
+      <ul style="margin:0 0 20px 0;padding-left:20px;font-size:14px;line-height:1.75;color:${PALETTE.primary};">
+        <li style="margin-bottom:4px;">review your exam history,</li>
+        <li style="margin-bottom:4px;">track lessons and appointments,</li>
+        <li style="margin-bottom:4px;">view and submit assignments,</li>
+        <li style="margin-bottom:4px;">manage package and payment information,</li>
+        <li style="margin-bottom:4px;">contact the Oriens Academy support team.</li>
+      </ul>
+      ${actionButton(ctaLabel, portalAccountUrl)}
+    </div>`;
+
+  const footerNote = isTr
+    ? "Oriens Academy &middot; info@oriens-academy.com &middot; support@oriens-academy.com"
+    : "Oriens Academy &middot; info@oriens-academy.com &middot; support@oriens-academy.com";
 
   const html = renderEmailShell({
     locale: data.locale,
     eyebrow: isTr ? "Hoş Geldiniz" : "Welcome",
-    title: isTr ? "Oriens Academy'ye Hoş Geldiniz" : "Welcome to Oriens Academy",
+    title: isTr ? "Oriens Academy’ye Hoş Geldiniz" : "Welcome to Oriens Academy",
     bodyHtml,
-    footerEmail: "info@oriens-academy.com",
+    footerNote,
+    footerEmail: "support@oriens-academy.com",
   });
 
-  const text = joinText([
-    `ORIENS ACADEMY - ${subject}`, "",
-    `${isTr ? "Giriş Adresi" : "Portal"}: ${BASE_URL}/${data.locale}/giris`,
-    `${isTr ? "Kullanıcı" : "Email"}: ${data.studentEmail}`,
-    data.temporaryPassword ? `${isTr ? "Geçici Şifre" : "Password"}: ${data.temporaryPassword}` : null,
-  ]);
+  const text = isTr
+    ? joinText([
+        `ORIENS ACADEMY - ${subject}`,
+        "",
+        `Merhaba ${studentName},`,
+        "",
+        "Oriens Academy hesabınız başarıyla oluşturuldu.",
+        "Artık öğrenci hesabınız üzerinden sınav hazırlık sürecinizi ve eğitim planınızı tek yerden yönetebilirsiniz.",
+        "",
+        "Hesabınız üzerinden:",
+        "• sınav geçmişinizi görüntüleyebilir,",
+        "• ders ve randevularınızı takip edebilir,",
+        "• ödevlerinizi görüntüleyip teslim edebilir,",
+        "• paket ve ödeme bilgilerinizi inceleyebilir,",
+        "• destek ekibimizle iletişime geçebilirsiniz.",
+        "",
+        `${ctaLabel}: ${portalAccountUrl}`,
+        "",
+        "Oriens Academy",
+        "info@oriens-academy.com",
+        "support@oriens-academy.com",
+      ])
+    : joinText([
+        `ORIENS ACADEMY - ${subject}`,
+        "",
+        `Hello ${studentName},`,
+        "",
+        "Your Oriens Academy account has been created successfully.",
+        "You can now manage your academic journey from your student account.",
+        "",
+        "From your account, you can:",
+        "• review your exam history,",
+        "• track lessons and appointments,",
+        "• view and submit assignments,",
+        "• manage package and payment information,",
+        "• contact the Oriens Academy support team.",
+        "",
+        `${ctaLabel}: ${portalAccountUrl}`,
+        "",
+        "Oriens Academy",
+        "info@oriens-academy.com",
+        "support@oriens-academy.com",
+      ]);
 
   return { subject, html, text };
 }

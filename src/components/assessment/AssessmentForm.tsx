@@ -223,7 +223,6 @@ Notes / Goals: ${notes || "-"}
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          placeholder="+90 5XX XXX XX XX"
           className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
         />
       </div>

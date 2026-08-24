@@ -11,7 +11,7 @@ import { useLocale } from "@/content/locale-context";
 import { useAccount } from "@/lib/auth/account-context";
 import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routing";
 import { changePasswordPath, forgotPasswordPath, localizedPath } from "@/lib/routes";
-import { registerStudent } from "@/lib/student/auth";
+import { registerStudent, validateStudentPhone } from "@/lib/student/auth";
 import { claimAnonymousExamResult } from "@/lib/student/exam-history";
 
 export function UnifiedLoginPage() {
@@ -124,6 +124,11 @@ export function UnifiedLoginPage() {
 
     if (!termsAccepted) {
       setError(isTr ? "Lütfen gizlilik politikasını ve kullanım koşullarını onaylayın." : "Please accept the privacy policy and terms of service.");
+      return;
+    }
+    const phoneCheck = validateStudentPhone(phone, isTr);
+    if (!phoneCheck.valid) {
+      setError(phoneCheck.error || (isTr ? "Lütfen geçerli bir telefon numarası girin." : "Please enter a valid phone number."));
       return;
     }
     if (password !== confirmPassword) {
@@ -366,7 +371,7 @@ export function UnifiedLoginPage() {
                     autoComplete="name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder={isTr ? "Örn: Ela Demir" : "e.g. John Smith"}
+                    placeholder={isTr ? "Adınız Soyadınız" : "Your full name"}
                     className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                 </span>
@@ -383,7 +388,7 @@ export function UnifiedLoginPage() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="ornek@alanadi.com"
+                    placeholder={isTr ? "E-posta adresiniz" : "Your email address"}
                     className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                 </span>
@@ -400,7 +405,6 @@ export function UnifiedLoginPage() {
                     autoComplete="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+90 5XX XXX XX XX"
                     className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                 </span>
@@ -418,14 +422,13 @@ export function UnifiedLoginPage() {
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
                       className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
                   </span>
                 </label>
 
                 <label className="block text-xs font-semibold text-ink" htmlFor="register-confirm">
-                  {isTr ? "Şifre Tekrar" : "Confirm"}
+                  {isTr ? "Şifre Tekrar" : "Confirm Password"}
                   <span className="relative mt-1 block">
                     <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
                     <input
@@ -435,7 +438,6 @@ export function UnifiedLoginPage() {
                       autoComplete="new-password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
                       className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
                   </span>

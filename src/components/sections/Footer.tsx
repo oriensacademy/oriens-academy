@@ -8,6 +8,7 @@ import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { useLocale } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
+import { CONTACT } from "@/config/contact";
 import { FooterSection } from "@/components/ui/footer-section";
 
 export function Footer() {
@@ -127,9 +128,9 @@ export function Footer() {
                 <MapPin className="size-3.5" aria-hidden="true" />
               </span>
               <address className="not-italic text-[11px] leading-relaxed text-muted-foreground">
-                Emaar Square, E Blok<br />
-                Ünalan Mah., Libadiye Cd. No:82<br />
-                Üsküdar / İstanbul
+                {CONTACT.businessAddressLines[locale].map((line, idx) => (
+                  <span key={idx} className="block">{line}</span>
+                ))}
               </address>
             </div>
           </div>

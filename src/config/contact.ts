@@ -6,8 +6,20 @@ export const CONTACT = {
   whatsappHref: "https://wa.me/905442939040",
   instagramHref: "https://instagram.com/oriens.academy",
   businessAddress: {
-    tr: "Ünalan Mahallesi, Libadiye Caddesi, No: 82, Emaar Square Sitesi, E Blok, Üsküdar / İstanbul",
-    en: "Ünalan Neighbourhood, Libadiye Avenue, No. 82, Emaar Square Complex, Block E, Üsküdar / Istanbul",
+    tr: "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul",
+    en: "Emaar Square, The Heights E Block, Ünalan Neighborhood, Libadiye Street No:82, Üsküdar / Istanbul",
+  },
+  businessAddressLines: {
+    tr: [
+      "Emaar Square, The Heights E Blok",
+      "Ünalan Mah., Libadiye Cd. No:82",
+      "Üsküdar / İstanbul",
+    ],
+    en: [
+      "Emaar Square, The Heights E Block",
+      "Ünalan Neighborhood, Libadiye Street No:82",
+      "Üsküdar / Istanbul",
+    ],
   },
 } as const;
 
