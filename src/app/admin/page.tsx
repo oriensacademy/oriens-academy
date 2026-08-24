@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   CalendarCheck,
   MessageSquare,
-  Clock,
+  Users,
+  WalletCards,
   CreditCard,
   FileText,
   Bell,
@@ -114,7 +115,7 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Real Operational Metrics Overview Grid */}
+      {/* Consolidated Actionable Operational KPIs */}
       <div className="space-y-3">
         <h2 className="text-sm font-bold tracking-tight text-[#10271B]">
           Operasyonel Veri Özeti / Operational Overview
@@ -127,30 +128,43 @@ function DashboardContent() {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <MetricCard
-              label="İletişim Talebi"
-              count={metrics?.unresolvedContacts || 0}
-              subtext="Bekleyen / İşlemde"
-              href="/admin/iletisim"
-              highlight={metrics ? metrics.unresolvedContacts > 0 : false}
+              label="Aktif Öğrenci"
+              count={metrics?.activeStudents || 0}
+              subtext="Kayıtlı Profiller"
+              href="/admin/ogrenciler"
             />
             <MetricCard
-              label="Onaylı Randevu"
-              count={metrics?.confirmedBookings || 0}
-              subtext="Gelecek Seanslar"
+              label="Bugünkü Ders"
+              count={metrics?.todayLessons || 0}
+              subtext="Bugünkü Seanslar"
               href="/admin/randevular"
             />
             <MetricCard
-              label="Bekleyen Randevu"
-              count={metrics?.pendingBookings || 0}
-              subtext="Onay Bekleyen"
+              label="Bu Hafta Randevu"
+              count={metrics?.weekAppointments || 0}
+              subtext="Planlanan Seans"
               href="/admin/randevular"
-              highlight={metrics ? metrics.pendingBookings > 0 : false}
             />
             <MetricCard
-              label="Aktif Müsaitlik"
-              count={metrics?.activeSlots || 0}
-              subtext="Açık Seans Slotu"
-              href="/admin/randevular"
+              label="Bekleyen Ödev"
+              count={metrics?.pendingHomework || 0}
+              subtext="Atandı / Teslim"
+              href="/admin/ogrenciler"
+              highlight={Boolean(metrics?.pendingHomework)}
+            />
+            <MetricCard
+              label="Açık Destek Talebi"
+              count={metrics?.openSupportTickets || 0}
+              subtext="Yanıt Bekleyen"
+              href="/admin/iletisim-destek"
+              highlight={Boolean(metrics?.openSupportTickets)}
+            />
+            <MetricCard
+              label="Ödeme Bekliyor"
+              count={metrics?.awaitingPayments || 0}
+              subtext="İnceleme Gerekli"
+              href="/admin/odemeler"
+              highlight={Boolean(metrics?.awaitingPayments)}
             />
             <MetricCard
               label="Hatalı E-Posta"
@@ -159,38 +173,9 @@ function DashboardContent() {
               href="/admin/bildirimler"
               alert={metrics ? metrics.failedDeliveries > 0 : false}
             />
-            <MetricCard
-              label="Fiyat Paketleri"
-              count={metrics?.activePricingPackages || 0}
-              subtext="Aktif Seans/Paket"
-              href="/admin/fiyatlandirma"
-            />
-            <MetricCard
-              label="Öğrenci Yorumu"
-              count={metrics?.activeTestimonials || 0}
-              subtext="Yayınlanan Yorum"
-              href="/admin/icerik"
-            />
           </div>
         )}
       </div>
-
-
-      {/* Student CRM metrics */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold tracking-tight text-[#10271B]">Öğrenci Operasyonları</h2>
-        {loading ? <div className="rounded-xl border border-border bg-white p-8"><AdminWaveStatus label="Öğrenci metrikleri sorgulanıyor…" /></div> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
-          <MetricCard label="Aktif Öğrenci" count={metrics?.activeStudents||0} subtext="Aktif profiller" href="/admin/ogrenciler" />
-          <MetricCard label="Bu Hafta Randevu" count={metrics?.weekAppointments||0} subtext="İptal olmayan" href="/admin/randevular" />
-          <MetricCard label="Bugünkü Ders" count={metrics?.todayLessons||0} subtext="Ders geçmişi" href="/admin/ogrenciler" />
-          <MetricCard label="Bekleyen Ödev" count={metrics?.pendingHomework||0} subtext="Atandı / teslim" href="/admin/ogrenciler" highlight={Boolean(metrics?.pendingHomework)} />
-          <MetricCard label="Aktif Paket" count={metrics?.activeStudentPackages||0} subtext="Öğrenci paketleri" href="/admin/ogrenciler" />
-          <MetricCard label="Ödeme Bekliyor" count={metrics?.awaitingPayments||0} subtext="İnceleme gerekli" href="/admin/odemeler" highlight={Boolean(metrics?.awaitingPayments)} />
-          <MetricCard label="Tamamlanan Paket" count={metrics?.completedStudentPackages||0} subtext="Kullanımı tamamlandı" href="/admin/ogrenciler" />
-        </div>}
-      </div>
-
-
 
       {/* Module Quick Navigation Grid */}
       <div className="space-y-3">
@@ -200,52 +185,52 @@ function DashboardContent() {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ModuleLinkCard
-            title="Randevu Yönetimi"
+            title="Öğrenci Yönetimi"
+            href="/admin/ogrenciler"
+            icon={Users}
+            description="Öğrenci profillerini, derslerini ve ödevlerini yönetin."
+          />
+          <ModuleLinkCard
+            title="Ders & Randevular"
             href="/admin/randevular"
             icon={CalendarCheck}
-            description="Seans randevularını onaylayın ve yönetin."
+            description="Seans randevularını ve takvimi yönetin."
           />
           <ModuleLinkCard
-            title="Müsaitlik Takvimi"
-            href="/admin/randevular"
-            icon={Clock}
-            description="Tekli ve toplu seans slotları oluşturun."
-          />
-          <ModuleLinkCard
-            title="İletişim Talepleri"
-            href="/admin/iletisim"
+            title="İletişim & Destek"
+            href="/admin/iletisim-destek"
             icon={MessageSquare}
-            description="Gelen öğrenci iletişim mesajlarını yanıtlayın."
+            description="Web taleplerini ve öğrenci destek konuşmalarını yönetin."
           />
           <ModuleLinkCard
-            title="Fiyat Paketleri"
+            title="Fiyatlandırma & Kuponlar"
             href="/admin/fiyatlandirma"
             icon={CreditCard}
-            description="Ders ve üyelik paket fiyatlarını güncelleyin."
+            description="Paket fiyatlarını ve indirim kuponlarını yönetin."
           />
           <ModuleLinkCard
-            title="Öğrenci Yorumları"
+            title="Ödemeler & Finans"
+            href="/admin/odemeler"
+            icon={WalletCards}
+            description="Ödeme işlemlerini ve banka havalelerini inceleyin."
+          />
+          <ModuleLinkCard
+            title="İçerik Yönetimi"
             href="/admin/icerik"
             icon={FileText}
-            description="Gerçek öğrenci alıntılarını ve yorumları düzenleyin."
+            description="Öğrenci yorumları ve site içeriklerini düzenleyin."
           />
           <ModuleLinkCard
             title="E-Posta Bildirimleri"
             href="/admin/bildirimler"
             icon={Bell}
-            description="Canlı Resend teslimat loglarını inceleyin."
-          />
-          <ModuleLinkCard
-            title="Denetim Logları"
-            href="/admin/denetim"
-            icon={FileCheck}
-            description="Tüm yönetici eylemlerini izleyin (Salt Okunur)."
+            description="Resend e-posta teslimat loglarını inceleyin."
           />
           <ModuleLinkCard
             title="Site Ayarları"
             href="/admin/ayarlar"
             icon={Settings}
-            description="Bildirim e-postalarını ve konfigürasyonu yönetin."
+            description="Bildirim yönlendirmeleri ve genel ayarları yönetin."
           />
         </div>
       </div>

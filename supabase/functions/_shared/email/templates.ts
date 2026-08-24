@@ -1466,6 +1466,45 @@ export function renderStudentHomeworkReviewedEmail(data: HomeworkEmailData) {
   return { subject, html, text };
 }
 
+/**
+ * 23B. Ödev Düzenleme Talebi — Öğrenciye
+ */
+export function renderStudentHomeworkRevisionRequestedEmail(data: HomeworkEmailData) {
+  const isTr = data.locale === "tr";
+  const subject = isTr
+    ? "Ödeviniz İçin Düzenleme Talebi | Oriens Academy"
+    : `Revision Requested: ${data.assignmentTitle} | Oriens Academy`;
+
+  const feedbackHtml = data.teacherFeedback ? `
+    <div style="margin-top:16px;background-color:${PALETTE.surfaceGold};border:1px solid ${PALETTE.borderGold};border-radius:12px;padding:16px 18px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${PALETTE.goldDark};margin-bottom:6px;">${isTr ? "Eğitmen Notu & Düzenleme İsteği" : "Instructor Revision Note"}</div>
+      <div style="font-size:14px;line-height:1.6;color:${PALETTE.primary};">${escapeHtml(data.teacherFeedback)}</div>
+    </div>` : "";
+
+  const cardHtml = summaryCard(isTr ? "Ödev Bilgisi" : "Assignment Info", [
+    { label: isTr ? "Ödev" : "Title", value: escapeHtml(data.assignmentTitle) },
+    { label: isTr ? "Ders" : "Subject", value: escapeHtml(data.subjectOrLesson) },
+    { label: isTr ? "Durum" : "Status", value: infoBadge(isTr ? "DÜZENLEME BEKLİYOR" : "REVISION NEEDED", "gold") },
+  ]);
+
+  const bodyHtml = `
+    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br><strong>${escapeHtml(data.assignmentTitle)}</strong> başlıklı ödeviniz için eğitmeniniz düzenleme talebinde bulunmuştur. Lütfen eğitmen notunu inceleyerek ödevinizi güncelleyip tekrar teslim ediniz.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your instructor has requested a revision for <strong>${escapeHtml(data.assignmentTitle)}</strong>. Please review the notes, update your submission, and resubmit.`}</div>
+    ${cardHtml}
+    ${feedbackHtml}
+    ${actionButton(isTr ? "Ödevi Düzenle ve Yeniden Teslim Et" : "Edit & Resubmit Assignment", `${BASE_URL}/${data.locale}/hesabim`)}`;
+
+  const html = renderEmailShell({
+    locale: data.locale,
+    eyebrow: isTr ? "Akademik Takip" : "Revision Request",
+    title: isTr ? "Düzenleme Talebi" : "Revision Requested",
+    bodyHtml,
+    footerEmail: "support@oriens-academy.com",
+  });
+
+  const text = joinText([`ORIENS ACADEMY - ${subject}`, "", data.teacherFeedback || ""]);
+  return { subject, html, text };
+}
+
 // ============================================================================
 // E. HESAP / GÜVENLİK MAİLLERİ (ACCOUNT & SECURITY)
 // ============================================================================
@@ -1707,6 +1746,66 @@ export function renderStudentLessonCompletedEmail(data: LessonCompletedEmailData
     `${isTr ? "Tamamlanan Ders" : "Lesson"}: ${data.lessonTitle}`,
     `${isTr ? "Kalan Ders" : "Remaining"}: ${remaining} / ${data.totalLessons}`,
     `${BASE_URL}/${data.locale}/hesabim`,
+  ]);
+
+  return { subject, html, text };
+}
+
+export interface SupportConfirmationEmailData {
+  studentName: string;
+  studentEmail: string;
+  subject: string;
+  categoryLabel: string;
+  locale: "tr" | "en";
+}
+
+export function renderStudentSupportConfirmationEmail(
+  data: SupportConfirmationEmailData
+): EmailTemplateResult {
+  const isTr = data.locale === "tr";
+  const subject = isTr
+    ? "Destek Talebiniz Alındı | Oriens Academy"
+    : "Your Support Request Has Been Received | Oriens Academy";
+
+  const portalUrl = `${BASE_URL}/${data.locale}/${isTr ? "hesabim" : "account"}`;
+
+  const detailsCard = summaryCard(isTr ? "Talep Bilgileri" : "Ticket Details", [
+    { label: isTr ? "Konu" : "Subject", value: escapeHtml(data.subject) },
+    { label: isTr ? "Kategori" : "Category", value: escapeHtml(data.categoryLabel) },
+    { label: isTr ? "Durum" : "Status", value: isTr ? "İnceleniyor / Açık" : "In Review / Open" },
+  ]);
+
+  const bodyHtml = `
+    <div>
+      ${
+        isTr
+          ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Destek talebiniz başarıyla alınmış ve destek ekibimize iletilmiştir. Uzman ekibimiz talebinizi en kısa sürede inceleyerek Öğrenci Portalı üzerinden yanıtlayacaktır.`
+          : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your support request has been received and forwarded to our support team. Our team will review your inquiry and respond through your Student Portal promptly.`
+      }
+    </div>
+    ${detailsCard}
+    ${actionButton(isTr ? "Destek Mesajlarımı Görüntüle" : "View My Support Messages", portalUrl)}`;
+
+  const html = renderEmailShell({
+    locale: data.locale,
+    eyebrow: isTr ? "Öğrenci Destek" : "Student Support",
+    title: isTr ? "Destek Talebiniz Alındı" : "Support Request Received",
+    bodyHtml,
+    footerEmail: "support@oriens-academy.com",
+  });
+
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`,
+    "",
+    isTr ? `Merhaba ${data.studentName},` : `Hello ${data.studentName},`,
+    isTr
+      ? "Destek talebiniz ekibimize iletildi. Durumu öğrenci portalınızdan takip edebilirsiniz."
+      : "Your support request has been forwarded to our team. You can track updates in your student portal.",
+    "",
+    `${isTr ? "Konu" : "Subject"}: ${data.subject}`,
+    `${isTr ? "Kategori" : "Category"}: ${data.categoryLabel}`,
+    "",
+    `${portalUrl}`,
   ]);
 
   return { subject, html, text };

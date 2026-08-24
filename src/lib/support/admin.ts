@@ -79,13 +79,49 @@ export async function listAdminSupportThreads(filters?: {
       const isUnread =
         Boolean(t.last_message_at && t.admin_last_read_at
           ? new Date(t.last_message_at) > new Date(t.admin_last_read_at)
-          : true) && t.status === "waiting_support";
+          : true) && (t.status === "waiting_support" || t.status === "open");
 
       return {
         ...t,
         unread_for_admin: isUnread,
       };
     });
+
+    // Ensure student profiles are populated even if nested join is null
+    const missingProfileUserIds = threads
+      .filter((t) => !t.student_profiles && t.student_user_id)
+      .map((t) => t.student_user_id);
+
+    if (missingProfileUserIds.length > 0) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: profiles } = await (getSupabaseClient().from("student_profiles") as any)
+          .select("id, full_name, email, phone")
+          .in("id", missingProfileUserIds);
+
+        if (profiles && profiles.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+          threads = threads.map((t) => {
+            if (!t.student_profiles && profileMap.has(t.student_user_id)) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const p = profileMap.get(t.student_user_id) as any;
+              return {
+                ...t,
+                student_profiles: {
+                  full_name: p.full_name,
+                  email: p.email,
+                  phone: p.phone,
+                },
+              };
+            }
+            return t;
+          });
+        }
+      } catch {
+        // Fallback safe
+      }
+    }
 
     if (filters?.category && filters.category !== "all") {
       threads = threads.filter((t) => t.category === filters.category);

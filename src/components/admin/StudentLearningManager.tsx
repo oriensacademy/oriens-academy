@@ -17,6 +17,7 @@ import {
   History,
   Check,
   RotateCcw,
+  CalendarPlus,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import {
@@ -33,7 +34,7 @@ import {
   type PackageAdjustment,
   type StudentPayment,
 } from "@/lib/admin/student-learning";
-import { HomeworkBuilderDrawer } from "@/components/admin/HomeworkBuilderDrawer";
+import { AssignHomeworkModal } from "@/components/admin/homework/AssignHomeworkModal";
 import { HomeworkSubmissionReview } from "@/components/admin/HomeworkSubmissionReview";
 import type { Tables } from "@/types/database.types";
 import { listStudentExamAttempts, type StudentExamAttempt } from "@/lib/student/exam-history";
@@ -154,7 +155,7 @@ export function StudentLearningManager({
             <Card key={p.id}>
               <div className="flex justify-between gap-3">
                 <strong>{money(p.amount, p.currency)}</strong>
-                <Badge>{p.status}</Badge>
+                <Badge>{formatPaymentStatus(p.status)}</Badge>
               </div>
               <p>
                 {p.payment_method === "bank_transfer" ? "Havale / EFT" : "Kart"} · {p.public_reference} ·{" "}
@@ -639,6 +640,9 @@ function HomeworkPanel({
   lessons,
   userId,
   studentName,
+  busy: _busy,
+  setBusy: _setBusy,
+  setError: _setError,
   changed,
 }: {
   homework: Tables<"student_homework">[];
@@ -650,22 +654,39 @@ function HomeworkPanel({
   setError: (v: string) => void;
   changed: () => void;
 }) {
-  const [builderOpen, setBuilderOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 sm:flex-row sm:items-center sm:justify-between shadow-xs">
         <div>
-          <h3 className="text-sm font-bold text-ink">Ödevler</h3>
-          <p className="text-xs text-muted-foreground">Etkileşimli sorular, kaynaklar, taslaklar ve teslimleri yönetin.</p>
+          <h3 className="text-sm font-bold text-ink">Ödevler & Değerlendirmeler</h3>
+          <p className="text-xs text-muted-foreground">
+            Hazır şablonlardan ödev atayın, teslimleri ve eğitmen geri bildirimlerini yönetin.
+          </p>
         </div>
-        <button type="button" onClick={() => setBuilderOpen(true)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-xs font-semibold text-white hover:bg-forest">
-          <Plus className="size-4" /> Ödev Oluştur
+        <button
+          type="button"
+          onClick={() => setAssignOpen(true)}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer shadow-xs"
+        >
+          <CalendarPlus className="size-4" /> Ödev Ata
         </button>
       </div>
       <div className="space-y-2.5">
-        {homework.length ? homework.map((item) => <HomeworkReview key={item.id} item={item} changed={changed} />) : <Empty>Henüz ödev kaydı bulunmuyor.</Empty>}
+        {homework.length ? (
+          homework.map((item) => <HomeworkReview key={item.id} item={item} changed={changed} />)
+        ) : (
+          <Empty>Henüz ödev kaydı bulunmuyor.</Empty>
+        )}
       </div>
-      <HomeworkBuilderDrawer open={builderOpen} onClose={() => setBuilderOpen(false)} studentId={userId} studentName={studentName} lessons={lessons.map((lesson) => ({ id: lesson.id, title: lesson.title }))} onCreated={changed} />
+      <AssignHomeworkModal
+        isOpen={assignOpen}
+        lockedStudentId={userId}
+        lockedStudentName={studentName}
+        lessons={lessons.map((lesson) => ({ id: lesson.id, title: lesson.title }))}
+        onClose={() => setAssignOpen(false)}
+        onAssigned={changed}
+      />
     </div>
   );
 }
@@ -800,6 +821,21 @@ function HomeworkReview({
   );
 }
 
+function formatPaymentStatus(status: string | null | undefined): string {
+  if (!status) return "Belirtilmemiş";
+  const s = status.toLowerCase();
+  if (s === "paid") return "Ödendi";
+  if (s === "pending") return "Ödeme Bekliyor";
+  if (s === "waived") return "Ücret Muafiyeti / Ücretsiz";
+  if (s === "bank_transfer_pending") return "Havale Onayı Bekliyor";
+  if (s === "processing") return "İşleniyor";
+  if (s === "requires_action") return "İşlem Bekliyor";
+  if (s === "failed") return "Başarısız";
+  if (s === "cancelled") return "İptal Edildi";
+  if (s === "refunded") return "İade Edildi";
+  return status;
+}
+
 // ----------------------------------------------------------------------------
 // PACKAGE PANEL
 // ----------------------------------------------------------------------------
@@ -896,7 +932,7 @@ function PackagePanel({
       endDate: packageForm.endDate || null,
       lessonCount: Number(packageForm.lessonCount),
       priceAmount: Number(packageForm.price || 0),
-      currency: packageForm.currency.toUpperCase(),
+      currency: "TRY",
       paymentStatus: packageForm.paymentStatus,
       adminNotes: packageForm.adminNotes.trim() || null,
       sendNotification: packageForm.sendNotification,
@@ -924,7 +960,7 @@ function PackagePanel({
       studentId: userId,
       lessonDelta: delta,
       priceAmount: Number(extraForm.price || 0),
-      currency: extraForm.currency.toUpperCase(),
+      currency: "TRY",
       paymentStatus: extraForm.paymentStatus,
       notes: extraForm.notes.trim() || null,
       sendNotification: extraForm.sendNotification,
@@ -940,404 +976,405 @@ function PackagePanel({
 
   return (
     <div className="space-y-5">
-      {/* Header & Quick Action Buttons */}
+      {/* Top Header: Single [ Yeni Paket Tanımla ] CTA */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4">
         <div>
           <h3 className="font-heading text-lg font-bold text-ink">Eğitim Paketleri & Ders Hakları</h3>
           <p className="text-xs text-muted-foreground">
-            Öğrencinin kayıtlı paketlerini yönetin, yeni paket tanımlayın veya mevcut pakete ek ders ekleyin.
+            Öğrencinin kayıtlı paketlerini yönetin, yeni paket tanımlayın veya aktif paketlere ek ders ekleyin.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={openAssignModal}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors"
-          >
-            <PackagePlus className="size-3.5" />
-            Paket Tanımla
-          </button>
-          <button
-            type="button"
-            disabled={purchases.length === 0}
-            onClick={() => openExtraModal()}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-primary bg-primary/10 px-3.5 text-xs font-semibold text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer transition-colors"
-          >
-            <Plus className="size-3.5" />
-            Ek Ders Ekle
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={openAssignModal}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors shadow-xs"
+        >
+          <PackagePlus className="size-3.5" />
+          Yeni Paket Tanımla
+        </button>
       </div>
 
-      {/* MODAL: Paket Tanımla */}
+      {/* CENTERED MODAL: Paket Tanımla */}
       {activeModal === "assign_package" && (
-        <div className="rounded-2xl border-2 border-primary/30 bg-white p-5 shadow-editorial space-y-4">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
-              <PackagePlus className="size-4 text-primary" />
-              Yeni Paket Tanımla
-            </h4>
-            <button
-              type="button"
-              onClick={() => setActiveModal("none")}
-              className="text-xs font-semibold text-muted-foreground hover:text-ink cursor-pointer"
-            >
-              Kapat ✕
-            </button>
-          </div>
-
-          <form onSubmit={handleAssignSubmit} className="space-y-4">
-            {/* Mode Switcher */}
-            <div className="flex gap-2">
+        <div className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" role="dialog" aria-modal="true">
+          <div className="relative my-auto w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
+                <PackagePlus className="size-4 text-primary" />
+                Yeni Paket Tanımla
+              </h4>
               <button
                 type="button"
-                onClick={() => setAssignMode("catalog")}
-                className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${
-                  assignMode === "catalog"
-                    ? "border-primary bg-primary text-white"
-                    : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
-                }`}
+                onClick={() => setActiveModal("none")}
+                className="rounded-xl border border-border p-1.5 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
               >
-                Katalog Paketi (Standart)
-              </button>
-              <button
-                type="button"
-                onClick={() => setAssignMode("custom")}
-                className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${
-                  assignMode === "custom"
-                    ? "border-primary bg-primary text-white"
-                    : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
-                }`}
-              >
-                Özel Paket
+                ✕
               </button>
             </div>
 
-            {assignMode === "catalog" ? (
-              <div className="space-y-3">
+            <form onSubmit={handleAssignSubmit} className="space-y-4">
+              {/* Mode Switcher */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAssignMode("catalog")}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${
+                    assignMode === "catalog"
+                      ? "border-primary bg-primary text-white shadow-xs"
+                      : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
+                  }`}
+                >
+                  Katalog Paketi (Standart)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignMode("custom")}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-xs font-semibold cursor-pointer transition-colors ${
+                    assignMode === "custom"
+                      ? "border-primary bg-primary text-white shadow-xs"
+                      : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
+                  }`}
+                >
+                  Özel Paket
+                </button>
+              </div>
+
+              {assignMode === "catalog" ? (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Katalog Paketi</label>
+                    <select
+                      required
+                      value={packageForm.packageId}
+                      onChange={(e) => chooseCatalogPackage(e.target.value)}
+                      className={field}
+                    >
+                      <option value="">Seçiniz...</option>
+                      {packages.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name_tr || p.name_en || p.id} ({p.lesson_count} Ders · {money(Number(p.current_total ?? p.price_amount ?? 0), "TRY")})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {packageForm.packageId && (
+                    <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-forest/5 p-3.5 text-xs">
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground">Seçilen Paket Özeti</span>
+                        <strong className="text-sm font-bold text-ink">
+                          {packageForm.lessonCount} Derslik Paket
+                        </strong>
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground">Sabit Tutar</span>
+                        <strong className="text-sm font-bold text-primary">
+                          {money(Number(packageForm.price || 0), "TRY")}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
+                    <select
+                      value={packageForm.paymentStatus}
+                      onChange={(e) => setPackageForm({ ...packageForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
+                      className={field}
+                    >
+                      <option value="paid">Ödendi (Onaylı)</option>
+                      <option value="pending">Ödeme Bekliyor</option>
+                      <option value="waived">Ücret Muafiyeti / Ücretsiz Tanımlandı</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Özel Paket Adı</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="örn. 15 Derslik Özel Paket / Hızlandırılmış AP Calculus"
+                      value={packageForm.customName}
+                      onChange={(e) => setPackageForm({ ...packageForm, customName: e.target.value })}
+                      className={field}
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Toplam Ders Sayısı</label>
+                      <input
+                        required
+                        type="number"
+                        min="1"
+                        max="500"
+                        value={packageForm.lessonCount}
+                        onChange={(e) => setPackageForm({ ...packageForm, lessonCount: e.target.value })}
+                        className={field}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ücret (TL)</label>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        value={packageForm.price}
+                        onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
+                        className={field}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
+                    <select
+                      value={packageForm.paymentStatus}
+                      onChange={(e) => setPackageForm({ ...packageForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
+                      className={field}
+                    >
+                      <option value="paid">Ödendi (Onaylı)</option>
+                      <option value="pending">Ödeme Bekliyor</option>
+                      <option value="waived">Ücret Muafiyeti / Ücretsiz Tanımlandı</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Yönetici Notu (Opsiyonel)</label>
+                <input
+                  type="text"
+                  placeholder="İç referans veya açıklama notu"
+                  value={packageForm.adminNotes}
+                  onChange={(e) => setPackageForm({ ...packageForm, adminNotes: e.target.value })}
+                  className={field}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={packageForm.sendNotification}
+                  onChange={(e) => setPackageForm({ ...packageForm, sendNotification: e.target.checked })}
+                  className="rounded border-input text-primary focus:ring-primary"
+                />
+                Öğrenciye e-posta bildirimi gönder (payments@oriens-academy.com üzerinden)
+              </label>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal("none")}
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-surface-muted cursor-pointer"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy || (assignMode === "catalog" && !packageForm.packageId) || (assignMode === "custom" && !packageForm.customName.trim())}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
+                >
+                  <Check className="size-3.5" />
+                  {busy ? "Kaydediliyor..." : "Paketi Tanımla"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CENTERED MODAL: Ek Ders Ekle */}
+      {activeModal === "extra_lessons" && selectedExtraPurchase && (
+        <div className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" role="dialog" aria-modal="true">
+          <div className="relative my-auto w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
+                <Sparkles className="size-4 text-primary" />
+                Pakete Ek Ders Ekle
+              </h4>
+              <button
+                type="button"
+                onClick={() => setActiveModal("none")}
+                className="rounded-xl border border-border p-1.5 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleExtraSubmit} className="space-y-4">
+              {purchases.length > 1 && (
                 <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Paket</label>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Hedef Paket</label>
                   <select
-                    required
-                    value={packageForm.packageId}
-                    onChange={(e) => chooseCatalogPackage(e.target.value)}
+                    value={extraForm.purchaseId || selectedExtraPurchase.id}
+                    onChange={(e) => {
+                      const pId = e.target.value;
+                      setExtraForm({
+                        ...extraForm,
+                        purchaseId: pId,
+                        currency: "TRY",
+                      });
+                    }}
                     className={field}
                   >
-                    <option value="">Seçiniz...</option>
-                    {packages.map((p) => (
+                    {purchases.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name_tr || p.name_en || p.id} ({p.lesson_count} Ders · {money(Number(p.current_total ?? p.price_amount ?? 0), "TRY")})
+                        {p.custom_package_name || p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id} ({p.lessons_used}/{p.lesson_count} Ders · {p.status === "active" ? "Aktif" : p.status})
                       </option>
                     ))}
                   </select>
                 </div>
+              )}
 
-                {packageForm.packageId && (
-                  <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-forest/5 p-3 text-xs">
-                    <span className="font-semibold text-ink">Seçilen Paket Özeti:</span>
-                    <span className="font-bold text-primary">
-                      {packageForm.lessonCount} Ders · {money(Number(packageForm.price || 0), "TRY")}
-                    </span>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
-                  <select
-                    value={packageForm.paymentStatus}
-                    onChange={(e) => setPackageForm({ ...packageForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
-                    className={field}
-                  >
-                    <option value="paid">Ödendi (Onaylı)</option>
-                    <option value="pending">Ödeme Bekliyor</option>
-                    <option value="waived">Ücretsiz / Muaf</option>
-                  </select>
+              {/* Current Balance Banner */}
+              <div className="rounded-xl border border-border bg-surface-muted/70 p-3.5 text-xs space-y-1.5">
+                <div className="flex justify-between font-semibold text-ink">
+                  <span>Mevcut Paket:</span>
+                  <span>{selectedExtraPurchase.custom_package_name || selectedExtraPurchase.pricing_packages?.name_tr || selectedExtraPurchase.package_id}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Ders Durumu:</span>
+                  <span>
+                    {selectedExtraPurchase.lessons_used} kullanılan / {selectedExtraPurchase.lesson_count} toplam ·{" "}
+                    <strong className="text-emerald-700">{Math.max(0, selectedExtraPurchase.lesson_count - selectedExtraPurchase.lessons_used)} kalan</strong>
+                  </span>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Özel Paket Adı</label>
-                  <input
-                    required
-                    type="text"
-                    placeholder="örn. 15 Derslik Özel Paket / Hızlandırılmış AP Calculus"
-                    value={packageForm.customName}
-                    onChange={(e) => setPackageForm({ ...packageForm, customName: e.target.value })}
-                    className={field}
-                  />
-                </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Toplam Ders Sayısı</label>
-                    <input
-                      required
-                      type="number"
-                      min="1"
-                      max="500"
-                      value={packageForm.lessonCount}
-                      onChange={(e) => setPackageForm({ ...packageForm, lessonCount: e.target.value })}
-                      className={field}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ücret (TL)</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      value={packageForm.price}
-                      onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
-                      className={field}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
-                  <select
-                    value={packageForm.paymentStatus}
-                    onChange={(e) => setPackageForm({ ...packageForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
-                    className={field}
-                  >
-                    <option value="paid">Ödendi (Onaylı)</option>
-                    <option value="pending">Ödeme Bekliyor</option>
-                    <option value="waived">Ücretsiz / Muaf</option>
-                  </select>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Yönetici Notu (Opsiyonel)</label>
-              <input
-                type="text"
-                placeholder="İç referans veya açıklama notu"
-                value={packageForm.adminNotes}
-                onChange={(e) => setPackageForm({ ...packageForm, adminNotes: e.target.value })}
-                className={field}
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
-              <input
-                type="checkbox"
-                checked={packageForm.sendNotification}
-                onChange={(e) => setPackageForm({ ...packageForm, sendNotification: e.target.checked })}
-                className="rounded border-input text-primary focus:ring-primary"
-              />
-              Öğrenciye e-posta bildirimi gönder (payments@oriens-academy.com üzerinden)
-            </label>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setActiveModal("none")}
-                className="rounded-lg border border-border px-4 py-2 text-xs font-semibold hover:bg-surface-muted cursor-pointer"
-              >
-                İptal
-              </button>
-              <button
-                type="submit"
-                disabled={busy || (assignMode === "catalog" && !packageForm.packageId) || (assignMode === "custom" && !packageForm.customName.trim())}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
-              >
-                <Check className="size-3.5" />
-                {busy ? "Kaydediliyor..." : "Paketi Tanımla"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* MODAL: Ek Ders Ekle */}
-      {activeModal === "extra_lessons" && selectedExtraPurchase && (
-        <div className="rounded-2xl border-2 border-primary/30 bg-white p-5 shadow-editorial space-y-4">
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
-              <Sparkles className="size-4 text-primary" />
-              Pakete Ek Ders Ekle
-            </h4>
-            <button
-              type="button"
-              onClick={() => setActiveModal("none")}
-              className="text-xs font-semibold text-muted-foreground hover:text-ink cursor-pointer"
-            >
-              Kapat ✕
-            </button>
-          </div>
-
-          <form onSubmit={handleExtraSubmit} className="space-y-4">
-            {purchases.length > 1 && (
+              {/* Lesson Delta Selector */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Hedef Paket</label>
-                <select
-                  value={extraForm.purchaseId || selectedExtraPurchase.id}
-                  onChange={(e) => {
-                    const pId = e.target.value;
-                    setExtraForm({
-                      ...extraForm,
-                      purchaseId: pId,
-                      currency: "TRY",
-                    });
-                  }}
-                  className={field}
-                >
-                  {purchases.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.custom_package_name || p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id} ({p.lessons_used}/{p.lesson_count} Ders · {p.status})
-                    </option>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Eklenecek Ders Sayısı</label>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  {[1, 2, 3, 5, 10].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setExtraForm({ ...extraForm, lessonDelta: String(num) })}
+                      className={`rounded-xl border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                        extraForm.lessonDelta === String(num)
+                          ? "border-primary bg-primary text-white shadow-xs"
+                          : "border-border bg-surface hover:bg-surface-muted text-ink"
+                      }`}
+                    >
+                      +{num} Ders
+                    </button>
                   ))}
-                </select>
-              </div>
-            )}
-
-            {/* Current Balance Banner */}
-            <div className="rounded-xl border border-border bg-surface-muted/70 p-3.5 text-xs space-y-1.5">
-              <div className="flex justify-between font-semibold text-ink">
-                <span>Mevcut Paket:</span>
-                <span>{selectedExtraPurchase.custom_package_name || selectedExtraPurchase.pricing_packages?.name_tr || selectedExtraPurchase.package_id}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Ders Durumu:</span>
-                <span>
-                  {selectedExtraPurchase.lessons_used} kullanılan / {selectedExtraPurchase.lesson_count} toplam ·{" "}
-                  <strong className="text-emerald-700">{Math.max(0, selectedExtraPurchase.lesson_count - selectedExtraPurchase.lessons_used)} kalan</strong>
-                </span>
-              </div>
-            </div>
-
-            {/* Lesson Delta Selector */}
-            <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Eklenecek Ders Sayısı</label>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {[1, 2, 3, 5, 10].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setExtraForm({ ...extraForm, lessonDelta: String(num) })}
-                    className={`rounded-lg border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer ${
-                      extraForm.lessonDelta === String(num)
-                        ? "border-primary bg-primary text-white"
-                        : "border-border bg-surface hover:bg-surface-muted text-ink"
-                    }`}
-                  >
-                    +{num} Ders
-                  </button>
-                ))}
-              </div>
-              <input
-                required
-                type="number"
-                min="1"
-                max="100"
-                placeholder="Özel ders adedi girin"
-                value={extraForm.lessonDelta}
-                onChange={(e) => setExtraForm({ ...extraForm, lessonDelta: e.target.value })}
-                className={field}
-              />
-            </div>
-
-            {/* LIVE PREVIEW BOX */}
-            {Number(extraForm.lessonDelta) > 0 && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-950 space-y-1">
-                <p className="font-bold flex items-center gap-1.5 text-emerald-900">
-                  <Check className="size-3.5 text-emerald-700" />
-                  Ek Ders Sonrası Hak Özeti:
-                </p>
-                <div className="grid grid-cols-3 gap-2 pt-1 text-center font-semibold">
-                  <div className="rounded-lg bg-white/80 p-2 border border-emerald-200">
-                    <span className="block text-[10px] text-muted-foreground">Yeni Toplam</span>
-                    <span className="text-sm font-bold text-ink">
-                      {selectedExtraPurchase.lesson_count + Number(extraForm.lessonDelta)} ders
-                    </span>
-                  </div>
-                  <div className="rounded-lg bg-white/80 p-2 border border-emerald-200">
-                    <span className="block text-[10px] text-muted-foreground">Kullanılan (Sabit)</span>
-                    <span className="text-sm font-bold text-ink">{selectedExtraPurchase.lessons_used} ders</span>
-                  </div>
-                  <div className="rounded-lg bg-emerald-100 p-2 border border-emerald-300">
-                    <span className="block text-[10px] text-emerald-800">Yeni Kalan</span>
-                    <span className="text-sm font-bold text-emerald-900">
-                      {selectedExtraPurchase.lesson_count + Number(extraForm.lessonDelta) - selectedExtraPurchase.lessons_used} ders
-                    </span>
-                  </div>
                 </div>
-                {selectedExtraPurchase.status === "completed" && (
-                  <p className="mt-2 text-[11px] font-medium text-emerald-800 flex items-center gap-1">
-                    <RotateCcw className="size-3" />
-                    Paket tamamlanmıştı; ek ders sonrası otomatik olarak <strong>Aktif</strong> duruma gelecektir.
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ek Ücret (TL) (Opsiyonel)</label>
                 <input
+                  required
                   type="number"
-                  min="0"
-                  value={extraForm.price}
-                  onChange={(e) => setExtraForm({ ...extraForm, price: e.target.value })}
+                  min="1"
+                  max="100"
+                  placeholder="Özel ders adedi girin"
+                  value={extraForm.lessonDelta}
+                  onChange={(e) => setExtraForm({ ...extraForm, lessonDelta: e.target.value })}
                   className={field}
-                  placeholder="0"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
-                <select
-                  value={extraForm.paymentStatus}
-                  onChange={(e) => setExtraForm({ ...extraForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
-                  className={field}
-                >
-                  <option value="waived">Ücretsiz / Muaf (Hediye / Dahil)</option>
-                  <option value="paid">Ödendi (Onaylı)</option>
-                  <option value="pending">Ödeme Bekliyor</option>
-                </select>
+
+              {/* LIVE PREVIEW BOX */}
+              {Number(extraForm.lessonDelta) > 0 && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-950 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-emerald-900">
+                    <Check className="size-3.5 text-emerald-700" />
+                    Ek Ders Sonrası Hak Özeti:
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 pt-1 text-center font-semibold">
+                    <div className="rounded-xl bg-white/80 p-2 border border-emerald-200">
+                      <span className="block text-[10px] text-muted-foreground">Yeni Toplam</span>
+                      <span className="text-sm font-bold text-ink">
+                        {selectedExtraPurchase.lesson_count + Number(extraForm.lessonDelta)} ders
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-white/80 p-2 border border-emerald-200">
+                      <span className="block text-[10px] text-muted-foreground">Kullanılan (Sabit)</span>
+                      <span className="text-sm font-bold text-ink">{selectedExtraPurchase.lessons_used} ders</span>
+                    </div>
+                    <div className="rounded-xl bg-emerald-100 p-2 border border-emerald-300">
+                      <span className="block text-[10px] text-emerald-800">Yeni Kalan</span>
+                      <span className="text-sm font-bold text-emerald-900">
+                        {selectedExtraPurchase.lesson_count + Number(extraForm.lessonDelta) - selectedExtraPurchase.lessons_used} ders
+                      </span>
+                    </div>
+                  </div>
+                  {selectedExtraPurchase.status === "completed" && (
+                    <p className="mt-2 text-[11px] font-medium text-emerald-800 flex items-center gap-1">
+                      <RotateCcw className="size-3" />
+                      Paket tamamlanmıştı; ek ders sonrası otomatik olarak <strong>Aktif</strong> duruma gelecektir.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ek Ücret (TL) (Opsiyonel)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={extraForm.price}
+                    onChange={(e) => setExtraForm({ ...extraForm, price: e.target.value })}
+                    className={field}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
+                  <select
+                    value={extraForm.paymentStatus}
+                    onChange={(e) => setExtraForm({ ...extraForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
+                    className={field}
+                  >
+                    <option value="waived">Ücret Muafiyeti / Ücretsiz (Hediye / Dahil)</option>
+                    <option value="paid">Ödendi (Onaylı)</option>
+                    <option value="pending">Ödeme Bekliyor</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Gerekçe / Açıklama (Opsiyonel)</label>
-              <input
-                type="text"
-                placeholder="örn. Deneme sınavı soru analiz seansı / Hediye ek ders"
-                value={extraForm.notes}
-                onChange={(e) => setExtraForm({ ...extraForm, notes: e.target.value })}
-                className={field}
-              />
-            </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Gerekçe / Açıklama (Opsiyonel)</label>
+                <input
+                  type="text"
+                  placeholder="örn. Deneme sınavı soru analiz seansı / Hediye ek ders"
+                  value={extraForm.notes}
+                  onChange={(e) => setExtraForm({ ...extraForm, notes: e.target.value })}
+                  className={field}
+                />
+              </div>
 
-            <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
-              <input
-                type="checkbox"
-                checked={extraForm.sendNotification}
-                onChange={(e) => setExtraForm({ ...extraForm, sendNotification: e.target.checked })}
-                className="rounded border-input text-primary focus:ring-primary"
-              />
-              Öğrenciye e-posta bildirimi gönder (payments@oriens-academy.com üzerinden)
-            </label>
+              <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={extraForm.sendNotification}
+                  onChange={(e) => setExtraForm({ ...extraForm, sendNotification: e.target.checked })}
+                  className="rounded border-input text-primary focus:ring-primary"
+                />
+                Öğrenciye e-posta bildirimi gönder (payments@oriens-academy.com üzerinden)
+              </label>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setActiveModal("none")}
-                className="rounded-lg border border-border px-4 py-2 text-xs font-semibold hover:bg-surface-muted cursor-pointer"
-              >
-                İptal
-              </button>
-              <button
-                type="submit"
-                disabled={busy || Number(extraForm.lessonDelta) < 1}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
-              >
-                <Sparkles className="size-3.5" />
-                {busy ? "Ekleniyor..." : "Ek Dersleri Tanımla"}
-              </button>
-            </div>
-          </form>
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal("none")}
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-surface-muted cursor-pointer"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy || Number(extraForm.lessonDelta) < 1}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
+                >
+                  <Sparkles className="size-3.5" />
+                  {busy ? "Ekleniyor..." : "Ek Dersleri Tanımla"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -1346,15 +1383,27 @@ function PackagePanel({
         {purchases.length ? (
           purchases.map((p) => {
             const pkgAdjustments = adjustments.filter((a) => a.package_purchase_id === p.id);
+            const extraLessonsSum = pkgAdjustments
+              .filter((a) => a.adjustment_type === "extra_lessons")
+              .reduce((sum, a) => sum + (a.lesson_delta || 0), 0);
+            const baseLessonCount = Math.max(0, p.lesson_count - extraLessonsSum);
             const remaining = Math.max(0, p.lesson_count - p.lessons_used);
             const pct = Math.min(100, p.lesson_count ? Math.round((p.lessons_used / p.lesson_count) * 100) : 0);
             const title = p.custom_package_name || p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id;
+            const isActive = p.status === "active";
 
             return (
               <div key={p.id} className="rounded-2xl border border-border bg-surface p-4 text-xs space-y-3.5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <h4 className="text-sm font-bold text-ink">{title}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-ink">{title}</h4>
+                      {extraLessonsSum > 0 && (
+                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                          +{extraLessonsSum} Ek Ders
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {p.start_date}
                       {p.end_date ? ` — ${p.end_date}` : " (Süresiz)"}
@@ -1365,27 +1414,29 @@ function PackagePanel({
                   <div className="flex items-center gap-2">
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                        p.status === "active"
+                        isActive
                           ? "bg-emerald-100 text-emerald-800"
                           : p.status === "completed"
                             ? "bg-slate-100 text-slate-800"
                             : "bg-amber-100 text-amber-800"
                       }`}
                     >
-                      {p.status === "active" ? "Aktif" : p.status === "completed" ? "Tamamlandı" : p.status}
+                      {isActive ? "Aktif" : p.status === "completed" ? "Tamamlandı" : p.status}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => openExtraModal(p.id)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors"
-                    >
-                      <Plus className="size-3 text-primary" />
-                      Ek Ders Ekle
-                    </button>
+                    {isActive && (
+                      <button
+                        type="button"
+                        onClick={() => openExtraModal(p.id)}
+                        className="inline-flex items-center gap-1 rounded-xl border border-border bg-white px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors"
+                      >
+                        <Plus className="size-3 text-primary" />
+                        Ek Ders Ekle
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Bar & Entitlement Details */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-muted-foreground">
@@ -1403,11 +1454,16 @@ function PackagePanel({
                       style={{ width: `${pct}%` }}
                     />
                   </div>
+                  {extraLessonsSum > 0 && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Baz Paket: <strong>{baseLessonCount} ders</strong> · Ek Dersler: <strong>+{extraLessonsSum} ders</strong> · Toplam Hak: <strong>{p.lesson_count} ders</strong>
+                    </p>
+                  )}
                 </div>
 
                 {/* Info Badges */}
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border text-[11px] text-muted-foreground">
-                  <span>Ödeme: <strong>{p.payment_status}</strong></span>
+                  <span>Ödeme Durumu: <strong>{formatPaymentStatus(p.payment_status)}</strong></span>
                   <span>·</span>
                   <span>Kaynak: <strong>{p.assignment_source === "admin_manual" ? "Yönetici Tanımlı" : "Satın Alma"}</strong></span>
                   {p.admin_notes && (
@@ -1445,7 +1501,7 @@ function PackagePanel({
                               year: "numeric",
                               hour: "2-digit",
                               minute: "2-digit",
-                            })} · {adj.payment_status}
+                            })} · {formatPaymentStatus(adj.payment_status)}
                           </span>
                         </li>
                       ))}
@@ -1456,7 +1512,7 @@ function PackagePanel({
             );
           })
         ) : (
-          <Empty>Atanmış eğitim paketi bulunmuyor. Yukarıdaki “Paket Tanımla” butonundan yeni bir paket atayabilirsiniz.</Empty>
+          <Empty>Atanmış eğitim paketi bulunmuyor. Yukarıdaki “Yeni Paket Tanımla” butonundan yeni bir paket tanımlayabilirsiniz.</Empty>
         )}
       </div>
     </div>

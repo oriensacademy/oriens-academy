@@ -159,7 +159,7 @@ function SettingsContent() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-[1440px]">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
         <div>
@@ -219,16 +219,50 @@ function SettingsContent() {
 
       {/* Settings Forms */}
       {!loading && (
-        <div className="space-y-6">
-          <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
-            <div className="border-b border-border pb-3"><h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Landmark className="size-4 text-primary" /><span>Ödeme Bilgileri / Payment Details</span></h2><p className="mt-0.5 text-xs text-muted-foreground">Banka havalesi alanları yalnızca gerçek bilgiler kaydedildiğinde herkese açık ödeme sayfasında gösterilir.</p></div>
-            {[
-              { key: "payment.bank_account_holder", label: "Hesap Sahibi / Account Holder", value: bankAccountHolder, setValue: setBankAccountHolder, initial: initialBankAccountHolder },
-              { key: "payment.bank_name", label: "Banka / Bank", value: bankName, setValue: setBankName, initial: initialBankName },
-              { key: "payment.iban", label: "IBAN", value: iban, setValue: (value: string) => setIban(value.toUpperCase().replace(/\s+/g, "")), initial: initialIban },
-            ].map((field) => <div key={field.key} className="flex flex-col gap-3 rounded-lg border border-border bg-background-soft/50 p-4 sm:flex-row sm:items-end sm:justify-between"><label className="w-full text-xs font-bold text-foreground">{field.label}<span className="mt-1 block font-mono text-[10px] font-normal text-muted-foreground">{field.key}</span><input value={field.value} onChange={(event) => field.setValue(event.target.value)} autoComplete="off" className="mt-2 w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground sm:max-w-lg" /></label><button type="button" disabled={savingKey === field.key || field.value === field.initial} onClick={() => handleSaveSetting(field.key, { value: field.value.trim() })} className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40">{savingKey === field.key ? <Wave className="h-3.5 w-7 text-white" aria-label="Kaydediliyor" /> : <Save className="size-3.5" />}<span>Kaydet</span></button></div>)}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Payment Details Section (Full Width) */}
+          <div className="lg:col-span-2 rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
+            <div className="border-b border-border pb-3">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Landmark className="size-4 text-primary" />
+                <span>Ödeme Bilgileri / Payment Details</span>
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Banka havalesi alanları yalnızca gerçek bilgiler kaydedildiğinde herkese açık ödeme sayfasında gösterilir.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                { key: "payment.bank_account_holder", label: "Hesap Sahibi / Account Holder", value: bankAccountHolder, setValue: setBankAccountHolder, initial: initialBankAccountHolder },
+                { key: "payment.bank_name", label: "Banka / Bank", value: bankName, setValue: setBankName, initial: initialBankName },
+                { key: "payment.iban", label: "IBAN", value: iban, setValue: (value: string) => setIban(value.toUpperCase().replace(/\s+/g, "")), initial: initialIban },
+              ].map((field) => (
+                <div key={field.key} className="flex flex-col justify-between gap-3 rounded-lg border border-border bg-background-soft/50 p-4">
+                  <label className="w-full text-xs font-bold text-foreground">
+                    {field.label}
+                    <span className="mt-1 block font-mono text-[10px] font-normal text-muted-foreground">{field.key}</span>
+                    <input
+                      value={field.value}
+                      onChange={(event) => field.setValue(event.target.value)}
+                      autoComplete="off"
+                      className="mt-2 w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={savingKey === field.key || field.value === field.initial}
+                    onClick={() => handleSaveSetting(field.key, { value: field.value.trim() })}
+                    className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {savingKey === field.key ? <Wave className="h-3.5 w-7 text-white" aria-label="Kaydediliyor" /> : <Save className="size-3.5" />}
+                    <span>Kaydet</span>
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
+          {/* Public Navigation Section */}
           <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
             <div className="border-b border-border pb-3">
               <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -245,7 +279,7 @@ function SettingsContent() {
                 <label htmlFor="pricing-navigation-switch" className="text-xs font-bold text-foreground">Ücretler Menüsü / Pricing Navigation</label>
                 <div className="text-[11px] font-mono text-muted-foreground">navigation.show_pricing</div>
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Kapalı olduğunda Ücretler / Pricing bağlantısı TR ve EN genel menülerinden gizlenir. Fiyatlandırma sayfası ve doğrudan URL erişimi korunur.
+                  Kapalı olduğunda Ücretler / Pricing bağlantısı TR ve EN genel menülerinden gizlenir.
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
@@ -264,241 +298,16 @@ function SettingsContent() {
             </div>
           </div>
 
-          {/* Notification Email Settings Section */}
-          <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
-            <div className="border-b border-border pb-3">
-              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Mail className="size-4 text-[#10271B]" />
-                <span>E-Posta Yönlendirme ve Bildirim Alıcıları / Workspace Email Routing</span>
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Google Workspace alias yapısına göre ayrıştırılmış bildirim alıcı e-posta adresleri.
-              </p>
-            </div>
-
-            {/* General Main Email (Reference / Read-Only) */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/30">
-              <div className="space-y-1 max-w-sm">
-                <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <span>Genel / Birincil Posta Kutusu</span>
-                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Birincil Hesap</span>
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground">
-                  info@oriens-academy.com
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Google Workspace OAuth ana kimliği ve genel iletişim e-posta adresi.
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <input
-                  type="email"
-                  value="info@oriens-academy.com"
-                  disabled
-                  className="w-full sm:w-64 rounded-lg border border-input bg-gray-100 px-3 py-2 text-xs text-muted-foreground cursor-not-allowed"
-                />
-              </div>
-            </div>
-
-            {/* Contact Email Setting */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
-              <div className="space-y-1 max-w-sm">
-                <div className="text-xs font-bold text-foreground">
-                  İletişim & Danışmanlık Bildirim Alıcısı
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground">
-                  notification.contact_email
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  İletişim formu, hızlı iletişim ve ön danışmanlık bildirimleri bu adrese yönlendirilir.
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <input
-                  type="email"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="contact@oriens-academy.com"
-                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
-                />
-                <button
-                  type="button"
-                  disabled={savingKey === "notification.contact_email" || contactEmail === initialContactEmail}
-                  onClick={() => handleSaveSetting("notification.contact_email", { email: contactEmail.trim() })}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
-                >
-                  {savingKey === "notification.contact_email" ? (
-                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
-                  ) : (
-                    <Save className="size-3.5" />
-                  )}
-                  <span>Kaydet</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Booking Email Setting */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
-              <div className="space-y-1 max-w-sm">
-                <div className="text-xs font-bold text-foreground">
-                  Randevu Talebi Bildirim Alıcısı
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground">
-                  notification.booking_email
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Yeni randevu talepleri ve takvim seans bildirimleri bu adrese gönderilir.
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <input
-                  type="email"
-                  value={bookingEmail}
-                  onChange={(e) => setBookingEmail(e.target.value)}
-                  placeholder="support@oriens-academy.com"
-                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
-                />
-                <button
-                  type="button"
-                  disabled={savingKey === "notification.booking_email" || bookingEmail === initialBookingEmail}
-                  onClick={() => handleSaveSetting("notification.booking_email", { email: bookingEmail.trim() })}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
-                >
-                  {savingKey === "notification.booking_email" ? (
-                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
-                  ) : (
-                    <Save className="size-3.5" />
-                  )}
-                  <span>Kaydet</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Student Support Email Setting */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
-              <div className="space-y-1 max-w-sm">
-                <div className="text-xs font-bold text-foreground">
-                  Öğrenci Destek & Ödev Bildirim Alıcısı
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground">
-                  notification.support_email
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Ödev teslimleri, canlı ders bildirimleri ve öğrenci destek talepleri bu adrese yönlendirilir.
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <input
-                  type="email"
-                  value={supportEmail}
-                  onChange={(e) => setSupportEmail(e.target.value)}
-                  placeholder="support@oriens-academy.com"
-                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
-                />
-                <button
-                  type="button"
-                  disabled={savingKey === "notification.support_email" || supportEmail === initialSupportEmail}
-                  onClick={() => handleSaveSetting("notification.support_email", { email: supportEmail.trim() })}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
-                >
-                  {savingKey === "notification.support_email" ? (
-                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
-                  ) : (
-                    <Save className="size-3.5" />
-                  )}
-                  <span>Kaydet</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Payment Email Setting */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
-              <div className="space-y-1 max-w-sm">
-                <div className="text-xs font-bold text-foreground">
-                  Ödeme & Finans Bildirim Alıcısı
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground">
-                  notification.payment_email
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Banka havalesi bildirimleri, başarılı ödemeler ve finansal uyarılar bu adrese iletilir.
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <input
-                  type="email"
-                  value={paymentEmail}
-                  onChange={(e) => setPaymentEmail(e.target.value)}
-                  placeholder="payments@oriens-academy.com"
-                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
-                />
-                <button
-                  type="button"
-                  disabled={savingKey === "notification.payment_email" || paymentEmail === initialPaymentEmail}
-                  onClick={() => handleSaveSetting("notification.payment_email", { email: paymentEmail.trim() })}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
-                >
-                  {savingKey === "notification.payment_email" ? (
-                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
-                  ) : (
-                    <Save className="size-3.5" />
-                  )}
-                  <span>Kaydet</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Admin Security Email Setting */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
-              <div className="space-y-1 max-w-sm">
-                <div className="text-xs font-bold text-foreground">
-                  Yönetim & Güvenlik Bildirim Alıcısı
-                </div>
-                <div className="text-[11px] font-mono text-muted-foreground">
-                  notification.admin_email
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Kritik sistem alarmları, yönetici güvenlik bildirimleri ve dahili yönetim mesajları bu adrese gider.
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <input
-                  type="email"
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin@oriens-academy.com"
-                  className="w-full sm:w-64 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
-                />
-                <button
-                  type="button"
-                  disabled={savingKey === "notification.admin_email" || adminEmail === initialAdminEmail}
-                  onClick={() => handleSaveSetting("notification.admin_email", { email: adminEmail.trim() })}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
-                >
-                  {savingKey === "notification.admin_email" ? (
-                    <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
-                  ) : (
-                    <Save className="size-3.5" />
-                  )}
-                  <span>Kaydet</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Regional & Admin Configuration */}
+          {/* Regional Preferences Section */}
           <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
             <div className="border-b border-border pb-3">
               <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <Globe className="size-4 text-[#819586]" />
                 <span>Yönetici & Bölgesel Ayarlar / Regional Preferences</span>
               </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Sistem varsayılan yönetici bildirim ve panel dilini belirleyin.
+              </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border border-border bg-background-soft/50">
@@ -515,7 +324,7 @@ function SettingsContent() {
                 <select
                   value={adminLocale}
                   onChange={(e) => setAdminLocale(e.target.value)}
-                  className="w-48 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                  className="w-44 rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
                 >
                   <option value="tr">Türkçe (TR)</option>
                   <option value="en">English (EN)</option>
@@ -537,11 +346,243 @@ function SettingsContent() {
             </div>
           </div>
 
-          {/* Account Security Section */}
-          <AccountSecuritySection />
+          {/* Notification Email Settings Section (Full Width) */}
+          <div className="lg:col-span-2 rounded-xl border border-border bg-white p-6 shadow-xs space-y-6">
+            <div className="border-b border-border pb-3">
+              <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Mail className="size-4 text-[#10271B]" />
+                <span>E-Posta Yönlendirme ve Bildirim Alıcıları / Workspace Email Routing</span>
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Google Workspace alias yapısına göre ayrıştırılmış bildirim alıcı e-posta adresleri.
+              </p>
+            </div>
 
-          {/* Security Banner */}
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-background-soft p-4 text-xs text-muted-foreground">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* General Main Email (Reference / Read-Only) */}
+              <div className="flex flex-col justify-between gap-3 p-4 rounded-lg border border-border bg-background-soft/30">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <span>Genel / Birincil Posta Kutusu</span>
+                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Birincil</span>
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    info@oriens-academy.com
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Google Workspace OAuth ana kimliği ve genel iletişim e-posta adresi.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value="info@oriens-academy.com"
+                    disabled
+                    className="w-full rounded-lg border border-input bg-gray-100 px-3 py-2 text-xs text-muted-foreground cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Email Setting */}
+              <div className="flex flex-col justify-between gap-3 p-4 rounded-lg border border-border bg-background-soft/50">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-foreground">
+                    İletişim & Danışmanlık Bildirim Alıcısı
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    notification.contact_email
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    İletişim formu ve hızlı iletişim bildirimleri bu adrese yönlendirilir.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="contact@oriens-academy.com"
+                    className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingKey === "notification.contact_email" || contactEmail === initialContactEmail}
+                    onClick={() => handleSaveSetting("notification.contact_email", { email: contactEmail.trim() })}
+                    className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                  >
+                    {savingKey === "notification.contact_email" ? (
+                      <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    <span>Kaydet</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Booking Email Setting */}
+              <div className="flex flex-col justify-between gap-3 p-4 rounded-lg border border-border bg-background-soft/50">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-foreground">
+                    Randevu Talebi Bildirim Alıcısı
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    notification.booking_email
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Yeni randevu talepleri ve takvim seans bildirimleri bu adrese gönderilir.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={bookingEmail}
+                    onChange={(e) => setBookingEmail(e.target.value)}
+                    placeholder="support@oriens-academy.com"
+                    className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingKey === "notification.booking_email" || bookingEmail === initialBookingEmail}
+                    onClick={() => handleSaveSetting("notification.booking_email", { email: bookingEmail.trim() })}
+                    className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                  >
+                    {savingKey === "notification.booking_email" ? (
+                      <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    <span>Kaydet</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Student Support Email Setting */}
+              <div className="flex flex-col justify-between gap-3 p-4 rounded-lg border border-border bg-background-soft/50">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-foreground">
+                    Öğrenci Destek & Ödev Bildirim Alıcısı
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    notification.support_email
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Ödev teslimleri, canlı ders ve öğrenci destek talepleri bu adrese yönlendirilir.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={supportEmail}
+                    onChange={(e) => setSupportEmail(e.target.value)}
+                    placeholder="support@oriens-academy.com"
+                    className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingKey === "notification.support_email" || supportEmail === initialSupportEmail}
+                    onClick={() => handleSaveSetting("notification.support_email", { email: supportEmail.trim() })}
+                    className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                  >
+                    {savingKey === "notification.support_email" ? (
+                      <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    <span>Kaydet</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Payment Email Setting */}
+              <div className="flex flex-col justify-between gap-3 p-4 rounded-lg border border-border bg-background-soft/50">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-foreground">
+                    Ödeme & Finans Bildirim Alıcısı
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    notification.payment_email
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Banka havalesi bildirimleri, başarılı ödemeler ve finansal uyarılar bu adrese iletilir.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={paymentEmail}
+                    onChange={(e) => setPaymentEmail(e.target.value)}
+                    placeholder="payments@oriens-academy.com"
+                    className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingKey === "notification.payment_email" || paymentEmail === initialPaymentEmail}
+                    onClick={() => handleSaveSetting("notification.payment_email", { email: paymentEmail.trim() })}
+                    className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                  >
+                    {savingKey === "notification.payment_email" ? (
+                      <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    <span>Kaydet</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Admin Security Email Setting */}
+              <div className="flex flex-col justify-between gap-3 p-4 rounded-lg border border-border bg-background-soft/50">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-foreground">
+                    Yönetim & Güvenlik Bildirim Alıcısı
+                  </div>
+                  <div className="text-[11px] font-mono text-muted-foreground">
+                    notification.admin_email
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Kritik sistem alarmları ve yönetici güvenlik bildirimleri bu adrese gider.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="admin@oriens-academy.com"
+                    className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
+                  />
+                  <button
+                    type="button"
+                    disabled={savingKey === "notification.admin_email" || adminEmail === initialAdminEmail}
+                    onClick={() => handleSaveSetting("notification.admin_email", { email: adminEmail.trim() })}
+                    className="inline-flex items-center gap-1.5 shrink-0 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:opacity-40 cursor-pointer"
+                  >
+                    {savingKey === "notification.admin_email" ? (
+                      <Wave className="h-3.5 w-7 text-amber-400" aria-label="Kaydediliyor" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    <span>Kaydet</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Account Security Section (Full Width) */}
+          <div className="lg:col-span-2">
+            <AccountSecuritySection />
+          </div>
+
+          {/* Security Banner (Full Width) */}
+          <div className="lg:col-span-2 flex items-center gap-3 rounded-xl border border-border bg-background-soft p-4 text-xs text-muted-foreground">
             <ShieldCheck className="size-5 text-emerald-600 shrink-0" />
             <div>
               <div className="font-bold text-foreground flex items-center gap-1.5">
@@ -551,7 +592,6 @@ function SettingsContent() {
               <p className="mt-0.5 text-[11px]">
                 API anahtarları, e-posta sağlayıcı kimlikleri, Turnstile secret key ve veritabanı şifreleri site ayarları panelinden hariç tutulmuştur ve yalnızca güvenli ortam değişkenlerinde (Supabase / Cloudflare env) saklanır.
               </p>
-
             </div>
           </div>
         </div>

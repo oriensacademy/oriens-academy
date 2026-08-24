@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useTransition } from "react";
+import { useState, useEffect, useRef, useTransition, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, Calendar, RefreshCcw, Award, Mail, ArrowRight, UserPlus } from "lucide-react";
+import { CheckCircle2, XCircle, Calendar, RefreshCcw, Award, Mail, ArrowRight, UserPlus, ShieldCheck } from "lucide-react";
 import type { TestResult, ExamTest, QuestionBreakdownItem, TopicResult } from "@/data/exam-tests";
 import { getExamTestCopy } from "@/content/exam-test";
 import type { Locale } from "@/content/dictionaries";
@@ -11,6 +12,15 @@ import { submitContact } from "@/lib/contact/api";
 import { saveStudentExamAttempt, sendExamResultEmail, type QuestionSnapshot } from "@/lib/student/exam-history";
 import { localizedPath } from "@/lib/routes";
 import { ExamQuestionReview } from "./ExamQuestionReview";
+
+const emptySubscribe = () => () => {};
+function useIsHydrated() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}
 
 function normalizeTestResult(input?: TestResult | null): TestResult {
   const topics = Array.isArray(input?.topics) ? input.topics.filter(Boolean) : [];
@@ -43,7 +53,7 @@ function normalizeTestResult(input?: TestResult | null): TestResult {
 export function ExamTestResults({
   locale,
   result,
-  testData,
+  testData: _testData,
   onRetry,
   onChangeExam,
 }: {
@@ -60,6 +70,8 @@ export function ExamTestResults({
 
   const safeResult = normalizeTestResult(result);
   const consultationRef = useRef<HTMLElement>(null);
+
+  const mounted = useIsHydrated();
 
   // Auto-save state for authenticated students
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -82,6 +94,18 @@ export function ExamTestResults({
   const [consultSuccess, setConsultSuccess] = useState(false);
   const [consultError, setConsultError] = useState("");
   const [isSendingConsult, startConsultTransition] = useTransition();
+
+  // Body scroll locking when any modal is open
+  useEffect(() => {
+    if (showEmailModal || showConsultModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showEmailModal, showConsultModal]);
 
   // Build question snapshots
   const questionSnapshots: QuestionSnapshot[] = safeResult.breakdown.map((b: QuestionBreakdownItem) => {
@@ -447,23 +471,24 @@ export function ExamTestResults({
       <section
         ref={consultationRef}
         id="consultation-section"
-        className="rounded-2xl border border-primary/40 bg-[#F4F6F0] p-6 sm:p-8 shadow-sm scroll-mt-6"
+        className="rounded-3xl border border-[#DDE4DC] bg-[#F4F6F0] p-6 sm:p-8 shadow-xs scroll-mt-6"
       >
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2 max-w-xl">
-            <span className="text-xs font-bold uppercase tracking-wider text-primary">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary">
+              <Award className="size-4" />
               {copy.nextStep}
             </span>
-            <h3 className="font-heading text-2xl text-ink">
-              {isTr ? "Sonuçlarınızı uzman eğitmenlerimizle analiz edin" : "Review your results with our academic team"}
+            <h3 className="font-heading text-xl sm:text-2xl text-ink leading-snug">
+              {isTr ? "Sonuçlarınızı uzman eğitmenlerimizle analiz edin" : "Review your diagnostic with our academic team"}
             </h3>
             <p className="text-xs sm:text-sm text-ink/75 leading-relaxed">
               {copy.nextStepBody}
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-            {/* Primary Action: Email Report */}
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0 items-stretch sm:items-center">
+            {/* Primary Action: Email Report / Send to Advisor */}
             <button
               type="button"
               onClick={() => {
@@ -471,10 +496,10 @@ export function ExamTestResults({
                 setEmailSuccess(false);
                 setEmailError("");
               }}
-              className="inline-flex min-h-12 sm:min-w-[210px] items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white shadow-sm hover:bg-forest transition-colors cursor-pointer"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-forest transition-colors cursor-pointer whitespace-nowrap"
             >
               <Mail className="size-4 shrink-0" />
-              <span>{user?.id ? (isTr ? "Sonuçlarımı Danışmana Gönder" : "Send to My Advisor") : copy.emailReportCTA}</span>
+              <span>{user?.id ? (isTr ? "Sonuçlarımı Danışmana Gönder" : "Send Results to Advisor") : copy.emailReportCTA}</span>
             </button>
 
             {/* Secondary Action: Consultation */}
@@ -485,7 +510,7 @@ export function ExamTestResults({
                 setConsultSuccess(false);
                 setConsultError("");
               }}
-              className="inline-flex min-h-12 sm:min-w-[210px] items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-sm font-semibold text-ink shadow-sm hover:bg-[#F9FAF8] transition-colors cursor-pointer"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-xs sm:text-sm font-semibold text-ink shadow-xs hover:bg-surface-muted transition-colors cursor-pointer whitespace-nowrap"
             >
               <Calendar className="size-4 text-primary shrink-0" />
               <span>{copy.requestConsultation}</span>
@@ -494,10 +519,14 @@ export function ExamTestResults({
         </div>
       </section>
 
-      {/* Email Report Modal (Includes Post-Email Registration Conversion) */}
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c1c14]/55 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-md rounded-2xl border border-[#DDE4DC] bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+      {/* Email Report Modal (Root React Portal) */}
+      {showEmailModal && mounted && typeof document !== "undefined" && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[200] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+        >
+          <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
             {emailSuccess ? (
               <div className="text-center py-2 space-y-4">
                 <div className="size-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
@@ -512,7 +541,7 @@ export function ExamTestResults({
 
                 {/* Anonymous Visitor Post-Email Registration Conversion Card */}
                 {!user?.id && (
-                  <div className="rounded-xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-3">
+                  <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-3">
                     <div className="flex items-center gap-2 text-primary font-bold text-xs">
                       <UserPlus className="size-4" />
                       <span>{copy.conversionTitle}</span>
@@ -556,7 +585,7 @@ export function ExamTestResults({
                 <div>
                   <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
                     <Mail className="size-4" />
-                    <span>{copy.emailReportCTA}</span>
+                    <span>{user?.id ? (isTr ? "Danışmana Gönder" : "Send to Advisor") : copy.emailReportCTA}</span>
                   </div>
                   <h4 className="text-lg font-bold text-ink">{copy.emailReportModalTitle}</h4>
                   <p className="mt-1 text-xs text-muted-foreground">{copy.emailReportModalDesc}</p>
@@ -568,30 +597,45 @@ export function ExamTestResults({
                   </div>
                 )}
 
-                {!user?.id && (
-                  <div>
-                    <label className="block text-xs font-semibold text-ink">{copy.fullName} ({isTr ? "İsteğe Bağlı" : "Optional"})</label>
-                    <input
-                      type="text"
-                      value={reportName}
-                      onChange={(e) => setReportName(e.target.value)}
-                      placeholder={isTr ? "Adınız Soyadınız" : "Full Name"}
-                      className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                    />
+                {user?.id ? (
+                  <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
+                      <ShieldCheck className="size-3.5" />
+                      <span>{isTr ? "Doğrulanmış Hesap E-postası" : "Verified Account Email"}</span>
+                    </div>
+                    <p className="text-sm font-bold text-ink">{user.email}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {isTr
+                        ? "Sınav analiz raporunuz ve detaylı soru çözümleri doğrudan hesabınıza bağlı e-posta adresine iletilecektir."
+                        : "Your exam diagnostic report and detailed question solutions will be delivered directly to your verified account email."}
+                    </p>
                   </div>
-                )}
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-ink">{copy.fullName} ({isTr ? "İsteğe Bağlı" : "Optional"})</label>
+                      <input
+                        type="text"
+                        value={reportName}
+                        onChange={(e) => setReportName(e.target.value)}
+                        placeholder={isTr ? "Adınız Soyadınız" : "Full Name"}
+                        className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-ink">{copy.email}</label>
-                  <input
-                    type="email"
-                    required
-                    value={reportEmail}
-                    onChange={(e) => setReportEmail(e.target.value)}
-                    placeholder="ornek@email.com"
-                    className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-ink">{copy.email}</label>
+                      <input
+                        type="email"
+                        required
+                        value={reportEmail}
+                        onChange={(e) => setReportEmail(e.target.value)}
+                        placeholder="ornek@email.com"
+                        className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="mt-6 flex gap-3">
                   <button
@@ -612,13 +656,18 @@ export function ExamTestResults({
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Consultation Modal */}
-      {showConsultModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c1c14]/55 p-4 backdrop-blur-md">
-          <div className="relative w-full max-w-md rounded-2xl border border-[#DDE4DC] bg-white p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+      {/* Consultation Modal (Root React Portal) */}
+      {showConsultModal && mounted && typeof document !== "undefined" && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[200] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+        >
+          <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
             {consultSuccess ? (
               <div className="text-center py-4 space-y-4">
                 <CheckCircle2 className="mx-auto size-12 text-emerald-600" />
@@ -701,7 +750,8 @@ export function ExamTestResults({
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Action Buttons: Retry / Change Exam */}

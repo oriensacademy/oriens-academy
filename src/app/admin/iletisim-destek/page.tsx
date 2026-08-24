@@ -32,7 +32,10 @@ export default function CommunicationSupportPage() {
           <button
             key={id}
             type="button"
-            onClick={() => setView(id)}
+            onClick={() => {
+              setSelectedId(null);
+              setView(id);
+            }}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold sm:flex-none ${view === id ? "bg-ink text-white" : "text-muted-foreground hover:bg-muted"}`}
           >
             <Icon className="size-4" />

@@ -55,6 +55,7 @@ export type CreateThreadInput = {
   subject: string;
   category: SupportCategory;
   initial_message: string;
+  locale?: "tr" | "en";
 };
 
 export const SUPPORT_CATEGORIES: Array<{

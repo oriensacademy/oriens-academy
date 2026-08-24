@@ -24,11 +24,13 @@ import {
   renderStudentHomeworkDueReminderEmail,
   renderTeacherHomeworkSubmittedEmail,
   renderStudentHomeworkReviewedEmail,
+  renderStudentHomeworkRevisionRequestedEmail,
   renderStudentWelcomeEmail,
   renderAccountPasswordRecoveryEmail,
   renderAccountSecurityAlertEmail,
   renderStudentLiveLessonLinkEmail,
   renderStudentLessonCompletedEmail,
+  renderStudentSupportConfirmationEmail,
   type BookingEmailData,
   type ContactEmailData,
   type AppointmentEmailData,
@@ -44,6 +46,7 @@ import {
   type SecurityAlertEmailData,
   type LiveLessonLinkEmailData,
   type LessonCompletedEmailData,
+  type SupportConfirmationEmailData,
 } from "./templates.ts";
 
 export type EmailChannel =
@@ -946,7 +949,27 @@ export async function dispatchHomeworkReviewedEmail(
     eventType: "homework.reviewed.student",
     entityType: "homework",
     entityId: data.homeworkId,
-    idempotencyKey: `hw-reviewed-${data.homeworkId}`,
+    idempotencyKey: `hw-reviewed-${data.homeworkId}-${Date.now()}`,
+  });
+}
+
+export async function dispatchHomeworkRevisionRequestedEmail(
+  supabaseAdmin: SupabaseClient,
+  data: HomeworkEmailData
+) {
+  const template = renderStudentHomeworkRevisionRequestedEmail(data);
+  return sendTransactionalEmail({
+    supabaseAdmin,
+    to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    eventType: "homework.revision_requested.student",
+    entityType: "homework",
+    entityId: data.homeworkId,
+    idempotencyKey: `hw-revision-${data.homeworkId}-${Date.now()}`,
   });
 }
 
@@ -1060,6 +1083,30 @@ export async function dispatchLessonCompletedEmail(
     entityType: "student_lesson",
     entityId: data.lessonId,
     idempotencyKey: `lesson-completed-${data.lessonId}`,
+  });
+}
+
+export async function dispatchSupportCreatedEmail(
+  supabaseAdmin: SupabaseClient,
+  data: SupportConfirmationEmailData & { threadId: string }
+) {
+  const template = renderStudentSupportConfirmationEmail(data);
+  return sendTransactionalEmail({
+    supabaseAdmin,
+    to: data.studentEmail,
+    replyTo: "support@oriens-academy.com",
+    channel: "support",
+    sender: {
+      name: data.locale === "en" ? "Oriens Academy Destek" : "Oriens Academy Destek",
+      email: "support@oriens-academy.com",
+    },
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    eventType: "support.ticket_created.student",
+    entityType: "support_thread",
+    entityId: data.threadId,
+    idempotencyKey: `support-created-${data.threadId}`,
   });
 }
 

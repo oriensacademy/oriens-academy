@@ -1,6 +1,5 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { CalendarPlus, X, AlertCircle, UserCheck } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
 import {
@@ -8,6 +7,15 @@ import {
   type BookingStatus,
 } from "@/lib/admin/bookings";
 import { listAdminStudents, type StudentProfile } from "@/lib/admin/students";
+
+const emptySubscribe = () => () => {};
+function useIsHydrated() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}
 
 interface CreateBookingModalProps {
   isOpen: boolean;
@@ -28,6 +36,9 @@ export function CreateBookingModal({
   initialPhone = "",
   initialStudentUserId = null,
 }: CreateBookingModalProps) {
+  const isHydrated = useIsHydrated();
+  const isStudentLocked = Boolean(initialStudentUserId || initialName);
+
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
 
@@ -45,7 +56,7 @@ export function CreateBookingModal({
   const [liveMeetingUrl, setLiveMeetingUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<BookingStatus>("confirmed");
-  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(isStudentLocked);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [errors, setErrors] = useState<{
@@ -59,6 +70,18 @@ export function CreateBookingModal({
     endTime?: string;
     privacyConsent?: string;
   }>({});
+
+  // Body scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -112,7 +135,7 @@ export function CreateBookingModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !isHydrated || typeof document === "undefined") return null;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -127,7 +150,7 @@ export function CreateBookingModal({
     if (!date) newErrors.date = "Tarih seçilmelidir.";
     if (!startTime) newErrors.startTime = "Başlangıç saati gereklidir.";
     if (!endTime) newErrors.endTime = "Bitiş saati gereklidir.";
-    if (!selectedStudentId && !studentUserId && !privacyConsent) {
+    if (!selectedStudentId && !studentUserId && !privacyConsent && !isStudentLocked) {
       newErrors.privacyConsent = "Gizlilik onayını doğrulamanız gerekmektedir.";
     }
 
@@ -164,7 +187,7 @@ export function CreateBookingModal({
       endsAt: new Date(`${date}T${endTime}:00`).toISOString(),
       notes: notes.trim(),
       status,
-      privacyConsent: Boolean(privacyConsent || studentUserId),
+      privacyConsent: Boolean(privacyConsent || studentUserId || isStudentLocked),
       studentUserId,
       liveMeetingUrl: liveMeetingUrl.trim() || null,
       eventType,
@@ -186,15 +209,9 @@ export function CreateBookingModal({
         : "border-input focus:border-[#10271B]"
     }`;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Kapat"
-        className="fixed inset-0 bg-forest/35 backdrop-blur-xs cursor-default"
-        onClick={onClose}
-      />
-      <div className="relative z-10 max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-2xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto" role="dialog" aria-modal="true">
+      <div className="relative my-auto w-full max-w-xl rounded-3xl border border-border bg-white p-6 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
         <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <CalendarPlus className="size-5 text-[#819586]" />
@@ -203,20 +220,20 @@ export function CreateBookingModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted cursor-pointer"
+            className="rounded-xl border border-border p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
           >
             <X className="size-4" />
           </button>
         </div>
 
         {errorMsg && (
-          <div className="mb-4 flex gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+          <div className="mb-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
             <AlertCircle className="size-4 shrink-0" />
             {errorMsg}
           </div>
         )}
 
-        <form noValidate onSubmit={submit} className="space-y-3.5">
+        <form noValidate onSubmit={submit} className="space-y-4">
           {/* Event Type Selector */}
           <div>
             <span className="block text-xs font-semibold text-muted-foreground mb-1.5">Etkinlik Türü</span>
@@ -231,9 +248,9 @@ export function CreateBookingModal({
                   key={t.id}
                   type="button"
                   onClick={() => setEventType(t.id as typeof eventType)}
-                  className={`rounded-lg border py-1.5 text-xs font-semibold cursor-pointer transition-colors ${
+                  className={`rounded-xl border py-2 text-xs font-semibold cursor-pointer transition-colors ${
                     eventType === t.id
-                      ? "border-[#10271B] bg-[#10271B] text-white"
+                      ? "border-[#10271B] bg-[#10271B] text-white shadow-xs"
                       : "border-border bg-surface-muted text-muted-foreground hover:bg-white hover:text-ink"
                   }`}
                 >
@@ -243,67 +260,90 @@ export function CreateBookingModal({
             </div>
           </div>
 
-          {/* Optional Existing Student Dropdown */}
-          <div className="rounded-xl border border-primary/20 bg-forest/5 p-3">
-            <label className="block space-y-1">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
-                <UserCheck className="size-3.5 text-primary" />
-                Kayıtlı Öğrenci Seç (Otomatik Bağlama)
-              </span>
-              <select
-                value={selectedStudentId}
-                onChange={(e) => handleStudentSelect(e.target.value)}
-                className={inputClass()}
-              >
-                <option value="">-- Yeni / Manuel Öğrenci (Seçim Yok) --</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.fullName} — {s.email} {s.targetExam ? `(${s.targetExam})` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Öğrenci seçildiğinde ad, e-posta ve telefon bilgileri otomatik doldurulur ve randevu doğrudan öğrenci portalına bağlanır.
-            </p>
-          </div>
+          {/* Student Identity Card or Selector */}
+          {isStudentLocked ? (
+            <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-forest/10 font-heading text-sm font-bold text-primary">
+                  {fullName?.slice(0, 2).toUpperCase() || "ÖG"}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <strong className="text-xs font-bold text-ink">{fullName}</strong>
+                    <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.2 text-[10px] font-bold text-emerald-800">
+                      Kayıtlı Öğrenci
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {email} {phone ? `· ${phone}` : ""}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-primary/20 bg-forest/5 p-3.5">
+              <label className="block space-y-1">
+                <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                  <UserCheck className="size-3.5 text-primary" />
+                  Kayıtlı Öğrenci Seç (Otomatik Bağlama)
+                </span>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => handleStudentSelect(e.target.value)}
+                  className={inputClass()}
+                >
+                  <option value="">-- Yeni / Manuel Ziyaretçi (Seçim Yok) --</option>
+                  {students.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.fullName} — {s.email} {s.targetExam ? `(${s.targetExam})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Ad Soyad" error={errors.fullName}>
-              <input
-                value={fullName}
-                onChange={(e) => {
-                  setFullName(e.target.value);
-                  if (errors.fullName) setErrors({ ...errors, fullName: undefined });
-                }}
-                placeholder="Öğrenci Adı Soyadı"
-                className={inputClass(Boolean(errors.fullName))}
-              />
-            </Field>
-            <Field label="E-posta" error={errors.email}>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors({ ...errors, email: undefined });
-                }}
-                placeholder="ornek@ogrenci.com"
-                className={inputClass(Boolean(errors.email))}
-              />
-            </Field>
-            <Field label="Telefon" error={errors.phone}>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => {
-                  setPhone(e.target.value);
-                  if (errors.phone) setErrors({ ...errors, phone: undefined });
-                }}
-                placeholder="+90 5XX XXX XX XX"
-                className={inputClass(Boolean(errors.phone))}
-              />
-            </Field>
+            {!isStudentLocked && (
+              <>
+                <Field label="Ad Soyad" error={errors.fullName}>
+                  <input
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      if (errors.fullName) setErrors({ ...errors, fullName: undefined });
+                    }}
+                    placeholder="Öğrenci Adı Soyadı"
+                    className={inputClass(Boolean(errors.fullName))}
+                  />
+                </Field>
+                <Field label="E-posta" error={errors.email}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errors.email) setErrors({ ...errors, email: undefined });
+                    }}
+                    placeholder="ornek@ogrenci.com"
+                    className={inputClass(Boolean(errors.email))}
+                  />
+                </Field>
+                <Field label="Telefon" error={errors.phone}>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (errors.phone) setErrors({ ...errors, phone: undefined });
+                    }}
+                    placeholder="+90 5XX XXX XX XX"
+                    className={inputClass(Boolean(errors.phone))}
+                  />
+                </Field>
+              </>
+            )}
+
             <Field label="Sınav / Alan" error={errors.exam}>
               <input
                 value={exam}
@@ -315,6 +355,7 @@ export function CreateBookingModal({
                 className={inputClass(Boolean(errors.exam))}
               />
             </Field>
+
             <Field label="Ders / Konu Başlığı" error={errors.subject}>
               <input
                 value={subject}
@@ -326,6 +367,7 @@ export function CreateBookingModal({
                 className={inputClass(Boolean(errors.subject))}
               />
             </Field>
+
             <Field label="Durum">
               <select
                 value={status}
@@ -339,6 +381,7 @@ export function CreateBookingModal({
                 <option value="no_show">Gelmedi</option>
               </select>
             </Field>
+
             <Field label="Tarih" error={errors.date}>
               <input
                 type="date"
@@ -350,6 +393,7 @@ export function CreateBookingModal({
                 className={inputClass(Boolean(errors.date))}
               />
             </Field>
+
             <div className="grid grid-cols-2 gap-2">
               <Field label="Başlangıç" error={errors.startTime}>
                 <input
@@ -450,7 +494,8 @@ export function CreateBookingModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

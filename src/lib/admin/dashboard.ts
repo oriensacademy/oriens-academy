@@ -2,20 +2,13 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database.types";
 
 export interface DashboardMetrics {
-  unresolvedContacts: number;
-  confirmedBookings: number;
-  pendingBookings: number;
-  activeSlots: number;
-  failedDeliveries: number;
-  activePricingPackages: number;
-  activeTestimonials: number;
   activeStudents: number;
-  weekAppointments: number;
   todayLessons: number;
+  weekAppointments: number;
   pendingHomework: number;
-  activeStudentPackages: number;
+  openSupportTickets: number;
   awaitingPayments: number;
-  completedStudentPackages: number;
+  failedDeliveries: number;
 }
 
 export type RecentAuditRow = Tables<"audit_logs">;
@@ -31,49 +24,14 @@ export async function getAdminDashboardMetrics(): Promise<{
 
   try {
     const [
-      contactsRes,
-      confirmedBookingsRes,
-      pendingBookingsRes,
-      slotsRes,
-      failedDeliveriesRes,
-      pricingRes,
-      testimonialsRes,
       activeStudentsRes,
       weekAppointmentsRes,
       todayLessonsRes,
       pendingHomeworkRes,
-      activeStudentPackagesRes,
+      supportRes,
       awaitingPaymentsRes,
-      completedStudentPackagesRes,
+      failedDeliveriesRes,
     ] = await Promise.all([
-      supabase
-        .from("contact_requests")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["new", "in_progress"]),
-      supabase
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "confirmed"),
-      supabase
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending"),
-      supabase
-        .from("availability_slots")
-        .select("id", { count: "exact", head: true })
-        .gte("starts_at", new Date().toISOString()),
-      supabase
-        .from("notification_deliveries")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "failed"),
-      supabase
-        .from("pricing_packages")
-        .select("id", { count: "exact", head: true })
-        .eq("active", true),
-      supabase
-        .from("testimonials")
-        .select("id", { count: "exact", head: true })
-        .eq("active", true),
       supabase.from("student_profiles").select("id", { count: "exact", head: true }).eq("active", true),
       supabase
         .from("bookings")
@@ -86,47 +44,39 @@ export async function getAdminDashboardMetrics(): Promise<{
         .select("id", { count: "exact", head: true })
         .gte("lesson_date", startOfToday())
         .lt("lesson_date", endOfToday()),
-      supabase.from("student_homework").select("id", { count: "exact", head: true }).in("status", ["assigned", "in_progress", "submitted", "overdue"]),
-      supabase.from("student_package_purchases").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabase.from("payment_transactions").select("id", { count: "exact", head: true }).in("status", ["pending", "requires_action", "processing"]),
-      supabase.from("student_package_purchases").select("id", { count: "exact", head: true }).eq("status", "completed"),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from as any)("student_homework").select("id", { count: "exact", head: true }).in("status", ["assigned", "in_progress", "submitted", "overdue"]),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from as any)("support_threads").select("id", { count: "exact", head: true }).in("status", ["open", "waiting_support"]),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (supabase.from as any)("payment_transactions").select("id", { count: "exact", head: true }).in("status", ["pending", "requires_action", "processing"]),
+      supabase
+        .from("notification_deliveries")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "failed"),
     ]);
 
     const metrics: DashboardMetrics = {
-      unresolvedContacts: contactsRes.count || 0,
-      confirmedBookings: confirmedBookingsRes.count || 0,
-      pendingBookings: pendingBookingsRes.count || 0,
-      activeSlots: slotsRes.count || 0,
-      failedDeliveries: failedDeliveriesRes.count || 0,
-      activePricingPackages: pricingRes.count || 5,
-      activeTestimonials: testimonialsRes.count || 0,
       activeStudents: activeStudentsRes.count || 0,
       weekAppointments: weekAppointmentsRes.count || 0,
       todayLessons: todayLessonsRes.count || 0,
       pendingHomework: pendingHomeworkRes.count || 0,
-      activeStudentPackages: activeStudentPackagesRes.count || 0,
+      openSupportTickets: supportRes.count || 0,
       awaitingPayments: awaitingPaymentsRes.count || 0,
-      completedStudentPackages: completedStudentPackagesRes.count || 0,
+      failedDeliveries: failedDeliveriesRes.count || 0,
     };
 
     return { metrics, error: null };
   } catch {
     return {
       metrics: {
-        unresolvedContacts: 0,
-        confirmedBookings: 0,
-        pendingBookings: 0,
-        activeSlots: 0,
-        failedDeliveries: 0,
-        activePricingPackages: 5,
-        activeTestimonials: 0,
         activeStudents: 0,
         weekAppointments: 0,
         todayLessons: 0,
         pendingHomework: 0,
-        activeStudentPackages: 0,
+        openSupportTickets: 0,
         awaitingPayments: 0,
-        completedStudentPackages: 0,
+        failedDeliveries: 0,
       },
       error: null,
     };

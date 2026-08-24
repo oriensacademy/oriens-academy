@@ -3,7 +3,7 @@ import type { Locale } from "@/content/dictionaries";
 
 export function ExamTestQuestion({ question, locale, selected, onAnswer }: { question?: Question | null; locale: Locale; selected?: AnswerId; onAnswer: (answer: AnswerId) => void }) {
   if (!question) return null;
-  const questionTitle = question.question?.[locale] || question.question?.tr || question.question?.en || "";
+  const questionTitle = question.question?.en || question.question?.[locale] || question.question?.tr || "";
   const topicTitle = question.topic?.[locale] || question.topic?.tr || question.topic?.en || "";
   const answers = Array.isArray(question.answers) ? question.answers : [];
 
@@ -14,7 +14,7 @@ export function ExamTestQuestion({ question, locale, selected, onAnswer }: { que
       <div className="mt-7 grid gap-3">
         {answers.map((answer) => {
           const active = selected === answer.id;
-          const labelText = answer.label?.[locale] || answer.label?.tr || answer.label?.en || "";
+          const labelText = answer.label?.en || answer.label?.[locale] || answer.label?.tr || "";
           return (
             <label key={answer.id} className={`flex min-h-14 cursor-pointer items-center gap-4 rounded-xl border px-4 py-3 transition-colors ${active ? "border-primary bg-sage-soft" : "border-border bg-surface hover:border-border-strong hover:bg-surface-muted"}`}>
               <input type="radio" name={question.id} value={answer.id} checked={active} onChange={() => onAnswer(answer.id)} className="size-4 accent-[var(--primary)]" />

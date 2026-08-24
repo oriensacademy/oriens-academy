@@ -209,3 +209,54 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
 
   return { data: profiles.sort((a, b) => b.latestActivity.localeCompare(a.latestActivity)), error: null };
 }
+
+/**
+ * Sends a secure Supabase Auth password recovery link to the student's verified email.
+ * Does NOT generate any plaintext passwords.
+ */
+export async function sendStudentPasswordReset(
+  studentEmail: string,
+  locale: "tr" | "en" = "tr"
+): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const supabase = getSupabaseClient();
+    const cleanEmail = studentEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return { success: false, error: "Geçerli bir e-posta adresi bulunamadı." };
+    }
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://oriens-academy.com";
+    const redirectTo = `${origin}/${locale}/sifre-yenile`;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    // Log admin audit event (without token)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.from("audit_logs") as any).insert({
+        action: "student.password_reset_sent",
+        entity_type: "student",
+        metadata: {
+          email: cleanEmail,
+          locale,
+          requested_at: new Date().toISOString(),
+        },
+      });
+    } catch {
+      // Safe fallback
+    }
+
+    return { success: true, error: null };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Şifre sıfırlama bağlantısı gönderilemedi.",
+    };
+  }
+}

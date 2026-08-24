@@ -106,6 +106,21 @@ export async function createSupportThread(input: CreateThreadInput): Promise<{
       return { data: null, error: msgError?.message || "MESSAGE_CREATION_FAILED" };
     }
 
+    // 3. Trigger confirmation email to student asynchronously (non-blocking)
+    try {
+      const realClient = getSupabaseClient();
+      void realClient.functions.invoke("send-support-email", {
+        body: {
+          threadId: thread.id,
+          locale: input.locale || "tr",
+        },
+      }).catch((emailErr) => {
+        console.warn("[support] Confirmation email dispatch failed:", emailErr);
+      });
+    } catch {
+      // Non-blocking email dispatch
+    }
+
     return {
       data: {
         thread,

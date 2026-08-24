@@ -14,6 +14,7 @@ export interface ExamTestQuestion {
   id: string;
   exam: ExamCode;
   topic: LocalizedText;
+  questionLanguage?: "en" | "tr";
   question: LocalizedText;
   answers: AnswerOption[];
   correctAnswer: AnswerId;
@@ -45,6 +46,7 @@ export interface QuestionBreakdownItem {
   isCorrect: boolean;
   explanation: string;
   answers: AnswerOption[];
+  questionLanguage?: "en" | "tr";
 }
 
 export interface TestResult {
@@ -213,18 +215,19 @@ function buildQuestionsForExam(exam: ExamCode): ExamTestQuestion[] {
       exam,
       topic: { tr: tData.tr, en: tData.en },
       recommendationCategory: tData.cat,
+      questionLanguage: "en",
       question: {
-        tr: `Soru ${qNum} (${exam.toUpperCase()} · ${tData.tr}): ${qData.qTr}`,
-        en: `Question ${qNum} (${exam.toUpperCase()} · ${tData.en}): ${qData.qEn}`,
+        tr: qData.qEn,
+        en: qData.qEn,
       },
       answers: [
-        { id: "a", label: { tr: qData.answersTr[0], en: qData.answersEn[0] } },
-        { id: "b", label: { tr: qData.answersTr[1], en: qData.answersEn[1] } },
-        { id: "c", label: { tr: qData.answersTr[2], en: qData.answersEn[2] } },
-        { id: "d", label: { tr: qData.answersTr[3], en: qData.answersEn[3] } },
+        { id: "a", label: { tr: qData.answersEn[0], en: qData.answersEn[0] } },
+        { id: "b", label: { tr: qData.answersEn[1], en: qData.answersEn[1] } },
+        { id: "c", label: { tr: qData.answersEn[2], en: qData.answersEn[2] } },
+        { id: "d", label: { tr: qData.answersEn[3], en: qData.answersEn[3] } },
       ],
       correctAnswer: qData.correct,
-      explanation: { tr: qData.expTr, en: qData.expEn },
+      explanation: { tr: qData.expEn, en: qData.expEn },
     };
   });
 }
@@ -270,12 +273,13 @@ export function calculateTestResult(
       id: question.id,
       questionNumber: qNum,
       topic: label,
-      questionText: question.question?.[locale] || question.question?.tr || "",
+      questionText: question.question?.en || question.question?.tr || "",
       selectedAnswer,
       correctAnswer: question.correctAnswer,
       isCorrect,
-      explanation: question.explanation?.[locale] || question.explanation?.tr || "",
+      explanation: question.explanation?.en || question.explanation?.tr || "",
       answers: question.answers,
+      questionLanguage: question.questionLanguage || "en",
     });
   });
 

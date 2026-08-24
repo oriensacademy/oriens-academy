@@ -842,6 +842,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
       subject: newSubject.trim(),
       category: newCategory,
       initial_message: newInitialMsg.trim(),
+      locale: locale as "tr" | "en",
     });
     setIsSubmitting(false);
 

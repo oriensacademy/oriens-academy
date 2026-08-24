@@ -248,10 +248,6 @@ export default function AdminPaymentsPage() {
         </div>
       )}
 
-      <p className="text-[11px] leading-5 text-[#68756C]">
-        Kart numarası, CVV veya banka parolası saklanmaz. Kart işlemleri bu panelden manuel olarak ödendi durumuna getirilemez.
-        Tüm tahsilat onaylama, reddetme ve hatırlatma işlemleri sistem denetim kaydına yazılır.
-      </p>
     </div>
   );
 }

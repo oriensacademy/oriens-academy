@@ -16,6 +16,7 @@ import {
   FileCheck,
   WalletCards,
   TrendingUp,
+  ClipboardList,
 } from "lucide-react";
 
 export interface NavItem {
@@ -50,6 +51,14 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     labelEn: "Lessons & Appointments",
     href: "/admin/randevular",
     icon: CalendarCheck,
+    enabled: true,
+    group: "ÖĞRENCİ YÖNETİMİ",
+  },
+  {
+    label: "Ödev İşlemleri",
+    labelEn: "Homework & Assessments",
+    href: "/admin/odevler",
+    icon: ClipboardList,
     enabled: true,
     group: "ÖĞRENCİ YÖNETİMİ",
   },

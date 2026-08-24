@@ -3,6 +3,7 @@ import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import {
   dispatchHomeworkAssignedEmail,
   dispatchHomeworkReviewedEmail,
+  dispatchHomeworkRevisionRequestedEmail,
 } from "../_shared/email/service.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -66,7 +67,7 @@ Deno.serve(async (req: Request) => {
     return buildJsonResponse({ success: true, deliveries }, 200, req);
   }
 
-  if (action === "reviewed") {
+  if (action === "reviewed" || action === "revision_requested") {
     const homeworkId = String(body.homeworkId || "");
     if (!UUID.test(homeworkId)) return buildJsonResponse({ error_code: "INVALID_HOMEWORK_ID" }, 400, req);
     const { data: row, error } = await admin.from("student_homework")
@@ -80,7 +81,8 @@ Deno.serve(async (req: Request) => {
     const { data: lesson } = assignment.lesson_id
       ? await admin.from("student_lessons").select("title, subject").eq("id", assignment.lesson_id).maybeSingle()
       : { data: null };
-    const delivery = await dispatchHomeworkReviewedEmail(admin, {
+
+    const emailPayload = {
       homeworkId: row.id,
       studentName: profile.full_name || "Öğrenci",
       studentEmail: profile.email,
@@ -89,8 +91,13 @@ Deno.serve(async (req: Request) => {
       dueDate: row.due_date || new Date().toISOString(),
       description: assignment.description,
       teacherFeedback: row.teacher_feedback,
-      locale: profile.preferred_language === "en" ? "en" : "tr",
-    });
+      locale: (profile.preferred_language === "en" ? "en" : "tr") as "en" | "tr",
+    };
+
+    const delivery = action === "revision_requested"
+      ? await dispatchHomeworkRevisionRequestedEmail(admin, emailPayload)
+      : await dispatchHomeworkReviewedEmail(admin, emailPayload);
+
     return buildJsonResponse({ success: true, delivery }, 200, req);
   }
 
