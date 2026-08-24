@@ -144,6 +144,7 @@ export async function claimAnonymousExamResult(claimToken: string): Promise<{ su
 export async function sendExamResultEmail(input: {
   email: string;
   fullName?: string;
+  phone?: string;
   examCode: string;
   locale: Locale;
   result: TestResult;
@@ -163,6 +164,7 @@ export async function sendExamResultEmail(input: {
       body: JSON.stringify({
         email: input.email.trim().toLowerCase(),
         fullName: input.fullName?.trim() || "",
+        phone: input.phone?.trim() || "",
         examCode: input.examCode,
         locale: input.locale,
         result: input.result,

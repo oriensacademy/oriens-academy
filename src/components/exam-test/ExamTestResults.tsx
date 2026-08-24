@@ -81,6 +81,7 @@ export function ExamTestResults({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [reportEmail, setReportEmail] = useState(() => user?.email || "");
   const [reportName, setReportName] = useState(() => user?.user_metadata?.full_name || "");
+  const [reportPhone, setReportPhone] = useState(() => user?.user_metadata?.phone || "");
   const [emailSuccess, setEmailSuccess] = useState(false);
   const [claimToken, setClaimToken] = useState<string | null>(null);
   const [emailError, setEmailError] = useState("");
@@ -196,6 +197,7 @@ export function ExamTestResults({
       const res = await sendExamResultEmail({
         email: reportEmail.trim().toLowerCase(),
         fullName: reportName.trim() || undefined,
+        phone: reportPhone.trim() || undefined,
         examCode: safeResult.examCode,
         locale,
         result: safeResult,
@@ -492,6 +494,9 @@ export function ExamTestResults({
             <button
               type="button"
               onClick={() => {
+                setReportName(user?.user_metadata?.full_name || "");
+                setReportEmail(user?.email || "");
+                setReportPhone(user?.user_metadata?.phone || "");
                 setShowEmailModal(true);
                 setEmailSuccess(false);
                 setEmailError("");
@@ -506,6 +511,9 @@ export function ExamTestResults({
             <button
               type="button"
               onClick={() => {
+                setConsultName(user?.user_metadata?.full_name || "");
+                setConsultEmail(user?.email || "");
+                setConsultPhone(user?.user_metadata?.phone || "");
                 setShowConsultModal(true);
                 setConsultSuccess(false);
                 setConsultError("");
@@ -524,137 +532,157 @@ export function ExamTestResults({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[200] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+          className="fixed inset-0 z-[999] overflow-y-auto"
         >
-          <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            {emailSuccess ? (
-              <div className="text-center py-2 space-y-4">
-                <div className="size-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="size-7" />
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-ink">{copy.emailReportSentTitle}</h4>
-                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    {copy.emailReportSentDesc}
-                  </p>
-                </div>
+          {/* Full Viewport Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity"
+            onClick={() => setShowEmailModal(false)}
+            aria-hidden="true"
+          />
 
-                {/* Anonymous Visitor Post-Email Registration Conversion Card */}
-                {!user?.id && (
-                  <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-3">
-                    <div className="flex items-center gap-2 text-primary font-bold text-xs">
-                      <UserPlus className="size-4" />
-                      <span>{copy.conversionTitle}</span>
-                    </div>
-                    <div className="text-xs text-ink/80 whitespace-pre-line leading-relaxed">
-                      {copy.conversionDesc}
-                    </div>
-
-                    <div className="pt-2 flex flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={handleProceedToRegistration}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer"
-                      >
-                        {copy.createAccountBtn}
-                        <ArrowRight className="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowEmailModal(false)}
-                        className="w-full py-2 text-xs font-medium text-muted-foreground hover:text-ink transition-colors cursor-pointer"
-                      >
-                        {copy.notNowBtn}
-                      </button>
-                    </div>
+          {/* Centered Modal Container */}
+          <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
+            <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 text-left shadow-2xl animate-in fade-in zoom-in duration-200">
+              {emailSuccess ? (
+                <div className="text-center py-2 space-y-4">
+                  <div className="size-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="size-7" />
                   </div>
-                )}
-
-                {user?.id && (
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(false)}
-                    className="mt-2 w-full rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer"
-                  >
-                    {isTr ? "Kapat" : "Close"}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <form onSubmit={handleSendEmailReport} className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
-                    <Mail className="size-4" />
-                    <span>{user?.id ? (isTr ? "Danışmana Gönder" : "Send to Advisor") : copy.emailReportCTA}</span>
-                  </div>
-                  <h4 className="text-lg font-bold text-ink">{copy.emailReportModalTitle}</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">{copy.emailReportModalDesc}</p>
-                </div>
-
-                {emailError && (
-                  <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
-                    {emailError}
-                  </div>
-                )}
-
-                {user?.id ? (
-                  <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
-                      <ShieldCheck className="size-3.5" />
-                      <span>{isTr ? "Doğrulanmış Hesap E-postası" : "Verified Account Email"}</span>
-                    </div>
-                    <p className="text-sm font-bold text-ink">{user.email}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {isTr
-                        ? "Sınav analiz raporunuz ve detaylı soru çözümleri doğrudan hesabınıza bağlı e-posta adresine iletilecektir."
-                        : "Your exam diagnostic report and detailed question solutions will be delivered directly to your verified account email."}
+                  <div>
+                    <h4 className="text-lg font-bold text-ink">{copy.emailReportSentTitle}</h4>
+                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                      {copy.emailReportSentDesc}
                     </p>
                   </div>
-                ) : (
-                  <>
-                    <div>
-                      <label className="block text-xs font-semibold text-ink">{copy.fullName} ({isTr ? "İsteğe Bağlı" : "Optional"})</label>
-                      <input
-                        type="text"
-                        value={reportName}
-                        onChange={(e) => setReportName(e.target.value)}
-                        placeholder={isTr ? "Adınız Soyadınız" : "Full Name"}
-                        className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                      />
-                    </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-ink">{copy.email}</label>
-                      <input
-                        type="email"
-                        required
-                        value={reportEmail}
-                        onChange={(e) => setReportEmail(e.target.value)}
-                        placeholder="ornek@email.com"
-                        className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                      />
-                    </div>
-                  </>
-                )}
+                  {/* Anonymous Visitor Post-Email Registration Conversion Card */}
+                  {!user?.id && (
+                    <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-3">
+                      <div className="flex items-center gap-2 text-primary font-bold text-xs">
+                        <UserPlus className="size-4" />
+                        <span>{copy.conversionTitle}</span>
+                      </div>
+                      <div className="text-xs text-ink/80 whitespace-pre-line leading-relaxed">
+                        {copy.conversionDesc}
+                      </div>
 
-                <div className="mt-6 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailModal(false)}
-                    className="flex-1 rounded-xl border border-border py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
-                  >
-                    {copy.cancelBtn}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSendingEmail}
-                    className="flex-1 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSendingEmail ? copy.sending : (isTr ? "Raporu Gönder" : "Send Report")}
-                  </button>
+                      <div className="pt-2 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={handleProceedToRegistration}
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer"
+                        >
+                          {copy.createAccountBtn}
+                          <ArrowRight className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailModal(false)}
+                          className="w-full py-2 text-xs font-medium text-muted-foreground hover:text-ink transition-colors cursor-pointer"
+                        >
+                          {copy.notNowBtn}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {user?.id && (
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailModal(false)}
+                      className="mt-2 w-full rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer"
+                    >
+                      {isTr ? "Kapat" : "Close"}
+                    </button>
+                  )}
                 </div>
-              </form>
-            )}
+              ) : (
+                <form onSubmit={handleSendEmailReport} className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
+                      <Mail className="size-4" />
+                      <span>{user?.id ? (isTr ? "Danışmana Gönder" : "Send to Advisor") : copy.emailReportCTA}</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-ink">{copy.emailReportModalTitle}</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">{copy.emailReportModalDesc}</p>
+                  </div>
+
+                  {emailError && (
+                    <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
+                      {emailError}
+                    </div>
+                  )}
+
+                  {user?.id ? (
+                    <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
+                        <ShieldCheck className="size-3.5" />
+                        <span>{isTr ? "Doğrulanmış Hesap E-postası" : "Verified Account Email"}</span>
+                      </div>
+                      <p className="text-sm font-bold text-ink">{user.email}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {isTr
+                          ? "Sınav analiz raporunuz ve detaylı soru çözümleri doğrudan hesabınıza bağlı e-posta adresine iletilecektir."
+                          : "Your exam diagnostic report and detailed question solutions will be delivered directly to your verified account email."}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-ink">{copy.fullName} ({isTr ? "İsteğe Bağlı" : "Optional"})</label>
+                        <input
+                          type="text"
+                          value={reportName}
+                          onChange={(e) => setReportName(e.target.value)}
+                          placeholder={isTr ? "Adınız Soyadınız" : "Your full name"}
+                          className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-ink">{copy.email}</label>
+                        <input
+                          type="email"
+                          required
+                          value={reportEmail}
+                          onChange={(e) => setReportEmail(e.target.value)}
+                          placeholder={isTr ? "E-posta adresiniz" : "Your email address"}
+                          className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-ink">{copy.phone} ({isTr ? "İsteğe Bağlı" : "Optional"})</label>
+                        <input
+                          type="tel"
+                          value={reportPhone}
+                          onChange={(e) => setReportPhone(e.target.value)}
+                          className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailModal(false)}
+                      className="flex-1 rounded-xl border border-border py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                    >
+                      {copy.cancelBtn}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSendingEmail}
+                      className="flex-1 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSendingEmail ? copy.sending : (isTr ? "Raporu Gönder" : "Send Report")}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>,
         document.body
@@ -665,90 +693,99 @@ export function ExamTestResults({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[200] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+          className="fixed inset-0 z-[999] overflow-y-auto"
         >
-          <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-            {consultSuccess ? (
-              <div className="text-center py-4 space-y-4">
-                <CheckCircle2 className="mx-auto size-12 text-emerald-600" />
-                <h4 className="text-xl font-bold text-ink">{isTr ? "Talebiniz Alındı!" : "Request Received!"}</h4>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {copy.sentSuccess}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowConsultModal(false)}
-                  className="mt-4 w-full rounded-xl bg-ink py-3 text-sm font-semibold text-white hover:bg-forest cursor-pointer"
-                >
-                  {isTr ? "Kapat" : "Close"}
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSendToConsultant} className="space-y-4">
-                <div>
-                  <h4 className="text-lg font-bold text-ink">{copy.sendModalTitle}</h4>
-                  <p className="mt-1 text-xs text-muted-foreground">{copy.sendModalDesc}</p>
-                </div>
+          {/* Full Viewport Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity"
+            onClick={() => setShowConsultModal(false)}
+            aria-hidden="true"
+          />
 
-                {consultError && (
-                  <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
-                    {consultError}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-semibold text-ink">{copy.fullName}</label>
-                  <input
-                    type="text"
-                    required
-                    value={consultName}
-                    onChange={(e) => setConsultName(e.target.value)}
-                    placeholder={isTr ? "Adınız Soyadınız" : "Full Name"}
-                    className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-ink">{copy.email}</label>
-                  <input
-                    type="email"
-                    required
-                    value={consultEmail}
-                    onChange={(e) => setConsultEmail(e.target.value)}
-                    placeholder="ornek@email.com"
-                    className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-ink">{copy.phone}</label>
-                  <input
-                    type="tel"
-                    value={consultPhone}
-                    onChange={(e) => setConsultPhone(e.target.value)}
-                    placeholder={copy.phonePlaceholder}
-                    className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                  />
-                </div>
-
-                <div className="mt-6 flex gap-3">
+          {/* Centered Modal Container */}
+          <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
+            <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 text-left shadow-2xl animate-in fade-in zoom-in duration-200">
+              {consultSuccess ? (
+                <div className="text-center py-4 space-y-4">
+                  <CheckCircle2 className="mx-auto size-12 text-emerald-600" />
+                  <h4 className="text-xl font-bold text-ink">{isTr ? "Talebiniz Alındı!" : "Request Received!"}</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {copy.sentSuccess}
+                  </p>
                   <button
                     type="button"
                     onClick={() => setShowConsultModal(false)}
-                    className="flex-1 rounded-xl border border-border py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                    className="mt-4 w-full rounded-xl bg-ink py-3 text-sm font-semibold text-white hover:bg-forest cursor-pointer"
                   >
-                    {copy.cancelBtn}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSendingConsult}
-                    className="flex-1 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSendingConsult ? copy.sending : copy.sendBtn}
+                    {isTr ? "Kapat" : "Close"}
                   </button>
                 </div>
-              </form>
-            )}
+              ) : (
+                <form onSubmit={handleSendToConsultant} className="space-y-4">
+                  <div>
+                    <h4 className="text-lg font-bold text-ink">{copy.sendModalTitle}</h4>
+                    <p className="mt-1 text-xs text-muted-foreground">{copy.sendModalDesc}</p>
+                  </div>
+
+                  {consultError && (
+                    <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
+                      {consultError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink">{copy.fullName}</label>
+                    <input
+                      type="text"
+                      required
+                      value={consultName}
+                      onChange={(e) => setConsultName(e.target.value)}
+                      placeholder={isTr ? "Adınız Soyadınız" : "Your full name"}
+                      className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink">{copy.email}</label>
+                    <input
+                      type="email"
+                      required
+                      value={consultEmail}
+                      onChange={(e) => setConsultEmail(e.target.value)}
+                      placeholder={isTr ? "E-posta adresiniz" : "Your email address"}
+                      className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink">{copy.phone}</label>
+                    <input
+                      type="tel"
+                      value={consultPhone}
+                      onChange={(e) => setConsultPhone(e.target.value)}
+                      className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
+                    />
+                  </div>
+
+                  <div className="mt-6 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowConsultModal(false)}
+                      className="flex-1 rounded-xl border border-border py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                    >
+                      {copy.cancelBtn}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSendingConsult}
+                      className="flex-1 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSendingConsult ? copy.sending : copy.sendBtn}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>,
         document.body

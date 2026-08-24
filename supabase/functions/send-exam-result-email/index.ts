@@ -57,6 +57,7 @@ Deno.serve(async (req: Request) => {
   const body = await req.json().catch(() => ({}));
   const email = String(body.email || "").trim().toLowerCase();
   const fullName = String(body.fullName || "").trim();
+  const phone = String(body.phone || "").trim();
   const examCode = String(body.examCode || "SAT").toUpperCase();
   const locale = body.locale === "en" ? "en" : "tr";
   const isEn = locale === "en";
@@ -97,6 +98,8 @@ Deno.serve(async (req: Request) => {
       exam_code: examCode,
       locale,
       attempt_data: {
+        full_name: fullName || null,
+        phone: phone || null,
         total_questions: result.total,
         correct_count: result.correct,
         incorrect_count: result.incorrect,

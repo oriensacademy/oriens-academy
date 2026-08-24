@@ -286,12 +286,12 @@ export const faq = {
 };
 
 export const examSelector = {
-  heading: "Hangi sınava hazırlanıyorsun?",
-  inputPlaceholder: "Sınav adı yazın — örn. SAT, IB, TMUA",
+  heading: "Hazırlandığınız sınav (isteğe bağlı)",
+  inputPlaceholder: "Sınav adı (isteğe bağlı)",
   noResults: "Eşleşen sınav bulunamadı.",
   otherLabel: "Diğer",
-  otherInputLabel: "Hazırlandığınız sınavı yazın",
-  otherPlaceholder: "Sınavın adını yazın",
+  otherInputLabel: "Hazırlandığınız sınavı yazın (isteğe bağlı)",
+  otherPlaceholder: "Sınav adı",
   selectedSubtitle: "Uluslararası Sınav Hazırlığı",
   selectedSrAnnounce: "seçildi.",
   changeLabel: "Değiştir",

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-import { useReducedMotion } from "motion/react";
+import { useId, useState } from "react";
 import { ExamSearch } from "./exam-selector/ExamSearch";
 import { CompassNeedle } from "@/components/brand/CompassNeedle";
 import { examCodes } from "@/content/shared";
@@ -19,8 +18,6 @@ export type ExamSelectorProps = {
   id?: string;
 };
 
-const IDLE_INTERVAL_MS = 2600;
-
 /**
  * "Hangi sınava hazırlanıyorsun?" — a premium, academic reinterpretation
  * of an airport departure board. Idle: exam codes cycle calmly. Focused:
@@ -36,20 +33,8 @@ export function ExamSelector({ value, onChange, disabled, error, className, id }
   const generatedId = useId();
   const inputId = id ?? `exam-selector-${generatedId}`;
   const errorId = `${inputId}-error`;
-  const prefersReducedMotion = useReducedMotion();
 
-  const [idleIndex, setIdleIndex] = useState(0);
   const [returning, setReturning] = useState(false);
-
-  const isIdle = value === null;
-
-  useEffect(() => {
-    if (!isIdle || prefersReducedMotion) return;
-    const timer = window.setInterval(() => {
-      setIdleIndex((i) => (i + 1) % examCodes.length);
-    }, IDLE_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [isIdle, prefersReducedMotion]);
 
   function goBackToSearch() {
     setReturning(true);
@@ -67,7 +52,6 @@ export function ExamSelector({ value, onChange, disabled, error, className, id }
             <ExamSearch
               id={inputId}
               exams={examCodes}
-              placeholderExample={examCodes[idleIndex]}
               disabled={disabled}
               autoFocus={returning}
               aria-describedby={error ? errorId : undefined}

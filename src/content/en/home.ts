@@ -286,12 +286,12 @@ export const faq = {
 };
 
 export const examSelector = {
-  heading: "Which exam are you preparing for?",
-  inputPlaceholder: "Type an exam name — e.g. SAT, IB, TMUA",
+  heading: "Exam you're preparing for (optional)",
+  inputPlaceholder: "Exam name (optional)",
   noResults: "No matching exam found.",
   otherLabel: "Other",
-  otherInputLabel: "Tell us which exam you're preparing for",
-  otherPlaceholder: "Type the exam name",
+  otherInputLabel: "Tell us which exam you're preparing for (optional)",
+  otherPlaceholder: "Exam name",
   selectedSubtitle: "International Exam Preparation",
   selectedSrAnnounce: "selected.",
   changeLabel: "Change",

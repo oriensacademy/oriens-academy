@@ -121,7 +121,7 @@ Notes / Goals: ${notes || "-"}
             required
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder={isTr ? "Ahmet Yılmaz" : "John Doe"}
+            placeholder={isTr ? "Adınız Soyadınız" : "Your full name"}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           />
         </div>
@@ -136,7 +136,7 @@ Notes / Goals: ${notes || "-"}
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="ornek@domain.com"
+            placeholder={isTr ? "E-posta adresiniz" : "Your email address"}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           />
         </div>
@@ -178,7 +178,7 @@ Notes / Goals: ${notes || "-"}
             type="text"
             value={schoolGrade}
             onChange={(e) => setSchoolGrade(e.target.value)}
-            placeholder={isTr ? "Örn: Robert Kolej / 11. Sınıf" : "e.g. Grade 11 / IB DP 1"}
+            placeholder={isTr ? "Okulunuz ve sınıfınız" : "Your school and grade"}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           />
         </div>
@@ -194,7 +194,7 @@ Notes / Goals: ${notes || "-"}
             type="text"
             value={targetUniversity}
             onChange={(e) => setTargetUniversity(e.target.value)}
-            placeholder={isTr ? "İngiltere / Imperial, Cambridge" : "UK / Imperial, Cambridge"}
+            placeholder={isTr ? "Hedef ülke ve üniversiteler" : "Target countries and universities"}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           />
         </div>
@@ -208,7 +208,7 @@ Notes / Goals: ${notes || "-"}
             type="text"
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
-            placeholder={isTr ? "Mayıs 2027" : "May 2027"}
+            placeholder={isTr ? "Hedef sınav tarihi" : "Target exam date"}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           />
         </div>

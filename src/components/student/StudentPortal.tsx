@@ -254,7 +254,6 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
             {isTr ? "Telefon" : "Phone"}
             <input
               value={form.phone}
-              placeholder={isTr ? "0555 555 55 55" : "Phone number"}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
             />
@@ -1051,7 +1050,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                     required
                     value={newSubject}
                     onChange={(e) => setNewSubject(e.target.value)}
-                    placeholder={isTr ? "Örn: IB Matematik ders programı hakkında" : "e.g. Question about IB Mathematics schedule"}
+                    placeholder={isTr ? "Destek konusu" : "Inquiry subject"}
                     className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   />
                 </label>

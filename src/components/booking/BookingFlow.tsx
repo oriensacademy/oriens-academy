@@ -486,6 +486,7 @@ export function BookingFlow() {
                   id="fullName"
                   type="text"
                   required
+                  placeholder={locale === "tr" ? "Adınız Soyadınız" : "Your full name"}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
@@ -501,6 +502,7 @@ export function BookingFlow() {
                   id="email"
                   type="email"
                   required
+                  placeholder={locale === "tr" ? "E-posta adresiniz" : "Your email address"}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
@@ -515,7 +517,6 @@ export function BookingFlow() {
                 <input
                   id="phone"
                   type="tel"
-                  placeholder={locale === "tr" ? "0555 555 55 55" : "Phone number"}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"

@@ -325,7 +325,7 @@ export function CreateBookingModal({
                       setEmail(e.target.value);
                       if (errors.email) setErrors({ ...errors, email: undefined });
                     }}
-                    placeholder="ornek@ogrenci.com"
+                    placeholder="E-posta adresi"
                     className={inputClass(Boolean(errors.email))}
                   />
                 </Field>

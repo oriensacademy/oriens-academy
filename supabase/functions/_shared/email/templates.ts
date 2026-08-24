@@ -667,14 +667,16 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
     ? formatCurrency(data.package.price, data.package.currency, adminLocale)
     : null;
 
-  const cardHtml = summaryCard(isTr ? "İletişim Bilgileri" : "Contact Information", [
+  const cardItems = [
     { label: isTr ? "Ad Soyad" : "Full Name", value: !isQuick && data.fullName ? escapeHtml(data.fullName) : (isTr ? "Hızlı İletişim" : "Quick Contact") },
     { label: isTr ? "E-posta" : "Email", value: `<a href="mailto:${escapeHtml(data.email)}" style="color:${PALETTE.primary};">${escapeHtml(data.email)}</a>` },
-    { label: isTr ? "Telefon" : "Phone", value: data.phone ? escapeHtml(data.phone) : "—" },
-    { label: isTr ? "Konu / Sınav" : "Subject", value: data.subject ? escapeHtml(data.subject) : (isTr ? "Genel Danışmanlık" : "General Consultation") },
-    { label: isTr ? "İlgilenilen Paket" : "Package", value: data.package ? `${escapeHtml(data.package.name)}${packagePrice ? ` (${packagePrice})` : ""}` : (isTr ? "Yok" : "None") },
+    ...(data.phone ? [{ label: isTr ? "Telefon" : "Phone", value: escapeHtml(data.phone) }] : []),
+    ...(data.subject ? [{ label: isTr ? "Konu / Sınav" : "Subject", value: escapeHtml(data.subject) }] : []),
+    ...(data.package ? [{ label: isTr ? "İlgilenilen Paket" : "Package", value: `${escapeHtml(data.package.name)}${packagePrice ? ` (${packagePrice})` : ""}` }] : []),
     { label: isTr ? "Dil" : "Language", value: data.locale.toUpperCase() },
-  ]);
+  ];
+
+  const cardHtml = summaryCard(isTr ? "İletişim Bilgileri" : "Contact Information", cardItems);
 
   const messageHtml = data.message ? `
     <div style="margin-top:16px;background-color:${PALETTE.surfaceMuted};border:1px solid ${PALETTE.border};border-radius:12px;padding:16px 18px;">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { ExamOption } from "./ExamOption";
 import { useHomeContent } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
@@ -36,7 +35,6 @@ export function ExamSearch({
   onBlur,
   disabled,
   autoFocus,
-  placeholderExample,
   "aria-describedby": describedBy,
 }: ExamSearchProps) {
   const { examSelector } = useHomeContent();
@@ -45,7 +43,6 @@ export function ExamSearch({
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxId = `${id}-listbox`;
-  const placeholderLead = examSelector.inputPlaceholder.replace(/SAT.*$/, "");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -117,7 +114,7 @@ export function ExamSearch({
         autoComplete="off"
         disabled={disabled}
         autoFocus={autoFocus}
-        placeholder=""
+        placeholder={examSelector.inputPlaceholder}
         aria-label={examSelector.inputPlaceholder}
         value={query}
         onChange={(event) => {
@@ -142,23 +139,6 @@ export function ExamSearch({
           "disabled:cursor-not-allowed disabled:opacity-50"
         )}
       />
-
-      {query.length === 0 && (
-        <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-base text-muted-foreground">
-          {placeholderLead}
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={placeholderExample}
-              initial={{ opacity: 0, y: 2 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -2 }}
-              transition={{ duration: 0.22 }}
-            >
-              {placeholderExample}
-            </motion.span>
-          </AnimatePresence>
-        </span>
-      )}
 
       {isOpen && (
         <ul
