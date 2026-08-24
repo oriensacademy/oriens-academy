@@ -6,7 +6,7 @@ function publicId(value: string | undefined, pattern: RegExp) {
 export const googleTagConfig = {
   // Preserve the currently active IDs while allowing environment-specific overrides.
   gtmId: publicId(process.env.NEXT_PUBLIC_GTM_ID, /^GTM-[A-Z0-9]+$/) || "GTM-5Z8NXLW7",
-  ga4Id: publicId(process.env.NEXT_PUBLIC_GA4_ID, /^G-[A-Z0-9]+$/) || "G-LMLNN2ZXD1",
+  ga4Id: publicId(process.env.NEXT_PUBLIC_GA4_ID, /^G-[A-Z0-9]+$/) || "G-GHH772JLM4",
   googleAdsId: publicId(process.env.NEXT_PUBLIC_GOOGLE_ADS_ID, /^AW-\d+$/),
 } as const;
 
