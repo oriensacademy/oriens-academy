@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, Copy, CreditCard, ExternalLink, LayoutDashboard, Lock, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { localizedPath } from "@/lib/routes";
@@ -12,6 +12,7 @@ import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { getStudentPortalData, updateStudentProfile, type StudentPortalData } from "@/lib/student/data";
+import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
 import { InteractiveHomework } from "@/components/student/InteractiveHomework";
 import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
@@ -234,13 +235,20 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
 
 function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; userId: string; locale: "tr" | "en"; onReload: () => void }) {
   const [form, setForm] = useState({
-    fullName: data.profile.full_name,
-    phone: data.profile.phone || "",
     school: data.profile.school || "",
-    targetExam: data.profile.target_exam || "",
     targetUniversity: data.profile.target_university || "",
-    targetCountry: data.profile.target_country || "",
   });
+  const [selectedExams, setSelectedExams] = useState<string[]>(() => {
+    const raw = (data.profile as unknown as Record<string, unknown>).target_exams;
+    if (Array.isArray(raw) && raw.length > 0) return raw;
+    return data.profile.target_exam ? [data.profile.target_exam] : [];
+  });
+  const [selectedCountries, setSelectedCountries] = useState<string[]>(() => {
+    const raw = (data.profile as unknown as Record<string, unknown>).target_countries;
+    if (Array.isArray(raw) && raw.length > 0) return raw;
+    return data.profile.target_country ? [data.profile.target_country] : [];
+  });
+
   const [busy, setBusy] = useState(false);
   const [emailForm, setEmailForm] = useState({ email: data.profile.email });
   const [emailBusy, setEmailBusy] = useState(false);
@@ -249,24 +257,47 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
 
+  const toggleExam = (id: string) => {
+    setSelectedExams((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleCountry = (id: string) => {
+    setSelectedCountries((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMsg("");
     setErr("");
-    const { error } = await updateStudentProfile(userId, {
-      full_name: form.fullName.trim(),
-      phone: form.phone.trim() || null,
-      school: form.school.trim() || null,
-      target_exam: form.targetExam.trim() || null,
-      target_university: form.targetUniversity.trim() || null,
-      target_country: form.targetCountry.trim() || null,
-    });
-    setBusy(false);
-    if (error) setErr(error.message);
-    else {
-      setMsg(locale === "tr" ? "Profil başarıyla güncellendi." : "Profile updated successfully.");
+
+    try {
+      const { error: profileError } = await updateStudentProfile(userId, {
+        school: form.school.trim() || null,
+        target_university: form.targetUniversity.trim() || null,
+        target_exams: selectedExams,
+        target_countries: selectedCountries,
+        target_exam: selectedExams[0] || null,
+        target_country: selectedCountries[0] || null,
+      });
+
+      if (profileError) {
+        setBusy(false);
+        setErr(profileError.message);
+        return;
+      }
+
+      await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
+      setBusy(false);
+      setMsg(locale === "tr" ? "Akademik profiliniz başarıyla güncellendi." : "Academic profile updated successfully.");
       onReload();
+    } catch (error) {
+      setBusy(false);
+      setErr(error instanceof Error ? error.message : (locale === "tr" ? "Bir hata oluştu." : "An error occurred."));
     }
   }
 
@@ -300,68 +331,149 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
       {msg && <p className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800">{msg}</p>}
       {err && <p className="rounded-xl border border-red-300 bg-red-50 p-4 text-xs font-semibold text-red-800">{err}</p>}
 
-      <Panel title={locale === "tr" ? "Profil Bilgileri" : "Profile Details"}>
-        <form onSubmit={saveProfile} className="grid gap-4 sm:grid-cols-2">
-          <label className="text-xs text-muted-foreground">
-            {locale === "tr" ? "Ad Soyad" : "Full Name"}
-            <input
-              required
-              type="text"
-              value={form.fullName}
-              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
-            />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            {locale === "tr" ? "Telefon" : "Phone"}
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
-            />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            {locale === "tr" ? "Okul" : "School"}
-            <input
-              type="text"
-              value={form.school}
-              onChange={(e) => setForm({ ...form, school: e.target.value })}
-              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
-            />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            {locale === "tr" ? "Hedef Sınav" : "Target Exam"}
-            <input
-              type="text"
-              value={form.targetExam}
-              onChange={(e) => setForm({ ...form, targetExam: e.target.value })}
-              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
-            />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            {locale === "tr" ? "Hedef Üniversite" : "Target University"}
-            <input
-              type="text"
-              value={form.targetUniversity}
-              onChange={(e) => setForm({ ...form, targetUniversity: e.target.value })}
-              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
-            />
-          </label>
-          <label className="text-xs text-muted-foreground">
-            {locale === "tr" ? "Hedef Ülke" : "Target Country"}
-            <input
-              type="text"
-              value={form.targetCountry}
-              onChange={(e) => setForm({ ...form, targetCountry: e.target.value })}
-              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
-            />
-          </label>
-          <div className="sm:col-span-2">
+      {/* 1. KİŞİSEL BİLGİLER (READ ONLY) */}
+      <Panel title={locale === "tr" ? "Kişisel Bilgiler" : "Personal Information"}>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-surface-muted/60 p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {locale === "tr" ? "Ad Soyad" : "Full Name"}
+              </span>
+              <p className="mt-1 text-sm font-semibold text-ink">{data.profile.full_name}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface-muted/60 p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {locale === "tr" ? "E-posta Adresi" : "Email Address"}
+              </span>
+              <p className="mt-1 text-sm font-semibold text-ink truncate">{data.profile.email}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface-muted/60 p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {locale === "tr" ? "Telefon Numarası" : "Phone Number"}
+              </span>
+              <p className="mt-1 text-sm font-semibold text-ink">
+                {data.profile.phone || (locale === "tr" ? "Belirtilmemiş" : "Not specified")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg bg-surface-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <Lock className="size-3.5 shrink-0 text-muted-foreground" />
+            <span>
+              {locale === "tr"
+                ? "Kişisel kimlik bilgileri hesap güvenliği nedeniyle yalnızca yönetici tarafından güncellenebilir."
+                : "Personal identity information can only be updated by an administrator for security purposes."}
+            </span>
+          </div>
+        </div>
+      </Panel>
+
+      {/* 2. AKADEMİK HEDEFLER & PROFİL (STUDENT EDITABLE) */}
+      <Panel title={locale === "tr" ? "Akademik Hedefler & Tercihler" : "Academic Goals & Preferences"}>
+        <form onSubmit={saveProfile} className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-xs font-medium text-muted-foreground">
+              {locale === "tr" ? "Mevcut Okul / Lise" : "Current School / Institution"}
+              <input
+                type="text"
+                placeholder={locale === "tr" ? "Örn: Robert Kolej, Galatasaray Lisesi..." : "e.g. High School..."}
+                value={form.school}
+                onChange={(e) => setForm({ ...form, school: e.target.value })}
+                className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {locale === "tr" ? "Hedef Üniversite / Bölüm" : "Target University / Major"}
+              <input
+                type="text"
+                placeholder={locale === "tr" ? "Örn: Oxford University, MIT, Bocconi..." : "e.g. Oxford University, MIT..."}
+                value={form.targetUniversity}
+                onChange={(e) => setForm({ ...form, targetUniversity: e.target.value })}
+                className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </label>
+          </div>
+
+          {/* MULTI-SELECT CHIPS FOR EXAMS */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-ink">
+                {locale === "tr" ? "Hedef Sınavlar ve Yeterlilikler" : "Target Exams & Qualifications"}
+              </label>
+              <span className="text-[11px] text-muted-foreground">
+                {selectedExams.length} {locale === "tr" ? "seçildi" : "selected"}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {SUPPORTED_EXAMS.map((exam) => {
+                const isSelected = selectedExams.includes(exam.id);
+                return (
+                  <button
+                    key={exam.id}
+                    type="button"
+                    onClick={() => toggleExam(exam.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all cursor-pointer",
+                      isSelected
+                        ? "border-primary bg-primary text-white shadow-xs"
+                        : "border-border bg-surface text-ink hover:border-primary/50 hover:bg-surface-muted"
+                    )}
+                  >
+                    {isSelected && <Check className="size-3.5 shrink-0" />}
+                    <span>{locale === "tr" ? exam.name_tr : exam.name_en}</span>
+                    {exam.badge && (
+                      <span
+                        className={cn(
+                          "rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase",
+                          isSelected ? "bg-white/20 text-white" : "bg-surface-muted text-muted-foreground"
+                        )}
+                      >
+                        {exam.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* MULTI-SELECT CHIPS FOR DESTINATIONS */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-ink">
+                {locale === "tr" ? "Hedef Ülkeler / Bölgeler" : "Target Countries & Destinations"}
+              </label>
+              <span className="text-[11px] text-muted-foreground">
+                {selectedCountries.length} {locale === "tr" ? "seçildi" : "selected"}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {SUPPORTED_DESTINATIONS.map((dest) => {
+                const isSelected = selectedCountries.includes(dest.id);
+                return (
+                  <button
+                    key={dest.id}
+                    type="button"
+                    onClick={() => toggleCountry(dest.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all cursor-pointer",
+                      isSelected
+                        ? "border-primary bg-primary text-white shadow-xs"
+                        : "border-border bg-surface text-ink hover:border-primary/50 hover:bg-surface-muted"
+                    )}
+                  >
+                    {isSelected && <Check className="size-3.5 shrink-0" />}
+                    <span>{locale === "tr" ? dest.name_tr : dest.name_en}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-6 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
             >
               <Save className="size-4" />
               {busy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Profili Güncelle" : "Update Profile")}
@@ -370,21 +482,27 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
         </form>
       </Panel>
 
+      {/* 3. HESAP GÜVENLİĞİ (SAME PAGE) */}
       <Panel title={locale === "tr" ? "Hesap Güvenliği" : "Account Security"}>
         <div className="grid gap-6 sm:grid-cols-2">
           <form onSubmit={saveEmail} className="space-y-3">
             <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "E-posta Değiştir" : "Change Email"}</h3>
+            <p className="text-xs text-muted-foreground">
+              {locale === "tr"
+                ? "E-posta adresinizi değiştirdiğinizde yeni adrese onay bağlantısı gönderilecektir."
+                : "A verification link will be sent to the new email address."}
+            </p>
             <input
               required
               type="email"
               value={emailForm.email}
               onChange={(e) => setEmailForm({ email: e.target.value })}
-              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
+              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
             <button
               type="submit"
               disabled={emailBusy}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer"
             >
               {emailBusy ? (locale === "tr" ? "Gönderiliyor…" : "Sending…") : (locale === "tr" ? "E-posta Güncelle" : "Update Email")}
             </button>
@@ -392,6 +510,11 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
 
           <form onSubmit={savePassword} className="space-y-3">
             <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "Şifre Belirle" : "Update Password"}</h3>
+            <p className="text-xs text-muted-foreground">
+              {locale === "tr"
+                ? "Hesabınız için güçlü ve benzersiz bir şifre belirleyin."
+                : "Choose a strong and unique password for your account."}
+            </p>
             <input
               required
               minLength={8}
@@ -399,12 +522,12 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
               placeholder={locale === "tr" ? "En az 8 karakter" : "Minimum 8 characters"}
               value={passwordForm.password}
               onChange={(e) => setPasswordForm({ password: e.target.value })}
-              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
+              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
             <button
               type="submit"
               disabled={passwordBusy}
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer"
             >
               {passwordBusy ? (locale === "tr" ? "Güncelleniyor…" : "Updating…") : (locale === "tr" ? "Şifreyi Değiştir" : "Update Password")}
             </button>

@@ -25,19 +25,8 @@ export function parseBooleanSettingValue(value: unknown, defaultValue = true): b
   return defaultValue;
 }
 
-/** Missing or unavailable configuration deliberately preserves the visible state unless explicitly disabled. */
+/** Queries public site_settings directly from Supabase for authoritative runtime pricing visibility. */
 export async function getPricingNavigationVisibility(): Promise<boolean> {
-  if (typeof window !== "undefined") {
-    try {
-      const storedDev = localStorage.getItem(DEV_PRICING_VISIBILITY_KEY);
-      if (storedDev !== null) {
-        return parseBooleanSettingValue(storedDev, true);
-      }
-    } catch {
-      // ignore
-    }
-  }
-
   try {
     const { data, error } = await getSupabaseClient()
       .from("site_settings")
@@ -47,27 +36,11 @@ export async function getPricingNavigationVisibility(): Promise<boolean> {
       .maybeSingle();
 
     if (error || !data) {
-      if (typeof window !== "undefined") {
-        try {
-          const storedDev = localStorage.getItem(DEV_PRICING_VISIBILITY_KEY);
-          if (storedDev !== null) return parseBooleanSettingValue(storedDev, true);
-        } catch {
-          // ignore
-        }
-      }
       return true;
     }
 
     return parseBooleanSettingValue(data.value, true);
   } catch {
-    if (typeof window !== "undefined") {
-      try {
-        const storedDev = localStorage.getItem(DEV_PRICING_VISIBILITY_KEY);
-        if (storedDev !== null) return parseBooleanSettingValue(storedDev, true);
-      } catch {
-        // ignore
-      }
-    }
     return true;
   }
 }

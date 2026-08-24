@@ -260,3 +260,33 @@ export async function sendStudentPasswordReset(
     };
   }
 }
+
+/**
+ * Updates a student's personal identity and academic profile securely via Admin RPC with audit logging.
+ */
+export async function adminUpdateStudentProfile(
+  studentId: string,
+  input: {
+    fullName: string;
+    phone?: string | null;
+    school?: string | null;
+    targetUniversity?: string | null;
+  }
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = getSupabaseClient();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("admin_update_student_profile", {
+      p_student_id: studentId,
+      p_full_name: input.fullName.trim(),
+      p_phone: input.phone ? input.phone.trim() : null,
+      p_school: input.school ? input.school.trim() : null,
+      p_target_university: input.targetUniversity ? input.targetUniversity.trim() : null,
+    });
+    if (error) return { success: false, error: error.message };
+    if (!data || data.success !== true) return { success: false, error: "Güncelleme doğrulanamadı." };
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Güncelleme başarısız oldu." };
+  }
+}

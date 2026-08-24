@@ -16,13 +16,16 @@ import { useCart } from "@/lib/cart/cart-context";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { useAccount } from "@/lib/auth/account-context";
+import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { ButtonLink } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format/currency";
 
 export function CartPage() {
   const locale = useLocale();
   const isTr = locale === "tr";
   const { accountType, isInitializing } = useAccount();
+  const { showPricing, loading: settingsLoading } = usePublicSettings();
   const { items, removeFromCart, clearCart } = useCart();
 
   const [availablePackages, setAvailablePackages] = useState<PublicPricingPackage[]>([]);
@@ -39,8 +42,35 @@ export function CartPage() {
       });
   }, []);
 
-  if (isInitializing || loading) {
+  if (isInitializing || loading || settingsLoading) {
     return <AccountWaveLoader />;
+  }
+
+  // When pricing is disabled and caller is not admin
+  if (!showPricing && accountType !== "admin") {
+    return (
+      <section className="min-h-[70vh] bg-[#F6F8F3] pt-32 pb-20 md:pt-40 md:pb-28">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-sage-soft text-primary shadow-xs">
+            <ShoppingBag className="size-8 text-[#819586]" />
+          </div>
+          <h1 className="mt-6 font-heading text-3xl text-[#10271B] sm:text-4xl">
+            {isTr ? "Paket Satışı Çevrim Dışıdır" : "Package Sales are Currently Offline"}
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#68756C]">
+            {isTr
+              ? "Paket satışı şu anda çevrim dışıdır. Eğitim ve danışmanlık hizmetlerimiz hakkında bilgi almak için ücretsiz görüşme planlayabilirsiniz."
+              : "Package purchases are currently offline. You can book a complimentary consultation to learn more about our education and guidance services."}
+          </p>
+          <div className="mt-8 flex justify-center">
+            <ButtonLink href={`${localizedPath("home", locale)}#consultation-form`} size="lg" className="h-12 px-6">
+              {isTr ? "Görüşme Planla" : "Book a Consultation"}
+              <ArrowRight className="size-4" />
+            </ButtonLink>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   // Match cart items with DB packages

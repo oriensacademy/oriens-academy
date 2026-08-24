@@ -17,11 +17,15 @@ import {
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
+  Edit3,
+  Lock,
 } from "lucide-react";
 import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
 import { completeStudentAppointment } from "@/lib/admin/student-learning";
 import { updateAdminBookingStatus } from "@/lib/admin/bookings";
-import { sendStudentPasswordReset, type StudentProfile } from "@/lib/admin/students";
+import { sendStudentPasswordReset, adminUpdateStudentProfile, type StudentProfile } from "@/lib/admin/students";
+import { useAccount } from "@/lib/auth/account-context";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatExamBadges, formatDestinationBadges } from "@/lib/student/preferences";
 
 type Tab = "overview" | "education" | "homework" | "packages" | "exam_history" | "notes";
@@ -47,10 +51,13 @@ export function StudentDetailSheet({
   onCreateBooking: () => void;
   onChanged?: () => void;
 }) {
+  const { user: currentAdminUser } = useAccount();
+  const adminEmail = currentAdminUser?.email || "admin@oriens-academy.com";
   const [tab, setTab] = useState<Tab>(initialTab);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [isResetting, startResetTransition] = useTransition();
 
   const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
@@ -59,7 +66,8 @@ export function StudentDetailSheet({
     if (!student) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (resetModalOpen) setResetModalOpen(false);
+        if (editModalOpen) setEditModalOpen(false);
+        else if (resetModalOpen) setResetModalOpen(false);
         else onClose();
       }
     };
@@ -70,7 +78,7 @@ export function StudentDetailSheet({
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previous;
     };
-  }, [student, onClose, resetModalOpen]);
+  }, [student, onClose, resetModalOpen, editModalOpen]);
 
   if (!student || !mounted || typeof document === "undefined") return null;
 
@@ -171,6 +179,10 @@ export function StudentDetailSheet({
                 setErrorMessage("");
                 setResetModalOpen(true);
               }}
+              onOpenEditIdentity={() => {
+                setErrorMessage("");
+                setEditModalOpen(true);
+              }}
             />
           )}
 
@@ -256,6 +268,19 @@ export function StudentDetailSheet({
           </div>
         </div>
       )}
+
+      {/* Student Identity & Profile Edit Modal with Admin Re-authentication */}
+      {editModalOpen && (
+        <EditStudentIdentityModal
+          student={student}
+          adminEmail={adminEmail}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={(msg) => {
+            setMessage(msg);
+            onChanged?.();
+          }}
+        />
+      )}
     </div>,
     document.body
   );
@@ -265,10 +290,12 @@ function Overview({
   student,
   onCreateBooking,
   onOpenPasswordReset,
+  onOpenEditIdentity,
 }: {
   student: StudentProfile;
   onCreateBooking: () => void;
   onOpenPasswordReset: () => void;
+  onOpenEditIdentity: () => void;
 }) {
   const val = (input: string | null | undefined) => input?.trim() || "Belirtilmemiş";
   const examBadges = formatExamBadges(
@@ -288,11 +315,21 @@ function Overview({
 
   return (
     <div className="space-y-6">
-      {/* KİŞİSEL BİLGİLER (READ-ONLY) */}
+      {/* KİŞİSEL BİLGİLER (READ-ONLY WITH SECURE ADMIN EDIT) */}
       <section className="space-y-3">
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Kişisel Bilgiler
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+            Kişisel Bilgiler
+          </h3>
+          <button
+            type="button"
+            onClick={onOpenEditIdentity}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer shadow-2xs transition-colors"
+          >
+            <Edit3 className="size-3 text-primary" />
+            <span>Bilgileri Düzenle</span>
+          </button>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Info label="Ad Soyad" value={val(student.fullName)} />
           <Info label="E-posta" value={val(student.email)} />
@@ -713,4 +750,239 @@ function date(value: string | null) {
   return value
     ? new Date(value).toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "short" })
     : "—";
+}
+
+function EditStudentIdentityModal({
+  student,
+  adminEmail,
+  onClose,
+  onSuccess,
+}: {
+  student: StudentProfile;
+  adminEmail: string;
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}) {
+  const [form, setForm] = useState({
+    fullName: student.fullName || "",
+    phone: student.phone || "",
+    school: student.school || "",
+    targetUniversity: student.targetUniversity || "",
+  });
+  const [adminPassword, setAdminPassword] = useState("");
+  const [step, setStep] = useState<"edit" | "reauth">("edit");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleNextStep = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.fullName.trim()) {
+      setError("Ad Soyad alanı zorunludur.");
+      return;
+    }
+    setError("");
+    setStep("reauth");
+  };
+
+  const handleConfirmUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminPassword) {
+      setError("Lütfen yönetici şifrenizi girin.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      const supabase = getSupabaseClient();
+      // Re-authenticate admin credentials securely (passwords never logged/stored)
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: adminPassword,
+      });
+
+      if (authError) {
+        setBusy(false);
+        setError("Yönetici şifresi doğrulanamadı. Lütfen kontrol edip tekrar deneyin.");
+        return;
+      }
+
+      const targetId = student.userId || student.id.replace("account-", "");
+      const res = await adminUpdateStudentProfile(targetId, {
+        fullName: form.fullName,
+        phone: form.phone || null,
+        school: form.school || null,
+        targetUniversity: form.targetUniversity || null,
+      });
+
+      setBusy(false);
+      if (!res.success) {
+        setError(res.error || "Öğrenci bilgileri güncellenemedi.");
+      } else {
+        onSuccess("Öğrenci bilgileri başarıyla güncellendi.");
+        onClose();
+      }
+    } catch (err) {
+      setBusy(false);
+      setError(err instanceof Error ? err.message : "İşlem sırasında bir hata oluştu.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
+      <div className="w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-primary">
+              <Edit3 className="size-4" />
+            </div>
+            <div>
+              <h3 className="font-heading text-base font-bold text-ink">Öğrenci Bilgilerini Düzenle</h3>
+              <p className="text-xs text-muted-foreground">{student.fullName} ({student.email})</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-surface-muted cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 flex items-start gap-2">
+            <AlertCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {step === "edit" ? (
+          <form onSubmit={handleNextStep} className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-ink">
+                Ad Soyad <span className="text-red-500">*</span>
+                <input
+                  required
+                  type="text"
+                  value={form.fullName}
+                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                />
+              </label>
+
+              <label className="text-xs font-semibold text-ink">
+                Telefon Numarası
+                <input
+                  type="tel"
+                  placeholder="05..."
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                />
+              </label>
+
+              <label className="text-xs font-semibold text-ink">
+                Okul / Kurum
+                <input
+                  type="text"
+                  placeholder="Örn: Robert Kolej"
+                  value={form.school}
+                  onChange={(e) => setForm({ ...form, school: e.target.value })}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                />
+              </label>
+
+              <label className="text-xs font-semibold text-ink">
+                Hedef Üniversite
+                <input
+                  type="text"
+                  placeholder="Örn: Oxford University"
+                  value={form.targetUniversity}
+                  onChange={(e) => setForm({ ...form, targetUniversity: e.target.value })}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                />
+              </label>
+            </div>
+
+            <div className="rounded-xl border border-border bg-surface-muted/60 p-3 text-[11px] text-muted-foreground flex items-center gap-2">
+              <ShieldCheck className="size-4 shrink-0 text-primary" />
+              <span>Kimlik değişiklikleri denetim kaydına yazılır ve yönetici şifre doğrulaması gerektirir.</span>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+              >
+                İptal
+              </button>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest cursor-pointer shadow-xs"
+              >
+                Devam Et &rarr;
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleConfirmUpdate} className="space-y-4">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-amber-900 font-semibold text-xs">
+                <Lock className="size-4 text-amber-700" />
+                <span>Yönetici Şifre Doğrulaması (Re-authentication)</span>
+              </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Öğrenci kimlik bilgilerini güncellemek hassas bir işlemdir. Devam etmek için aktif yönetici hesabınızın ({adminEmail}) şifresini girin.
+              </p>
+            </div>
+
+            <label className="block text-xs font-semibold text-ink">
+              Yönetici Şifreniz
+              <input
+                required
+                autoFocus
+                type="password"
+                placeholder="••••••••"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </label>
+
+            <div className="flex justify-between items-center pt-2 border-t border-border">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => { setStep("edit"); setAdminPassword(""); setError(""); }}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+              >
+                &larr; Geri Dön
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onClose}
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  <ShieldCheck className="size-3.5" />
+                  {busy ? "Doğrulanıyor ve Kaydediliyor..." : "Doğrula ve Güncelle"}
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
 }

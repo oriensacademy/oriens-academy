@@ -64,7 +64,7 @@ export function Navbar() {
     { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
     { href: localizedPath("universitySupport", locale), label: locale === "tr" ? "Üniversite Desteği" : "University Support" },
     ...(showPricing ? [{ href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
-    ...(cartCount > 0 || isStudent ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
+    ...(showPricing && (cartCount > 0 || isStudent) ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
     { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
     { href: accountHref, label: accountLabel },
@@ -177,7 +177,7 @@ export function Navbar() {
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <div className="flex items-center gap-3">
               <LanguageSwitch />
-              {(cartCount > 0 || isStudent) && (
+              {showPricing && (cartCount > 0 || isStudent) && (
                 <Link
                   href={localizedPath("cart", locale)}
                   className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

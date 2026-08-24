@@ -342,7 +342,7 @@ export function infoBadge(text: string, variant: "gold" | "sage" | "forest" | "n
     border = PALETTE.border;
   }
 
-  return `<span style="display:inline-block;padding:4px 10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;background-color:${bg};color:${color};border:1px solid ${border};">${escapeHtml(text)}</span>`;
+  return `<span style="display:inline-block;vertical-align:middle;padding:4px 10px;font-size:11px;font-weight:700;line-height:100%;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;background-color:${bg};color:${color};border:1px solid ${border};mso-line-height-rule:exactly;">${escapeHtml(text)}</span>`;
 }
 
 export function summaryCard(title: string | null, items: Array<{ label: string; value: string; fullWidth?: boolean }>): string {
@@ -398,10 +398,14 @@ export function metricCard(opts: {
 }): string {
   return `
     <div style="margin-top:20px;background-color:${PALETTE.surfaceMuted};border:1px solid ${PALETTE.border};border-radius:12px;padding:18px 20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${PALETTE.sage};">${escapeHtml(opts.title)}</span>
-        ${opts.badge ? `<span>${infoBadge(opts.badge, "gold")}</span>` : ""}
-      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px;">
+        <tr>
+          <td align="left" valign="middle" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${PALETTE.sage};line-height:16px;">
+            ${escapeHtml(opts.title)}
+          </td>
+          ${opts.badge ? `<td align="right" valign="middle" style="line-height:16px;">${infoBadge(opts.badge, "gold")}</td>` : ""}
+        </tr>
+      </table>
       <div style="font-size:24px;font-weight:700;color:${PALETTE.primary};letter-spacing:-.01em;margin-top:6px;">
         ${escapeHtml(opts.metricValue)}
       </div>
@@ -423,10 +427,16 @@ export function bankDetailsCard(bank: {
   const isTr = bank.locale === "tr";
   return `
     <div style="margin-top:20px;background-color:${PALETTE.surfaceGold};border:1px solid ${PALETTE.borderGold};border-radius:12px;padding:18px 20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${PALETTE.goldDark};">${isTr ? "Banka Havalesi / EFT Bilgileri" : "Bank Wire Transfer Details"}</span>
-        ${infoBadge(isTr ? "IBAN Ödemesi" : "Wire Transfer", "gold")}
-      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
+        <tr>
+          <td align="left" valign="middle" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${PALETTE.goldDark};line-height:16px;">
+            ${isTr ? "Banka Havalesi / EFT Bilgileri" : "Bank Wire Transfer Details"}
+          </td>
+          <td align="right" valign="middle" style="line-height:16px;">
+            ${infoBadge(isTr ? "IBAN Ödemesi" : "Wire Transfer", "gold")}
+          </td>
+        </tr>
+      </table>
       
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
         <tr>

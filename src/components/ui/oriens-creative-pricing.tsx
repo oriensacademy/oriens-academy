@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Check, ShoppingBag, CheckCircle2 } from "lucide-react";
 import { useCart } from "@/lib/cart/cart-context";
+import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { localizedPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,7 @@ export function CreativePricing({
 }: CreativePricingProps) {
   const Heading = headingLevel;
   const { addToCart, isInCart } = useCart();
+  const { showPricing } = usePublicSettings();
   const money = (value: number) => new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", {
     style: "currency",
     currency: "TRY",
@@ -78,77 +80,58 @@ export function CreativePricing({
               className={cn(
                 "group relative min-w-0 transition-transform duration-300 motion-reduce:transform-none motion-reduce:transition-none lg:col-span-2 xl:col-span-1",
                 index === 3 && "lg:col-start-2 xl:col-start-auto",
-                index % 3 === 0 && "xl:-rotate-[1deg]",
-                index % 3 === 1 && "xl:rotate-[1deg]",
-                index % 3 === 2 && "xl:-rotate-[0.5deg]",
+                index === 4 && "lg:col-span-2 lg:col-start-4 xl:col-span-1 xl:col-start-auto",
+                tier.popular && "xl:-translate-y-2"
               )}
             >
-              <div
-                aria-hidden="true"
+              <article
                 className={cn(
-                  "absolute inset-0 rounded-[22px] border border-[#CAD5CB] bg-white shadow-[5px_6px_0_0_#A8B7AA] transition-all duration-300 motion-reduce:transition-none",
-                  "group-hover:-translate-x-1 group-hover:-translate-y-1 group-hover:shadow-[8px_9px_0_0_#8FA291]",
-                  tier.popular && "border-[#A99457] shadow-[5px_6px_0_0_#D7C58D] group-hover:shadow-[8px_9px_0_0_#C9B572]",
+                  "relative flex h-full flex-col overflow-hidden rounded-[26px] border p-6 sm:p-7",
+                  tier.color === "gold" && "border-[#C9A452]/40 bg-[#FCF9EE] shadow-[0_16px_40px_rgba(201,164,82,0.12)]",
+                  tier.color === "forest" && "border-[#10271B] bg-[#10271B] text-white shadow-[0_20px_48px_rgba(16,39,27,0.18)]",
+                  tier.color === "ivory" && "border-[#CAD5CB] bg-[#FBFDFB]",
+                  tier.color === "sage" && "border-[#CAD5CB] bg-white",
+                  !tier.color && "border-[#CAD5CB] bg-white"
                 )}
-              />
-
-              <article className="relative flex h-full min-h-[510px] flex-col p-6">
-                {tier.badge && (
-                  <div
-                    className={cn(
-                      "absolute -top-3 right-4 max-w-[calc(100%-2rem)] rounded-full border px-3 py-1 text-center font-ui text-[10px] font-bold uppercase tracking-[0.1em]",
-                      tier.popular
-                        ? "border-[#A99457] bg-[#D6B56D] text-[#10271B]"
-                        : "border-[#B8C5B9] bg-[#E8EFE7] text-[#496052]",
-                    )}
-                  >
+              >
+                {tier.badge ? (
+                  <div className="mb-4 inline-flex self-start rounded-full border border-[#C9A452]/40 bg-[#FAF4DF] px-3 py-1 font-ui text-[11px] font-bold uppercase tracking-[0.14em] text-[#7A5B18]">
                     {tier.badge}
                   </div>
-                )}
+                ) : null}
 
-                <div className="mb-6">
-                  <div
-                    className={cn(
-                      "mb-5 flex size-12 items-center justify-center rounded-full border",
-                      tier.color === "gold"
-                        ? "border-[#D6B56D] bg-[#FAF5E8] text-[#9A7933]"
-                        : tier.color === "forest"
-                          ? "border-[#76917C] bg-[#E4ECE4] text-[#10271B]"
-                          : tier.color === "ivory"
-                            ? "border-[#D8D2C0] bg-[#FAF8F2] text-[#776A49]"
-                            : "border-[#B9C7BA] bg-[#F1F5F0] text-[#819586]",
-                    )}
-                  >
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-2xl border border-[#CAD5CB] bg-[#F4F7F4] text-[#10271B]">
                     {tier.icon}
                   </div>
 
-                  <h3 className="font-heading text-2xl leading-tight text-[#10271B]">{tier.name}</h3>
-                  <p className="mt-2 min-h-12 text-sm leading-6 text-[#68756C]">{tier.description}</p>
+                  {tier.discount ? (
+                    <span className="rounded-full bg-[#E5ECE5] px-2.5 py-1 font-ui text-xs font-bold text-[#10271B]">
+                      %{tier.discount} {locale === "tr" ? "İndirim" : "Discount"}
+                    </span>
+                  ) : null}
                 </div>
 
-                <div className="mb-6 border-y border-[#E1E6E0] py-5">
-                  {tier.discount ? (
-                    <div className="mb-2 text-sm font-semibold text-[#607867]">
-                      {locale === "tr" ? `%${tier.discount} indirim` : `${tier.discount}% OFF`}
-                    </div>
-                  ) : null}
+                <h3 className="font-heading text-xl font-bold tracking-tight text-[#10271B]">
+                  {tier.name}
+                </h3>
 
+                <p className="mt-2 min-h-[44px] text-xs leading-5 text-[#68756C]">
+                  {tier.description}
+                </p>
+
+                <div className="my-6 border-y border-[#CAD5CB]/60 py-4">
                   {tier.oldPrice ? (
-                    <div className="text-sm tabular-nums text-[#8A948C] line-through">{money(tier.oldPrice)}</div>
+                    <div className="text-xs text-[#8A968E] line-through">
+                      {money(tier.oldPrice)}
+                    </div>
                   ) : null}
 
                   <div className="mt-1 flex min-w-0 flex-wrap items-end gap-x-2 gap-y-1">
                     <span className="min-w-0 text-[clamp(2rem,2.45vw,2.5rem)] font-bold tracking-[-0.04em] text-[#10271B] tabular-nums">
                       {money(tier.price)}
                     </span>
-                    <span className="pb-1 text-sm text-[#68756C]">{locale === "tr" ? "toplam" : "total"}</span>
                   </div>
-
-                  {tier.unitPrice ? (
-                    <div className="mt-2 text-sm text-[#68756C]">
-                      {locale === "tr" ? "Ders başı" : "Per lesson"} <span className="font-semibold tabular-nums text-[#34483D]">{money(tier.unitPrice)}</span>
-                    </div>
-                  ) : null}
                 </div>
 
                 <ul className="mb-7 flex-1 space-y-3">
@@ -163,40 +146,51 @@ export function CreativePricing({
                 </ul>
 
                 <div className="space-y-2">
-                  {tier.purchaseHref && tier.purchaseLabel ? (
+                  {showPricing ? (
+                    <>
+                      {tier.purchaseHref && tier.purchaseLabel ? (
+                        <Link
+                          href={tier.purchaseHref}
+                          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#10271B] bg-[#10271B] px-4 text-center font-ui text-sm font-semibold text-white shadow-sm outline-none transition-colors hover:bg-[#203D2D] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                        >
+                          {tier.purchaseLabel}
+                        </Link>
+                      ) : null}
+
+                      {isInCart(tier.id) ? (
+                        <Link
+                          href={localizedPath("cart", locale)}
+                          className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-50 px-3 text-center font-ui text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                        >
+                          <CheckCircle2 className="size-3.5 text-emerald-600" />
+                          <span>{locale === "tr" ? "Sepette (Sepete Git)" : "In Cart (View Cart)"}</span>
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => addToCart(tier.id)}
+                          className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#CAD5CB] bg-white px-3 text-center font-ui text-xs font-semibold text-[#10271B] transition-colors hover:bg-[#EFF3EE] focus-visible:ring-2 focus-visible:ring-[#819586]"
+                        >
+                          <ShoppingBag className="size-3.5 text-[#819586]" />
+                          <span>{locale === "tr" ? "Sepete Ekle" : "Add to Cart"}</span>
+                        </button>
+                      )}
+
+                      <Link
+                        href={tier.ctaHref}
+                        className="inline-flex h-9 w-full items-center justify-center rounded-lg px-3 text-center font-ui text-[11px] font-medium text-[#68756C] transition-colors hover:text-[#10271B] hover:underline"
+                      >
+                        {tier.ctaLabel}
+                      </Link>
+                    </>
+                  ) : (
                     <Link
-                      href={tier.purchaseHref}
+                      href={tier.ctaHref}
                       className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#10271B] bg-[#10271B] px-4 text-center font-ui text-sm font-semibold text-white shadow-sm outline-none transition-colors hover:bg-[#203D2D] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     >
-                      {tier.purchaseLabel}
+                      {tier.ctaLabel}
                     </Link>
-                  ) : null}
-
-                  {isInCart(tier.id) ? (
-                    <Link
-                      href={localizedPath("cart", locale)}
-                      className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-50 px-3 text-center font-ui text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
-                    >
-                      <CheckCircle2 className="size-3.5 text-emerald-600" />
-                      <span>{locale === "tr" ? "Sepette (Sepete Git)" : "In Cart (View Cart)"}</span>
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => addToCart(tier.id)}
-                      className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-[#CAD5CB] bg-white px-3 text-center font-ui text-xs font-semibold text-[#10271B] transition-colors hover:bg-[#EFF3EE] focus-visible:ring-2 focus-visible:ring-[#819586]"
-                    >
-                      <ShoppingBag className="size-3.5 text-[#819586]" />
-                      <span>{locale === "tr" ? "Sepete Ekle" : "Add to Cart"}</span>
-                    </button>
                   )}
-
-                  <Link
-                    href={tier.ctaHref}
-                    className="inline-flex h-9 w-full items-center justify-center rounded-lg px-3 text-center font-ui text-[11px] font-medium text-[#68756C] transition-colors hover:text-[#10271B] hover:underline"
-                  >
-                    {tier.ctaLabel}
-                  </Link>
                 </div>
               </article>
             </div>

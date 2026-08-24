@@ -186,13 +186,18 @@ export function GooeySearchBar() {
     if (item.type === "QUALIFICATION") {
       return `${prefix}/sinavlar/${item.slug}`;
     }
-    if (item.type === "UNIVERSITY") {
-      return `${prefix}/universite-destegi?uni=${encodeURIComponent(item.slug)}`;
-    }
     return `${prefix}/universite-destegi`;
   };
 
   const handleSelectItem = (item: SearchResultItem) => {
+    if (item.type === "UNIVERSITY") {
+      if (item.officialUrl && typeof window !== "undefined") {
+        window.open(item.officialUrl, "_blank", "noopener,noreferrer");
+      }
+      handleClose();
+      return;
+    }
+
     const href = getTargetHref(item);
     router.push(href);
     handleClose();

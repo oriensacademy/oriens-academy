@@ -28,7 +28,9 @@ import { pendingBankCapabilities } from "@/lib/payments/bank-provider";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { formatCurrency } from "@/lib/format/currency";
 import { useAccount } from "@/lib/auth/account-context";
+import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { ButtonLink } from "@/components/ui/button";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import { PaymentMethodSelector } from "./PaymentMethodSelector";
 import { HostedCardPanel } from "./HostedCardPanel";
@@ -39,6 +41,7 @@ export function PaymentPage() {
   const copy = getPaymentCopy(locale);
   const router = useRouter();
   const { accountType, user, isInitializing } = useAccount();
+  const { showPricing, loading: settingsLoading } = usePublicSettings();
 
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState("");
@@ -198,8 +201,35 @@ export function PaymentPage() {
     setCompletedOrder(result);
   }
 
-  if (isInitializing || (accountType !== "student" && accountType !== "admin")) {
+  if (isInitializing || settingsLoading || (accountType !== "student" && accountType !== "admin")) {
     return <AccountWaveLoader />;
+  }
+
+  // When pricing is disabled and caller is not admin
+  if (!showPricing && accountType !== "admin") {
+    return (
+      <section className="min-h-[70vh] bg-[#F6F8F3] pt-32 pb-20 md:pt-40 md:pb-28">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-sage-soft text-primary shadow-xs">
+            <AlertCircle className="size-8 text-[#819586]" />
+          </div>
+          <h1 className="mt-6 font-heading text-3xl text-[#10271B] sm:text-4xl">
+            {locale === "tr" ? "Ödeme Sistemi Çevrim Dışıdır" : "Payment System is Currently Offline"}
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#68756C]">
+            {locale === "tr"
+              ? "Yeni paket satın alma ve ödeme işlemleri şu anda çevrim dışıdır. Danışmanlık ve programlarımız hakkında bilgi almak için görüşme planlayabilirsiniz."
+              : "New package purchases and payments are currently offline. You can schedule a consultation to discuss our programmes."}
+          </p>
+          <div className="mt-8 flex justify-center">
+            <ButtonLink href={`${localizedPath("home", locale)}#consultation-form`} size="lg" className="h-12 px-6">
+              {locale === "tr" ? "Görüşme Planla" : "Book a Consultation"}
+              <ArrowRight className="size-4" />
+            </ButtonLink>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   // ORDER CONFIRMATION VIEW
