@@ -150,8 +150,56 @@ export function isPrimaryNavigationActive(
   return target === exams ? current === target || current.startsWith(`${target}/`) : current === target;
 }
 
+const CANONICAL_EXAM_SLUGS: Record<string, string> = {
+  sat: "sat",
+  ib: "ib",
+  ap: "ap",
+  esat: "esat",
+  tara: "tara",
+  tmua: "tmua",
+  igcse: "igcse",
+  gre: "gre",
+  gmat: "gmat",
+  ukcat: "ukcat",
+  imat: "imat",
+  ompt: "ompt",
+
+  // Aliases & variations
+  ucat: "ukcat",
+  "ib-diploma": "ib",
+  "ib-dp": "ib",
+  "advanced-placement": "ap",
+  "gmat-focus": "gmat",
+  ielts: "sinavlar-fallback",
+  toefl: "sinavlar-fallback",
+};
+
+/**
+ * Resolves any raw exam slug or alias to its canonical lowercase slug.
+ * Returns null if the slug is not recognized as a standalone exam.
+ */
+export function resolveExamSlug(input?: string | null): string | null {
+  if (!input) return null;
+  const clean = input.trim().toLowerCase();
+  const canonical = CANONICAL_EXAM_SLUGS[clean];
+  if (canonical && canonical !== "sinavlar-fallback") return canonical;
+  return null;
+}
+
+/**
+ * Resolves a canonical exam URL. If valid, points to `/{locale}/{examsSegment}/{canonicalSlug}`.
+ * If invalid or generic, falls back gracefully to `/{locale}/{examsSegment}`.
+ */
+export function resolveExamRoute(locale: Locale, input?: string | null): string {
+  const resolved = resolveExamSlug(input);
+  if (resolved) {
+    return `${localizedPath("exams", locale)}/${resolved}`;
+  }
+  return localizedPath("exams", locale);
+}
+
 export function examDetailPath(locale: Locale, slug: string): string {
-  return `${localizedPath("exams", locale)}/${slug}`;
+  return resolveExamRoute(locale, slug);
 }
 
 export function pathForLocale(pathname: string, target: Locale): string {
@@ -162,7 +210,11 @@ export function pathForLocale(pathname: string, target: Locale): string {
   if (/^\/(?:tr\/ogrenci\/kayit|en\/student\/register)$/.test(cleanPath)) return studentRegisterPath(target);
   if (/^\/(?:tr\/odeme\/sonuc|en\/payment\/result)$/.test(cleanPath)) return paymentResultPath(target);
   const detailMatch = cleanPath.match(/^\/(?:tr\/sinavlar|en\/exams)\/([^/]+)$/);
-  if (detailMatch) return examDetailPath(target, detailMatch[1]);
+  if (detailMatch) {
+    const slug = detailMatch[1];
+    const resolved = resolveExamSlug(slug);
+    return resolved ? examDetailPath(target, resolved) : localizedPath("exams", target);
+  }
 
   if (/^\/(?:tr\/sinavlar|en\/exams)$/.test(cleanPath)) {
     return localizedPath("exams", target);

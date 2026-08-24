@@ -319,7 +319,6 @@ export default function AdminStudentsPage() {
         onChanged={() => void refresh()}
         onCreateBooking={() => {
           setBookingStudent(selected);
-          setSelected(null);
         }}
       />
 
@@ -332,9 +331,14 @@ export default function AdminStudentsPage() {
           initialPhone={bookingStudent.phone || ""}
           initialStudentUserId={bookingStudent.userId}
           onClose={() => setBookingStudent(null)}
-          onCreated={() => {
+          onCreated={async () => {
             setBookingStudent(null);
-            void refresh();
+            const res = await listAdminStudents();
+            setStudents(res.data);
+            if (selected) {
+              const updated = res.data.find((s) => s.id === selected.id);
+              if (updated) setSelected(updated);
+            }
           }}
         />
       )}

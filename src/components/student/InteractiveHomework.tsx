@@ -40,46 +40,116 @@ export function InteractiveHomework({
   onReload: () => void;
 }) {
   const isTr = locale === "tr";
+  const [filterTab, setFilterTab] = useState<"all" | "homework" | "materials">("all");
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const raw = item as unknown as { content_type?: string };
+      const type = raw.content_type || "homework";
+      const isMaterial = type === "lesson_note" || type === "resource";
+
+      if (filterTab === "homework") return !isMaterial;
+      if (filterTab === "materials") return isMaterial;
+      return true;
+    });
+  }, [items, filterTab]);
 
   const groups = useMemo(
     () => ({
-      pending: items.filter((item) =>
+      pending: filteredItems.filter((item) =>
         ["assigned", "in_progress", "overdue", "late"].includes(item.status)
       ),
-      submitted: items.filter((item) => item.status === "submitted"),
-      reviewed: items.filter((item) =>
+      submitted: filteredItems.filter((item) => item.status === "submitted"),
+      reviewed: filteredItems.filter((item) =>
         ["reviewed", "completed"].includes(item.status)
       ),
     }),
-    [items]
+    [filteredItems]
   );
 
   return (
     <div className="space-y-6">
+      {/* Category Tabs Filter */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <div className="flex gap-1.5 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setFilterTab("all")}
+            className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+              filterTab === "all"
+                ? "bg-ink text-white shadow-xs"
+                : "bg-surface text-muted-foreground hover:bg-surface-muted hover:text-ink border border-border"
+            }`}
+          >
+            {isTr ? "Tüm İçerikler" : "All Content"} ({items.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterTab("homework")}
+            className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+              filterTab === "homework"
+                ? "bg-ink text-white shadow-xs"
+                : "bg-surface text-muted-foreground hover:bg-surface-muted hover:text-ink border border-border"
+            }`}
+          >
+            {isTr ? "Ödevler & Çalışmalar" : "Homework & Worksheets"} (
+            {
+              items.filter((i) => {
+                const type = (i as unknown as { content_type?: string }).content_type || "homework";
+                return type !== "lesson_note" && type !== "resource";
+              }).length
+            }
+            )
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterTab("materials")}
+            className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+              filterTab === "materials"
+                ? "bg-ink text-white shadow-xs"
+                : "bg-surface text-muted-foreground hover:bg-surface-muted hover:text-ink border border-border"
+            }`}
+          >
+            {isTr ? "Ders Notları & Materyaller" : "Notes & Materials"} (
+            {
+              items.filter((i) => {
+                const type = (i as unknown as { content_type?: string }).content_type || "homework";
+                return type === "lesson_note" || type === "resource";
+              }).length
+            }
+            )
+          </button>
+        </div>
+      </div>
+
       <HomeworkGroup
-        title={isTr ? "Bekleyen ve Devam Eden Ödevler" : "Pending & In Progress"}
+        title={isTr ? "Bekleyen / Aktif İçerikler" : "Active & Pending"}
         items={groups.pending}
         lessons={lessons}
         userId={userId}
         locale={locale}
         onReload={onReload}
       />
-      <HomeworkGroup
-        title={isTr ? "Teslim Edilen Ödevler" : "Submitted Homework"}
-        items={groups.submitted}
-        lessons={lessons}
-        userId={userId}
-        locale={locale}
-        onReload={onReload}
-      />
-      <HomeworkGroup
-        title={isTr ? "Değerlendirilen Ödevler" : "Reviewed & Graded"}
-        items={groups.reviewed}
-        lessons={lessons}
-        userId={userId}
-        locale={locale}
-        onReload={onReload}
-      />
+      {filterTab !== "materials" && (
+        <>
+          <HomeworkGroup
+            title={isTr ? "Teslim Edilen Ödevler" : "Submitted Homework"}
+            items={groups.submitted}
+            lessons={lessons}
+            userId={userId}
+            locale={locale}
+            onReload={onReload}
+          />
+          <HomeworkGroup
+            title={isTr ? "Değerlendirilen Ödevler" : "Reviewed & Graded"}
+            items={groups.reviewed}
+            lessons={lessons}
+            userId={userId}
+            locale={locale}
+            onReload={onReload}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -99,6 +169,7 @@ function HomeworkGroup({
   locale: "tr" | "en";
   onReload: () => void;
 }) {
+  const isTr = locale === "tr";
   const [active, setActive] = useState<StudentHomeworkRow | null>(null);
 
   return (
@@ -112,6 +183,9 @@ function HomeworkGroup({
       {items.length ? (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {items.map((item) => {
+            const raw = item as unknown as { content_type?: string };
+            const type = raw.content_type || "homework";
+            const isMaterial = type === "lesson_note" || type === "resource";
             const lesson = lessons.find((entry) => entry.id === item.lesson_id);
             const isSubmitted = item.status === "submitted";
             const isReviewed = ["reviewed", "completed"].includes(item.status);
@@ -124,6 +198,31 @@ function HomeworkGroup({
                 <div>
                   <div className="flex items-start justify-between gap-2 pb-2 border-b border-border">
                     <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${
+                            type === "lesson_note"
+                              ? "bg-purple-100 text-purple-800"
+                              : type === "resource"
+                              ? "bg-amber-100 text-amber-800"
+                              : type === "worksheet"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : type === "mock_exam"
+                              ? "bg-rose-100 text-rose-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {type === "lesson_note"
+                            ? isTr ? "Ders Notu" : "Lesson Note"
+                            : type === "resource"
+                            ? isTr ? "Materyal" : "Material"
+                            : type === "worksheet"
+                            ? isTr ? "Çalışma Kağıdı" : "Worksheet"
+                            : type === "mock_exam"
+                            ? isTr ? "Deneme" : "Mock Exam"
+                            : isTr ? "Ödev" : "Homework"}
+                        </span>
+                      </div>
                       <h3 className="font-bold text-sm text-ink truncate">{item.title}</h3>
                       <p className="mt-0.5 text-xs font-semibold text-primary">
                         {lesson?.subject ||
@@ -146,8 +245,8 @@ function HomeworkGroup({
                             locale === "tr" ? "tr-TR" : "en-GB"
                           )}`
                         : locale === "tr"
-                        ? "Teslim tarihi belirtilmemiş"
-                        : "No due date"}
+                        ? isMaterial ? "Süresiz Erişim" : "Teslim tarihi belirtilmemiş"
+                        : isMaterial ? "Open Access" : "No due date"}
                     </span>
                   </div>
 
@@ -166,7 +265,11 @@ function HomeworkGroup({
                     className="inline-flex min-h-8 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer shadow-xs"
                   >
                     <BookOpen className="size-3.5" />
-                    {isReviewed
+                    {isMaterial
+                      ? locale === "tr"
+                        ? "Ders Notunu Oku"
+                        : "Read Notes"
+                      : isReviewed
                       ? locale === "tr"
                         ? "Değerlendirmeyi Gör"
                         : "View Feedback"
@@ -253,7 +356,15 @@ function HomeworkDetailDialog({
     };
   }, []);
 
-  const locked = ["submitted", "reviewed", "completed"].includes(item.status);
+  const rawItem = item as unknown as { content_type?: string };
+  const isMaterial =
+    rawItem.content_type === "lesson_note" ||
+    rawItem.content_type === "resource" ||
+    detail?.assignment.content_type === "lesson_note" ||
+    detail?.assignment.content_type === "resource" ||
+    (detail?.questions.length === 0 && Boolean(detail?.assignment.resource_file_url || detail?.assignment.description));
+
+  const locked = isMaterial || ["submitted", "reviewed", "completed"].includes(item.status);
   const answerList =
     detail?.questions.map(
       (question) =>
@@ -364,29 +475,47 @@ function HomeworkDetailDialog({
             </p>
           ) : (
             <>
-              {/* Instructions */}
+              {/* Instructions / Content */}
               {detail.assignment.description && (
                 <div className="rounded-2xl border border-border bg-surface-muted/30 p-4 text-xs leading-relaxed text-ink/80 whitespace-pre-wrap">
                   <strong className="text-ink font-semibold block mb-1">
-                    {isTr ? "Ödev Yönergesi:" : "Assignment Instructions:"}
+                    {isMaterial
+                      ? isTr ? "Ders Notu / İçerik:" : "Lesson Notes / Content:"
+                      : isTr ? "Ödev Yönergesi:" : "Assignment Instructions:"}
                   </strong>
                   {detail.assignment.description}
                 </div>
               )}
 
-              {detail.assignment.external_link && (
-                <a
-                  href={detail.assignment.external_link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline"
-                >
-                  <ExternalLink className="size-3.5" />
-                  {isTr ? "Harici Çalışma Kaynağını Aç" : "Open External Study Resource"}
-                </a>
+              {/* Resource File URL or Direct Link */}
+              {(detail.assignment.resource_file_url || detail.assignment.external_link) && (
+                <div className="flex flex-wrap gap-2">
+                  {detail.assignment.resource_file_url && (
+                    <button
+                      type="button"
+                      onClick={() => void openHomeworkAttachment(detail.assignment.resource_file_url!)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-forest/10 border border-primary/20 px-3.5 py-2 text-xs font-semibold text-primary hover:bg-forest/20 transition-colors cursor-pointer"
+                    >
+                      <Download className="size-4" />
+                      {detail.assignment.attachment_name || (isTr ? "Kaynak Dosyasını İndir" : "Download Resource File")}
+                    </button>
+                  )}
+
+                  {detail.assignment.external_link && (
+                    <a
+                      href={detail.assignment.external_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-3.5 py-2 text-xs font-semibold text-primary hover:bg-surface-muted transition-colors"
+                    >
+                      <ExternalLink className="size-3.5" />
+                      {isTr ? "Harici Çalışma Kaynağını Aç" : "Open External Study Resource"}
+                    </a>
+                  )}
+                </div>
               )}
 
-              {/* Teacher Resources */}
+              {/* Teacher Resources Attachments */}
               {detail.attachments.filter((file) => file.attachment_kind === "resource").length >
                 0 && (
                 <section>
@@ -411,11 +540,12 @@ function HomeworkDetailDialog({
                 </section>
               )}
 
-              {/* Questions */}
-              <section className="space-y-4">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  {isTr ? "Sorular ve Yanıtlarınız" : "Questions & Answers"}
-                </h3>
+              {/* Questions (Only if questions exist and not a pure material) */}
+              {detail.questions.length > 0 && (
+                <section className="space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    {isTr ? "Sorular ve Yanıtlarınız" : "Questions & Answers"}
+                  </h3>
                 {detail.questions.map((question, index) => {
                   const id = question.id || "";
                   return (
@@ -489,6 +619,7 @@ function HomeworkDetailDialog({
                   );
                 })}
               </section>
+              )}
 
               {/* Student File Submission */}
               {!locked && (
@@ -563,7 +694,15 @@ function HomeworkDetailDialog({
         </div>
 
         <footer className="flex flex-wrap justify-end gap-2 border-t border-border bg-white p-4 sm:p-5">
-          {!locked ? (
+          {isMaterial ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer shadow-xs"
+            >
+              {isTr ? "Kapat" : "Close"}
+            </button>
+          ) : !locked ? (
             <>
               <button
                 type="button"

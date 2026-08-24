@@ -79,7 +79,7 @@ export function PaymentPage() {
       redirectedRef.current = true;
       const currentQuery = window.location.search;
       const nextPath = `${localizedPath("payment", locale)}${currentQuery}`;
-      router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(nextPath)}`);
+      router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(nextPath)}&source=checkout`);
     }
   }, [accountType, isInitializing, locale, router]);
 

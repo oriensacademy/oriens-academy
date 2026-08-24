@@ -108,13 +108,11 @@ export async function retrieveSearchResultsFromDatabase(
     const supabase = getSupabaseClient();
     const settledResponses = await Promise.allSettled(
       searchTerms.map((term) =>
-        (supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)(
-          "search_autocomplete_entities",
-          {
-            p_query: term,
-            p_limit: perTypeLimit,
-          }
-        )
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any).rpc("search_autocomplete_entities", {
+          p_query: term,
+          p_limit: perTypeLimit,
+        })
       )
     );
 

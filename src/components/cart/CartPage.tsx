@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ShoppingBag,
   Trash2,
@@ -23,36 +22,24 @@ import { formatCurrency } from "@/lib/format/currency";
 export function CartPage() {
   const locale = useLocale();
   const isTr = locale === "tr";
-  const router = useRouter();
   const { accountType, isInitializing } = useAccount();
   const { items, removeFromCart, clearCart } = useCart();
 
   const [availablePackages, setAvailablePackages] = useState<PublicPricingPackage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Auth protection: redirect guest users to login
+  // Load server-authoritative packages from database for both guests and authenticated users
   useEffect(() => {
-    if (isInitializing) return;
-    if (accountType !== "student" && accountType !== "admin") {
-      const nextPath = localizedPath("cart", locale);
-      router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(nextPath)}`);
-    }
-  }, [accountType, isInitializing, locale, router]);
+    getPublicPricingPackages()
+      .then((packages) => {
+        setAvailablePackages(packages.filter((p) => p.active && p.purchase_mode === "purchasable"));
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
 
-  // Load server-authoritative packages from database
-  useEffect(() => {
-    if (accountType === "student" || accountType === "admin") {
-      getPublicPricingPackages()
-        .then((packages) => {
-          setAvailablePackages(packages.filter((p) => p.active && p.purchase_mode === "purchasable"));
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }
-  }, [accountType]);
-
-  if (isInitializing || (accountType !== "student" && accountType !== "admin") || loading) {
+  if (isInitializing || loading) {
     return <AccountWaveLoader />;
   }
 
@@ -79,10 +66,15 @@ export function CartPage() {
     return formatCurrency(val, { currency: cur, locale });
   };
 
+  const isAuthenticated = accountType === "student" || accountType === "admin";
   const firstPackageId = cartPackages[0]?.id;
-  const checkoutHref = firstPackageId
+  const directPaymentHref = firstPackageId
     ? `${localizedPath("payment", locale)}?package=${encodeURIComponent(firstPackageId)}`
     : localizedPath("pricing", locale);
+
+  const checkoutHref = isAuthenticated
+    ? directPaymentHref
+    : `${unifiedLoginPath(locale)}?next=${encodeURIComponent(directPaymentHref)}&source=checkout`;
 
   return (
     <section className="min-h-screen bg-background pt-28 pb-20 md:pt-36 md:pb-28">

@@ -56,11 +56,8 @@ export async function reviewManualBankTransfer(paymentId: string, decision: "app
 
 export async function sendPaymentReminder(paymentId: string) {
   const client = getSupabaseClient();
-  const caller = client.rpc as unknown as (
-    fn: string,
-    args: Record<string, unknown>
-  ) => Promise<{ data: unknown; error: { message: string } | null }>;
-  const { data, error } = await caller("admin_send_payment_reminder", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client as any).rpc("admin_send_payment_reminder", {
     p_payment_id: paymentId,
   });
   if (error) return { success: false, error: error.message };

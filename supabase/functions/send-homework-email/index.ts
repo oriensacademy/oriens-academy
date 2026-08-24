@@ -38,8 +38,8 @@ Deno.serve(async (req: Request) => {
     if (!UUID.test(assignmentId)) return buildJsonResponse({ error_code: "INVALID_ASSIGNMENT_ID" }, 400, req);
 
     const [{ data: rows, error }, { data: assignment }] = await Promise.all([
-      admin.from("student_homework").select("id, due_date, student_user_id").eq("assignment_id", assignmentId),
-      admin.from("homework_assignments").select("title, description, lesson_id").eq("id", assignmentId).single(),
+      admin.from("student_homework").select("id, due_date, student_user_id, content_type").eq("assignment_id", assignmentId),
+      admin.from("homework_assignments").select("title, description, lesson_id, content_type").eq("id", assignmentId).single(),
     ]);
     if (error || !rows?.length || !assignment) return buildJsonResponse({ error_code: "HOMEWORK_NOT_FOUND" }, 404, req);
     const [{ data: profiles }, { data: lesson }] = await Promise.all([
@@ -60,6 +60,7 @@ Deno.serve(async (req: Request) => {
         assignmentTitle: assignment.title,
         subjectOrLesson: lesson?.title || lesson?.subject || "Akademik Çalışma",
         dueDate: row.due_date || new Date().toISOString(),
+        contentType: (row.content_type || assignment.content_type || "homework") as "homework" | "lesson_note" | "worksheet" | "resource" | "mock_exam",
         description: assignment.description,
         locale: profile.preferred_language === "en" ? "en" : "tr",
       }));

@@ -75,7 +75,47 @@ export function StudentPortal() {
 function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-7"><div className="font-heading text-2xl text-ink">{title}</div><div className="mt-5">{children}</div></section>; }
 function Empty({ children }: { children: React.ReactNode }) { return <p className="rounded-xl border border-dashed border-border p-5 text-sm leading-6 text-muted-foreground">{children}</p>; }
 function fmt(value: string | null, locale: "tr" | "en", withTime = false) { if (!value) return "—"; return new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-GB", { dateStyle: "medium", ...(withTime ? { timeStyle: "short" as const } : {}) }).format(new Date(value)); }
-function status(value: string, locale: "tr" | "en") { const tr: Record<string,string> = { pending:"Bekliyor",confirmed:"Onaylandı",cancelled:"İptal",completed:"Tamamlandı",no_show:"Katılmadı",scheduled:"Planlandı",assigned:"Atandı",submitted:"Gönderildi",reviewed:"İncelendi",late:"Gecikti",paid:"Ödendi",failed:"Başarısız",processing:"İşleniyor",requires_action:"Doğrulama Gerekli",refunded:"İade" }; const en: Record<string,string> = { pending:"Pending",confirmed:"Confirmed",cancelled:"Cancelled",completed:"Completed",no_show:"No show",scheduled:"Scheduled",assigned:"Assigned",submitted:"Submitted",reviewed:"Reviewed",late:"Late",paid:"Paid",failed:"Failed",processing:"Processing",requires_action:"Verification required",refunded:"Refunded" }; return (locale === "tr" ? tr : en)[value] || value; }
+function status(value: string, locale: "tr" | "en") {
+  const tr: Record<string, string> = {
+    pending: "Bekliyor",
+    confirmed: "Onaylandı",
+    cancelled: "İptal",
+    completed: "Tamamlandı",
+    no_show: "Katılmadı",
+    scheduled: "Planlandı",
+    assigned: "Atandı",
+    submitted: "Gönderildi",
+    reviewed: "İncelendi",
+    late: "Gecikti",
+    paid: "Ödendi",
+    failed: "Başarısız",
+    processing: "İşleniyor",
+    requires_action: "Doğrulama Gerekli",
+    refunded: "İade Edildi",
+    waived: "Ücret Muafiyeti / Ücretsiz",
+    bank_transfer_pending: "Havale Onayı Bekliyor",
+  };
+  const en: Record<string, string> = {
+    pending: "Pending",
+    confirmed: "Confirmed",
+    cancelled: "Cancelled",
+    completed: "Completed",
+    no_show: "No show",
+    scheduled: "Scheduled",
+    assigned: "Assigned",
+    submitted: "Submitted",
+    reviewed: "Reviewed",
+    late: "Late",
+    paid: "Paid",
+    failed: "Failed",
+    processing: "Processing",
+    requires_action: "Verification required",
+    refunded: "Refunded",
+    waived: "Fee Waived / Free",
+    bank_transfer_pending: "Bank Transfer Pending",
+  };
+  return (locale === "tr" ? tr : en)[value] || value;
+}
 
 function Overview({ data, locale, onNavigate }: { data: StudentPortalData; locale: "tr"|"en"; onNavigate: (id: SectionId) => void }) {
   const purchase = data.purchases.find((p) => p.status === "active") || data.purchases[0];
@@ -139,364 +179,321 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
             >
               <Video className="size-4 text-warm-accent" />
               {locale === "tr" ? "Derse Katıl" : "Join Lesson"}
-              <ExternalLink className="size-3" />
+              <ExternalLink className="size-3.5" />
             </a>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onNavigate("lessons")}
-              className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+          ) : null}
+        </div>
+      )}
+
+      {/* Upcoming Booking / Consultation if any */}
+      {nextBooking && !nextLesson && (
+        <div className="rounded-2xl border border-primary/30 bg-surface p-5 sm:col-span-2 shadow-xs flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-sage-soft px-2.5 py-0.5 text-[11px] font-bold text-ink">
+              <CalendarDays className="size-3.5 text-primary" />
+              {locale === "tr" ? "Yaklaşan Randevu" : "Upcoming Appointment"}
+            </span>
+            <h3 className="mt-2 font-heading text-xl text-ink">{nextBooking.appointment_subject || nextBooking.exam_code || nextBooking.custom_exam || "Randevu"}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {fmt(nextBooking.availability_slots?.starts_at || nextBooking.created_at, locale, true)}
+            </p>
+          </div>
+          {nextBooking.live_meeting_url && (
+            <a
+              href={nextBooking.live_meeting_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
             >
-              {locale === "tr" ? "Ders Detayı" : "View Lesson"}
-            </button>
+              <Video className="size-4 text-warm-accent" />
+              {locale === "tr" ? "Görüşmeye Katıl" : "Join Meeting"}
+              <ExternalLink className="size-3.5" />
+            </a>
           )}
         </div>
       )}
 
-      <Summary title={locale === "tr" ? "Sonraki Randevu" : "Next Appointment"} value={nextBooking ? fmt(nextBooking.availability_slots!.starts_at, locale, true) : "—"} onClick={() => onNavigate("appointments")} />
-      <Summary title={locale === "tr" ? "Aktif Ödev" : "Active Homework"} value={String(activeHomework.length)} onClick={() => onNavigate("homework")} />
-      <Summary title={locale === "tr" ? "Son Ödeme" : "Recent Payment"} value={payment ? status(payment.status, locale) : "—"} onClick={() => onNavigate("payments")} />
-      <Summary title={locale === "tr" ? "Toplam Ders Kaydı" : "Lesson Records"} value={String(data.lessons.length)} onClick={() => onNavigate("lessons")} />
+      <div className="rounded-2xl border border-border bg-surface p-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{locale === "tr" ? "Son Ödeme" : "Latest Payment"}</h3>
+        <p className="mt-2 text-2xl font-bold text-ink">
+          {payment ? new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: payment.currency }).format(payment.amount) : "—"}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {payment ? `${fmt(payment.created_at, locale)} · ${status(payment.status, locale)}` : (locale === "tr" ? "Kayıt yok" : "No record")}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-border bg-surface p-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{locale === "tr" ? "Aktif Ödevler" : "Active Homework"}</h3>
+        <p className="mt-2 text-2xl font-bold text-ink">{activeHomework.length}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{locale === "tr" ? "Teslim bekleyen veya incelenen" : "Pending or submitted"}</p>
+      </div>
     </div>
   );
 }
-import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS } from "@/lib/student/preferences";
-
-function Summary({ title, value, onClick }: { title:string; value:string; onClick:()=>void }) { return <button onClick={onClick} className="rounded-2xl border border-border bg-surface p-5 text-left hover:border-border-strong"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</p><p className="mt-3 font-heading text-2xl text-ink">{value}</p></button>; }
 
 function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; userId: string; locale: "tr" | "en"; onReload: () => void }) {
-  const isTr = locale === "tr";
   const [form, setForm] = useState({
-    full_name: data.profile.full_name,
+    fullName: data.profile.full_name,
     phone: data.profile.phone || "",
     school: data.profile.school || "",
-    target_university: data.profile.target_university || "",
-    preferred_language: data.profile.preferred_language,
+    targetExam: data.profile.target_exam || "",
+    targetUniversity: data.profile.target_university || "",
+    targetCountry: data.profile.target_country || "",
   });
+  const [busy, setBusy] = useState(false);
+  const [emailForm, setEmailForm] = useState({ email: data.profile.email });
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ password: "" });
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
 
-  const profileRecord = data.profile as unknown as Record<string, unknown>;
-  const rawExams = profileRecord.target_exams;
-  const rawCountries = profileRecord.target_countries;
-  const [selectedExams, setSelectedExams] = useState<string[]>(
-    Array.isArray(rawExams) && rawExams.length > 0
-      ? rawExams
-      : data.profile.target_exam ? [data.profile.target_exam] : []
-  );
-  const [selectedCountries, setSelectedCountries] = useState<string[]>(
-    Array.isArray(rawCountries) && rawCountries.length > 0
-      ? rawCountries
-      : data.profile.target_country ? [data.profile.target_country] : []
-  );
-
-  const [email, setEmail] = useState(data.profile.email);
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const toggleExam = (id: string) => {
-    setSelectedExams((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  const toggleCountry = (id: string) => {
-    setSelectedCountries((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
-  };
-
-  async function save() {
-    try {
-      setSaving(true);
-      setMessage("");
-      const { data: canonicalProfile, error: profileError } = await updateStudentProfile(userId, {
-        full_name: form.full_name.trim(),
-        phone: form.phone.trim() || null,
-        school: form.school.trim() || null,
-        target_university: form.target_university.trim() || null,
-        preferred_language: form.preferred_language as "tr" | "en",
-        target_exams: selectedExams,
-        target_countries: selectedCountries,
-        target_exam: selectedExams[0] || null,
-        target_country: selectedCountries[0] || null,
-      });
-
-      if (profileError) {
-        throw new Error(profileError.message || (isTr ? "Profil kaydedilemedi." : "Profile could not be saved."));
-      }
-
-      if (!canonicalProfile) throw new Error(isTr ? "Profil veritabanı tarafından doğrulanamadı." : "The database did not confirm the profile update.");
-
-      setMessage(isTr ? "Profiliniz başarıyla kaydedildi." : "Profile saved successfully.");
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg("");
+    setErr("");
+    const { error } = await updateStudentProfile(userId, {
+      full_name: form.fullName.trim(),
+      phone: form.phone.trim() || null,
+      school: form.school.trim() || null,
+      target_exam: form.targetExam.trim() || null,
+      target_university: form.targetUniversity.trim() || null,
+      target_country: form.targetCountry.trim() || null,
+    });
+    setBusy(false);
+    if (error) setErr(error.message);
+    else {
+      setMsg(locale === "tr" ? "Profil başarıyla güncellendi." : "Profile updated successfully.");
       onReload();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : (isTr ? "Profil kaydedilemedi." : "Profile could not be saved.");
-      setMessage(msg);
-    } finally {
-      setSaving(false);
+    }
+  }
+
+  async function saveEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailBusy(true);
+    setMsg("");
+    setErr("");
+    const r = await updateStudentEmail(emailForm.email.trim());
+    setEmailBusy(false);
+    if (r.error) setErr(r.error.message);
+    else setMsg(locale === "tr" ? "Doğrulama bağlantısı e-posta adresinize gönderildi." : "Confirmation email sent.");
+  }
+
+  async function savePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordBusy(true);
+    setMsg("");
+    setErr("");
+    const r = await updateStudentPassword(passwordForm.password);
+    setPasswordBusy(false);
+    if (r.error) setErr(r.error.message);
+    else {
+      setPasswordForm({ password: "" });
+      setMsg(locale === "tr" ? "Şifre güncellendi." : "Password updated.");
     }
   }
 
   return (
-    <div className="space-y-5">
-      <Panel title={isTr ? "Profil Bilgilerim" : "My Profile"}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-xs font-semibold text-ink">
-            {isTr ? "Ad Soyad" : "Full Name"}
+    <div className="space-y-6">
+      {msg && <p className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800">{msg}</p>}
+      {err && <p className="rounded-xl border border-red-300 bg-red-50 p-4 text-xs font-semibold text-red-800">{err}</p>}
+
+      <Panel title={locale === "tr" ? "Profil Bilgileri" : "Profile Details"}>
+        <form onSubmit={saveProfile} className="grid gap-4 sm:grid-cols-2">
+          <label className="text-xs text-muted-foreground">
+            {locale === "tr" ? "Ad Soyad" : "Full Name"}
             <input
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
+              required
+              type="text"
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
             />
           </label>
-
-          <label className="text-xs font-semibold text-ink">
-            {isTr ? "Telefon" : "Phone"}
+          <label className="text-xs text-muted-foreground">
+            {locale === "tr" ? "Telefon" : "Phone"}
             <input
+              type="tel"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
+              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
             />
           </label>
-
-          <label className="text-xs font-semibold text-ink">
-            {isTr ? "Okul" : "School"}
+          <label className="text-xs text-muted-foreground">
+            {locale === "tr" ? "Okul" : "School"}
             <input
+              type="text"
               value={form.school}
               onChange={(e) => setForm({ ...form, school: e.target.value })}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
+              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
             />
           </label>
-
-          <label className="text-xs font-semibold text-ink">
-            {isTr ? "Hedef Üniversite" : "Target University"}
+          <label className="text-xs text-muted-foreground">
+            {locale === "tr" ? "Hedef Sınav" : "Target Exam"}
             <input
-              value={form.target_university}
-              onChange={(e) => setForm({ ...form, target_university: e.target.value })}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
+              type="text"
+              value={form.targetExam}
+              onChange={(e) => setForm({ ...form, targetExam: e.target.value })}
+              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
             />
           </label>
-
-          <label className="text-xs font-semibold text-ink sm:col-span-2">
-            {isTr ? "Tercih Edilen Dil" : "Preferred Language"}
-            <select
-              value={form.preferred_language}
-              onChange={(e) => setForm({ ...form, preferred_language: e.target.value })}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-input bg-white px-3 text-sm"
+          <label className="text-xs text-muted-foreground">
+            {locale === "tr" ? "Hedef Üniversite" : "Target University"}
+            <input
+              type="text"
+              value={form.targetUniversity}
+              onChange={(e) => setForm({ ...form, targetUniversity: e.target.value })}
+              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
+            />
+          </label>
+          <label className="text-xs text-muted-foreground">
+            {locale === "tr" ? "Hedef Ülke" : "Target Country"}
+            <input
+              type="text"
+              value={form.targetCountry}
+              onChange={(e) => setForm({ ...form, targetCountry: e.target.value })}
+              className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
+            />
+          </label>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"
             >
-              <option value="tr">Türkçe</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-        </div>
-
-        {/* Target Exams Multi-Select Chips */}
-        <div className="mt-6 rounded-xl border border-border p-4">
-          <label className="flex items-center gap-2 text-xs font-bold text-ink uppercase tracking-wide">
-            <span>{isTr ? "Hedef Sınavlar" : "Target Exams"}</span>
-            <span className="text-[11px] font-normal text-muted-foreground">
-              ({selectedExams.length} {isTr ? "seçildi" : "selected"})
-            </span>
-          </label>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {SUPPORTED_EXAMS.map((exam) => {
-              const isSelected = selectedExams.includes(exam.id);
-              return (
-                <button
-                  key={exam.id}
-                  type="button"
-                  onClick={() => toggleExam(exam.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                    isSelected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
-                  }`}
-                >
-                  {isSelected && <Check className="size-3" />}
-                  <span>{isTr ? exam.name_tr : exam.name_en}</span>
-                </button>
-              );
-            })}
+              <Save className="size-4" />
+              {busy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Profili Güncelle" : "Update Profile")}
+            </button>
           </div>
-        </div>
-
-        {/* Target Destinations Multi-Select Chips */}
-        <div className="mt-4 rounded-xl border border-border p-4">
-          <label className="flex items-center gap-2 text-xs font-bold text-ink uppercase tracking-wide">
-            <span>{isTr ? "Hedef Ülkeler" : "Target Countries"}</span>
-            <span className="text-[11px] font-normal text-muted-foreground">
-              ({selectedCountries.length} {isTr ? "seçildi" : "selected"})
-            </span>
-          </label>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {SUPPORTED_DESTINATIONS.map((dest) => {
-              const isSelected = selectedCountries.includes(dest.id);
-              return (
-                <button
-                  key={dest.id}
-                  type="button"
-                  onClick={() => toggleCountry(dest.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                    isSelected
-                      ? "border-emerald-700 bg-emerald-700 text-white"
-                      : "border-border bg-surface-muted text-muted-foreground hover:bg-white"
-                  }`}
-                >
-                  {isSelected && <Check className="size-3" />}
-                  <span>{isTr ? dest.name_tr : dest.name_en}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <button
-            onClick={save}
-            disabled={saving}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-forest disabled:opacity-45 cursor-pointer"
-          >
-            <Save className="size-4" />
-            {saving ? (isTr ? "Kaydediliyor..." : "Saving...") : (isTr ? "Profili Kaydet" : "Save Profile")}
-          </button>
-          {message && (
-            <p className={cn("text-xs font-medium", message.includes("başarıyla") || message.includes("successfully") ? "text-emerald-700" : "text-destructive")}>
-              {message}
-            </p>
-          )}
-        </div>
+        </form>
       </Panel>
 
-      <Panel title={isTr ? "Hesap Güvenliği" : "Account Security"}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-xs font-semibold">
-            {isTr ? "Yeni e-posta" : "New email"}
+      <Panel title={locale === "tr" ? "Hesap Güvenliği" : "Account Security"}>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <form onSubmit={saveEmail} className="space-y-3">
+            <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "E-posta Değiştir" : "Change Email"}</h3>
             <input
+              required
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
+              value={emailForm.email}
+              onChange={(e) => setEmailForm({ email: e.target.value })}
+              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
             />
-          </label>
-          <button
-            onClick={async () => {
-              const { error } = await updateStudentEmail(email);
-              setMessage(
-                error
-                  ? isTr ? "E-posta güncellenemedi." : "Email could not be updated."
-                  : isTr ? "Doğrulama bağlantısı yeni e-posta adresine gönderildi." : "A verification link was sent to the new email."
-              );
-            }}
-            className="self-end min-h-11 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-surface-muted"
-          >
-            {isTr ? "E-postayı Güncelle" : "Update Email"}
-          </button>
+            <button
+              type="submit"
+              disabled={emailBusy}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50"
+            >
+              {emailBusy ? (locale === "tr" ? "Gönderiliyor…" : "Sending…") : (locale === "tr" ? "E-posta Güncelle" : "Update Email")}
+            </button>
+          </form>
 
-          <label className="text-xs font-semibold">
-            {isTr ? "Yeni şifre" : "New password"}
+          <form onSubmit={savePassword} className="space-y-3">
+            <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "Şifre Belirle" : "Update Password"}</h3>
             <input
+              required
+              minLength={8}
               type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1.5 min-h-11 w-full rounded-lg border border-input px-3 text-sm"
+              placeholder={locale === "tr" ? "En az 8 karakter" : "Minimum 8 characters"}
+              value={passwordForm.password}
+              onChange={(e) => setPasswordForm({ password: e.target.value })}
+              className="min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink"
             />
-          </label>
-          <button
-            disabled={password.length < 8}
-            onClick={async () => {
-              const { error } = await updateStudentPassword(password);
-              setMessage(
-                error
-                  ? isTr ? "Şifre güncellenemedi." : "Password could not be updated."
-                  : isTr ? "Şifre güncellendi." : "Password updated."
-              );
-              setPassword("");
-            }}
-            className="self-end min-h-11 rounded-lg border border-border px-4 text-sm font-semibold disabled:opacity-40 hover:bg-surface-muted"
-          >
-            {isTr ? "Şifreyi Güncelle" : "Update Password"}
-          </button>
+            <button
+              type="submit"
+              disabled={passwordBusy}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50"
+            >
+              {passwordBusy ? (locale === "tr" ? "Güncelleniyor…" : "Updating…") : (locale === "tr" ? "Şifreyi Değiştir" : "Update Password")}
+            </button>
+          </form>
         </div>
-        {message && <p role="status" className="mt-4 text-xs text-primary">{message}</p>}
       </Panel>
     </div>
   );
 }
 
 function Appointments({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
-  const appointments = data.bookings.filter((booking) => booking.event_type !== "lesson");
-  return (
-    <Panel title={locale === "tr" ? "Randevularım" : "Appointments"}>
-      <div className="mb-5">
-        <Link
-          href={localizedPath("booking", locale)}
-          className="inline-flex min-h-11 items-center rounded-lg bg-ink px-4 text-sm font-semibold text-white hover:bg-forest transition-colors"
-        >
-          {locale === "tr" ? "Yeni Randevu Talep Et" : "Request Appointment"}
-        </Link>
-      </div>
-      {appointments.length ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {appointments.map((b) => {
-            const bookingRecord = b as unknown as Record<string, unknown>;
-            const meetingUrl = typeof bookingRecord.live_meeting_url === "string" ? bookingRecord.live_meeting_url : null;
+  const upcoming = data.bookings.filter((b) => !["completed", "cancelled"].includes(b.status));
+  const past = data.bookings.filter((b) => ["completed", "cancelled"].includes(b.status));
 
-            return (
-              <article key={b.id} className="rounded-xl border border-border p-4 shadow-xs">
-                <div className="flex justify-between gap-3">
-                  <p className="font-semibold text-ink">
-                    {b.exam_code || b.custom_exam || (locale === "tr" ? "Genel görüşme" : "General consultation")}
+  return (
+    <div className="space-y-6">
+      <Panel title={locale === "tr" ? "Yaklaşan Randevular" : "Upcoming Appointments"}>
+        {upcoming.length ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {upcoming.map((b) => (
+              <article key={b.id} className="rounded-xl border border-border p-4 bg-surface flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between gap-3">
+                    <h3 className="font-semibold text-ink">{b.appointment_subject || b.exam_code || b.custom_exam || "Randevu"}</h3>
+                    <span className="text-xs text-muted-foreground">{status(b.status, locale)}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {fmt(b.availability_slots?.starts_at || b.created_at, locale, true)}
                   </p>
-                  <span className="text-xs text-muted-foreground">{status(b.status, locale)}</span>
                 </div>
-                <time className="mt-3 block text-sm text-muted-foreground">
-                  {fmt(b.availability_slots?.starts_at || b.created_at, locale, true)}
-                </time>
-                {meetingUrl && b.status !== "cancelled" && (
-                  <div className="mt-3 pt-3 border-t border-border">
+                {b.live_meeting_url && (
+                  <div className="mt-4 pt-3 border-t border-primary/10">
                     <a
-                      href={meetingUrl}
+                      href={b.live_meeting_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest"
+                      className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
                     >
-                      <Video className="size-3.5 text-warm-accent" />
-                      {locale === "tr" ? "Görüşmeye Katıl" : "Join Consultation"}
+                      <Video className="size-4 text-warm-accent" />
+                      {locale === "tr" ? "Görüşmeye Katıl" : "Join Meeting"}
                       <ExternalLink className="size-3" />
                     </a>
                   </div>
                 )}
               </article>
-            );
-          })}
-        </div>
-      ) : (
-        <Empty>{locale === "tr" ? "Hesabınıza bağlı randevu bulunmuyor." : "No appointments are linked to your account."}</Empty>
-      )}
-    </Panel>
+            ))}
+          </div>
+        ) : (
+          <Empty>{locale === "tr" ? "Yaklaşan randevunuz bulunmuyor." : "No upcoming appointments."}</Empty>
+        )}
+      </Panel>
+
+      <Panel title={locale === "tr" ? "Geçmiş Randevular" : "Past Appointments"}>
+        {past.length ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {past.map((b) => (
+              <article key={b.id} className="rounded-xl border border-border p-4 bg-surface">
+                <div className="flex justify-between gap-3">
+                  <h3 className="font-semibold text-ink">{b.appointment_subject || b.exam_code || b.custom_exam || "Randevu"}</h3>
+                  <span className="text-xs text-muted-foreground">{status(b.status, locale)}</span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {fmt(b.availability_slots?.starts_at || b.created_at, locale, true)}
+                </p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty>{locale === "tr" ? "Geçmiş randevu kaydı bulunmuyor." : "No past appointments."}</Empty>
+        )}
+      </Panel>
+    </div>
   );
 }
 
 function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
-  const scheduled = data.lessons.filter((l) => l.status === "scheduled");
+  const upcoming = data.lessons.filter((l) => l.status === "scheduled");
   const history = data.lessons.filter((l) => l.status !== "scheduled");
-  const scheduledBookings = data.bookings.filter((booking) => booking.event_type === "lesson" && !["completed", "cancelled", "no_show"].includes(booking.status));
 
   return (
     <div className="space-y-6">
-      {/* 1. Scheduled Live Lessons */}
-      <Panel title={locale === "tr" ? "Planlanan Canlı Dersler" : "Scheduled Live Lessons"}>
-        {scheduled.length || scheduledBookings.length ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {scheduledBookings.map((booking) => <article key={booking.id} className="flex flex-col justify-between rounded-xl border border-primary/20 bg-forest/5 p-4 shadow-xs"><div><div className="flex justify-between gap-3"><h3 className="text-base font-semibold text-ink">{booking.appointment_subject || (locale === "tr" ? "Canlı Ders" : "Live Lesson")}</h3><span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">{status(booking.status, locale)}</span></div><p className="mt-2 text-sm font-medium text-primary">{booking.exam_code || booking.custom_exam || "—"}</p><p className="mt-1 text-xs text-muted-foreground">{fmt(booking.availability_slots?.starts_at || booking.created_at, locale, true)}</p></div>{booking.live_meeting_url && <a href={booking.live_meeting_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 self-start rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white"><Video className="size-4 text-warm-accent" />{locale === "tr" ? "Canlı Derse Katıl" : "Join Live Lesson"}</a>}</article>)}
-            {scheduled.map((l) => (
-              <article
-                key={l.id}
-                className="rounded-xl border border-primary/20 bg-forest/5 p-4 shadow-xs flex flex-col justify-between"
-              >
+      {/* 1. Upcoming Live Lessons */}
+      <Panel title={locale === "tr" ? "Yaklaşan Canlı Dersler" : "Upcoming Live Lessons"}>
+        {upcoming.length ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {upcoming.map((l) => (
+              <article key={l.id} className="rounded-2xl border border-primary/30 p-5 bg-surface shadow-xs flex flex-col justify-between">
                 <div>
-                  <div className="flex justify-between gap-3">
+                  <div className="flex justify-between items-start gap-3">
                     <h3 className="font-semibold text-ink text-base">{l.title}</h3>
                     <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
                       {status(l.status, locale)}
@@ -510,7 +507,7 @@ function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en
                     {fmt(l.lesson_date, locale, true)} · {l.duration_minutes} {locale === "tr" ? "dk" : "min"}
                   </p>
                   {l.teacher_note && (
-                    <p className="mt-3 rounded bg-white p-2.5 text-xs text-ink/80 border border-border">
+                    <p className="mt-3 rounded bg-surface-muted p-2.5 text-xs text-ink/80 border border-border">
                       <strong>{locale === "tr" ? "Eğitmen Notu" : "Teacher Note"}:</strong> {l.teacher_note}
                     </p>
                   )}
@@ -603,6 +600,11 @@ function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
     );
   }
 
+  const pkgAdjustments = (data.adjustments || []).filter((a) => a.package_purchase_id === p.id);
+  const extraLessonsSum = pkgAdjustments
+    .filter((a) => a.adjustment_type === "extra_lessons")
+    .reduce((sum, a) => sum + (a.lesson_delta || 0), 0);
+  const baseLessonCount = Math.max(0, p.lesson_count - extraLessonsSum);
   const remaining = Math.max(0, p.lesson_count - p.lessons_used);
   const complete = p.status === "completed" || remaining === 0;
   const isExpiringSoon = !complete && remaining <= 3;
@@ -611,9 +613,18 @@ function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
   return (
     <Panel title={locale === "tr" ? "Paketim" : "My Package"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h3 className="font-heading text-3xl text-ink">
-          {p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
-        </h3>
+        <div>
+          <h3 className="font-heading text-3xl text-ink">
+            {p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
+          </h3>
+          {extraLessonsSum > 0 && (
+            <p className="mt-1 text-xs text-primary font-semibold">
+              {locale === "tr"
+                ? `Temel ${baseLessonCount} Ders + Ekstra ${extraLessonsSum} Ders = Toplam ${p.lesson_count} Ders`
+                : `Base ${baseLessonCount} Lessons + Extra ${extraLessonsSum} Lessons = Total ${p.lesson_count} Lessons`}
+            </p>
+          )}
+        </div>
         {complete && (
           <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
             {locale === "tr" ? "Paket Tamamlandı" : "Package Complete"}
@@ -630,7 +641,14 @@ function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
 
       <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Metric label={locale === "tr" ? "Paket / Kurs Türü" : "Package / Course Type"} value={p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id} />
-        <Metric label={locale === "tr" ? "Toplam Ders" : "Total Lessons"} value={p.lesson_count} />
+        <Metric
+          label={locale === "tr" ? "Toplam Ders" : "Total Lessons"}
+          value={
+            extraLessonsSum > 0
+              ? `${p.lesson_count} (${locale === "tr" ? `Temel ${baseLessonCount} + Ek ${extraLessonsSum}` : `Base ${baseLessonCount} + Extra ${extraLessonsSum}`})`
+              : p.lesson_count
+          }
+        />
         <Metric label={locale === "tr" ? "Tamamlanan" : "Completed"} value={p.lessons_used} />
         <Metric label={locale === "tr" ? "Kalan" : "Remaining"} value={remaining} />
         <Metric label={locale === "tr" ? "Dönem" : "Course Period"} value={`${fmt(p.start_date, locale)} — ${fmt(p.end_date, locale)}`} />

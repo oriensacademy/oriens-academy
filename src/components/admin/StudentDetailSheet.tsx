@@ -36,16 +36,18 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
 
 export function StudentDetailSheet({
   student,
+  initialTab = "overview",
   onClose,
   onCreateBooking,
   onChanged,
 }: {
   student: StudentProfile | null;
+  initialTab?: Tab;
   onClose: () => void;
   onCreateBooking: () => void;
   onChanged?: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [resetModalOpen, setResetModalOpen] = useState(false);
@@ -176,6 +178,7 @@ export function StudentDetailSheet({
             <Appointments
               student={student}
               onCreateBooking={onCreateBooking}
+              onSelectTab={(t) => setTab(t)}
               onDone={(text) => {
                 setMessage(text);
                 onChanged?.();
@@ -425,14 +428,19 @@ function Overview({
 function Appointments({
   student,
   onCreateBooking,
+  onSelectTab,
   onDone,
 }: {
   student: StudentProfile;
   onCreateBooking: () => void;
+  onSelectTab?: (tab: Tab) => void;
   onDone: (text: string) => void;
 }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+
+  const hasActivePackage = Boolean(student.activePackage);
+  const remainingLessons = student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
 
   async function finish(id: string, asLesson: boolean) {
     setBusy(id);
@@ -440,25 +448,38 @@ function Appointments({
     if (asLesson) {
       const r = await completeStudentAppointment({
         bookingId: id,
-        packagePurchaseId: student.activePackage?.id || null,
+        packagePurchaseId: hasActivePackage && remainingLessons > 0 ? (student.activePackage?.id || null) : null,
         title: `${student.targetExam || "Akademik"} dersi`,
         subject: student.targetExam || "Genel akademik çalışma",
         examCode: student.targetExam || "",
         durationMinutes: 60,
         teacherNote: "",
       });
-      if (r.error) setError(r.error);
-      else
+      if (r.error) {
+        setError(r.error);
+      } else {
         onDone(
           r.alreadyCompleted
             ? "Bu randevu daha önce ders olarak tamamlanmış; paket yeniden düşülmedi."
-            : "Randevu tamamlandı, ders geçmişi ve paket kullanımı işlendi."
+            : hasActivePackage && remainingLessons > 0
+            ? "Ders tamamlandı, 1 ders paketten düşüldü ve geçmişe işlendi."
+            : "Ders paketsiz olarak tamamlandı ve geçmişe işlendi."
         );
+      }
     } else {
       const r = await updateAdminBookingStatus(id, "completed");
       if (r.error) setError(r.error);
-      else onDone("Randevu ders/paket kaydı oluşturmadan tamamlandı.");
+      else onDone("Görüşme/randevu tamamlandı (Paket düşülmedi).");
     }
+    setBusy("");
+  }
+
+  async function cancelAppointment(id: string) {
+    setBusy(id);
+    setError("");
+    const r = await updateAdminBookingStatus(id, "cancelled");
+    if (r.error) setError(r.error);
+    else onDone("Randevu iptal edildi.");
     setBusy("");
   }
 
@@ -472,10 +493,11 @@ function Appointments({
         <div>
           <h3 className="font-heading text-lg font-bold text-ink">Ders & Randevu Yönetimi</h3>
           <p className="text-xs text-muted-foreground">
-            Öğrencinin yaklaşan ve geçmiş ders/görüşme seanslarını görüntüleyin ve yeni seans planlayın.
+            Öğrencinin yaklaşan ve geçmiş ders/görüşme seanslarını yönetin ve yeni seans planlayın.
           </p>
         </div>
         <button
+          type="button"
           onClick={onCreateBooking}
           className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors shadow-xs"
         >
@@ -494,14 +516,17 @@ function Appointments({
       {/* Yaklaşan Ders & Randevular */}
       <div className="space-y-3">
         <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Yaklaşan Ders / Randevular ({upcoming.length})
+          Yaklaşan Seanslar ({upcoming.length})
         </h4>
         {upcoming.length > 0 ? (
           upcoming.map((b) => {
             const hasMeetingLink = Boolean(b.live_meeting_url);
+            const isExplicitLesson = b.event_type === "lesson" || (b.appointment_subject && (b.appointment_subject.startsWith("[Ders]") || b.appointment_subject.toLowerCase().includes("ders")));
+            const isConsultation = b.event_type === "discovery" || b.event_type === "consultation" || (b.appointment_subject && (b.appointment_subject.startsWith("[Ön Görüşme]") || b.appointment_subject.startsWith("[Danışmanlık]")));
+
             return (
-              <div key={b.id} className="rounded-2xl border border-border bg-surface p-4 text-xs space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
+              <div key={b.id} className="rounded-2xl border border-border bg-surface p-4 text-xs space-y-3 shadow-xs">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
                       <strong className="text-sm font-semibold text-ink">
@@ -510,6 +535,15 @@ function Appointments({
                       <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800">
                         {b.status === "confirmed" ? "Onaylandı" : b.status === "pending" ? "Bekliyor" : b.status}
                       </span>
+                      {isExplicitLesson ? (
+                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                          Ders
+                        </span>
+                      ) : isConsultation ? (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                          Görüşme / Danışmanlık
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-muted-foreground">
                       {date(b.availability_slots?.starts_at || b.created_at)}
@@ -518,22 +552,61 @@ function Appointments({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      disabled={busy === b.id}
-                      onClick={() => void finish(b.id, false)}
-                      className="rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer disabled:opacity-50"
-                    >
-                      Yalnız randevuyu tamamla
-                    </button>
-                    {student.userId && (
+                    {/* Action buttons based on event type & entitlement */}
+                    {isExplicitLesson ? (
+                      hasActivePackage && remainingLessons > 0 ? (
+                        <button
+                          type="button"
+                          disabled={busy === b.id}
+                          onClick={() => void finish(b.id, true)}
+                          className="rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer disabled:opacity-50 transition-colors"
+                        >
+                          Dersi Tamamla (Paketten 1 Ders Düş)
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">
+                            {hasActivePackage ? "Paket Bakiyesi: 0 Ders" : "Aktif Paket Yok"}
+                          </span>
+                          {onSelectTab && (
+                            <button
+                              type="button"
+                              onClick={() => onSelectTab("packages")}
+                              className="rounded-lg border border-primary bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 cursor-pointer transition-colors"
+                            >
+                              Paket / Ek Ders Tanımla
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={busy === b.id}
+                            onClick={() => void finish(b.id, true)}
+                            className="rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer disabled:opacity-50"
+                            title="Paketten düşmeden ders tamamlandı olarak kaydet"
+                          >
+                            Paketsiz Tamamla
+                          </button>
+                        </div>
+                      )
+                    ) : (
                       <button
+                        type="button"
                         disabled={busy === b.id}
-                        onClick={() => void finish(b.id, true)}
-                        className="rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer disabled:opacity-50"
+                        onClick={() => void finish(b.id, false)}
+                        className="rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer disabled:opacity-50 transition-colors"
                       >
-                        Ders olarak tamamla (Paketten Düş)
+                        Görüşmeyi Tamamla
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      disabled={busy === b.id}
+                      onClick={() => void cancelAppointment(b.id)}
+                      className="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      İptal Et
+                    </button>
                   </div>
                 </div>
 
@@ -577,7 +650,7 @@ function Appointments({
       {/* Geçmiş Ders & Randevular */}
       <div className="space-y-3 pt-2">
         <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Geçmiş Ders / Randevular ({past.length})
+          Geçmiş Seanslar ({past.length})
         </h4>
         {past.length > 0 ? (
           past.map((b) => (

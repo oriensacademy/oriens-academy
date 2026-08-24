@@ -67,6 +67,25 @@ export function AssignHomeworkModal({
   const [sendEmail, setSendEmail] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Body scroll lock & Escape handler
+  useEffect(() => {
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previous;
+    };
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -288,18 +307,22 @@ export function AssignHomeworkModal({
           {/* Template Selector */}
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
-              Hazır Ödev Şablonu
+              Atanacak İçerik / Ödev / Materyal
             </label>
             {initialTemplate ? (
               <div className="rounded-xl border border-border bg-surface-muted/40 p-3 flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-ink">{initialTemplate.title}</div>
                   <div className="text-[11px] text-muted-foreground">
-                    {initialTemplate.exam} · {initialTemplate.questions?.length || 0} Soru
+                    {initialTemplate.content_type === "lesson_note"
+                      ? "Ders Notu"
+                      : initialTemplate.content_type === "resource"
+                      ? "Kaynak / Materyal"
+                      : `${initialTemplate.exam || "Genel"} · ${initialTemplate.questions?.length || 0} Soru`}
                   </div>
                 </div>
                 <span className="rounded-full bg-forest/10 px-2.5 py-0.5 text-[10px] font-bold text-forest">
-                  Seçili Şablon
+                  Seçili İçerik
                 </span>
               </div>
             ) : (
@@ -310,7 +333,7 @@ export function AssignHomeworkModal({
               >
                 {templates.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.title} ({t.exam || "Genel"} · {t.questions?.length || 0} Soru)
+                    [{t.content_type === "lesson_note" ? "Ders Notu" : t.content_type === "resource" ? "Materyal" : t.content_type === "worksheet" ? "Çalışma Kağıdı" : t.content_type === "mock_exam" ? "Deneme" : "Ödev"}] {t.title} ({t.exam || "Genel"})
                   </option>
                 ))}
               </select>

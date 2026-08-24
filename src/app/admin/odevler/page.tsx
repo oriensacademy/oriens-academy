@@ -2,51 +2,50 @@
 
 import { useState } from "react";
 import {
-  BookCopy,
   CalendarCheck,
   CalendarPlus,
   ClipboardList,
-  GraduationCap,
   Layers,
+  Plus,
 } from "lucide-react";
-import { QuestionBankManager } from "@/components/admin/homework/QuestionBankManager";
-import { TemplateManager } from "@/components/admin/homework/TemplateManager";
-import { MockExamManager } from "@/components/admin/homework/MockExamManager";
+import { ContentLibraryManager } from "@/components/admin/homework/ContentLibraryManager";
+import { ContentEditorModal } from "@/components/admin/homework/ContentEditorModal";
 import { AssignedHomeworkList } from "@/components/admin/homework/AssignedHomeworkList";
 import { AssignHomeworkModal } from "@/components/admin/homework/AssignHomeworkModal";
-import type { HomeworkTemplate, QuestionBankItem } from "@/lib/homework";
+import type { HomeworkTemplate } from "@/lib/homework";
 
-type HomeworkTab = "assignments" | "templates" | "question_bank" | "mock_exams" | "submissions";
+type HomeworkTab = "content" | "assignments" | "submissions";
 
 export default function AdminHomeworkPage() {
-  const [activeTab, setActiveTab] = useState<HomeworkTab>("assignments");
+  const [activeTab, setActiveTab] = useState<HomeworkTab>("content");
 
-  // Global Assign Modal State
+  // Global Content Editor Modal
+  const [editorModalOpen, setEditorModalOpen] = useState(false);
+  const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState<HomeworkTemplate | null>(null);
+
+  // Global Assign Modal
   const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [selectedTemplateForAssign, setSelectedTemplateForAssign] =
-    useState<HomeworkTemplate | null>(null);
-
-  // Workflow bridge: Questions from Bank -> Template
-  const [preloadedQuestionsForTemplate, setPreloadedQuestionsForTemplate] = useState<
-    QuestionBankItem[] | null
-  >(null);
+  const [selectedTemplateForAssign, setSelectedTemplateForAssign] = useState<HomeworkTemplate | null>(null);
 
   const tabs: Array<{ id: HomeworkTab; label: string; icon: typeof ClipboardList }> = [
-    { id: "assignments", label: "Atanan Ödevler", icon: CalendarCheck },
-    { id: "templates", label: "Ödev Şablonları", icon: BookCopy },
-    { id: "question_bank", label: "Soru Bankası", icon: Layers },
-    { id: "mock_exams", label: "Denemeler", icon: GraduationCap },
+    { id: "content", label: "İçerikler & Materyaller", icon: Layers },
+    { id: "assignments", label: "Atamalar", icon: CalendarCheck },
     { id: "submissions", label: "Teslimler & Değerlendirme", icon: ClipboardList },
   ];
 
-  const handleAssignTemplate = (template: HomeworkTemplate) => {
+  const handleAssignContent = (template: HomeworkTemplate) => {
     setSelectedTemplateForAssign(template);
     setAssignModalOpen(true);
   };
 
-  const handleCreateTemplateFromQuestions = (questions: QuestionBankItem[]) => {
-    setPreloadedQuestionsForTemplate(questions);
-    setActiveTab("templates");
+  const handleEditContent = (template: HomeworkTemplate) => {
+    setSelectedTemplateForEdit(template);
+    setEditorModalOpen(true);
+  };
+
+  const handleCreateNewContent = () => {
+    setSelectedTemplateForEdit(null);
+    setEditorModalOpen(true);
   };
 
   return (
@@ -55,21 +54,30 @@ export default function AdminHomeworkPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
         <div>
           <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-forest">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-primary">
               <ClipboardList className="size-5" />
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-ink font-heading">
-                Ödev İşlemleri
+                Ödev & Materyal Yönetimi
               </h1>
               <p className="text-xs text-muted-foreground">
-                Merkezi soru havuzu, şablonlar, deneme setleri ve öğrenci teslim değerlendirmesi.
+                Ödev, ders notu, çalışma kağıdı, kaynak materyal ve denemeleri yönetin, öğrencilere atayın ve teslimleri inceleyin.
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCreateNewContent}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted transition-colors cursor-pointer shadow-2xs"
+          >
+            <Plus className="size-4 text-primary" />
+            Yeni İçerik Ekle
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -79,12 +87,12 @@ export default function AdminHomeworkPage() {
             className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer shadow-xs"
           >
             <CalendarPlus className="size-4" />
-            Ödev Ata
+            İçerik / Ödev Ata
           </button>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation (Only 3 Primary Tabs) */}
       <div className="flex border-b border-border overflow-x-auto gap-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -108,6 +116,14 @@ export default function AdminHomeworkPage() {
 
       {/* Tab Panels */}
       <div className="pt-2">
+        {activeTab === "content" && (
+          <ContentLibraryManager
+            onAssignContent={handleAssignContent}
+            onEditContent={handleEditContent}
+            onCreateNew={handleCreateNewContent}
+          />
+        )}
+
         {activeTab === "assignments" && (
           <AssignedHomeworkList
             onOpenAssignModal={() => {
@@ -117,48 +133,28 @@ export default function AdminHomeworkPage() {
           />
         )}
 
-        {activeTab === "templates" && (
-          <TemplateManager
-            initialPreloadedQuestions={preloadedQuestionsForTemplate}
-            onAssignTemplate={handleAssignTemplate}
-          />
-        )}
-
-        {activeTab === "question_bank" && (
-          <QuestionBankManager
-            onCreateTemplateWithQuestions={handleCreateTemplateFromQuestions}
-          />
-        )}
-
-        {activeTab === "mock_exams" && (
-          <MockExamManager
-            onAssignMockExam={(m) => {
-              // Convert mock to template shape for assign modal
-              const asTemplate: HomeworkTemplate = {
-                id: m.id,
-                title: m.title,
-                description: m.description,
-                subject: m.topic_mix,
-                exam: m.exam,
-                estimated_duration_minutes: m.time_limit_minutes,
-                external_link: null,
-                instructor_note: null,
-                status: "active",
-                created_at: m.created_at,
-                updated_at: m.updated_at,
-                questions: m.questions,
-              };
-              handleAssignTemplate(asTemplate);
-            }}
-          />
-        )}
-
         {activeTab === "submissions" && (
           <AssignedHomeworkList filterSubmissionsOnly={true} />
         )}
       </div>
 
-      {/* Central Assign Homework Modal */}
+      {/* Content Editor Modal (Create / Edit) */}
+      {editorModalOpen && (
+        <ContentEditorModal
+          isOpen={editorModalOpen}
+          initialTemplate={selectedTemplateForEdit}
+          onClose={() => {
+            setEditorModalOpen(false);
+            setSelectedTemplateForEdit(null);
+          }}
+          onSaved={() => {
+            setEditorModalOpen(false);
+            setSelectedTemplateForEdit(null);
+          }}
+        />
+      )}
+
+      {/* Assign Content Modal */}
       {assignModalOpen && (
         <AssignHomeworkModal
           isOpen={assignModalOpen}
@@ -171,7 +167,6 @@ export default function AdminHomeworkPage() {
             setAssignModalOpen(false);
             setSelectedTemplateForAssign(null);
             if (activeTab === "assignments" || activeTab === "submissions") {
-              // trigger refresh
               setActiveTab("assignments");
             }
           }}

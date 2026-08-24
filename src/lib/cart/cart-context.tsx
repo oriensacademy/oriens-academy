@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useTransition } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
+import { useAccount } from "@/lib/auth/account-context";
 
 export interface CartItem {
   packageId: string;
@@ -16,65 +17,207 @@ interface CartContextType {
   isInCart: (packageId: string) => boolean;
 }
 
-const CART_STORAGE_KEY = "oriens_student_cart";
+const GUEST_SESSION_KEY = "oriens_guest_session_id";
+const USER_CART_PREFIX = "oriens_cart_user_";
+const GUEST_CART_PREFIX = "oriens_cart_guest_";
+
+function getOrCreateGuestSessionId(): string {
+  if (typeof window === "undefined") return "guest_ssr";
+  try {
+    let id = sessionStorage.getItem(GUEST_SESSION_KEY);
+    if (!id) {
+      id = localStorage.getItem(GUEST_SESSION_KEY);
+    }
+    if (!id) {
+      id = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      sessionStorage.setItem(GUEST_SESSION_KEY, id);
+      localStorage.setItem(GUEST_SESSION_KEY, id);
+    }
+    return id;
+  } catch {
+    return "guest_fallback";
+  }
+}
+
+function resetGuestSessionId(): string {
+  if (typeof window === "undefined") return "guest_ssr";
+  const newId = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  try {
+    sessionStorage.setItem(GUEST_SESSION_KEY, newId);
+    localStorage.setItem(GUEST_SESSION_KEY, newId);
+  } catch {
+    // ignore
+  }
+  return newId;
+}
+
+function getStorageKey(userId: string | null | undefined, guestId: string): string {
+  if (userId) {
+    return `${USER_CART_PREFIX}${userId}`;
+  }
+  return `${GUEST_CART_PREFIX}${guestId}`;
+}
+
+function readCartFromStorage(key: string): CartItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item) => item && typeof item.packageId === "string" && typeof item.quantity === "number");
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCartToStorage(key: string, items: CartItem[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent("oriens:cart_updated", { detail: { key } }));
+  } catch {
+    // ignore quota
+  }
+}
+
+function clearCartFromStorage(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(key);
+    window.dispatchEvent(new CustomEvent("oriens:cart_updated", { detail: { key } }));
+  } catch {
+    // ignore
+  }
+}
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { user, isInitializing } = useAccount();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [, startTransition] = useTransition();
 
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  const activeKeyRef = useRef<string>("");
+
+  // Sync cart according to user authentication state
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(CART_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          startTransition(() => {
-            setItems(parsed);
-          });
+    if (isInitializing) return;
+
+    const syncCart = () => {
+      const currentUserId = user?.id || null;
+      const prevUserId = prevUserIdRef.current;
+      prevUserIdRef.current = currentUserId;
+
+      const guestId = getOrCreateGuestSessionId();
+      const currentKey = getStorageKey(currentUserId, guestId);
+      activeKeyRef.current = currentKey;
+
+      // Transition from Guest (null) -> Authenticated User
+      if (prevUserId === null && currentUserId !== null) {
+        const guestKey = `${GUEST_CART_PREFIX}${guestId}`;
+        const guestItems = readCartFromStorage(guestKey);
+        const userKey = `${USER_CART_PREFIX}${currentUserId}`;
+        const userItems = readCartFromStorage(userKey);
+
+        if (guestItems.length > 0) {
+          // Merge guest items into user cart, deduplicating by packageId
+          const existingIds = new Set(userItems.map((i) => i.packageId));
+          const merged = [...userItems];
+          for (const gItem of guestItems) {
+            if (!existingIds.has(gItem.packageId)) {
+              merged.push(gItem);
+              existingIds.add(gItem.packageId);
+            }
+          }
+          writeCartToStorage(userKey, merged);
+          clearCartFromStorage(guestKey);
+          resetGuestSessionId();
+          setItems(merged);
+        } else {
+          setItems(userItems);
         }
+      } else if (prevUserId !== undefined && prevUserId !== null && currentUserId === null) {
+        // Transition from Authenticated User -> Logged out (Guest)
+        // Clean guest session without exposing previous user's cart
+        const newGuestId = resetGuestSessionId();
+        const newGuestKey = `${GUEST_CART_PREFIX}${newGuestId}`;
+        activeKeyRef.current = newGuestKey;
+        setItems([]);
+      } else {
+        // Normal load / refresh
+        const stored = readCartFromStorage(currentKey);
+        setItems(stored);
       }
-    } catch {
-      // Ignore localStorage parse errors
-    } finally {
+
       setIsHydrated(true);
-    }
+    };
+
+    queueMicrotask(syncCart);
+  }, [user?.id, isInitializing]);
+
+  // Multi-tab synchronization
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (!activeKeyRef.current) return;
+      if (e.key === activeKeyRef.current) {
+        const updated = readCartFromStorage(activeKeyRef.current);
+        setItems(updated);
+      }
+    };
+
+    const handleCustomEvent = (e: Event) => {
+      const detail = (e as CustomEvent<{ key?: string }>).detail;
+      if (detail?.key && detail.key === activeKeyRef.current) {
+        const updated = readCartFromStorage(activeKeyRef.current);
+        setItems(updated);
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("oriens:cart_updated", handleCustomEvent);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("oriens:cart_updated", handleCustomEvent);
+    };
   }, []);
 
-  const saveItems = (newItems: CartItem[]) => {
-    setItems(newItems);
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(newItems));
-    } catch {
-      // Ignore localStorage quota errors
-    }
-  };
-
-  const addToCart = (packageId: string) => {
+  const addToCart = useCallback((packageId: string) => {
     const cleanId = packageId.trim();
     if (!cleanId) return;
-    const existing = items.find((item) => item.packageId === cleanId);
-    if (existing) return; // Keep 1 of each package in cart
-    const updated = [...items, { packageId: cleanId, quantity: 1 }];
-    saveItems(updated);
-  };
+    setItems((prev) => {
+      if (prev.some((item) => item.packageId === cleanId)) return prev;
+      const updated = [...prev, { packageId: cleanId, quantity: 1 }];
+      const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+      writeCartToStorage(key, updated);
+      return updated;
+    });
+  }, [user?.id]);
 
-  const removeFromCart = (packageId: string) => {
+  const removeFromCart = useCallback((packageId: string) => {
     const cleanId = packageId.trim();
-    const updated = items.filter((item) => item.packageId !== cleanId);
-    saveItems(updated);
-  };
+    setItems((prev) => {
+      const updated = prev.filter((item) => item.packageId !== cleanId);
+      const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+      writeCartToStorage(key, updated);
+      return updated;
+    });
+  }, [user?.id]);
 
-  const clearCart = () => {
-    saveItems([]);
-  };
+  const clearCart = useCallback(() => {
+    setItems([]);
+    const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+    clearCartFromStorage(key);
+  }, [user?.id]);
 
-  const isInCart = (packageId: string) => {
+  const isInCart = useCallback((packageId: string) => {
     const cleanId = packageId.trim();
     return items.some((item) => item.packageId === cleanId);
-  };
+  }, [items]);
 
   const cartCount = isHydrated ? items.length : 0;
 

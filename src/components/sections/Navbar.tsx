@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { isPrimaryNavigationActive, localizedPath } from "@/lib/routes";
 import { useAccount } from "@/lib/auth/account-context";
 import { useCart } from "@/lib/cart/cart-context";
+import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { unifiedLoginPath } from "@/lib/routes";
 import { Wave } from "@/components/ui/wave";
 
@@ -34,10 +35,10 @@ export function Navbar() {
   const pathname = usePathname();
   const { accountType, isInitializing } = useAccount();
   const { cartCount } = useCart();
+  const { showPricing } = usePublicSettings();
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
   const isStudent = accountType === "student";
-  const showPricing = !isInitializing && isStudent;
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -63,7 +64,7 @@ export function Navbar() {
     { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
     { href: localizedPath("universitySupport", locale), label: locale === "tr" ? "Üniversite Desteği" : "University Support" },
     ...(showPricing ? [{ href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
-    ...(isStudent ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
+    ...(cartCount > 0 || isStudent ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
     { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
     { href: accountHref, label: accountLabel },
@@ -176,7 +177,7 @@ export function Navbar() {
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <div className="flex items-center gap-3">
               <LanguageSwitch />
-              {isStudent && (
+              {(cartCount > 0 || isStudent) && (
                 <Link
                   href={localizedPath("cart", locale)}
                   className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

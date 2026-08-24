@@ -6,17 +6,35 @@ import { StudentAuthPage } from "@/components/student/StudentAuthPage";
 import { Footer } from "@/components/sections/Footer";
 import { getDictionary, isLocale } from "@/content/dictionaries";
 import { examBySlug, examRecords } from "@/content/exams";
-import { examDetailPath, examHubSegment, paymentResultPath, paymentResultSegment, paymentSegment, studentAuthRootSegment, studentLoginSegment, studentRegisterPath, studentRegisterSegment, unifiedLoginPath } from "@/lib/routes";
+import { examDetailPath, examHubSegment, localizedPath, paymentResultPath, paymentResultSegment, paymentSegment, resolveExamSlug, studentAuthRootSegment, studentLoginSegment, studentRegisterPath, studentRegisterSegment, unifiedLoginPath } from "@/lib/routes";
 
 type Params = { lang: string; examHub: string; slug: string };
+
+const ALL_EXAM_STATIC_SLUGS = Array.from(new Set([
+  ...examRecords.map((e) => e.slug),
+  ...examRecords.map((e) => e.code.toLowerCase()),
+  ...examRecords.map((e) => e.code.toUpperCase()),
+  "ucat",
+  "ib-diploma",
+  "ib-dp",
+  "advanced-placement",
+  "gmat-focus",
+  "ielts",
+  "toefl",
+]));
 
 export function generateStaticParams({ params }: { params: { lang: string } }) {
   const { lang } = params;
   if (!isLocale(lang)) return [];
-  return [...examRecords.map((exam) => ({
-    examHub: examHubSegment(lang),
-    slug: exam.slug,
-  })), { examHub: paymentSegment(lang), slug: paymentResultSegment(lang) }, { examHub: studentAuthRootSegment(lang), slug: studentLoginSegment(lang) }, { examHub: studentAuthRootSegment(lang), slug: studentRegisterSegment(lang) }];
+  return [
+    ...ALL_EXAM_STATIC_SLUGS.map((slug) => ({
+      examHub: examHubSegment(lang),
+      slug,
+    })),
+    { examHub: paymentSegment(lang), slug: paymentResultSegment(lang) },
+    { examHub: studentAuthRootSegment(lang), slug: studentLoginSegment(lang) },
+    { examHub: studentAuthRootSegment(lang), slug: studentRegisterSegment(lang) },
+  ];
 }
 
 export const dynamicParams = false;
@@ -36,13 +54,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     return { title: lang === "tr" ? "Oturum Aç | Oriens Academy" : "Sign In | Oriens Academy", robots: { index: false, follow: false }, alternates: { canonical: unifiedLoginPath(lang), languages: { tr: unifiedLoginPath("tr"), en: unifiedLoginPath("en") } } };
   }
   if (isStudentRegister) {
-    const title = lang === "tr" ? "Öğrenci Kaydı | Oriens Academy" : "Student Registration | Oriens Academy";
-    return { title, robots: { index: false, follow: false }, alternates: { canonical: studentRegisterPath(lang), languages: { tr: studentRegisterPath("tr"), en: studentRegisterPath("en") } } };
+    return { title: lang === "tr" ? "Öğrenci Kaydı | Oriens Academy" : "Student Registration | Oriens Academy", robots: { index: false, follow: false }, alternates: { canonical: studentRegisterPath(lang), languages: { tr: studentRegisterPath("tr"), en: studentRegisterPath("en") } } };
   }
   if (examHub !== examHubSegment(lang)) return {};
-  const exam = examBySlug(slug);
+  const canonicalSlug = resolveExamSlug(slug);
+  const exam = canonicalSlug ? examBySlug(canonicalSlug) : null;
   if (!exam) return {};
   const detail = getDictionary(lang).exams.examDetailText[exam.code];
+  if (!detail) return {};
 
   return {
     title: detail.seoTitle,
@@ -76,9 +95,20 @@ export default async function ExamPage({ params }: { params: Promise<Params> }) 
   if (examHub === studentAuthRootSegment(lang) && slug === studentRegisterSegment(lang)) {
     return <><main id="main-content"><StudentAuthPage /></main><Footer /></>;
   }
-  if (examHub !== examHubSegment(lang)) notFound();
-  const exam = examBySlug(slug);
-  if (!exam) notFound();
+  if (examHub !== examHubSegment(lang)) {
+    redirect(`/${lang}`);
+  }
+  const canonicalSlug = resolveExamSlug(slug);
+  if (!canonicalSlug) {
+    redirect(localizedPath("exams", lang));
+  }
+  if (slug !== canonicalSlug) {
+    redirect(examDetailPath(lang, canonicalSlug));
+  }
+  const exam = examBySlug(canonicalSlug);
+  if (!exam) {
+    redirect(localizedPath("exams", lang));
+  }
 
   return (
     <>

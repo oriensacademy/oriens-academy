@@ -1,9 +1,49 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 
+export type HomeworkContentType = "homework" | "lesson_note" | "worksheet" | "resource" | "mock_exam";
 export type HomeworkQuestionType = "multiple_choice" | "short_answer" | "long_answer";
 export type HomeworkStatus = "assigned" | "in_progress" | "submitted" | "reviewed" | "overdue";
 export type QuestionLanguage = "en" | "tr";
 export type QuestionDifficulty = "easy" | "medium" | "hard";
+
+export const CONTENT_TYPE_LABELS: Record<HomeworkContentType, { tr: string; en: string; badgeClass: string }> = {
+  homework: {
+    tr: "Ödev",
+    en: "Homework",
+    badgeClass: "border-blue-200 bg-blue-50 text-blue-800",
+  },
+  lesson_note: {
+    tr: "Ders Notu",
+    en: "Lesson Note",
+    badgeClass: "border-purple-200 bg-purple-50 text-purple-800",
+  },
+  worksheet: {
+    tr: "Çalışma Kağıdı",
+    en: "Worksheet",
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  },
+  resource: {
+    tr: "Kaynak / Materyal",
+    en: "Resource / Material",
+    badgeClass: "border-amber-200 bg-amber-50 text-amber-800",
+  },
+  mock_exam: {
+    tr: "Deneme",
+    en: "Mock Exam",
+    badgeClass: "border-rose-200 bg-rose-50 text-rose-800",
+  },
+};
+
+export function formatContentTypeLabel(type?: HomeworkContentType | string | null, locale: "tr" | "en" = "tr") {
+  const normalized = (type as HomeworkContentType) || "homework";
+  const entry = CONTENT_TYPE_LABELS[normalized];
+  return entry ? (locale === "tr" ? entry.tr : entry.en) : (locale === "tr" ? "İçerik" : "Content");
+}
+
+export function isSubmittableContentType(type?: HomeworkContentType | string | null) {
+  const normalized = (type as HomeworkContentType) || "homework";
+  return normalized === "homework" || normalized === "worksheet" || normalized === "mock_exam";
+}
 
 export interface HomeworkOption {
   id?: string;
@@ -43,8 +83,13 @@ export interface HomeworkTemplate {
   id: string;
   title: string;
   description: string;
+  content_type?: HomeworkContentType;
+  language?: QuestionLanguage;
   subject: string | null;
   exam: string | null;
+  exam_code?: string | null;
+  resource_file_url?: string | null;
+  attachment_name?: string | null;
   estimated_duration_minutes: number | null;
   external_link: string | null;
   instructor_note: string | null;
@@ -89,6 +134,9 @@ export interface HomeworkDetail {
   homework: Record<string, unknown> & {
     id: string;
     status: HomeworkStatus;
+    content_type?: HomeworkContentType;
+    title?: string;
+    description?: string;
     teacher_feedback?: string | null;
     submitted_at?: string | null;
     draft_saved_at?: string | null;
@@ -100,6 +148,11 @@ export interface HomeworkDetail {
     id: string;
     title: string;
     description: string;
+    content_type?: HomeworkContentType;
+    language?: QuestionLanguage;
+    exam_code?: string | null;
+    resource_file_url?: string | null;
+    attachment_name?: string | null;
     due_date: string | null;
     external_link: string | null;
     instructor_note?: string | null;
@@ -111,12 +164,8 @@ export interface HomeworkDetail {
 
 const rpc = async (name: string, args: Record<string, unknown>) => {
   const client = getSupabaseClient();
-  return (
-    client.rpc as unknown as (
-      fn: string,
-      values: Record<string, unknown>
-    ) => Promise<{ data: unknown; error: { message: string } | null }>
-  )(name, args);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (client as any).rpc(name, args);
 };
 
 // ============================================================================
@@ -245,19 +294,29 @@ export async function saveHomeworkTemplate(input: {
   id?: string;
   title: string;
   description: string;
+  content_type?: HomeworkContentType;
+  language?: QuestionLanguage;
   subject?: string | null;
   exam?: string | null;
+  exam_code?: string | null;
+  resource_file_url?: string | null;
+  attachment_name?: string | null;
   estimated_duration_minutes?: number | null;
   external_link?: string | null;
   instructor_note?: string | null;
-  questions: HomeworkQuestion[];
+  questions?: HomeworkQuestion[];
 }): Promise<{ data: HomeworkTemplate | null; error: string | null }> {
   const client = getSupabaseClient();
   const templatePayload = {
     title: input.title.trim(),
     description: input.description.trim(),
+    content_type: input.content_type || "homework",
+    language: input.language || "tr",
     subject: input.subject?.trim() || null,
-    exam: input.exam?.trim() || null,
+    exam: input.exam?.trim() || input.exam_code?.trim() || null,
+    exam_code: input.exam_code?.trim() || input.exam?.trim() || null,
+    resource_file_url: input.resource_file_url?.trim() || null,
+    attachment_name: input.attachment_name?.trim() || null,
     estimated_duration_minutes: input.estimated_duration_minutes || null,
     external_link: input.external_link?.trim() || null,
     instructor_note: input.instructor_note?.trim() || null,
@@ -280,7 +339,7 @@ export async function saveHomeworkTemplate(input: {
       .insert(templatePayload as never)
       .select()
       .single();
-    if (error || !data) return { data: null, error: error?.message || "Şablon oluşturulamadı." };
+    if (error || !data) return { data: null, error: error?.message || "İçerik oluşturulamadı." };
     templateId = (data as unknown as { id: string }).id;
   }
 
@@ -304,7 +363,7 @@ export async function saveHomeworkTemplate(input: {
       ...templatePayload,
       status: "active",
       created_at: "",
-      questions: input.questions,
+      questions: input.questions || [],
     } as unknown as HomeworkTemplate,
     error: null,
   };
@@ -313,7 +372,7 @@ export async function saveHomeworkTemplate(input: {
 export async function duplicateHomeworkTemplate(id: string): Promise<{ data: HomeworkTemplate | null; error: string | null }> {
   const client = getSupabaseClient();
   const { data: original, error } = await client.from("homework_templates" as never).select("*").eq("id", id).single();
-  if (error || !original) return { data: null, error: error?.message || "Şablon bulunamadı." };
+  if (error || !original) return { data: null, error: error?.message || "İçerik bulunamadı." };
 
   const rawOriginal = original as unknown as Record<string, unknown>;
   const { data: questions } = await client.from("homework_template_questions" as never).select("*").eq("template_id", id).order("position");
@@ -322,8 +381,13 @@ export async function duplicateHomeworkTemplate(id: string): Promise<{ data: Hom
   return saveHomeworkTemplate({
     title: `${rawOriginal.title} (Kopya)`,
     description: (rawOriginal.description as string) || "",
+    content_type: (rawOriginal.content_type as HomeworkContentType) || "homework",
+    language: (rawOriginal.language as QuestionLanguage) || "tr",
     subject: (rawOriginal.subject as string) || null,
-    exam: (rawOriginal.exam as string) || null,
+    exam: (rawOriginal.exam as string) || (rawOriginal.exam_code as string) || null,
+    exam_code: (rawOriginal.exam_code as string) || (rawOriginal.exam as string) || null,
+    resource_file_url: (rawOriginal.resource_file_url as string) || null,
+    attachment_name: (rawOriginal.attachment_name as string) || null,
     estimated_duration_minutes: (rawOriginal.estimated_duration_minutes as number) || null,
     external_link: (rawOriginal.external_link as string) || null,
     instructor_note: (rawOriginal.instructor_note as string) || null,
@@ -605,18 +669,26 @@ export async function getAdminHomeworkDetail(homeworkId: string): Promise<{ data
   };
 }
 
+const FORBIDDEN_EXTENSIONS = [".exe", ".bat", ".cmd", ".sh", ".msi", ".dll", ".com", ".scr", ".vbs", ".ps1", ".jar", ".bin"];
+
 export async function uploadHomeworkAttachment(input: {
   file: File;
   assignmentId?: string;
+  templateId?: string;
   studentHomeworkId?: string;
   studentId?: string;
   kind: "resource" | "submission";
 }) {
   const client = getSupabaseClient();
+  const ext = "." + (input.file.name.split(".").pop() || "").toLowerCase();
+  if (FORBIDDEN_EXTENSIONS.includes(ext)) {
+    return { data: null, error: "Güvenlik nedeniyle bu dosya türü yüklenemez (.exe, .bat, vb.)." };
+  }
+
   const safeName = input.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path =
     input.kind === "resource"
-      ? `resources/${input.assignmentId}/${crypto.randomUUID()}-${safeName}`
+      ? `resources/${input.assignmentId || input.templateId || "general"}/${crypto.randomUUID()}-${safeName}`
       : `submissions/${input.studentId}/${input.studentHomeworkId}/${crypto.randomUUID()}-${safeName}`;
 
   const { error: uploadError } = await client.storage
@@ -625,25 +697,47 @@ export async function uploadHomeworkAttachment(input: {
 
   if (uploadError) return { data: null, error: uploadError.message };
 
-  const insert = await client
-    .from("homework_attachments" as never)
-    .insert({
-      assignment_id: input.assignmentId || null,
-      student_homework_id: input.studentHomeworkId || null,
+  if (input.assignmentId || input.studentHomeworkId) {
+    const insert = await client
+      .from("homework_attachments" as never)
+      .insert({
+        assignment_id: input.assignmentId || null,
+        student_homework_id: input.studentHomeworkId || null,
+        attachment_kind: input.kind,
+        storage_path: path,
+        file_name: input.file.name,
+        file_size: input.file.size,
+        mime_type: input.file.type,
+        uploaded_by: input.studentId || (await client.auth.getUser()).data.user?.id,
+      } as never)
+      .select()
+      .single();
+
+    return { data: insert.data as unknown as HomeworkAttachment | null, error: insert.error?.message || null, storagePath: path };
+  }
+
+  return {
+    data: {
+      id: crypto.randomUUID(),
+      assignment_id: null,
+      student_homework_id: null,
       attachment_kind: input.kind,
       storage_path: path,
       file_name: input.file.name,
       file_size: input.file.size,
       mime_type: input.file.type,
-      uploaded_by: input.studentId || (await client.auth.getUser()).data.user?.id,
-    } as never)
-    .select()
-    .single();
-
-  return { data: insert.data as unknown as HomeworkAttachment | null, error: insert.error?.message || null };
+      created_at: new Date().toISOString(),
+    } as HomeworkAttachment,
+    error: null,
+    storagePath: path,
+  };
 }
 
 export async function openHomeworkAttachment(path: string) {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    window.open(path, "_blank", "noopener,noreferrer");
+    return { error: null };
+  }
   const { data, error } = await getSupabaseClient().storage.from("homework-attachments").createSignedUrl(path, 600);
   if (error || !data?.signedUrl) return { error: error?.message || "Dosya açılamadı." };
   window.open(data.signedUrl, "_blank", "noopener,noreferrer");

@@ -11,25 +11,28 @@ import { localizedPath } from "@/lib/routes";
 import { CONTACT } from "@/config/contact";
 import { FooterSection } from "@/components/ui/footer-section";
 
+import { usePublicSettings } from "@/lib/settings/public-settings-context";
+
 export function Footer() {
   const locale = useLocale();
   const isTr = locale === "tr";
+  const { showPricing } = usePublicSettings();
 
-  const navigationItems = isTr
+  const navigationItems = (isTr
     ? [
         { label: "Sınav Hazırlığı", href: "/tr/sinavlar/" },
         { label: "Metot", href: "/tr#method" },
         { label: "Üniversite Desteği", href: "/tr/universite-destegi/" },
         { label: "Hakkımızda", href: "/tr/hakkimizda/" },
-        { label: "Ücretler", href: "/tr/ucretler/" },
+        ...(showPricing ? [{ label: "Ücretler", href: "/tr/ucretler/" }] : []),
       ]
     : [
         { label: "Exam Preparation", href: "/en/exams/" },
         { label: "Method", href: "/en#method" },
         { label: "University Support", href: "/en/university-support/" },
         { label: "About Us", href: "/en/about/" },
-        { label: "Pricing", href: "/en/pricing/" },
-      ];
+        ...(showPricing ? [{ label: "Pricing", href: "/en/pricing/" }] : []),
+      ]);
 
   const contacts = [
     { label: "WhatsApp", value: "+90 544 293 90 40", href: "https://wa.me/905442939040", icon: MessageSquare, external: true },

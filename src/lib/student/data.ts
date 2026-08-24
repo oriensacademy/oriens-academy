@@ -12,21 +12,40 @@ export type StudentPurchase = Tables<"student_package_purchases"> & {
 };
 export type StudentPayment = Pick<Tables<"payment_transactions">, "id" | "package_id" | "amount" | "currency" | "payment_method" | "status" | "created_at" | "public_reference" | "metadata">;
 
+export type StudentAdjustment = {
+  id: string;
+  student_user_id: string;
+  package_purchase_id: string;
+  adjustment_type: "extra_lessons" | "manual_adjustment" | "package_assigned" | "package_reactivated";
+  lesson_delta: number;
+  price_amount: number | null;
+  currency: string;
+  payment_status: "pending" | "paid" | "waived" | "refunded";
+  notes: string | null;
+  created_at: string;
+};
+
 export interface StudentPortalData {
-  profile: StudentProfileRow; bookings: StudentBooking[]; lessons: StudentLessonRow[];
-  homework: StudentHomeworkRow[]; purchases: StudentPurchase[]; payments: StudentPayment[];
+  profile: StudentProfileRow;
+  bookings: StudentBooking[];
+  lessons: StudentLessonRow[];
+  homework: StudentHomeworkRow[];
+  purchases: StudentPurchase[];
+  payments: StudentPayment[];
+  adjustments: StudentAdjustment[];
   bankDetails: Awaited<ReturnType<typeof getPublicBankTransferDetails>>;
 }
 
 export async function getStudentPortalData(userId: string): Promise<{ data: StudentPortalData | null; error: string | null }> {
   const supabase = getSupabaseClient();
-  const [profile, bookings, lessons, homework, purchases, payments, bankDetails] = await Promise.all([
+  const [profile, bookings, lessons, homework, purchases, payments, adjustments, bankDetails] = await Promise.all([
     supabase.from("student_profiles").select("*").eq("id", userId).maybeSingle(),
     supabase.from("bookings").select("id,status,exam_code,custom_exam,created_at,appointment_subject,event_type,live_meeting_url,availability_slots(starts_at,ends_at)").eq("student_user_id", userId).order("created_at", { ascending: false }),
     supabase.from("student_lessons").select("*").eq("student_user_id", userId).order("lesson_date", { ascending: false }),
     supabase.from("student_homework").select("*").eq("student_user_id", userId).order("due_date", { ascending: true, nullsFirst: false }),
     supabase.from("student_package_purchases").select("*,pricing_packages(name_tr,name_en)").eq("student_user_id", userId).order("created_at", { ascending: false }),
     supabase.from("payment_transactions").select("id,package_id,amount,currency,payment_method,status,created_at,public_reference,metadata").eq("student_user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("student_package_adjustments" as never).select("*").eq("student_user_id", userId).order("created_at", { ascending: false }),
     getPublicBankTransferDetails(),
   ]);
   const firstError = profile.error || bookings.error || lessons.error || homework.error || purchases.error || payments.error;
@@ -51,6 +70,7 @@ export async function getStudentPortalData(userId: string): Promise<{ data: Stud
       homework: homework.data || [],
       purchases: (purchases.data || []) as unknown as StudentPurchase[],
       payments: payments.data || [],
+      adjustments: (adjustments.data || []) as unknown as StudentAdjustment[],
       bankDetails,
     },
     error: null,

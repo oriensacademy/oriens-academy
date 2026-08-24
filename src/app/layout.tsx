@@ -32,6 +32,8 @@ export const metadata: Metadata = {
   description: "International Exam Preparation & Academic Consultancy",
 };
 
+import { PublicSettingsProvider } from "@/lib/settings/public-settings-context";
+
 export default function RootLayout({
   children,
 }: {
@@ -52,7 +54,13 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased font-sans">
-        <AccountProvider><CartProvider><CompassLoader>{children}</CompassLoader></CartProvider></AccountProvider>
+        <PublicSettingsProvider>
+          <AccountProvider>
+            <CartProvider>
+              <CompassLoader>{children}</CompassLoader>
+            </CartProvider>
+          </AccountProvider>
+        </PublicSettingsProvider>
       </body>
     </html>
   );

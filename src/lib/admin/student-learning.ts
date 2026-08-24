@@ -259,7 +259,8 @@ export async function assignStudentPackage(input: {
   sendNotification?: boolean;
 }) {
   const supabase = getSupabaseClient();
-  const { data, error } = await (supabase.rpc as unknown as (name: string, args: unknown) => Promise<{ data: unknown; error: { message: string } | null }>)(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc(
     "admin_assign_student_package_v2",
     {
       p_student_id: input.studentId,
@@ -300,7 +301,8 @@ export async function addStudentExtraLessons(input: {
   sendNotification?: boolean;
 }) {
   const supabase = getSupabaseClient();
-  const { data, error } = await (supabase.rpc as unknown as (name: string, args: unknown) => Promise<{ data: unknown; error: { message: string } | null }>)(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc(
     "admin_add_extra_lessons",
     {
       p_purchase_id: input.purchaseId,
@@ -351,11 +353,72 @@ async function dispatchPackageNotification(payload: {
   }
 }
 
+import { writeAdminAuditLog } from "./audit";
+
 export async function addStudentPrivateNote(studentUserId: string, note: string) {
   const supabase = getSupabaseClient();
   const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { data: null, error: new Error("Oturum bulunamadı.") };
+  const trimmed = note.trim();
+  const res = await supabase
+    .from("student_admin_notes")
+    .insert({ student_user_id: studentUserId, note: trimmed, created_by: userData.user.id })
+    .select()
+    .single();
+
+  if (res.data) {
+    void writeAdminAuditLog({
+      action: "student.note.created",
+      entityType: "student_admin_note",
+      entityId: res.data.id,
+      metadata: { student_user_id: studentUserId, snippet: trimmed.slice(0, 100) },
+    });
+  }
+  return res;
+}
+
+export async function updateStudentPrivateNote(noteId: string, note: string, studentUserId: string) {
+  const supabase = getSupabaseClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return { data: null, error: new Error("Oturum bulunamadı.") };
+  const trimmed = note.trim();
+  const res = await supabase
+    .from("student_admin_notes")
+    .update({ note: trimmed, updated_at: new Date().toISOString() })
+    .eq("id", noteId)
+    .select()
+    .single();
+
+  if (res.data) {
+    void writeAdminAuditLog({
+      action: "student.note.updated",
+      entityType: "student_admin_note",
+      entityId: noteId,
+      metadata: { student_user_id: studentUserId, snippet: trimmed.slice(0, 100) },
+    });
+  }
+  return res;
+}
+
+export async function deleteStudentPrivateNote(noteId: string, studentUserId: string) {
+  const supabase = getSupabaseClient();
+  const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return { error: new Error("Oturum bulunamadı.") };
-  return supabase.from("student_admin_notes").insert({ student_user_id: studentUserId, note: note.trim(), created_by: userData.user.id }).select().single();
+
+  const res = await supabase
+    .from("student_admin_notes")
+    .delete()
+    .eq("id", noteId);
+
+  if (!res.error) {
+    void writeAdminAuditLog({
+      action: "student.note.deleted",
+      entityType: "student_admin_note",
+      entityId: noteId,
+      metadata: { student_user_id: studentUserId },
+    });
+  }
+  return res;
 }
 
 function rpcResult(data: unknown, error: { message: string } | null) {

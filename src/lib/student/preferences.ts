@@ -44,8 +44,8 @@ export async function saveStudentPreferences(
   const normalizedCountries = Array.from(new Set(countries.map((value) => value.trim()).filter(Boolean)));
 
   try {
-    const rpcFn = supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
-    const { data, error } = await rpcFn("save_student_preferences", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("save_student_preferences", {
       p_student_id: studentId,
       p_exams: normalizedExams,
       p_countries: normalizedCountries,

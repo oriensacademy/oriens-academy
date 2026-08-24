@@ -65,3 +65,37 @@ export async function listAdminAuditLogs(
     return { data: [], totalCount: 0, error: "Denetim kayıtları yüklenirken hata oluştu." };
   }
 }
+
+/**
+ * Writes an administrative audit log record.
+ */
+export async function writeAdminAuditLog(params: {
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata?: Record<string, unknown>;
+}): Promise<{ success: boolean; error: string | null }> {
+  const supabase = getSupabaseClient();
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return { success: false, error: "UNAUTHENTICATED" };
+
+    const { error } = await supabase.from("audit_logs").insert({
+      actor_user_id: userData.user.id,
+      action: params.action,
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+      metadata: (params.metadata || {}) as never,
+    });
+
+    if (error) {
+      console.warn("[Admin Audit] Error inserting audit log:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, error: null };
+  } catch (err) {
+    console.warn("[Admin Audit] Unexpected error writing audit log:", err);
+    return { success: false, error: "AUDIT_LOG_FAILED" };
+  }
+}

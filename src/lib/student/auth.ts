@@ -36,10 +36,29 @@ export function validateStudentPhone(
   }
 
   const hasPlus = trimmed.startsWith("+");
-  const digitsOnly = trimmed.replace(/\D/g, "");
+  let digitsOnly = trimmed.replace(/\D/g, "");
 
-  // International phone number length check: digits must be between 7 and 16
-  if (digitsOnly.length < 7 || digitsOnly.length > 16) {
+  // Convert leading international 00 to standard international format
+  if (!hasPlus && digitsOnly.startsWith("00")) {
+    digitsOnly = digitsOnly.slice(2);
+  }
+
+  let normalized = "";
+
+  if (hasPlus) {
+    normalized = `+${digitsOnly}`;
+  } else if (digitsOnly.startsWith("90") && digitsOnly.length === 12) {
+    normalized = `+${digitsOnly}`;
+  } else if (digitsOnly.startsWith("05") && digitsOnly.length === 11) {
+    normalized = `+90${digitsOnly.slice(1)}`;
+  } else if (digitsOnly.startsWith("5") && digitsOnly.length === 10) {
+    normalized = `+90${digitsOnly}`;
+  } else if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
+    normalized = `+${digitsOnly}`;
+  }
+
+  const normDigits = normalized.replace(/\D/g, "");
+  if (!normalized || normDigits.length < 7 || normDigits.length > 16) {
     return {
       valid: false,
       normalized: "",
@@ -47,7 +66,6 @@ export function validateStudentPhone(
     };
   }
 
-  const normalized = hasPlus ? `+${digitsOnly}` : digitsOnly;
   return { valid: true, normalized };
 }
 

@@ -55,7 +55,8 @@ export async function saveStudentExamAttempt(input: {
       return { success: false, error: "UNAUTHENTICATED" };
     }
 
-    const { data, error } = await (supabase.rpc as unknown as (name: string, args: unknown) => Promise<{ data: unknown; error: { message: string } | null }>)(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc(
       "save_student_exam_attempt",
       {
         p_exam_code: input.examCode,
@@ -118,7 +119,8 @@ export async function listStudentExamAttempts(userId: string): Promise<{ data: S
 export async function claimAnonymousExamResult(claimToken: string): Promise<{ success: boolean; attemptId?: string; error?: string | null }> {
   try {
     const supabase = getSupabaseClient();
-    const { data, error } = await (supabase.rpc as unknown as (name: string, args: unknown) => Promise<{ data: unknown; error: { message: string } | null }>)(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc(
       "claim_anonymous_exam_result",
       {
         p_claim_token: claimToken,

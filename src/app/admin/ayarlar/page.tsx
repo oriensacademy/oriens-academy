@@ -152,6 +152,13 @@ function SettingsContent() {
     if (error) {
       setErrorMsg(error);
     } else if (success) {
+      if (typeof window !== "undefined") {
+        if (key === "navigation.show_pricing") {
+          const visible = Boolean((valueObj as { visible?: boolean }).visible);
+          localStorage.setItem("oriens_dev_show_pricing", String(visible));
+          window.dispatchEvent(new CustomEvent("oriens:settings_changed"));
+        }
+      }
       setSuccessMsg(`"${key}" ayarı başarıyla güncellendi.`);
       fetchSettings();
       setTimeout(() => setSuccessMsg(null), 3000);

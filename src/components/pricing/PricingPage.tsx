@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowRight, BookOpen, CalendarDays, Compass, GraduationCap, Mail, ShieldAlert, Target } from "lucide-react";
 import { CompassMark } from "@/components/brand/CompassMark";
 import { Reveal } from "@/components/motion/Reveal";
@@ -10,9 +9,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ButtonLink } from "@/components/ui/button";
 import { CreativePricing, type PricingTier } from "@/components/ui/creative-pricing";
 import { useLocale, usePricingContent } from "@/content/locale-context";
-import { localizedPath, unifiedLoginPath } from "@/lib/routes";
+import { localizedPath } from "@/lib/routes";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { useAccount } from "@/lib/auth/account-context";
+import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { CONTACT } from "@/config/contact";
 
@@ -23,26 +23,16 @@ function indexOf(position: number) {
 export function PricingPage() {
   const locale = useLocale();
   const content = usePricingContent();
-  const router = useRouter();
   const { accountType, isInitializing } = useAccount();
+  const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [dbPackages, setDbPackages] = useState<PublicPricingPackage[]>([]);
   const [pricingLoaded, setPricingLoaded] = useState(false);
-  const redirectedRef = useRef(false);
 
   useEffect(() => {
-    if (isInitializing || redirectedRef.current) return;
-    if (accountType !== "student" && accountType !== "admin") {
-      redirectedRef.current = true;
-      const target = localizedPath("pricing", locale);
-      router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(target)}`);
-    }
-  }, [accountType, isInitializing, locale, router]);
-
-  useEffect(() => {
-    if (accountType === "student" || accountType === "admin") {
-      getPublicPricingPackages().then((rows) => setDbPackages(rows)).finally(() => setPricingLoaded(true));
-    }
-  }, [accountType]);
+    getPublicPricingPackages()
+      .then((rows) => setDbPackages(rows))
+      .finally(() => setPricingLoaded(true));
+  }, []);
 
   const bookingHref = localizedPath("booking", locale);
   const ownerPackageIds = new Set(["single", "package5", "package10", "package20", "package30"]);
@@ -96,8 +86,39 @@ export function PricingPage() {
     };
   });
 
-  if (isInitializing || (accountType !== "student" && accountType !== "admin")) {
+  if (isInitializing || settingsLoading) {
     return <AccountWaveLoader />;
+  }
+
+  // When pricing is toggled OFF and user is not admin
+  if (!showPricing && accountType !== "admin") {
+    return (
+      <section className="min-h-[70vh] bg-[#F6F8F3] pt-32 pb-20 md:pt-40 md:pb-28">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-sage-soft text-primary shadow-xs">
+            <ShieldAlert className="size-8 text-[#819586]" />
+          </div>
+          <h1 className="mt-6 font-heading text-3xl text-[#10271B] sm:text-4xl md:text-5xl">
+            {locale === "tr" ? "Paket ve Fiyat Bilgileri Güncelleniyor" : "Package & Fee Information Being Updated"}
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#68756C] md:text-lg">
+            {locale === "tr"
+              ? "Eğitim paketlerimizin içerik ve ücret yapıları şu anda güncellenmektedir. Akademik hedeflerinize en uygun özel çalışma programını belirlemek ve detaylı bilgi almak için ücretsiz tanışma görüşmesi planlayabilir veya bize doğrudan ulaşabilirsiniz."
+              : "Our lesson package details and fee structures are currently being updated. To determine the most suitable study programme for your academic goals, you can schedule a complimentary consultation or contact us directly."}
+          </p>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <ButtonLink href={bookingHref} size="lg" className="h-12 px-6">
+              {locale === "tr" ? "Ücretsiz Görüşme Planla" : "Book a Free Consultation"}
+              <ArrowRight className="size-4" />
+            </ButtonLink>
+            <ButtonLink href={localizedPath("contact", locale)} variant="outline" size="lg" className="h-12 px-6">
+              {locale === "tr" ? "Bize Ulaşın" : "Contact Us"}
+            </ButtonLink>
+          </div>
+        </div>
+      </section>
+    );
   }
 
   return (

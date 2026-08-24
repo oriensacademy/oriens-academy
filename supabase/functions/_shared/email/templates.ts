@@ -156,6 +156,7 @@ export type HomeworkEmailData = {
   assignmentTitle: string;
   subjectOrLesson: string;
   dueDate: string;
+  contentType?: "homework" | "lesson_note" | "worksheet" | "resource" | "mock_exam";
   description?: string | null;
   submissionText?: string | null;
   teacherFeedback?: string | null;
@@ -1324,39 +1325,74 @@ export function renderStudentPackageRenewalEmail(data: PackageStatusEmailData) {
 // ============================================================================
 
 /**
- * 20. Yeni Ödev Atandı — Öğrenciye
+ * 20. Yeni İçerik / Ödev Atandı — Öğrenciye
  */
 export function renderStudentHomeworkAssignedEmail(data: HomeworkEmailData) {
   const isTr = data.locale === "tr";
-  const subject = isTr
-    ? "Yeni Ödeviniz Var | Oriens Academy"
-    : `New Homework Assigned: ${data.assignmentTitle} | Oriens Academy`;
+  const type = data.contentType || "homework";
+
+  const subjectMapTr: Record<string, string> = {
+    homework: "Yeni Ödeviniz Var | Oriens Academy",
+    lesson_note: "Yeni Ders Notunuz Var | Oriens Academy",
+    worksheet: "Yeni Çalışma Kağıdınız Var | Oriens Academy",
+    resource: "Yeni Eğitim Materyaliniz Var | Oriens Academy",
+    mock_exam: "Yeni Denemeniz Var | Oriens Academy",
+  };
+
+  const subjectMapEn: Record<string, string> = {
+    homework: `New Homework Assigned: ${data.assignmentTitle} | Oriens Academy`,
+    lesson_note: `New Lesson Note Available: ${data.assignmentTitle} | Oriens Academy`,
+    worksheet: `New Worksheet Assigned: ${data.assignmentTitle} | Oriens Academy`,
+    resource: `New Study Material Available: ${data.assignmentTitle} | Oriens Academy`,
+    mock_exam: `New Mock Exam Assigned: ${data.assignmentTitle} | Oriens Academy`,
+  };
+
+  const titleMapTr: Record<string, string> = {
+    homework: "Yeni Ödeviniz Var",
+    lesson_note: "Yeni Ders Notunuz Var",
+    worksheet: "Yeni Çalışma Kağıdınız Var",
+    resource: "Yeni Eğitim Materyaliniz Var",
+    mock_exam: "Yeni Denemeniz Var",
+  };
+
+  const titleMapEn: Record<string, string> = {
+    homework: "New Homework Assigned",
+    lesson_note: "New Lesson Note",
+    worksheet: "New Worksheet Assigned",
+    resource: "New Study Material",
+    mock_exam: "New Mock Exam Assigned",
+  };
+
+  const subject = (isTr ? subjectMapTr[type] : subjectMapEn[type]) || (isTr ? "Yeni İçeriğiniz Var | Oriens Academy" : `New Content: ${data.assignmentTitle} | Oriens Academy`);
+  const headerTitle = (isTr ? titleMapTr[type] : titleMapEn[type]) || (isTr ? "Yeni İçeriğiniz Var" : "New Content Assigned");
 
   const formattedDueDate = formatDate(data.dueDate, data.locale);
 
-  const cardHtml = summaryCard(isTr ? "Ödev Detayları" : "Assignment Details", [
-    { label: isTr ? "Ödev Başlığı" : "Title", value: escapeHtml(data.assignmentTitle) },
+  const cardHtml = summaryCard(isTr ? "İçerik Detayları" : "Content Details", [
+    { label: isTr ? "Başlık" : "Title", value: escapeHtml(data.assignmentTitle) },
     { label: isTr ? "Ders / Konu" : "Subject", value: escapeHtml(data.subjectOrLesson) },
-    { label: isTr ? "Son Teslim Tarihi" : "Due Date", value: `<strong style="color:${PALETTE.goldDark};">${formattedDueDate}</strong>` },
+    ...(type === "lesson_note" || type === "resource" ? [] : [
+      { label: isTr ? "Son Teslim Tarihi" : "Due Date", value: `<strong style="color:${PALETTE.goldDark};">${formattedDueDate}</strong>` }
+    ]),
     { label: isTr ? "Durum" : "Status", value: infoBadge(isTr ? "ATANDI" : "ASSIGNED", "sage") },
     { label: isTr ? "Açıklama / Yönergeler" : "Instructions", value: data.description ? escapeHtml(data.description) : (isTr ? "Detaylar öğrenci portalında belirtilmiştir." : "See student portal for details."), fullWidth: true },
   ]);
 
   const bodyHtml = `
-    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Eğitmeniniz tarafından <strong>${escapeHtml(data.subjectOrLesson)}</strong> dersi için yeni bir ödev atanmıştır.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your instructor has assigned a new homework for <strong>${escapeHtml(data.subjectOrLesson)}</strong>.`}</div>
+    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Eğitmeniniz tarafından <strong>${escapeHtml(data.subjectOrLesson)}</strong> için yeni bir içerik paylaşılmıştır.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your instructor has shared new material for <strong>${escapeHtml(data.subjectOrLesson)}</strong>.`}</div>
     ${cardHtml}
-    ${actionButton(isTr ? "Ödevi Görüntüle ve Yanıtla" : "View & Submit Assignment", `${BASE_URL}/${data.locale}/hesabim`)}`;
+    ${actionButton(isTr ? "İçeriği Görüntüle" : "View Content", `${BASE_URL}/${data.locale}/hesabim`)}`;
 
   const html = renderEmailShell({
     locale: data.locale,
-    eyebrow: isTr ? "Akademik Takip" : "Homework Assigned",
-    title: isTr ? "Yeni Ödeviniz Var" : "New Homework Assigned",
+    eyebrow: isTr ? "Akademik Takip" : "Academic Tracking",
+    title: headerTitle,
     bodyHtml,
-    footerNote: isTr ? "Ödevinizi son teslim tarihinden önce öğrenci portalı üzerinden iletebilirsiniz." : "Please submit your work before the due date via the student portal.",
+    footerNote: isTr ? "İçeriğe dilediğiniz zaman öğrenci portalı üzerinden erişebilirsiniz." : "You can access your materials anytime via the student portal.",
     footerEmail: "support@oriens-academy.com",
   });
 
-  const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${data.assignmentTitle} - ${isTr ? "Teslim" : "Due"}: ${formattedDueDate}`]);
+  const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${data.assignmentTitle}`]);
   return { subject, html, text };
 }
 

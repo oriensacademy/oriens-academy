@@ -18,10 +18,14 @@ import {
   Check,
   RotateCcw,
   CalendarPlus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   addStudentPrivateNote,
+  updateStudentPrivateNote,
+  deleteStudentPrivateNote,
   assignStudentPackage,
   addStudentExtraLessons,
   cancelStudentLesson,
@@ -659,9 +663,9 @@ function HomeworkPanel({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 sm:flex-row sm:items-center sm:justify-between shadow-xs">
         <div>
-          <h3 className="text-sm font-bold text-ink">Ödevler & Değerlendirmeler</h3>
+          <h3 className="text-sm font-bold text-ink">Ödevler & Materyaller</h3>
           <p className="text-xs text-muted-foreground">
-            Hazır şablonlardan ödev atayın, teslimleri ve eğitmen geri bildirimlerini yönetin.
+            Öğrenciye kütüphaneden içerik/ödev atayın, ders notlarını paylaşın ve teslim durumlarını izleyin.
           </p>
         </div>
         <button
@@ -669,14 +673,14 @@ function HomeworkPanel({
           onClick={() => setAssignOpen(true)}
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer shadow-xs"
         >
-          <CalendarPlus className="size-4" /> Ödev Ata
+          <CalendarPlus className="size-4" /> İçerik / Ödev Ata
         </button>
       </div>
       <div className="space-y-2.5">
         {homework.length ? (
           homework.map((item) => <HomeworkReview key={item.id} item={item} changed={changed} />)
         ) : (
-          <Empty>Henüz ödev kaydı bulunmuyor.</Empty>
+          <Empty>Henüz atanmış ödev veya ders materyali bulunmuyor.</Empty>
         )}
       </div>
       <AssignHomeworkModal
@@ -1050,7 +1054,9 @@ function PackagePanel({
                       className={field}
                     >
                       <option value="">Seçiniz...</option>
-                      {packages.map((p) => (
+                      {packages
+                        .filter((p) => p.id !== "custom" && (p.lesson_count || 0) > 0 && !p.name_tr?.toLowerCase().includes("özel"))
+                        .map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name_tr || p.name_en || p.id} ({p.lesson_count} Ders · {money(Number(p.current_total ?? p.price_amount ?? 0), "TRY")})
                         </option>
@@ -1539,9 +1545,16 @@ function NotesPanel({
   changed: () => void;
 }) {
   const [note, setNote] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!note.trim()) return;
     setBusy(true);
+    setError("");
     const { error } = await addStudentPrivateNote(userId, note);
     setBusy(false);
     if (error) setError(error.message);
@@ -1550,33 +1563,175 @@ function NotesPanel({
       changed();
     }
   }
+
+  async function handleSaveEdit(id: string) {
+    if (!editingText.trim()) return;
+    setActionBusy(true);
+    setError("");
+    const { error } = await updateStudentPrivateNote(id, editingText, userId);
+    setActionBusy(false);
+    if (error) setError(error.message);
+    else {
+      setEditingId(null);
+      setEditingText("");
+      changed();
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setActionBusy(true);
+    setError("");
+    const { error } = await deleteStudentPrivateNote(id, userId);
+    setActionBusy(false);
+    if (error) setError(error.message);
+    else {
+      setDeleteConfirmId(null);
+      changed();
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <form onSubmit={submit} className="space-y-2 rounded-xl border border-border p-3">
-        <h4 className="flex items-center gap-2 text-xs font-bold">
-          <StickyNote className="size-4" />
-          Özel Yönetici Notu
+      <form onSubmit={submit} className="space-y-2 rounded-2xl border border-border bg-surface p-4 shadow-xs">
+        <h4 className="flex items-center gap-2 text-xs font-bold text-ink">
+          <StickyNote className="size-4 text-primary" />
+          Özel Yönetici Notu Ekle
         </h4>
+        <p className="text-[11px] text-muted-foreground">
+          Bu notlar yalnızca yöneticiler tarafından görüntülenebilir; öğrenci paneline asla yansıtılmaz.
+        </p>
         <textarea
           required
           maxLength={5000}
+          rows={3}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           className={field}
-          placeholder="Bu not öğrenci tarafından görülemez."
+          placeholder="Öğrenci hakkında özel notlar, çalışma hedefleri veya danışmanlık detayları..."
         />
-        <Submit busy={busy}>Not Ekle</Submit>
+        <div className="flex justify-end">
+          <Submit busy={busy}>Not Ekle</Submit>
+        </div>
       </form>
-      {notes.length ? (
-        notes.map((n) => (
-          <Card key={n.id}>
-            <p className="whitespace-pre-wrap text-foreground">{n.note}</p>
-            <p>{new Date(n.created_at).toLocaleString("tr-TR")}</p>
-          </Card>
-        ))
-      ) : (
-        <Empty>Özel not yok.</Empty>
-      )}
+
+      <div className="space-y-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Kayıtlı Özel Notlar ({notes.length})
+        </h4>
+
+        {notes.length ? (
+          notes.map((n) => {
+            const isEditing = editingId === n.id;
+            const isDeleting = deleteConfirmId === n.id;
+            const isEdited = Boolean(n.updated_at && n.updated_at !== n.created_at);
+
+            return (
+              <div key={n.id} className="rounded-2xl border border-border bg-surface p-4 text-xs space-y-3 shadow-xs">
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <textarea
+                      required
+                      maxLength={5000}
+                      rows={3}
+                      value={editingText}
+                      onChange={(e) => setEditingText(e.target.value)}
+                      className={field}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingText("");
+                        }}
+                        className="rounded-xl border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-surface-muted cursor-pointer"
+                      >
+                        İptal
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionBusy || !editingText.trim()}
+                        onClick={() => void handleSaveEdit(n.id)}
+                        className="inline-flex items-center gap-1 rounded-xl bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer disabled:opacity-50"
+                      >
+                        <Check className="size-3.5" />
+                        {actionBusy ? "Kaydediliyor..." : "Kaydet"}
+                      </button>
+                    </div>
+                  </div>
+                ) : isDeleting ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50/50 p-3.5 space-y-2 text-xs">
+                    <p className="font-semibold text-red-900">Bu notu silmek istediğinizden emin misiniz?</p>
+                    <p className="text-[11px] text-red-700 italic line-clamp-2">&quot;{n.note}&quot;</p>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={() => setDeleteConfirmId(null)}
+                        className="rounded-xl border border-border bg-white px-3 py-1 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                      >
+                        Vazgeç
+                      </button>
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={() => void handleDelete(n.id)}
+                        className="rounded-xl bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                      >
+                        {actionBusy ? "Siliniyor..." : "Evet, Sil"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink font-sans">{n.note}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2.5 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span>{new Date(n.created_at).toLocaleString("tr-TR")}</span>
+                        {isEdited && (
+                          <span className="italic text-muted-foreground">
+                            (düzenlendi: {new Date(n.updated_at).toLocaleString("tr-TR")})
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(n.id);
+                            setEditingText(n.note);
+                            setDeleteConfirmId(null);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-border bg-white px-2 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors"
+                          title="Notu Düzenle"
+                        >
+                          <Pencil className="size-3 text-muted-foreground" />
+                          <span>Düzenle</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteConfirmId(n.id);
+                            setEditingId(null);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-50 cursor-pointer transition-colors"
+                          title="Notu Sil"
+                        >
+                          <Trash2 className="size-3 text-red-600" />
+                          <span>Sil</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <Empty>Henüz kayıtlı özel yönetici notu bulunmuyor.</Empty>
+        )}
+      </div>
     </div>
   );
 }

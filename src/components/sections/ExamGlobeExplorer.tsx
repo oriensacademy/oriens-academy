@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { WireframeDottedGlobe, type UniversityMarker } from "@/components/ui/wireframe-dotted-globe";
 import { examMapProfiles, type ExamUniversityRelation, type AdmissionRelationship } from "@/data/exam-university-map";
+import { getVerifiedOfficialUniversityUrl } from "@/data/official-universities";
 import { useLocale } from "@/content/locale-context";
 import { ExternalLink, Compass, CheckCircle2, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -152,7 +153,24 @@ export function ExamGlobeExplorer() {
                 </div>
 
                 <h3 className="font-serif text-xl font-bold text-ink">
-                  {selectedRelation.university.name}
+                  {(() => {
+                    const officialUrl = getVerifiedOfficialUniversityUrl(selectedRelation.university.name);
+                    if (officialUrl) {
+                      return (
+                        <a
+                          href={officialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 hover:text-primary hover:underline"
+                          title={isTr ? "Resmi Üniversite Web Sitesi" : "Official University Website"}
+                        >
+                          <span>{selectedRelation.university.name}</span>
+                          <ExternalLink className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        </a>
+                      );
+                    }
+                    return <span>{selectedRelation.university.name}</span>;
+                  })()}
                 </h3>
                 {selectedRelation.programScope && (
                   <p className="text-xs text-muted-foreground mt-1 font-sans">
@@ -221,7 +239,25 @@ export function ExamGlobeExplorer() {
                     </span>
                   </div>
                   <h4 className="font-serif text-sm font-bold text-ink leading-snug">
-                    {rel.university.name}
+                    {(() => {
+                      const officialUrl = getVerifiedOfficialUniversityUrl(rel.university.name);
+                      if (officialUrl) {
+                        return (
+                          <a
+                            href={officialUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 hover:text-primary hover:underline"
+                            title={isTr ? "Resmi Üniversite Web Sitesi" : "Official University Website"}
+                          >
+                            <span>{rel.university.name}</span>
+                            <ExternalLink className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                          </a>
+                        );
+                      }
+                      return <span>{rel.university.name}</span>;
+                    })()}
                   </h4>
                 </div>
 

@@ -3,11 +3,12 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowRight, GraduationCap, Route } from "lucide-react";
+import { ArrowRight, ExternalLink, GraduationCap, Route } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { useExamsContent, useLocale } from "@/content/locale-context";
 import { studyDestinations } from "@/data/study-destinations";
+import { getVerifiedOfficialUniversityUrl } from "@/data/official-universities";
 import { examDetailPath, localizedPath } from "@/lib/routes";
 import { DestinationExamPanel } from "./DestinationExamPanel";
 import { DestinationSelector } from "./DestinationSelector";
@@ -126,7 +127,26 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
                   <div className="flex items-start gap-3">
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sage-soft text-ink"><GraduationCap className="size-4" aria-hidden="true" /></span>
                     <div className="min-w-0">
-                      <h4 className="text-sm font-semibold leading-5 text-ink">{university.name}</h4>
+                      <h4 className="text-sm font-semibold leading-5 text-ink">
+                        {(() => {
+                          const officialUrl = getVerifiedOfficialUniversityUrl(university.name);
+                          if (officialUrl) {
+                            return (
+                              <a
+                                href={officialUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 hover:text-primary hover:underline"
+                                title={isTr ? "Resmi Üniversite Web Sitesi" : "Official University Website"}
+                              >
+                                <span>{university.name}</span>
+                                <ExternalLink className="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                              </a>
+                            );
+                          }
+                          return <span>{university.name}</span>;
+                        })()}
+                      </h4>
                       <p className="mt-1 text-xs text-muted-foreground">{university.city ?? university.country}</p>
                     </div>
                   </div>
