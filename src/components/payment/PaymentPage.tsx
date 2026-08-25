@@ -24,7 +24,6 @@ import { processStudentCheckout, type StudentCheckoutResult } from "@/lib/paymen
 import { validateCoupon } from "@/lib/coupons/client";
 import type { CouponValidationSuccess } from "@/lib/coupons/types";
 import type { BankTransferDetails, PaymentMethod } from "@/lib/payments/types";
-import { pendingBankCapabilities } from "@/lib/payments/bank-provider";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { formatCurrency } from "@/lib/format/currency";
 import { useAccount } from "@/lib/auth/account-context";
@@ -46,7 +45,8 @@ export function PaymentPage() {
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState("");
   const [bankDetails, setBankDetails] = useState<BankTransferDetails | null>(null);
-  const [method, setMethod] = useState<PaymentMethod>("bank_transfer");
+  const [method, setMethod] = useState<PaymentMethod>("card");
+  const [cardValid, setCardValid] = useState(false);
   const [payerName, setPayerName] = useState(user?.user_metadata?.full_name || "");
   const [payerEmail, setPayerEmail] = useState(user?.email || "");
   const [payerPhone, setPayerPhone] = useState(user?.user_metadata?.phone || "");
@@ -60,9 +60,6 @@ export function PaymentPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [couponError, setCouponError] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationSuccess | null>(null);
-
-  // Mock Card action for development
-  const [mockCardAction, setMockCardAction] = useState<"success" | "failure" | "cancel">("success");
 
   // Completed order view
   const [completedOrder, setCompletedOrder] = useState<StudentCheckoutResult | null>(null);
@@ -103,12 +100,6 @@ export function PaymentPage() {
     () => packages.find((item) => item.id === selectedPackageId) ?? null,
     [packages, selectedPackageId]
   );
-
-  const isDev = process.env.NODE_ENV === "development";
-  const canSubmitCard =
-    isDev ||
-    (pendingBankCapabilities.configured &&
-      (pendingBankCapabilities.hostedPayment || pendingBankCapabilities.tokenizedPayment));
 
   const money = (value: number, currency = "TRY") => {
     return formatCurrency(value, { currency, locale });
@@ -152,7 +143,7 @@ export function PaymentPage() {
       !turnstileToken ||
       !terms ||
       submitting ||
-      (method === "card" ? !canSubmitCard : !bankDetails)
+      (method === "card" ? !cardValid : !bankDetails)
     ) {
       return;
     }
@@ -172,7 +163,6 @@ export function PaymentPage() {
       payerPhone,
       locale,
       idempotencyKey: idempotencyKeyRef.current,
-      mockCardAction: isDev && method === "card" ? mockCardAction : undefined,
     });
 
     setSubmitting(false);
@@ -257,9 +247,13 @@ export function PaymentPage() {
                   ? locale === "tr"
                     ? "Eğitim paketiniz hesabınıza tanımlandı. Derslerinizi hemen planlamaya başlayabilirsiniz."
                     : "Your package is now active in your account. You may begin scheduling lessons."
-                  : locale === "tr"
-                    ? "Havale / EFT bildiriminiz kaydedildi. Banka transferiniz onaylandığında paketiniz otomatik olarak aktif olacaktır."
-                    : "Your bank transfer request is registered. Once confirmed by our team, your package will be activated."}
+                  : completedOrder.paymentMethod === "card"
+                    ? locale === "tr"
+                      ? "Kartlı ödeme talebiniz banka sanal POS sistemine iletilmiştir. Banka onayı tamamlandığında paketiniz aktif olacaktır."
+                      : "Your card payment request has been submitted to the bank Virtual POS gateway. Your package will be activated upon bank confirmation."
+                    : locale === "tr"
+                      ? "Havale / EFT bildiriminiz kaydedildi. Banka transferiniz onaylandığında paketiniz otomatik olarak aktif olacaktır."
+                      : "Your bank transfer request is registered. Once confirmed by our team, your package will be activated."}
               </p>
             </div>
 
@@ -276,7 +270,7 @@ export function PaymentPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between border-b border-border pb-3 text-sm">
-                <span className="text-muted-foreground">{locale === "tr" ? "Ödenecek Tutar" : "Amount to Transfer"}</span>
+                <span className="text-muted-foreground">{locale === "tr" ? "Tutar" : "Amount"}</span>
                 <span className="text-lg font-bold text-ink">
                   {money(completedOrder.finalAmount ?? finalPrice, completedOrder.currency || selectedPackage?.currency)}
                 </span>
@@ -289,8 +283,8 @@ export function PaymentPage() {
                       ? "Banka Havalesi / EFT"
                       : "Bank Transfer"
                     : locale === "tr"
-                      ? "Kredi / Banka Kartı"
-                      : "Credit / Debit Card"}
+                      ? "Kredi / Banka Kartı (3D Secure)"
+                      : "Credit / Debit Card (3D Secure)"}
                 </span>
               </div>
             </div>
@@ -562,9 +556,7 @@ export function PaymentPage() {
                   {method === "card" ? (
                     <HostedCardPanel
                       locale={locale}
-                      mockAction={mockCardAction}
-                      onMockActionChange={setMockCardAction}
-                      enabled={canSubmitCard}
+                      onValidityChange={setCardValid}
                     />
                   ) : (
                     <BankTransferPanel locale={locale} details={bankDetails} />
@@ -656,9 +648,9 @@ export function PaymentPage() {
                     !terms ||
                     !turnstileToken ||
                     submitting ||
-                    (method === "card" ? !canSubmitCard : !bankDetails)
+                    (method === "card" ? !cardValid : !bankDetails)
                   }
-                  className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-forest disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-forest disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
                 >
                   {submitting ? (
                     <>

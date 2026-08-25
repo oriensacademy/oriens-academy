@@ -1,31 +1,69 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
-import { AlertTriangle, CheckCircle2, CreditCard, LockKeyhole, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
+import { useState, useId, useEffect, type ChangeEvent } from "react";
+import Image from "next/image";
+import { CreditCard, LockKeyhole, RotateCcw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
 
+export interface CardFormState {
+  cardNumber: string;
+  cardHolder: string;
+  expiry: string;
+  cvv: string;
+}
+
 export function HostedCardPanel({
   locale,
-  mockAction,
-  onMockActionChange,
-  enabled,
+  onValidityChange,
 }: {
   locale: Locale;
-  mockAction?: "success" | "failure" | "cancel";
-  onMockActionChange?: (action: "success" | "failure" | "cancel") => void;
-  enabled: boolean;
+  onValidityChange?: (isValid: boolean) => void;
 }) {
   const copy = getPaymentCopy(locale);
   const isTr = locale === "tr";
   const [flipped, setFlipped] = useState(false);
-  const isDev = process.env.NODE_ENV === "development";
+  const numberId = useId();
+  const nameId = useId();
+  const expId = useId();
+  const cscId = useId();
 
-  // Ephemeral interactive card inputs (never persisted or stored)
+  // Ephemeral interactive card inputs (never persisted to storage, cookies, or database)
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
+
+  // Card brand detection
+  const cleanNumber = cardNumber.replace(/\D/g, "");
+  const isVisa = cleanNumber.startsWith("4");
+  const isMastercard =
+    /^5[1-5]/.test(cleanNumber) ||
+    /^(222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)/.test(cleanNumber);
+
+  // Expiry validation (MM/YY, valid month 01-12, not expired)
+  const isExpiryValid = (() => {
+    const clean = expiry.replace(/\D/g, "");
+    if (clean.length !== 4) return false;
+    const month = parseInt(clean.slice(0, 2), 10);
+    const year = parseInt(`20${clean.slice(2)}`, 10);
+    if (month < 1 || month > 12) return false;
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    if (year < currentYear) return false;
+    if (year === currentYear && month < currentMonth) return false;
+    return true;
+  })();
+
+  const isCardNumberValid = cleanNumber.length === 16;
+  const isCardHolderValid = cardHolder.trim().length >= 3;
+  const isCvvValid = cvv.length >= 3 && cvv.length <= 4;
+  const isFormValid = isCardNumberValid && isCardHolderValid && isExpiryValid && isCvvValid;
+
+  useEffect(() => {
+    onValidityChange?.(isFormValid);
+  }, [isFormValid, onValidityChange]);
 
   const handleCardNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
@@ -47,15 +85,6 @@ export function HostedCardPanel({
     setCvv(raw);
   };
 
-  if (!enabled) {
-    return (
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden="true" />
-        <p className="leading-relaxed">{copy.cardPending}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* 3D Flip Card Preview */}
@@ -75,7 +104,19 @@ export function HostedCardPanel({
             <span className="absolute inset-0 flex flex-col justify-between rounded-[22px] border border-primary/35 bg-forest p-6 text-left text-white shadow-editorial [backface-visibility:hidden]">
               <span className="flex items-center justify-between">
                 <span className="font-heading text-xl tracking-tight">Oriens Academy</span>
-                <LockKeyhole className="size-5 text-warm-accent" />
+                <span className="flex items-center gap-2">
+                  {isVisa && (
+                    <span className="rounded bg-white/20 px-2 py-0.5 font-heading text-xs font-bold tracking-wider text-white">
+                      VISA
+                    </span>
+                  )}
+                  {isMastercard && (
+                    <span className="rounded bg-white/20 px-2 py-0.5 font-heading text-xs font-bold tracking-wider text-white">
+                      MASTERCARD
+                    </span>
+                  )}
+                  {!isVisa && !isMastercard && <LockKeyhole className="size-5 text-warm-accent" />}
+                </span>
               </span>
               <span className="font-mono text-xl tracking-[0.18em] text-white">
                 {cardNumber || "•••• •••• •••• ••••"}
@@ -104,12 +145,12 @@ export function HostedCardPanel({
       {/* Card Input Controls */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label htmlFor="cc-number" className="block text-xs font-semibold text-ink">
-            {isTr ? "Kart Numarası" : "Card Number"}
+          <label htmlFor={numberId} className="block text-xs font-semibold text-ink">
+            {copy.cardNumber}
           </label>
           <div className="relative mt-1.5">
             <input
-              id="cc-number"
+              id={numberId}
               name="cardnumber"
               type="text"
               inputMode="numeric"
@@ -126,11 +167,11 @@ export function HostedCardPanel({
         </div>
 
         <div className="sm:col-span-2">
-          <label htmlFor="cc-name" className="block text-xs font-semibold text-ink">
-            {isTr ? "Kart Üzerindeki İsim" : "Cardholder Name"}
+          <label htmlFor={nameId} className="block text-xs font-semibold text-ink">
+            {copy.cardHolder}
           </label>
           <input
-            id="cc-name"
+            id={nameId}
             name="ccname"
             type="text"
             autoComplete="cc-name"
@@ -143,11 +184,11 @@ export function HostedCardPanel({
         </div>
 
         <div>
-          <label htmlFor="cc-exp" className="block text-xs font-semibold text-ink">
-            {isTr ? "Son Kullanma Tarihi" : "Expiry Date"}
+          <label htmlFor={expId} className="block text-xs font-semibold text-ink">
+            {copy.expiry}
           </label>
           <input
-            id="cc-exp"
+            id={expId}
             name="ccexp"
             type="text"
             inputMode="numeric"
@@ -162,11 +203,11 @@ export function HostedCardPanel({
         </div>
 
         <div>
-          <label htmlFor="cc-csc" className="block text-xs font-semibold text-ink">
+          <label htmlFor={cscId} className="block text-xs font-semibold text-ink">
             {isTr ? "Güvenlik Kodu (CVV)" : "CVV Code"}
           </label>
           <input
-            id="cc-csc"
+            id={cscId}
             name="cvv"
             type="password"
             inputMode="numeric"
@@ -182,74 +223,29 @@ export function HostedCardPanel({
         </div>
       </div>
 
-      {/* Security & 3D Secure Protection Notice */}
-      <div className="flex items-start gap-3 rounded-xl border border-[#DDE4DC] bg-[#F8FAF7] p-4 text-xs text-[#10271B]">
-        <ShieldCheck className="size-5 shrink-0 text-[#819586] mt-0.5" />
-        <div className="space-y-1">
-          <p className="font-semibold text-ink">
-            {isTr ? "256-Bit SSL & 3D Secure Güvencesi" : "256-Bit SSL & 3D Secure Protection"}
-          </p>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            {copy.secureText}
-          </p>
+      {/* Security & 3D Secure Protection Notice with Visa/Mastercard Marks */}
+      <div className="rounded-xl border border-[#DDE4DC] bg-[#F8FAF7] p-4 text-xs text-[#10271B]">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="size-5 shrink-0 text-[#819586] mt-0.5" />
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="font-semibold text-ink">
+                {isTr ? "256-Bit SSL & 3D Secure Güvencesi" : "256-Bit SSL & 3D Secure Protection"}
+              </p>
+              <Image
+                src="/images/payment-methods.png"
+                alt="Visa & Mastercard"
+                width={120}
+                height={30}
+                className="h-4 w-auto object-contain opacity-90"
+              />
+            </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {copy.secureText}
+            </p>
+          </div>
         </div>
       </div>
-
-      {/* Local Dev Simulator */}
-      {isDev && onMockActionChange && (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 text-xs">
-          <div className="flex items-center gap-2 font-semibold text-indigo-950">
-            <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-white">
-              Local Dev Only
-            </span>
-            <span>{isTr ? "Kart Ödeme Simülatörü" : "Card Payment Simulator"}</span>
-          </div>
-          <p className="mt-1 text-muted-foreground">
-            {isTr
-              ? "Banka sanal POS entegrasyonu tamamlanana kadar yalnızca localhost ortamında senaryo testi yapabilirsiniz."
-              : "Until bank virtual POS is configured, scenario testing is available exclusively on localhost."}
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <button
-              type="button"
-              onClick={() => onMockActionChange("success")}
-              className={`flex items-center justify-center gap-1.5 rounded-lg border p-2 text-xs font-semibold transition-colors cursor-pointer ${
-                mockAction === "success"
-                  ? "border-emerald-600 bg-emerald-600 text-white"
-                  : "border-border bg-white text-ink hover:bg-emerald-50"
-              }`}
-            >
-              <CheckCircle2 className="size-3.5" />
-              {isTr ? "Başarılı (Mock)" : "Success (Mock)"}
-            </button>
-            <button
-              type="button"
-              onClick={() => onMockActionChange("failure")}
-              className={`flex items-center justify-center gap-1.5 rounded-lg border p-2 text-xs font-semibold transition-colors cursor-pointer ${
-                mockAction === "failure"
-                  ? "border-rose-600 bg-rose-600 text-white"
-                  : "border-border bg-white text-ink hover:bg-rose-50"
-              }`}
-            >
-              <XCircle className="size-3.5" />
-              {isTr ? "Banka Reddi (Mock)" : "Decline (Mock)"}
-            </button>
-            <button
-              type="button"
-              onClick={() => onMockActionChange("cancel")}
-              className={`flex items-center justify-center gap-1.5 rounded-lg border p-2 text-xs font-semibold transition-colors cursor-pointer ${
-                mockAction === "cancel"
-                  ? "border-amber-600 bg-amber-600 text-white"
-                  : "border-border bg-white text-ink hover:bg-amber-50"
-              }`}
-            >
-              <AlertTriangle className="size-3.5" />
-              {isTr ? "İptal (Mock)" : "Cancel (Mock)"}
-            </button>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

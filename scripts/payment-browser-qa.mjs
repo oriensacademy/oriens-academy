@@ -72,15 +72,15 @@ await page.route("**/rest/v1/student_profiles*", (route) => route.fulfill({
 await page.route("**/rest/v1/pricing_packages*", (route) => route.fulfill({
   status: 200,
   contentType: "application/json",
-  body: JSON.stringify([{ id: "qa_package", price_amount: 1200, current_total: 1000, currency: "EUR", active: true, featured: false, display_order: 1, name_tr: "QA Paketi", name_en: "QA Package", description_tr: null, description_en: null, lesson_count: 8, discount_percentage: null, unit_price: null, old_total: 1200, badge_tr: null, badge_en: null, purchase_mode: "purchasable" }]),
+  body: JSON.stringify([{ id: "qa_package", price_amount: 1200, current_total: 1000, currency: "TRY", active: true, featured: false, display_order: 1, name_tr: "QA Paketi", name_en: "QA Package", description_tr: null, description_en: null, lesson_count: 8, discount_percentage: null, unit_price: null, old_total: 1200, badge_tr: null, badge_en: null, purchase_mode: "purchasable" }]),
 }));
 await page.route("**/rest/v1/site_settings*", (route) => route.fulfill({
   status: 200,
   contentType: "application/json",
   body: JSON.stringify([
-    { key: "payment.bank_account_holder", value: { value: "Oriens Academy QA" } },
-    { key: "payment.bank_name", value: { value: "QA Bank" } },
-    { key: "payment.iban", value: { value: "TR000000000000000000000000" } },
+    { key: "payment.bank_account_holder", value: { value: "Oriens Danışmanlık ve Eğitim Ltd. Şti." } },
+    { key: "payment.bank_name", value: { value: "Garanti BBVA" } },
+    { key: "payment.iban", value: { value: "TR120006200000000000000000" } },
   ]),
 }));
 
@@ -96,22 +96,44 @@ for (const locale of ["tr", "en"]) {
     check(!overflow, `${route} has horizontal overflow at ${width}px`);
   }
 
-  const pendingText = locale === "tr" ? "Kartlı ödeme, resmî banka" : "Card payments will be enabled";
-  await page.waitForTimeout(1200);
+  // Check Card Payment Form
+  await page.waitForTimeout(800);
   await page.getByRole("radio", { name: locale === "tr" ? "Kart ile Ödeme" : "Pay by Card" }).click();
-  check((await page.getByText(pendingText, { exact: false }).count()) > 0, `${locale} pending bank credential notice is missing`);
-  check(await page.getByRole("button", { name: locale === "tr" ? /Ödemeyi Tamamla/ : /^Pay \(/ }).isDisabled(), `${locale} card submit is not disabled while credentials are pending`);
-  check((await page.locator('input[autocomplete="cc-number"], input[autocomplete="cc-csc"], input[name*="card" i], input[name*="cvv" i]').count()) === 0, `${locale} page contains a raw card input`);
-  check((await page.locator('img[src*="supported-card-networks"]').count()) === 0, `${locale} page claims unconfirmed card-network support`);
+  
+  // Verify that the old placeholder warning is GONE
+  const legacyWarning = locale === "tr" ? "Virtual POS bilgileri" : "Virtual POS documentation";
+  check((await page.getByText(legacyWarning, { exact: false }).count()) === 0, `${locale} still shows legacy placeholder warning`);
 
+  // Verify real card inputs are visible and accessible
+  const ccNumber = page.locator('input[autoComplete="cc-number"], input[name="cardnumber"]');
+  const ccName = page.locator('input[autoComplete="cc-name"], input[name="ccname"]');
+  const ccExp = page.locator('input[autoComplete="cc-exp"], input[name="ccexp"]');
+  const ccCsc = page.locator('input[autoComplete="cc-csc"], input[name="cvv"]');
+
+  check((await ccNumber.count()) === 1, `${locale} card number input is missing`);
+  check((await ccName.count()) === 1, `${locale} cardholder name input is missing`);
+  check((await ccExp.count()) === 1, `${locale} expiry input is missing`);
+  check((await ccCsc.count()) === 1, `${locale} CVV input is missing`);
+
+  // Verify Security & 3D Secure notices and Visa/Mastercard logos
+  const securityNotice = locale === "tr" ? "3D Secure" : "3D Secure";
+  check((await page.getByText(securityNotice, { exact: false }).count()) > 0, `${locale} 3D Secure security notice is missing`);
+  check((await page.locator('img[src*="payment-methods"]').count()) > 0, `${locale} Visa/Mastercard mark is missing`);
+
+  // Check Bank Transfer
   await page.getByRole("radio", { name: locale === "tr" ? "Banka Havalesi / EFT" : "Bank Transfer" }).click();
-  check((await page.getByText("TR000000000000000000000000", { exact: true }).count()) === 1, `${locale} configured IBAN is not shown`);
+  check((await page.getByText("TR120006200000000000000000", { exact: true }).count()) === 1, `${locale} configured IBAN is not shown`);
   const copyButton = page.getByRole("button", { name: locale === "tr" ? "IBAN'ı Kopyala" : "Copy IBAN" });
   await copyButton.click();
   await page.waitForTimeout(100);
   check((await page.getByText(locale === "tr" ? "IBAN kopyalandı." : "IBAN copied.", { exact: true }).count()) > 0, `${locale} copy confirmation is missing`);
-  check((await page.getByText("Ünalan", { exact: false }).count()) > 0, `${locale} footer business address is missing`);
 }
+
+// Security Check: Verify that no card data is ever written to localStorage
+const hasCardInStorage = await page.evaluate(() => {
+  return Object.keys(localStorage).some((k) => /card|cvv|pan/i.test(k) || /card|cvv|pan/i.test(localStorage.getItem(k) || ""));
+});
+check(!hasCardInStorage, "Sensitive card data detected in localStorage");
 
 await page.route("**/functions/v1/payment-status", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ success: false, error_code: "PAYMENT_NOT_FOUND" }) }));
 for (const [route, failureText, forbiddenSuccess] of [

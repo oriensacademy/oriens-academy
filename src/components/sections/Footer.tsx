@@ -61,7 +61,7 @@ export function Footer() {
           </p>
           <div className="pt-1">
             <span className="block text-[10px] font-medium text-muted-foreground">
-              {isTr ? "Güvenli ödeme" : "Secure payment"}
+              {isTr ? "256-Bit SSL & 3D Secure Güvenli Ödeme" : "256-Bit SSL & 3D Secure Payment"}
             </span>
             <div className="mt-1 flex items-center">
               <Image

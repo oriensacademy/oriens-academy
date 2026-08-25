@@ -8,7 +8,6 @@ export interface StudentCheckoutInput {
   payerPhone?: string;
   locale: "tr" | "en";
   idempotencyKey?: string;
-  mockCardAction?: "success" | "failure" | "cancel"; // Only in development
 }
 
 export interface StudentCheckoutResult {
@@ -75,68 +74,6 @@ export async function processStudentCheckout(
     const status = String(res.status || "pending");
     const packageName = input.locale === "tr" ? String(res.package_name_tr || "") : String(res.package_name_en || "");
     const lessonCount = Number(res.lesson_count || 0);
-
-    // Development-only Local Card Mock Handling
-    if (
-      process.env.NODE_ENV === "development" &&
-      input.paymentMethod === "card" &&
-      input.mockCardAction
-    ) {
-      if (input.mockCardAction === "success") {
-        // Activate package locally in development mock
-        await supabase
-          .from("payment_transactions")
-          .update({
-            status: "paid",
-            paid_at: new Date().toISOString(),
-            provider: "local_mock",
-            provider_transaction_id: `mock_${Date.now()}`,
-          })
-          .eq("id", transactionId);
-
-        return {
-          success: true,
-          transactionId,
-          publicReference,
-          baseAmount,
-          discountAmount,
-          finalAmount,
-          currency,
-          status: "paid",
-          paymentMethod: "card",
-          packageName,
-          lessonCount,
-        };
-      } else if (input.mockCardAction === "failure") {
-        await supabase
-          .from("payment_transactions")
-          .update({
-            status: "failed",
-            provider: "local_mock",
-          })
-          .eq("id", transactionId);
-
-        return {
-          success: false,
-          errorCode: "MOCK_CARD_FAILED",
-          message: input.locale === "tr" ? "Kart ödemesi banka tarafından reddedildi (Simülasyon)." : "Card payment was declined by the bank (Simulation).",
-        };
-      } else if (input.mockCardAction === "cancel") {
-        await supabase
-          .from("payment_transactions")
-          .update({
-            status: "cancelled",
-            provider: "local_mock",
-          })
-          .eq("id", transactionId);
-
-        return {
-          success: false,
-          errorCode: "MOCK_CARD_CANCELLED",
-          message: input.locale === "tr" ? "Ödeme işlemi iptal edildi (Simülasyon)." : "Payment was cancelled (Simulation).",
-        };
-      }
-    }
 
     return {
       success: true,
