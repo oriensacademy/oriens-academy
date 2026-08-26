@@ -10,6 +10,7 @@ import Link from "next/link";
 import { Wave } from "@/components/ui/wave";
 import { useAccount } from "@/lib/auth/account-context";
 import { getStudentPortalData } from "@/lib/student/data";
+import { CONTACT } from "@/config/contact";
 
 export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const locale = useLocale();
@@ -158,7 +159,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
             {isTr ? "Yeni Talep Oluştur" : "Create a New Request"}
             <ArrowRight className="size-4" aria-hidden="true" />
           </Button>
-          <ButtonLink href="tel:+905442939040" variant="ghost" className="min-h-11 sm:col-span-2">
+          <ButtonLink href={CONTACT.landlineHref} variant="ghost" className="min-h-11 sm:col-span-2">
             <Phone className="size-4" aria-hidden="true" />
             {isTr ? "Bizi Ara" : "Call Us"}
           </ButtonLink>

@@ -37,14 +37,14 @@ export function ContactPage() {
                 className="flex min-h-12 items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/20"
               >
                 <MessageCircle className="size-5 shrink-0 text-[#71C285]" aria-hidden="true" />
-                <span>WhatsApp · {CONTACT.phoneDisplay}</span>
+                <span>WhatsApp · {CONTACT.whatsappDisplay}</span>
               </a>
               <a
-                href={CONTACT.phoneHref}
+                href={CONTACT.landlineHref}
                 className="flex min-h-12 items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/20"
               >
                 <Phone className="size-5 shrink-0 text-[#C2D1C3]" aria-hidden="true" />
-                <span>{isTr ? "Telefon" : "Phone"} · {CONTACT.phoneDisplay}</span>
+                <span>{isTr ? "Telefon" : "Phone"} · {CONTACT.landlineDisplay}</span>
               </a>
               <a
                 href={CONTACT.emailHref}

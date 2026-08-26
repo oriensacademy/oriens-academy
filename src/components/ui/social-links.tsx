@@ -12,8 +12,8 @@ export function SocialLinks() {
 
   const links: SocialLink[] = [
     { platform: "instagram", href: CONTACT.instagramHref, label: "Instagram", value: "@oriens.academy", external: true },
-    { platform: "whatsapp", href: CONTACT.whatsappHref, label: "WhatsApp", value: CONTACT.phoneDisplay, external: true },
-    { platform: "phone", href: CONTACT.phoneHref, label: locale === "tr" ? "Telefon" : "Phone", value: CONTACT.phoneDisplay, external: false },
+    { platform: "whatsapp", href: CONTACT.whatsappHref, label: "WhatsApp", value: CONTACT.whatsappDisplay, external: true },
+    { platform: "phone", href: CONTACT.landlineHref, label: locale === "tr" ? "Telefon" : "Phone", value: CONTACT.landlineDisplay, external: false },
     { platform: "mail", href: CONTACT.emailHref, label: locale === "tr" ? "E-posta" : "Email", value: CONTACT.email, external: false },
   ];
 

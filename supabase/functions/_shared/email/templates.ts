@@ -537,7 +537,7 @@ export function renderEmailShell(opts: {
                 <td>
                   <div style="font-size:13px;font-weight:700;color:${PALETTE.primary};">Oriens Academy</div>
                   <div style="font-size:12px;color:${PALETTE.textMuted};margin-top:3px;">
-                    <a href="mailto:${escapeHtml(footerEmail)}" style="color:${PALETTE.textMuted};text-decoration:none;">${escapeHtml(footerEmail)}</a> &middot; +90 544 293 90 40
+                    <a href="mailto:${escapeHtml(footerEmail)}" style="color:${PALETTE.textMuted};text-decoration:none;">${escapeHtml(footerEmail)}</a> &middot; <a href="tel:08503040467" style="color:${PALETTE.textMuted};text-decoration:none;">0850 304 04 67</a> &middot; <a href="https://wa.me/905442939040" style="color:${PALETTE.textMuted};text-decoration:none;">WhatsApp: +90 544 293 90 40</a>
                   </div>
                   <div style="font-size:11px;color:${PALETTE.sage};margin-top:4px;line-height:1.4;">
                     ${isTr ? "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul" : "Emaar Square, The Heights E Block, Ünalan Neighborhood, Libadiye Street No:82, Üsküdar / Istanbul"}

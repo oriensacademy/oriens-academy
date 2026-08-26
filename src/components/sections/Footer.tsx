@@ -35,10 +35,10 @@ export function Footer() {
       ]);
 
   const contacts = [
-    { label: "WhatsApp", value: "+90 544 293 90 40", href: "https://wa.me/905442939040", icon: MessageSquare, external: true },
-    { label: isTr ? "Telefon" : "Phone", value: "+90 544 293 90 40", href: "tel:+905442939040", icon: Phone, external: false },
-    { label: isTr ? "E-posta" : "Email", value: "info@oriens-academy.com", href: "mailto:info@oriens-academy.com", icon: Mail, external: false },
-    { label: "Instagram", value: "@oriens.academy", href: "https://instagram.com/oriens.academy", icon: FaInstagram, external: true },
+    { label: "WhatsApp", value: CONTACT.mobileDisplay, href: CONTACT.whatsappHref, icon: MessageSquare, external: true },
+    { label: isTr ? "Telefon" : "Phone", value: CONTACT.landlineDisplay, href: CONTACT.landlineHref, icon: Phone, external: false },
+    { label: isTr ? "E-posta" : "Email", value: CONTACT.email, href: CONTACT.emailHref, icon: Mail, external: false },
+    { label: "Instagram", value: "@oriens.academy", href: CONTACT.instagramHref, icon: FaInstagram, external: true },
   ];
 
   return (

@@ -13,6 +13,7 @@ import { Wave } from "@/components/ui/wave";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { useAccount } from "@/lib/auth/account-context";
 import { getStudentPortalData } from "@/lib/student/data";
+import { CONTACT } from "@/config/contact";
 
 const CONSULTATION_PACKAGE_IDS = new Set(["single", "package5", "package10", "package20", "package30"]);
 
@@ -175,9 +176,9 @@ export function BookingCTA() {
           <Reveal delay={0.1}><h2 className="mt-3 font-heading text-[clamp(2rem,3.5vw,3.25rem)] leading-[1.04]">{isTr ? "Bir sonraki adımınızı konuşalım." : "Let's talk about your next step."}</h2></Reveal>
           <Reveal delay={0.14}><p className="mt-4 max-w-md text-base leading-7 text-[#10271B]/80">{isTr ? "Hedeflediğiniz sınavı, üniversiteyi veya hazırlık sürecinizi birlikte değerlendirelim. İlk tanışma görüşmesi ücretsizdir." : "Tell us about your exam, university or academic goals. Your introductory consultation is free."}</p></Reveal>
           <Reveal delay={0.18} className="mt-6 space-y-2">
-            <a href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · +90 544 293 90 40</a>
-            <a href="tel:+905442939040" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Phone className="size-4" />{isTr ? "Telefon" : "Phone"} · +90 544 293 90 40</a>
-            <a href="mailto:info@oriens-academy.com" className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 py-2 text-sm font-semibold"><Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">info@oriens-academy.com</span></a>
+            <a href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · {CONTACT.whatsappDisplay}</a>
+            <a href={CONTACT.landlineHref} className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Phone className="size-4" />{isTr ? "Telefon" : "Phone"} · {CONTACT.landlineDisplay}</a>
+            <a href={CONTACT.emailHref} className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 py-2 text-sm font-semibold"><Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">{CONTACT.email}</span></a>
           </Reveal>
         </div>
 
@@ -192,7 +193,7 @@ export function BookingCTA() {
               <div className="mt-6 grid w-full max-w-lg gap-3 sm:grid-cols-2">
                 <ButtonLink href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" size="lg" className="min-h-12"><MessageCircle className="size-4" />{isTr ? "WhatsApp’tan Yaz" : "Message on WhatsApp"}</ButtonLink>
                 <Button type="button" onClick={resetForm} variant="outline" size="lg" className="min-h-12">{isTr ? "Yeni Talep Oluştur" : "Create a New Request"}<ArrowRight className="size-4" /></Button>
-                <ButtonLink href="tel:+905442939040" variant="ghost" className="min-h-11 sm:col-span-2"><Phone className="size-4" />{isTr ? "Bizi Ara" : "Call Us"}</ButtonLink>
+                <ButtonLink href={CONTACT.landlineHref} variant="ghost" className="min-h-11 sm:col-span-2"><Phone className="size-4" />{isTr ? "Bizi Ara" : "Call Us"}</ButtonLink>
               </div>
             </div>
           ) : (

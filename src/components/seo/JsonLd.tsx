@@ -1,4 +1,5 @@
 import { SITE_URL } from "@/lib/routes";
+import { CONTACT } from "@/config/contact";
 
 export function JsonLd() {
   const organizationSchema = {
@@ -8,6 +9,16 @@ export function JsonLd() {
     "url": SITE_URL,
     "logo": `${SITE_URL}/logo.png`,
     "description": "International Exam Preparation & Academic Consultancy for IB, SAT, and AP Diplomas.",
+    "telephone": CONTACT.landlineDisplay,
+    "email": CONTACT.email,
+    "contactPoint": [
+      {
+        "@type": "ContactPoint",
+        "telephone": CONTACT.landlineDisplay,
+        "contactType": "customer service",
+        "availableLanguage": ["Turkish", "English"],
+      },
+    ],
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82",
@@ -15,7 +26,10 @@ export function JsonLd() {
       "addressRegion": "İstanbul",
       "addressCountry": "TR",
     },
-    "sameAs": [],
+    "sameAs": [
+      CONTACT.instagramHref,
+      CONTACT.whatsappHref,
+    ],
   };
 
   const websiteSchema = {
