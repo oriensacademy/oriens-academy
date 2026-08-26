@@ -258,10 +258,10 @@ Deno.serve(async (req: Request) => {
 
     const merchantOkUrl = `${publicSiteUrl}/${
       locale === "en" ? "en/payment/success" : "tr/odeme/basarili"
-    }`;
+    }/`;
     const merchantFailUrl = `${publicSiteUrl}/${
       locale === "en" ? "en/payment/failed" : "tr/odeme/basarisiz"
-    }`;
+    }/`;
 
     // 13. Call PayTR get-token API
     const paytrResponse = await requestPaytrIframeToken({
