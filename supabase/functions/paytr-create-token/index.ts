@@ -230,6 +230,7 @@ Deno.serve(async (req: Request) => {
           base_amount: baseAmount,
           discount_amount: discountAmount,
           user_ip: userIp,
+          provider_test_mode: testMode === "1",
           created_at: new Date().toISOString(),
         },
       })
