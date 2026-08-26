@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, CheckCircle2, Mail, MessageCircle, Phone } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { CompassMark } from "@/components/brand/CompassMark";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ExamSelector, type ExamSelectorValue } from "@/components/forms/ExamSelector";
-import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import { useHomeContent, useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
 import { Wave } from "@/components/ui/wave";
@@ -26,7 +25,7 @@ export function BookingCTA() {
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [exam, setExam] = useState<ExamSelectorValue>(null);
   const [privacyConsent, setPrivacyConsent] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
@@ -39,7 +38,6 @@ export function BookingCTA() {
 
   const summaryRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  const turnstileRef = useRef<TurnstileWidgetRef>(null);
 
   // Prefill for authenticated student
   useEffect(() => {
@@ -66,17 +64,6 @@ export function BookingCTA() {
     });
   }, []);
 
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setTurnstileToken(token);
-    setErrors((current) => {
-      if (!current.turnstile) return current;
-      const next = { ...current };
-      delete next.turnstile;
-      return next;
-    });
-  }, []);
-  const handleTurnstileReset = useCallback(() => setTurnstileToken(""), []);
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = nameVal.trim();
@@ -92,7 +79,6 @@ export function BookingCTA() {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = bookingCTA.form.emailRequired;
     if (!phone || phone.length < 5) nextErrors.phone = isTr ? "Geçerli bir telefon numarası girin." : "Enter a valid phone number.";
     if (!privacyConsent) nextErrors.privacy = isTr ? "Gizlilik onayı zorunludur." : "Privacy consent is required.";
-    if (!turnstileToken) nextErrors.turnstile = isTr ? "Güvenlik doğrulamasını tamamlayın." : "Complete the security verification.";
 
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -114,7 +100,7 @@ export function BookingCTA() {
         message: message || (isTr ? "Tanışma görüşmesi talebi." : "Introductory consultation request."),
         locale,
         privacyConsent,
-        turnstileToken,
+        company_website: honeypot.trim() || undefined,
         source: "consultation",
         packageId: selectedPackageId || undefined,
       });
@@ -125,12 +111,8 @@ export function BookingCTA() {
         return;
       }
 
-      setTurnstileToken("");
-      turnstileRef.current?.reset();
       setErrors({ submit: result.message });
-    } catch (err) {
-      setTurnstileToken("");
-      turnstileRef.current?.reset();
+    } catch {
       setErrors({
         submit: isTr
           ? "İletişim talebi gönderilemedi. Lütfen tekrar deneyin."
@@ -154,11 +136,10 @@ export function BookingCTA() {
     formRef.current?.reset();
     setExam(null);
     setPrivacyConsent(false);
-    setTurnstileToken("");
+    setHoneypot("");
     setErrors({});
     setSubmitted(false);
     setSubmissionMessage("");
-    turnstileRef.current?.reset();
   }
 
   const fieldClass = "mt-2 min-h-11 w-full border border-border bg-background px-3 text-base outline-none transition-[border-color,box-shadow] duration-200 focus-visible:border-ink focus-visible:ring-3 focus-visible:ring-brand-accent/25 focus-visible:ring-offset-2 focus-visible:ring-offset-surface aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20";
@@ -222,7 +203,20 @@ export function BookingCTA() {
                 <div className="sm:col-span-2"><ExamSelector value={exam} onChange={setExam} /></div>
                 <div className="sm:col-span-2"><label htmlFor="consultation-message" className="text-sm font-medium text-ink">{bookingCTA.form.messageLabel} <span className="font-normal text-muted-foreground">{bookingCTA.form.messageOptional}</span></label><textarea id="consultation-message" data-locale-field="consultation-message" name="message" rows={3} className={`${fieldClass} resize-y py-2.5`} /></div>
                 <div className="sm:col-span-2 border-t border-border pt-4"><label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink/75"><input type="checkbox" data-locale-field="consultation-privacy" checked={privacyConsent} onChange={(event) => { setPrivacyConsent(event.target.checked); clearError("privacy"); }} className="mt-1 size-4" /><span>{isTr ? "Tanışma görüşmesi talebimin yanıtlanması için iletişim bilgilerimin işlenmesini kabul ediyorum." : "I agree to the processing of my contact details for this consultation request."}</span></label>{errors.privacy && <p className="mt-2 text-sm text-destructive">{errors.privacy}</p>}</div>
-                <div className="sm:col-span-2"><TurnstileWidget ref={turnstileRef} action="consultation_submit" locale={locale} onVerify={handleTurnstileVerify} onExpire={handleTurnstileReset} onError={handleTurnstileReset} />{errors.turnstile && <p className="mt-2 text-sm text-destructive">{errors.turnstile}</p>}</div>
+
+                {/* Accessibility-safe hidden anti-bot honeypot */}
+                <div className="hidden" aria-hidden="true" style={{ display: "none" }}>
+                  <label htmlFor="consultation_company_website">Company Website</label>
+                  <input
+                    id="consultation_company_website"
+                    type="text"
+                    name="company_website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={honeypot}
+                    onChange={(e) => setHoneypot(e.target.value)}
+                  />
+                </div>
               </div>
               <Button type="submit" disabled={isSubmitting} directional size="lg" className="mt-5 h-12 w-full text-base">{isSubmitting ? <><Wave className="h-4 w-8 text-current" aria-label={isTr ? "Gönderiliyor" : "Sending"} /><span>{isTr ? "Gönderiliyor" : "Sending"}</span></> : <>{isTr ? "Görüşme Talebi Gönder" : "Send Consultation Request"}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></>}</Button>
             </form>

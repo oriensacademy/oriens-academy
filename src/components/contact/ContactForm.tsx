@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef, useTransition, type FormEvent } from "react";
+import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { CheckCircle2, ArrowRight, MessageCircle, Phone } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
-import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import Link from "next/link";
 import { Wave } from "@/components/ui/wave";
 import { useAccount } from "@/lib/auth/account-context";
@@ -23,6 +22,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
 
   // Prefill for authenticated student
   useEffect(() => {
@@ -37,24 +37,10 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
     }
   }, [user, accountType]);
 
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const turnstileRef = useRef<TurnstileWidgetRef>(null);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [isPending, startTransition] = useTransition();
-
-  const handleTurnstileVerify = useCallback((token: string) => {
-    setTurnstileToken(token);
-    setErrors((prev) => {
-      const copy = { ...prev };
-      delete copy.turnstile;
-      delete copy.submit;
-      return copy;
-    });
-  }, []);
-  const handleTurnstileReset = useCallback(() => setTurnstileToken(""), []);
 
   function validate(): boolean {
     const nextErrors: Record<string, string> = {};
@@ -76,11 +62,6 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
         ? "İletişim kurulabilmesi için gizlilik onayını kabul etmelisiniz."
         : "You must accept the privacy consent to proceed.";
     }
-    if (!turnstileToken) {
-      nextErrors.turnstile = isTr
-        ? "Lütfen mesajınızı göndermeden önce güvenlik doğrulamasını (Turnstile) tamamlayın."
-        : "Please complete the security verification (Turnstile) before submitting.";
-    }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -99,7 +80,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
         message: message.trim(),
         locale: locale as "tr" | "en",
         privacyConsent,
-        turnstileToken,
+        company_website: honeypot.trim() || undefined,
         source: "contact_form",
       });
 
@@ -107,9 +88,6 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
         setSubmissionMessage(res.message);
         setSubmitted(true);
       } else {
-        // Reset Turnstile widget so user can re-verify and retry
-        setTurnstileToken("");
-        turnstileRef.current?.reset();
         setErrors({ submit: res.message });
       }
     });
@@ -122,11 +100,10 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
     setSubject("");
     setMessage("");
     setPrivacyConsent(false);
-    setTurnstileToken("");
+    setHoneypot("");
     setErrors({});
     setSubmitted(false);
     setSubmissionMessage("");
-    turnstileRef.current?.reset();
   }
 
   if (submitted) {
@@ -278,20 +255,20 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
           </label>
           {errors.privacyConsent && <p className="mt-1 text-xs text-destructive">{errors.privacyConsent}</p>}
         </div>
-      </div>
 
-      <div className="mt-6 border-t border-border pt-4">
-        <TurnstileWidget
-          ref={turnstileRef}
-          action="contact_submit"
-          locale={locale as "tr" | "en"}
-          onVerify={handleTurnstileVerify}
-          onExpire={handleTurnstileReset}
-          onError={handleTurnstileReset}
-        />
-        {errors.turnstile && (
-          <p className="mt-1 text-xs font-medium text-destructive">{errors.turnstile}</p>
-        )}
+        {/* Accessibility-safe hidden anti-bot honeypot */}
+        <div className="hidden" aria-hidden="true" style={{ display: "none" }}>
+          <label htmlFor="contact_company_website">Company Website</label>
+          <input
+            id="contact_company_website"
+            type="text"
+            name="company_website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+          />
+        </div>
       </div>
 
       <Button

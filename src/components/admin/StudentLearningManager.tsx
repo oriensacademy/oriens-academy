@@ -1384,6 +1384,39 @@ function PackagePanel({
         </div>
       )}
 
+      {/* AGGREGATE ENTITLEMENT SUMMARY CARDS */}
+      {purchases.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-border bg-surface-muted/60 p-3 text-center">
+            <span className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Toplam Tanımlanan
+            </span>
+            <span className="mt-0.5 block font-heading text-2xl font-bold text-ink">
+              {purchases.reduce((s, p) => s + (p.lesson_count || 0), 0)} <span className="text-xs font-normal text-muted-foreground">ders</span>
+            </span>
+          </div>
+          <div className="rounded-2xl border border-border bg-surface-muted/60 p-3 text-center">
+            <span className="block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Toplam Kullanılan
+            </span>
+            <span className="mt-0.5 block font-heading text-2xl font-bold text-ink">
+              {purchases.reduce((s, p) => s + (p.lessons_used || 0), 0)} <span className="text-xs font-normal text-muted-foreground">ders</span>
+            </span>
+          </div>
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 text-center">
+            <span className="block text-[11px] font-semibold text-primary uppercase tracking-wider">
+              Toplam Kalan
+            </span>
+            <span className="mt-0.5 block font-heading text-2xl font-bold text-primary">
+              {purchases
+                .filter((p) => p.status === "active" && p.lesson_count - p.lessons_used > 0)
+                .reduce((s, p) => s + Math.max(0, p.lesson_count - p.lessons_used), 0)}{" "}
+              <span className="text-xs font-normal text-primary/80">ders</span>
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* PACKAGES LIST */}
       <div className="space-y-3">
         {purchases.length ? (

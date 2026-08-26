@@ -1,6 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { validateMutationRequest, buildJsonResponse } from "../_shared/cors.ts";
-import { verifyTurnstile } from "../_shared/turnstile.ts";
 import { dispatchContactEmails } from "../_shared/email/service.ts";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,6 +20,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // 1. Zero-friction Bot Honeypot Protection
+    const honeypot = String(payload.company_website ?? payload.website_hp ?? payload.website ?? "").trim();
+    if (honeypot.length > 0) {
+      // Return synthetic success without storing or dispatching email
+      return buildJsonResponse(
+        {
+          success: true,
+          contactId: "spm_" + crypto.randomUUID().slice(0, 8),
+          message: "Contact request received successfully.",
+          delivery_status: "ok",
+        },
+        200,
+        req
+      );
+    }
+
     const requestedSource = String(payload.source ?? "website");
     const source = requestedSource === "quick_contact"
       ? "quick_contact"
@@ -29,36 +44,6 @@ Deno.serve(async (req: Request) => {
       : requestedSource === "consultation"
         ? "consultation"
         : "website";
-
-    // Extract Turnstile token (from body or header)
-    const turnstileToken =
-      String(payload.turnstileToken ?? "").trim() ||
-      req.headers.get("x-turnstile-token") ||
-      req.headers.get("turnstile-token") ||
-      "";
-
-    // Perform Cloudflare Turnstile bot verification
-    const turnstileResult = await verifyTurnstile({
-      token: turnstileToken,
-      expectedAction: source === "quick_contact"
-        ? "quick_contact_submit"
-        : source === "consultation"
-          ? "consultation_submit"
-          : "contact_submit",
-      remoteIp: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
-    });
-
-    if (!turnstileResult.success) {
-      const httpStatus = turnstileResult.errorCode === "SERVER_CONFIG_ERROR" ? 500 : 400;
-      return buildJsonResponse(
-        {
-          error_code: turnstileResult.errorCode,
-          message: turnstileResult.message,
-        },
-        httpStatus,
-        req
-      );
-    }
 
     // Extract & normalize form input parameters
     const fullName = String(payload.fullName ?? "").trim().replace(/\s+/g, " ");
@@ -150,6 +135,28 @@ Deno.serve(async (req: Request) => {
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const nowIso = new Date().toISOString();
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    // 2. Server-side Rate Limiting (per email in last hour)
+    const { count: emailCount } = await supabaseAdmin
+      .from("contact_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("email", email)
+      .gte("created_at", oneHourAgo);
+
+    if (emailCount && emailCount >= 5) {
+      return buildJsonResponse(
+        {
+          error_code: "RATE_LIMITED",
+          message: locale === "tr"
+            ? "Çok fazla talep gönderildi. Lütfen bir süre sonra tekrar deneyin."
+            : "Too many requests. Please try again later.",
+        },
+        429,
+        req
+      );
+    }
+
     let selectedPackage: {
       id: string;
       name: string;
@@ -216,7 +223,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Complete both queued notification writes before the edge runtime can terminate.
+    // Complete notification writes
     const delivery = await dispatchContactEmails(supabaseAdmin, {
       contactId: contactRow.id,
       fullName,
@@ -237,7 +244,7 @@ Deno.serve(async (req: Request) => {
       {
         success: true,
         contactId: contactRow.id,
-        message: "Contact request submitted successfully.",
+        message: locale === "tr" ? "Talebiniz başarıyla alındı." : "Contact request submitted successfully.",
         delivery_status: delivery.status,
       },
       200,

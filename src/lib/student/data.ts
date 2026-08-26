@@ -48,6 +48,15 @@ export type StudentAdjustment = {
   created_at: string;
 };
 
+export interface StudentEntitlementSummary {
+  totalGrantedLessons: number;
+  totalUsedLessons: number;
+  totalRemainingLessons: number;
+  activePackages: StudentPurchase[];
+  pastPackages: StudentPurchase[];
+  primaryPackage: StudentPurchase | null;
+}
+
 export interface StudentPortalData {
   profile: StudentProfileRow;
   bookings: StudentBooking[];
@@ -58,27 +67,66 @@ export interface StudentPortalData {
   adjustments: StudentAdjustment[];
   bankDetails: Awaited<ReturnType<typeof getPublicBankTransferDetails>>;
   currentPackage: StudentPurchase | null;
+  entitlement: StudentEntitlementSummary;
 }
 
 /**
- * Deterministically resolves the current active package for the student.
- * 1. Newest active package with remaining lessons
- * 2. Newest active package
- * 3. Most recent valid (non-cancelled / non-refunded) package
+ * Calculates aggregated entitlement summary across all student packages.
+ * Supports stacked package purchases and calculates total remaining lessons correctly.
+ */
+export function getStudentEntitlementSummary(purchases: StudentPurchase[]): StudentEntitlementSummary {
+  if (!purchases || purchases.length === 0) {
+    return {
+      totalGrantedLessons: 0,
+      totalUsedLessons: 0,
+      totalRemainingLessons: 0,
+      activePackages: [],
+      pastPackages: [],
+      primaryPackage: null,
+    };
+  }
+
+  // Active packages with remaining lessons > 0 (FIFO ordering: oldest first)
+  const sortedAsc = [...purchases].sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+  const activePackages = sortedAsc.filter(
+    (p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0
+  );
+
+  // Past / exhausted / refunded packages
+  const pastPackages = purchases.filter(
+    (p) =>
+      p.status === "completed" ||
+      p.status === "expired" ||
+      p.status === "cancelled" ||
+      p.status === "refunded" ||
+      (p.lesson_count || 0) - (p.lessons_used || 0) <= 0
+  );
+
+  const totalGrantedLessons = purchases.reduce((sum, p) => sum + (p.lesson_count || 0), 0);
+  const totalUsedLessons = purchases.reduce((sum, p) => sum + (p.lessons_used || 0), 0);
+  const totalRemainingLessons = activePackages.reduce(
+    (sum, p) => sum + Math.max(0, (p.lesson_count || 0) - (p.lessons_used || 0)),
+    0
+  );
+
+  const primaryPackage = activePackages[0] || purchases[0] || null;
+
+  return {
+    totalGrantedLessons,
+    totalUsedLessons,
+    totalRemainingLessons,
+    activePackages,
+    pastPackages,
+    primaryPackage,
+  };
+}
+
+/**
+ * Backward compatibility resolver for legacy components.
  */
 export function resolveCurrentStudentPackage(purchases: StudentPurchase[]): StudentPurchase | null {
-  if (!purchases || purchases.length === 0) return null;
-
-  const activeWithRemaining = purchases.find(
-    (p) => p.status === "active" && p.lesson_count - p.lessons_used > 0
-  );
-  if (activeWithRemaining) return activeWithRemaining;
-
-  const anyActive = purchases.find((p) => p.status === "active");
-  if (anyActive) return anyActive;
-
-  const validPurchase = purchases.find((p) => !["cancelled", "refunded"].includes(p.status));
-  return validPurchase || purchases[0] || null;
+  const summary = getStudentEntitlementSummary(purchases);
+  return summary.primaryPackage;
 }
 
 /**
@@ -184,7 +232,8 @@ export async function getStudentPortalData(
   };
 
   const purchaseList = (purchases.data || []) as unknown as StudentPurchase[];
-  const currentPackage = resolveCurrentStudentPackage(purchaseList);
+  const entitlement = getStudentEntitlementSummary(purchaseList);
+  const currentPackage = entitlement.primaryPackage;
   const rawPayments = (payments.data || []) as StudentPayment[];
   const visiblePayments = filterCustomerVisiblePayments(rawPayments);
 
@@ -199,6 +248,7 @@ export async function getStudentPortalData(
       adjustments: (adjustments.data || []) as unknown as StudentAdjustment[],
       bankDetails,
       currentPackage,
+      entitlement,
     },
     error: null,
   };

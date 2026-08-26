@@ -197,10 +197,43 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
   });
 
   type PurchaseJoin = { id: string; student_user_id: string | null; lesson_count: number; lessons_used: number; status: string; pricing_packages: { name_tr: string | null; name_en: string | null } | null };
+  const purchasesByUser = new Map<string, PurchaseJoin[]>();
   ((purchasesResult.data || []) as unknown as PurchaseJoin[]).forEach((purchase) => {
-    if (purchase.status !== "active" || !purchase.student_user_id) return;
-    const profile = profiles.find((item) => item.userId === purchase.student_user_id);
-    if (profile && !profile.activePackage) profile.activePackage = { id: purchase.id, name: purchase.pricing_packages?.name_tr || purchase.pricing_packages?.name_en || purchase.id, lessonCount: purchase.lesson_count, lessonsUsed: purchase.lessons_used };
+    if (!purchase.student_user_id) return;
+    const list = purchasesByUser.get(purchase.student_user_id) || [];
+    list.push(purchase);
+    purchasesByUser.set(purchase.student_user_id, list);
+  });
+
+  profiles.forEach((profile) => {
+    if (!profile.userId) return;
+    const userPurchases = purchasesByUser.get(profile.userId) || [];
+    const activePurchases = userPurchases.filter(
+      (p) => p.status === "active" && p.lesson_count - p.lessons_used > 0
+    );
+    const totalGranted = userPurchases.reduce((s, p) => s + (p.lesson_count || 0), 0);
+    const totalUsed = userPurchases.reduce((s, p) => s + (p.lessons_used || 0), 0);
+    const totalRemaining = activePurchases.reduce(
+      (s, p) => s + Math.max(0, p.lesson_count - p.lessons_used),
+      0
+    );
+
+    if (activePurchases.length > 1) {
+      profile.activePackage = {
+        id: activePurchases[0].id,
+        name: `${activePurchases.length} Aktif Paket · ${totalRemaining} ders kaldı`,
+        lessonCount: totalGranted,
+        lessonsUsed: totalUsed,
+      };
+    } else if (activePurchases.length === 1) {
+      const p = activePurchases[0];
+      profile.activePackage = {
+        id: p.id,
+        name: p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.id,
+        lessonCount: p.lesson_count,
+        lessonsUsed: p.lessons_used,
+      };
+    }
   });
   (homeworkResult.data || []).forEach((item) => {
     const profile = profiles.find((candidate) => candidate.userId === item.student_user_id);
