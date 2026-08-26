@@ -77,6 +77,48 @@ export const DEFAULT_FALLBACK_EMAIL = "info@oriens-academy.com";
 export const DEFAULT_FALLBACK_FROM = `${DEFAULT_FALLBACK_NAME} <${DEFAULT_FALLBACK_EMAIL}>`;
 
 /**
+ * Global Transactional Email BCC Archive Address
+ */
+export const EMAIL_ARCHIVE_BCC = "info@oriens-academy.com";
+
+/**
+ * Resolves the canonical global transactional email BCC archive address.
+ * Defaults to info@oriens-academy.com or reads from EMAIL_ARCHIVE_BCC / MAIL_ARCHIVE_BCC env var.
+ */
+export function getArchiveBccAddress(): string {
+  try {
+    const envAddr =
+      (typeof Deno !== "undefined" && (Deno.env.get("EMAIL_ARCHIVE_BCC") || Deno.env.get("MAIL_ARCHIVE_BCC"))) ||
+      (typeof process !== "undefined" && (process.env.EMAIL_ARCHIVE_BCC || process.env.MAIL_ARCHIVE_BCC));
+    if (envAddr && envAddr.trim()) {
+      return envAddr.trim().toLowerCase();
+    }
+  } catch {
+    // Ignore environment lookup failures in restricted runtimes
+  }
+  return EMAIL_ARCHIVE_BCC;
+}
+
+/**
+ * Extracts and normalizes email addresses from strings, comma-separated lists, or arrays.
+ * Handles both "user@example.com" and "Name <user@example.com>".
+ */
+export function extractEmails(input?: string | string[] | null): string[] {
+  if (!input) return [];
+  const rawList = Array.isArray(input) ? input : input.split(",");
+  const emails: string[] = [];
+  for (const raw of rawList) {
+    if (!raw) continue;
+    const match = raw.match(/<([^>]+)>/) || [null, raw];
+    const email = (match[1] || "").trim().toLowerCase();
+    if (email && email.includes("@")) {
+      emails.push(email);
+    }
+  }
+  return emails;
+}
+
+/**
  * Resolves strongly-typed mail identity attributes by business channel.
  */
 export function resolveMailIdentity(
@@ -138,6 +180,8 @@ export type EmailDeliveryResult = {
   providerMessageId?: string;
   channel?: EmailChannel;
   usedFallback?: boolean;
+  archiveBccApplied?: boolean;
+  archiveRecipient?: string;
 };
 
 /**
@@ -177,11 +221,13 @@ function base64UrlEncode(str: string): string {
 }
 
 /**
- * Builds RFC 2822 MIME multipart/alternative message for transactional delivery
+ * Builds RFC 2822 / RFC 5322 MIME multipart/alternative message for transactional delivery
  */
-function buildRfc822Message(params: {
+export function buildRfc822Message(params: {
   from: string;
   to: string;
+  cc?: string;
+  bcc?: string;
   replyTo?: string;
   subject: string;
   html: string;
@@ -193,6 +239,8 @@ function buildRfc822Message(params: {
   const headers = [
     `From: ${params.from}`,
     `To: ${params.to}`,
+    params.cc ? `Cc: ${params.cc}` : null,
+    params.bcc ? `Bcc: ${params.bcc}` : null,
     params.replyTo ? `Reply-To: ${params.replyTo}` : null,
     `Subject: ${utf8Subject}`,
     `MIME-Version: 1.0`,
@@ -218,13 +266,27 @@ function buildRfc822Message(params: {
   return `${headers}\r\n\r\n${body}`;
 }
 
+function getEnvVar(key: string): string | undefined {
+  try {
+    if (typeof Deno !== "undefined" && Deno.env) {
+      return Deno.env.get(key);
+    }
+    if (typeof process !== "undefined" && process.env) {
+      return process.env[key];
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 /**
  * Exchanges Google OAuth2 Refresh Token for a fresh Access Token
  */
 async function getGoogleAccessToken(): Promise<{ token?: string; error?: string }> {
-  const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
-  const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
-  const refreshToken = Deno.env.get("GOOGLE_REFRESH_TOKEN");
+  const clientId = getEnvVar("GOOGLE_CLIENT_ID");
+  const clientSecret = getEnvVar("GOOGLE_CLIENT_SECRET");
+  const refreshToken = getEnvVar("GOOGLE_REFRESH_TOKEN");
 
   if (!clientId || !clientSecret || !refreshToken) {
     return { error: "GOOGLE_CREDENTIALS_MISSING" };
@@ -290,11 +352,14 @@ export async function logNotificationDelivery(params: {
 }
 
 /**
- * Sends a transactional email using Google Mail API (OAuth2) with centralized alias routing & fallback.
+ * Sends a transactional email using Google Mail API (OAuth2) with centralized alias routing,
+ * automated global BCC archive (info@oriens-academy.com), deduplication protection & safe fallback.
  */
 export async function sendTransactionalEmail(params: {
   supabaseAdmin: SupabaseClient;
   to: string;
+  cc?: string;
+  bcc?: string;
   replyTo?: string;
   subject: string;
   html: string;
@@ -305,10 +370,13 @@ export async function sendTransactionalEmail(params: {
   idempotencyKey?: string;
   channel?: EmailChannel;
   sender?: { name?: string; email?: string };
+  skipArchiveBcc?: boolean;
 }): Promise<EmailDeliveryResult> {
   const {
     supabaseAdmin,
     to,
+    cc,
+    bcc,
     replyTo,
     subject,
     html,
@@ -318,6 +386,7 @@ export async function sendTransactionalEmail(params: {
     entityId,
     channel = "general",
     sender,
+    skipArchiveBcc = false,
   } = params;
 
   if (!to || !to.includes("@")) {
@@ -334,6 +403,32 @@ export async function sendTransactionalEmail(params: {
     return { status: "failed", errorCode: "RECIPIENT_NOT_CONFIGURED", channel };
   }
 
+  // Calculate Global Archive BCC Recipient (info@oriens-academy.com)
+  const archiveAddress = getArchiveBccAddress();
+  const toEmails = extractEmails(to);
+  const ccEmails = extractEmails(cc);
+  const explicitBccEmails = extractEmails(bcc);
+
+  // Deduplication check: if info@oriens-academy.com is already in To, Cc, or explicit Bcc,
+  // do NOT add it again (prevents duplicate delivery to info inbox).
+  const alreadyTargeted =
+    toEmails.includes(archiveAddress) ||
+    ccEmails.includes(archiveAddress) ||
+    explicitBccEmails.includes(archiveAddress);
+
+  let archiveBccApplied = false;
+  let finalBccList: string[] = [];
+
+  if (!alreadyTargeted && !skipArchiveBcc) {
+    finalBccList = [...new Set([...explicitBccEmails, archiveAddress])];
+    archiveBccApplied = true;
+  } else {
+    finalBccList = [...new Set(explicitBccEmails)];
+    archiveBccApplied = false;
+  }
+
+  const effectiveBccHeader = finalBccList.length > 0 ? finalBccList.join(", ") : undefined;
+
   // Resolve sender identity from channel or override
   const resolvedIdentity = resolveMailIdentity(channel);
   const targetFromName = sender?.name || resolvedIdentity.fromName;
@@ -344,9 +439,16 @@ export async function sendTransactionalEmail(params: {
   const { token: accessToken, error: tokenError } = await getGoogleAccessToken();
 
   if (!accessToken || tokenError) {
-    const isDev = Deno.env.get("DENO_ENV") === "development" || Deno.env.get("ENVIRONMENT") === "development";
+    const isDev =
+      (typeof Deno !== "undefined" &&
+        (Deno.env.get("DENO_ENV") === "development" || Deno.env.get("ENVIRONMENT") === "development")) ||
+      (typeof process !== "undefined" &&
+        (process.env.NODE_ENV === "development" || process.env.ENVIRONMENT === "development"));
+
     if (isDev) {
-      console.warn(`[email/service] [DEV MODE] Google credentials not configured. Simulating delivery for: ${to}`);
+      console.warn(
+        `[email/service] [DEV MODE] Google credentials not configured. Simulating delivery for: ${to} (BCC archive: ${archiveBccApplied ? archiveAddress : "none"})`
+      );
       const mockId = `mock-google-${crypto.randomUUID()}`;
       await logNotificationDelivery({
         supabaseAdmin,
@@ -357,7 +459,13 @@ export async function sendTransactionalEmail(params: {
         status: "sent",
         providerMessageId: mockId,
       });
-      return { status: "sent", providerMessageId: mockId, channel };
+      return {
+        status: "sent",
+        providerMessageId: mockId,
+        channel,
+        archiveBccApplied,
+        archiveRecipient: archiveBccApplied ? archiveAddress : undefined,
+      };
     }
 
     console.error(`[email/service] Google Mail credentials missing or invalid: ${tokenError}`);
@@ -370,7 +478,13 @@ export async function sendTransactionalEmail(params: {
       status: "failed",
       lastErrorCode: tokenError || "GOOGLE_AUTH_ERROR",
     });
-    return { status: "failed", errorCode: tokenError || "GOOGLE_AUTH_ERROR", channel };
+    return {
+      status: "failed",
+      errorCode: tokenError || "GOOGLE_AUTH_ERROR",
+      channel,
+      archiveBccApplied,
+      archiveRecipient: archiveBccApplied ? archiveAddress : undefined,
+    };
   }
 
   // Helper function to send an RFC 822 MIME message to Gmail API
@@ -378,6 +492,8 @@ export async function sendTransactionalEmail(params: {
     const rawMime = buildRfc822Message({
       from: fromHdr,
       to,
+      cc,
+      bcc: effectiveBccHeader,
       replyTo: replyToHdr,
       subject,
       html,
@@ -424,7 +540,14 @@ export async function sendTransactionalEmail(params: {
         status: "sent",
         providerMessageId: json.id,
       });
-      return { status: "sent", providerMessageId: json.id, channel, usedFallback };
+      return {
+        status: "sent",
+        providerMessageId: json.id,
+        channel,
+        usedFallback,
+        archiveBccApplied,
+        archiveRecipient: archiveBccApplied ? archiveAddress : undefined,
+      };
     } else {
       const errorCode = json.error?.message || json.message || `HTTP_${res.status}`;
       console.error(`[email/service] Google Gmail API error:`, json);
@@ -437,7 +560,14 @@ export async function sendTransactionalEmail(params: {
         status: "failed",
         lastErrorCode: errorCode,
       });
-      return { status: "failed", errorCode, channel, usedFallback };
+      return {
+        status: "failed",
+        errorCode,
+        channel,
+        usedFallback,
+        archiveBccApplied,
+        archiveRecipient: archiveBccApplied ? archiveAddress : undefined,
+      };
     }
   } catch (err) {
     console.error(`[email/service] Unexpected network error sending email:`, err);
@@ -450,7 +580,13 @@ export async function sendTransactionalEmail(params: {
       status: "failed",
       lastErrorCode: "NETWORK_ERROR",
     });
-    return { status: "failed", errorCode: "NETWORK_ERROR", channel };
+    return {
+      status: "failed",
+      errorCode: "NETWORK_ERROR",
+      channel,
+      archiveBccApplied,
+      archiveRecipient: archiveBccApplied ? archiveAddress : undefined,
+    };
   }
 }
 
