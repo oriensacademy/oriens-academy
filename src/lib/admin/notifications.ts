@@ -72,10 +72,89 @@ export function humanizeNotificationSubject(row: NotificationDeliveryRow, locale
     return isTr ? "Ödev / Çalışma Bildirimi" : "Homework / Assignment Notification";
   }
 
-  // Fallback to humanized event_type
   return type
-    .replace(/_/g, " ")
+    .replace(/[._]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Maps raw event_type strings to clean, operator-friendly humanized labels.
+ */
+export function humanizeEventType(eventType: string, locale: "tr" | "en" = "tr"): string {
+  const isTr = locale === "tr";
+  const type = String(eventType || "").toLowerCase();
+
+  if (type.includes("support.ticket_created") || type.includes("support_ticket_created")) {
+    return isTr ? "Destek Talebi Oluşturuldu" : "Support Ticket Created";
+  }
+  if (type.includes("support.reply") || type.includes("support_reply")) {
+    return isTr ? "Destek Yanıtı İletildi" : "Support Reply Delivered";
+  }
+  if (type.includes("lesson.created") || type.includes("lesson_scheduled") || type.includes("booking_confirmed")) {
+    return isTr ? "Ders Planlandı" : "Lesson Scheduled";
+  }
+  if (type.includes("lesson.updated") || type.includes("appointment_updated") || type.includes("reschedule")) {
+    return isTr ? "Ders / Görüşme Güncellendi" : "Lesson / Meeting Rescheduled";
+  }
+  if (type.includes("lesson.completed")) {
+    return isTr ? "Ders Tamamlandı" : "Lesson Completed";
+  }
+  if (type.includes("payment.paid") || type.includes("payment_success")) {
+    return isTr ? "Ödeme Alındı" : "Payment Received";
+  }
+  if (type.includes("package.assigned") || type.includes("package_assigned")) {
+    return isTr ? "Paket Tanımlandı" : "Package Assigned";
+  }
+  if (type.includes("welcome")) {
+    return isTr ? "Hesap Oluşturuldu / Hoş Geldiniz" : "Account Welcome";
+  }
+  if (type.includes("contact_request") || type.includes("contact_form")) {
+    return isTr ? "İletişim / Danışmanlık Talebi" : "Contact / Consultation Request";
+  }
+  if (type.includes("homework")) {
+    return isTr ? "Ödev / Çalışma Bildirimi" : "Homework / Assignment Notification";
+  }
+  if (type.includes("bank_transfer_pending")) {
+    return isTr ? "Havale / EFT Bildirimi" : "Bank Transfer Pending";
+  }
+  if (type.includes("bank_transfer_approved")) {
+    return isTr ? "Havale Onaylandı" : "Bank Transfer Approved";
+  }
+
+  return type
+    .replace(/[._]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Marks specific notification deliveries or all as read.
+ */
+export async function adminMarkNotificationsRead(
+  notificationIds?: string[],
+  markAll = false
+): Promise<{ success: boolean; updatedCount: number; error: string | null }> {
+  const supabase = getSupabaseClient();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("admin_mark_notifications_read", {
+      p_notification_ids: notificationIds || null,
+      p_mark_all: markAll,
+    });
+
+    if (error) {
+      console.error("[Admin Notifications] Error marking read:", error);
+      return { success: false, updatedCount: 0, error: error.message };
+    }
+
+    return {
+      success: true,
+      updatedCount: data?.updated_count || 0,
+      error: null,
+    };
+  } catch (err) {
+    console.error("[Admin Notifications] Unexpected error marking read:", err);
+    return { success: false, updatedCount: 0, error: "Bildirimler okundu olarak işaretlenemedi." };
+  }
 }
 
 /**

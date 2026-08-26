@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useId, useState } from "react";
+import { CompassMark } from "@/components/brand/CompassMark";
 import { ExamSearch } from "./exam-selector/ExamSearch";
 import { examCodes } from "@/content/shared";
 import { useHomeContent } from "@/content/locale-context";
@@ -94,21 +95,28 @@ function SelectedExam({
   onChange: () => void;
 }) {
   const { examSelector } = useHomeContent();
+  const [imgError, setImgError] = useState(false);
+
   return (
     <div
       className="mt-3 flex items-center justify-between gap-4 border border-border bg-surface px-4 py-3"
       aria-live="polite"
     >
       <div className="flex items-center gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-forest/10 border border-forest/20 p-1" aria-hidden="true">
-          <Image
-            src="/brand/oriens-icon.png"
-            alt=""
-            width={24}
-            height={24}
-            className="size-full object-contain"
-            priority
-          />
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#F6F8F3] border border-[#DDE4DC] p-1.5 shadow-2xs" aria-hidden="true">
+          {!imgError ? (
+            <Image
+              src="/brand/oriens-icon.png"
+              alt=""
+              width={28}
+              height={28}
+              className="size-full object-contain"
+              priority
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <CompassMark size={20} />
+          )}
         </div>
         <div>
           <p className="font-heading text-xl text-ink">

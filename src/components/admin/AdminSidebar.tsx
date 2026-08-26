@@ -18,6 +18,7 @@ import {
   TrendingUp,
   ClipboardList,
 } from "lucide-react";
+import { useAdminNotifications } from "@/lib/admin/admin-notifications-context";
 
 export interface NavItem {
   label: string;
@@ -143,8 +144,25 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) {
   const pathname = usePathname();
+  const { counts } = useAdminNotifications();
   const normalizedPathname =
     pathname !== "/" ? pathname.replace(/\/+$/, "") : pathname;
+
+  const getItemBadge = (href: string) => {
+    if (href === "/admin/iletisim-destek" && counts.communicationSupport > 0) {
+      return counts.communicationSupport;
+    }
+    if (href === "/admin/odemeler" && counts.payments > 0) {
+      return counts.payments;
+    }
+    if (href === "/admin/bildirimler" && counts.notifications > 0) {
+      return counts.notifications;
+    }
+    if (href === "/admin/odevler" && counts.homework > 0) {
+      return counts.homework;
+    }
+    return 0;
+  };
 
   return (
     <aside
@@ -173,6 +191,7 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
             normalizedPathname === item.href ||
             (item.href !== "/admin" &&
               normalizedPathname.startsWith(`${item.href}/`));
+          const dynamicBadge = getItemBadge(item.href);
 
           if (!item.enabled) {
             return (
@@ -217,6 +236,18 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
                   }`}
                 />
                 <span>{item.label}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {dynamicBadge > 0 && (
+                  <span className="flex min-w-5 h-5 items-center justify-center rounded-full bg-[#C5B58A] px-1.5 text-[10px] font-extrabold text-[#10271B] shadow-2xs">
+                    {dynamicBadge > 99 ? "99+" : dynamicBadge}
+                  </span>
+                )}
+                {item.badge && !dynamicBadge && (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                    {item.badge}
+                  </span>
+                )}
               </div>
               {isActive && (
                 <div className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r-full bg-primary" />

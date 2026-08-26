@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { AdminAuthProvider } from "@/lib/admin/auth-context";
+import { AdminNotificationsProvider } from "@/lib/admin/admin-notifications-context";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { AdminShell } from "@/components/admin/AdminShell";
 
@@ -23,11 +24,13 @@ export function AdminClientLayout({ children }: { children: ReactNode }) {
       {isAuthFlow ? (
         children
       ) : (
-        <AdminGuard>
-          <AdminShell>
-            <div className="animate-[admin-content-in_160ms_ease-out]">{children}</div>
-          </AdminShell>
-        </AdminGuard>
+        <AdminNotificationsProvider>
+          <AdminGuard>
+            <AdminShell>
+              <div className="animate-[admin-content-in_160ms_ease-out]">{children}</div>
+            </AdminShell>
+          </AdminGuard>
+        </AdminNotificationsProvider>
       )}
     </AdminAuthProvider>
   );

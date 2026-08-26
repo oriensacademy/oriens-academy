@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { NotificationDetailSheet } from "@/components/admin/NotificationDetailSheet";
 import type { NotificationDeliveryRow, DeliveryStatus } from "@/lib/admin/notifications";
-import { listAdminNotifications, humanizeNotificationSubject } from "@/lib/admin/notifications";
+import { listAdminNotifications, humanizeNotificationSubject, humanizeEventType } from "@/lib/admin/notifications";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
 import {
@@ -301,7 +301,7 @@ function NotificationsContent() {
               <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-3">Konu & Bildirim Türü</th>
-                  <th className="px-4 py-3">Alıcı (Recipient)</th>
+                  <th className="px-4 py-3">Alıcı</th>
                   <th className="px-4 py-3">Kanal / Sağlayıcı</th>
                   <th className="px-4 py-3">Durum</th>
                   <th className="px-4 py-3">Tarih</th>
@@ -311,6 +311,7 @@ function NotificationsContent() {
               <tbody className="divide-y divide-border">
                 {deliveries.map((del) => {
                   const subject = humanizeNotificationSubject(del, "tr");
+                  const humanType = humanizeEventType(del.event_type, "tr");
                   return (
                     <tr
                       key={del.id}
@@ -321,8 +322,8 @@ function NotificationsContent() {
                         <div className="text-xs font-semibold text-[#10271B] truncate">
                           {subject}
                         </div>
-                        <div className="font-mono text-[10px] text-muted-foreground truncate">
-                          {del.event_type}
+                        <div className="text-[11px] text-[#819586] font-medium truncate">
+                          {humanType}
                         </div>
                       </td>
 

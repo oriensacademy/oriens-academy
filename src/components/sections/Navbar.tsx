@@ -73,6 +73,15 @@ export function Navbar() {
     isPrimaryNavigationActive(tab.id, pathname, locale),
   )?.id;
 
+  const isCartActive = pathname === localizedPath("cart", locale) || pathname.startsWith(`/${locale}/sepet`) || pathname.startsWith(`/${locale}/cart`);
+  const isAccountActive =
+    (accountType === "admin" && pathname.startsWith("/admin")) ||
+    (accountType === "student" && (
+      pathname === localizedPath("studentAccount", locale) ||
+      pathname.startsWith(`/${locale}/hesabim`) ||
+      pathname.startsWith(`/${locale}/account`)
+    ));
+
   useEffect(() => {
     if (!open) {
       if (wasOpenRef.current) menuTriggerRef.current?.focus();
@@ -180,7 +189,13 @@ export function Navbar() {
               {showPricing && (cartCount > 0 || isStudent) && (
                 <Link
                   href={localizedPath("cart", locale)}
-                  className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-current={isCartActive ? "page" : undefined}
+                  className={cn(
+                    "relative flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    isCartActive
+                      ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25 shadow-xs"
+                      : "border-border text-ink hover:bg-surface-muted"
+                  )}
                   aria-label={locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})`}
                 >
                   <ShoppingBag className="size-4" />
@@ -191,7 +206,27 @@ export function Navbar() {
                   )}
                 </Link>
               )}
-              {isInitializing ? <span className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border" aria-label="Oriens Academy"><Wave className="h-4 w-8 text-primary" aria-label="Oriens Academy" /></span> : <Link href={accountHref} className={cn("flex min-h-11 items-center justify-center gap-2 rounded-full border border-border px-3 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",accountType === "admin"&&"size-11 px-0")} aria-label={accountLabel}><UserRound className="size-4" />{accountType !== "admin" && <span className="hidden sm:inline">{accountLabel}</span>}</Link>}
+              {isInitializing ? (
+                <span className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border" aria-label="Oriens Academy">
+                  <Wave className="h-4 w-8 text-primary" aria-label="Oriens Academy" />
+                </span>
+              ) : (
+                <Link
+                  href={accountHref}
+                  aria-current={isAccountActive ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-11 items-center justify-center gap-2 rounded-full border px-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    isAccountActive
+                      ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25 shadow-xs"
+                      : "border-border text-ink hover:bg-surface-muted",
+                    accountType === "admin" && "size-11 px-0"
+                  )}
+                  aria-label={accountLabel}
+                >
+                  <UserRound className="size-4" />
+                  {accountType !== "admin" && <span className="hidden sm:inline">{accountLabel}</span>}
+                </Link>
+              )}
               <ButtonLink href={`/${locale}#consultation-form`} directional size="lg" className="hidden h-11 px-5 text-[13px] xl:flex">
                 {nav.ctaBook}
                 <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />

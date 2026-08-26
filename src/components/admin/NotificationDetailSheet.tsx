@@ -1,20 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import type { NotificationDeliveryRow } from "@/lib/admin/notifications";
-import { humanizeNotificationSubject } from "@/lib/admin/notifications";
+import { humanizeNotificationSubject, humanizeEventType } from "@/lib/admin/notifications";
 import {
   X,
-  Send,
   Mail,
   Calendar,
   CheckCircle2,
   AlertCircle,
   Clock,
-  ShieldCheck,
   ExternalLink,
-  Tag,
   Copy,
   Code2,
+  Check,
+  User,
+  Tag,
+  Radio,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -27,249 +29,273 @@ export function NotificationDetailSheet({
   delivery,
   onClose,
 }: NotificationDetailSheetProps) {
+  const [copied, setCopied] = useState(false);
+
   if (!delivery) return null;
 
   const isContact = delivery.entity_type === "contact_request";
   const isBooking = delivery.entity_type === "booking";
-  const isStudent = delivery.entity_type === "student_profile" || delivery.entity_type === "student" || delivery.entity_type === "user";
-  const isAdminEvent = delivery.event_type.includes("admin_notification");
-  const subjectTitle = humanizeNotificationSubject(delivery, "tr");
+  const isStudent =
+    delivery.entity_type === "student_profile" ||
+    delivery.entity_type === "student" ||
+    delivery.entity_type === "user";
 
-  const targetLink = isContact
-    ? "/admin/iletisim"
+  const subjectTitle = humanizeNotificationSubject(delivery, "tr");
+  const humanizedType = humanizeEventType(delivery.event_type, "tr");
+
+  // Extract recipient name if stored in payload
+  const payload = (typeof delivery.payload === "object" && delivery.payload !== null
+    ? delivery.payload
+    : {}) as Record<string, unknown>;
+
+  const recipientName =
+    (typeof payload.fullName === "string" && payload.fullName.trim()) ||
+    (typeof payload.studentName === "string" && payload.studentName.trim()) ||
+    (typeof payload.name === "string" && payload.name.trim()) ||
+    null;
+
+  const targetStudentUrl = isStudent && delivery.entity_id
+    ? `/admin/ogrenciler?student=${delivery.entity_id}`
+    : `/admin/ogrenciler?search=${encodeURIComponent(delivery.recipient)}`;
+
+  const moduleUrl = isContact
+    ? `/admin/iletisim-destek?view=web&id=${delivery.entity_id}`
     : isBooking
     ? "/admin/randevular"
-    : isStudent
-    ? `/admin/ogrenciler?student=${delivery.entity_id}`
     : null;
 
-  const studentSearchUrl = `/admin/ogrenciler?search=${encodeURIComponent(delivery.recipient)}`;
+  const copyEmail = () => {
+    navigator.clipboard.writeText(delivery.recipient);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end font-ui">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-forest/35 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-[#10271B]/35 backdrop-blur-xs transition-opacity"
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* Drawer Panel */}
-      <div className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-2xl z-10 border-l border-border">
-        {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-border px-6 bg-card text-foreground">
-          <div className="flex items-center gap-2">
-            <Send className="size-5 text-[#819586]" />
-            <h2 className="text-sm font-semibold tracking-wide">
-              Bildirim Teslimat Detayı / Delivery Details
+      <div className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-2xl z-10 border-l border-[#DDE5DC]">
+        {/* Header with Localized Subject as Primary Title */}
+        <div className="flex items-start justify-between border-b border-[#DDE5DC] p-5 bg-[#F8FAF7] text-foreground">
+          <div className="min-w-0 pr-3">
+            <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-[#819586] uppercase">
+              <Mail className="size-3.5" />
+              <span>Bildirim Detayı</span>
+            </div>
+            <h2 className="mt-1 text-base font-semibold text-[#172033] leading-snug line-clamp-2">
+              {subjectTitle}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sage-soft hover:text-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-[#667085] hover:bg-[#EEF2EC] hover:text-[#10271B] transition-colors"
+            aria-label="Kapat"
           >
             <X className="size-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Status & Subject Banner */}
-          <div className="rounded-xl border p-4 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                Teslimat Durumu / Status
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Main Key Information Cards */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Status Card */}
+            <div className="rounded-xl border border-[#DDE5DC] bg-white p-3.5 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-[#667085]">
+                Teslimat Durumu
               </div>
-              <div className="text-right text-[11px] text-muted-foreground">
-                Kanal: <span className="font-semibold uppercase text-foreground">{delivery.channel || "email"}</span> &middot; <span className="font-semibold uppercase">{delivery.provider}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold ${
-                  delivery.status === "sent"
-                    ? "bg-emerald-100 border-emerald-300 text-emerald-800"
-                    : delivery.status === "failed"
-                    ? "bg-red-100 border-red-300 text-red-800"
-                    : "bg-amber-100 border-amber-300 text-amber-800"
-                }`}
-              >
-                {delivery.status === "sent" ? (
-                  <>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                {delivery.status === "sent" || delivery.status === "delivered" ? (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-bold text-emerald-800">
                     <CheckCircle2 className="size-3.5" />
-                    <span>Gönderildi (Sent)</span>
-                  </>
+                    <span>Gönderildi</span>
+                  </span>
                 ) : delivery.status === "failed" ? (
-                  <>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-red-50 border border-red-200 px-2 py-0.5 text-xs font-bold text-red-800">
                     <AlertCircle className="size-3.5" />
-                    <span>Başarısız (Failed)</span>
-                  </>
+                    <span>Başarısız</span>
+                  </span>
                 ) : (
-                  <>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800">
                     <Clock className="size-3.5" />
-                    <span>Bekliyor (Pending)</span>
-                  </>
+                    <span>Bekliyor</span>
+                  </span>
                 )}
-              </span>
+              </div>
             </div>
 
-            <div className="pt-2 border-t border-border">
-              <div className="text-[11px] text-muted-foreground">Konu (Subject)</div>
-              <div className="text-sm font-bold text-foreground mt-0.5">
-                {subjectTitle}
+            {/* Channel Card */}
+            <div className="rounded-xl border border-[#DDE5DC] bg-white p-3.5 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-[#667085]">
+                Gönderim Kanalı
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-[#172033]">
+                <Radio className="size-3.5 text-[#819586]" />
+                <span>E-posta</span>
               </div>
             </div>
           </div>
 
-          {/* Delivery Metadata */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
-              <Mail className="size-4 text-[#10271B]" />
-              <span>Alıcı & Etkinlik Bilgileri</span>
-            </h3>
-
-            <div className="rounded-xl border border-border bg-background-soft/50 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] text-muted-foreground">Hedef Alıcı (Recipient)</div>
-                  <div className="text-sm font-bold text-foreground font-mono">
-                    {delivery.recipient}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[11px] text-muted-foreground">Kategori</div>
-                  <div className="text-xs font-semibold text-foreground">
-                    {isAdminEvent ? "Yönetici Bildirimi" : "Öğrenci / Kullanıcı Bildirimi"}
-                  </div>
-                </div>
+          {/* Recipient Card */}
+          <div className="rounded-xl border border-[#DDE5DC] bg-[#F8FAF7] p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-[#667085]">
+                Alıcı Bilgileri
               </div>
-
-              <div className="pt-2 border-t border-border space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href={`mailto:${delivery.recipient}`}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"
-                  >
-                    <Mail className="size-3.5" />
-                    <span>E-posta Gönder</span>
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard.writeText(delivery.recipient)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1.5 text-xs font-semibold hover:bg-muted"
-                  >
-                    <Copy className="size-3.5" />
-                    <span>E-postayı Kopyala</span>
-                  </button>
-                  <Link
-                    href={studentSearchUrl}
-                    onClick={onClose}
-                    className="inline-flex items-center gap-1 rounded-md border border-primary bg-primary/10 text-primary px-2.5 py-1.5 text-xs font-semibold hover:bg-primary/20"
-                  >
-                    <ExternalLink className="size-3.5" />
-                    <span>Öğrenciyi Aç</span>
-                  </Link>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Tag className="size-3 text-muted-foreground" />
-                    <span>Event Type:</span>
-                  </span>
-                  <span className="font-mono text-[11px] font-semibold text-[#10271B]">
-                    {delivery.event_type}
-                  </span>
-                </div>
-
-                {delivery.provider_message_id && (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Mesaj ID:</span>
-                    <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[200px]">
-                      {delivery.provider_message_id}
-                    </span>
-                  </div>
-                )}
-
-                {delivery.last_error_code && (
-                  <div className="flex items-center justify-between text-xs text-red-600 font-semibold">
-                    <span>Hata Kodu:</span>
-                    <span className="font-mono text-[11px]">{delivery.last_error_code}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Timestamps & Entity Context */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
-              <Calendar className="size-4 text-[#819586]" />
-              <span>Zaman Damgası & İlişkili Kayıt</span>
-            </h3>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-lg border border-border bg-white p-3">
-                <div className="text-[11px] text-muted-foreground">Oluşturulma Tarihi</div>
-                <div className="font-semibold text-foreground mt-0.5">
-                  {new Date(delivery.created_at).toLocaleString("tr-TR")}
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border bg-white p-3">
-                <div className="text-[11px] text-muted-foreground">Gönderim Tarihi</div>
-                <div className="font-semibold text-foreground mt-0.5">
-                  {delivery.sent_at ? new Date(delivery.sent_at).toLocaleString("tr-TR") : "—"}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-white p-4 shadow-2xs flex items-center justify-between">
-              <div>
-                <div className="text-[11px] text-muted-foreground">İlişkili Varlık (Entity)</div>
-                <div className="text-xs font-bold text-foreground capitalize">
-                  {delivery.entity_type} {delivery.entity_id ? `(ID: ${delivery.entity_id.slice(0, 8)}…)` : ""}
-                </div>
-              </div>
-
-              {targetLink && (
-                <Link
-                  href={targetLink}
-                  onClick={onClose}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background-soft px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted"
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={copyEmail}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#D6DED5] bg-white px-2 py-1 text-[11px] font-semibold text-[#172033] hover:bg-[#EEF2EC] transition-colors"
                 >
-                  <span>Modüle Git</span>
+                  {copied ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                  <span>{copied ? "Kopyalandı" : "E-postayı Kopyala"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              {recipientName && (
+                <div className="flex items-center gap-1.5 font-semibold text-sm text-[#172033]">
+                  <User className="size-4 text-[#819586]" />
+                  <span>{recipientName}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 text-xs font-mono text-[#475467] break-all">
+                <Mail className="size-3.5 text-[#819586] shrink-0" />
+                <span>{delivery.recipient}</span>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="pt-2 border-t border-[#DDE5DC] flex flex-wrap gap-2">
+              <Link
+                href={targetStudentUrl}
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#10271B] bg-[#10271B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1C3B2B] transition-colors"
+              >
+                <ExternalLink className="size-3.5" />
+                <span>Öğrenciyi Aç</span>
+              </Link>
+
+              {moduleUrl && (
+                <Link
+                  href={moduleUrl}
+                  onClick={onClose}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[#D6DED5] bg-white px-3 py-1.5 text-xs font-semibold text-[#172033] hover:bg-[#EEF2EC] transition-colors"
+                >
                   <ExternalLink className="size-3.5" />
+                  <span>{isContact ? "Talebi Görüntüle" : "Randevuyu Görüntüle"}</span>
                 </Link>
               )}
+
+              <a
+                href={`mailto:${delivery.recipient}`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#D6DED5] bg-white px-3 py-1.5 text-xs font-semibold text-[#172033] hover:bg-[#EEF2EC] transition-colors"
+              >
+                <Mail className="size-3.5" />
+                <span>E-posta Gönder</span>
+              </a>
             </div>
           </div>
 
-          {/* Collapsible Technical Details / Raw JSON Payload */}
-          <details className="group rounded-xl border border-border bg-background-soft/30 p-3">
-            <summary className="flex cursor-pointer items-center justify-between text-xs font-bold text-muted-foreground hover:text-foreground">
-              <span className="flex items-center gap-2">
-                <Code2 className="size-4 text-muted-foreground" />
-                <span>Teknik Detay & Ham Payload (JSON)</span>
+          {/* Notification Type & Date Card */}
+          <div className="rounded-xl border border-[#DDE5DC] bg-white p-4 space-y-3 shadow-2xs">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[#667085] font-medium flex items-center gap-1.5">
+                <Tag className="size-3.5 text-[#819586]" />
+                <span>Bildirim Türü:</span>
               </span>
-              <span className="text-[11px] font-normal group-open:hidden">Genişlet &darr;</span>
-              <span className="text-[11px] font-normal hidden group-open:inline">Daralt &uarr;</span>
+              <span className="font-semibold text-[#172033]">{humanizedType}</span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-[#F2F5EF]">
+              <span className="text-[#667085] font-medium flex items-center gap-1.5">
+                <Calendar className="size-3.5 text-[#819586]" />
+                <span>Oluşturulma:</span>
+              </span>
+              <span className="font-medium text-[#172033] tabular-nums">
+                {new Date(delivery.created_at).toLocaleString("tr-TR")}
+              </span>
+            </div>
+
+            {delivery.sent_at && (
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-[#F2F5EF]">
+                <span className="text-[#667085] font-medium flex items-center gap-1.5">
+                  <CheckCircle2 className="size-3.5 text-emerald-600" />
+                  <span>İletilme Tarihi:</span>
+                </span>
+                <span className="font-medium text-[#172033] tabular-nums">
+                  {new Date(delivery.sent_at).toLocaleString("tr-TR")}
+                </span>
+              </div>
+            )}
+
+            {delivery.last_error_code && (
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-[#F2F5EF] text-red-700">
+                <span className="font-medium flex items-center gap-1.5">
+                  <AlertCircle className="size-3.5" />
+                  <span>Hata Kodu:</span>
+                </span>
+                <span className="font-mono text-[11px] font-bold">{delivery.last_error_code}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Collapsible Technical Details (Collapsed by default) */}
+          <details className="group rounded-xl border border-[#DDE5DC] bg-[#F8FAF7] p-3 text-xs transition-all">
+            <summary className="flex cursor-pointer items-center justify-between font-semibold text-[#667085] hover:text-[#172033] select-none">
+              <span className="flex items-center gap-2">
+                <Code2 className="size-4 text-[#819586]" />
+                <span>Teknik Detaylar</span>
+              </span>
+              <span className="text-[11px] font-medium text-[#819586] group-open:hidden">Genişlet &darr;</span>
+              <span className="text-[11px] font-medium text-[#819586] hidden group-open:inline">Daralt &uarr;</span>
             </summary>
-            <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-slate-900 p-3 text-[11px] font-mono text-emerald-400">
-              <pre>{JSON.stringify(delivery.payload || {}, null, 2)}</pre>
+
+            <div className="mt-3 space-y-2 pt-2 border-t border-[#DDE5DC] text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="text-[#667085]">Sağlayıcı:</span>
+                <span className="font-mono uppercase font-semibold text-[#172033]">{delivery.provider}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[#667085]">Olay Anahtarı:</span>
+                <span className="font-mono text-[#172033]">{delivery.event_type}</span>
+              </div>
+              {delivery.provider_message_id && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[#667085]">Mesaj ID:</span>
+                  <span className="font-mono text-[#172033] truncate max-w-[220px]">{delivery.provider_message_id}</span>
+                </div>
+              )}
+              {delivery.entity_type && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[#667085]">Varlık (Entity):</span>
+                  <span className="font-mono text-[#172033]">{delivery.entity_type} ({delivery.entity_id})</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-[#667085]">Teslimat ID:</span>
+                <span className="font-mono text-[#172033]">{delivery.id}</span>
+              </div>
+
+              {delivery.payload && Object.keys(delivery.payload).length > 0 && (
+                <div className="mt-2 pt-2 border-t border-[#DDE5DC]">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[#667085] mb-1">Ham Payload</div>
+                  <div className="overflow-x-auto rounded-lg border border-[#DDE5DC] bg-slate-900 p-2.5 text-[10px] font-mono text-emerald-400">
+                    <pre>{JSON.stringify(delivery.payload, null, 2)}</pre>
+                  </div>
+                </div>
+              )}
             </div>
           </details>
-
-          {/* Secure Retry Policy Notice */}
-          <div className="rounded-xl border border-border bg-background-soft p-4 text-xs text-muted-foreground space-y-1">
-            <div className="font-bold text-foreground flex items-center gap-1.5">
-              <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-              <span>Güvenli E-Posta Gönderim Politikası</span>
-            </div>
-            <p className="text-[11px] leading-relaxed">
-              E-posta ve kimlik doğrulama anahtarları tarayıcı tarafına asla sunulmaz. Tüm bildirim işlemleri güvenlik protokolü gereği yalnızca sunucu tarafı Supabase Edge Function workflows üzerinden yetkili olarak yönetilir.
-            </p>
-          </div>
         </div>
       </div>
     </div>
