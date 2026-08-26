@@ -17,6 +17,7 @@
     "local:supabase:start": "npx supabase start",
     "local:supabase:status": "npx supabase status",
     "local:admin:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-local-admin.ps1",
+    "paytr:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-paytr.ps1",
     "local:reset": "npx supabase db reset && npm run local:admin:setup",
     "email:preview:all": "npx tsx scripts/preview-all-emails.mjs"
   },

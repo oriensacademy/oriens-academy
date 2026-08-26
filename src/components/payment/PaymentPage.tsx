@@ -46,7 +46,6 @@ export function PaymentPage() {
   const [selectedPackageId, setSelectedPackageId] = useState("");
   const [bankDetails, setBankDetails] = useState<BankTransferDetails | null>(null);
   const [method, setMethod] = useState<PaymentMethod>("card");
-  const [cardValid, setCardValid] = useState(false);
   const [payerName, setPayerName] = useState(user?.user_metadata?.full_name || "");
   const [payerEmail, setPayerEmail] = useState(user?.email || "");
   const [payerPhone, setPayerPhone] = useState(user?.user_metadata?.phone || "");
@@ -143,7 +142,7 @@ export function PaymentPage() {
       !turnstileToken ||
       !terms ||
       submitting ||
-      (method === "card" ? !cardValid : !bankDetails)
+      !bankDetails
     ) {
       return;
     }
@@ -556,121 +555,120 @@ export function PaymentPage() {
                   {method === "card" ? (
                     <HostedCardPanel
                       locale={locale}
-                      onValidityChange={setCardValid}
+                      packageId={selectedPackage?.id ?? ""}
+                      couponCode={appliedCoupon?.code}
+                      payerName={payerName}
+                      payerPhone={payerPhone}
                     />
                   ) : (
-                    <BankTransferPanel locale={locale} details={bankDetails} />
-                  )}
-                </div>
-
-                <div className="mt-7 border-t border-border pt-6">
-                  <h3 className="font-semibold text-ink text-sm">
-                    {locale === "tr" ? "Fatura / İletişim Bilgileri" : "Contact & Billing Information"}
-                  </h3>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label className="text-xs font-semibold text-ink">
-                      {copy.fullName}
-                      <input
-                        required
-                        value={payerName}
-                        onChange={(event) => setPayerName(event.target.value)}
-                        autoComplete="name"
-                        className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    </label>
-                    <label className="text-xs font-semibold text-ink">
-                      {copy.email}
-                      <input
-                        required
-                        type="email"
-                        value={payerEmail}
-                        onChange={(event) => setPayerEmail(event.target.value)}
-                        autoComplete="email"
-                        className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    </label>
-                    <label className="text-xs font-semibold text-ink sm:col-span-2">
-                      {copy.phone}
-                      <input
-                        value={payerPhone}
-                        onChange={(event) => setPayerPhone(event.target.value)}
-                        autoComplete="tel"
-                        className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <label className="mt-6 flex cursor-pointer items-start gap-3 text-xs leading-5 text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={terms}
-                    onChange={(event) => setTerms(event.target.checked)}
-                    className="mt-1 size-4 accent-[var(--primary)]"
-                  />
-                  <span>
-                    {copy.terms}{" "}
-                    <Link href={localizedPath("privacy", locale)} className="font-semibold underline">
-                      {locale === "tr" ? "Gizlilik Politikası" : "Privacy Policy"}
-                    </Link>{" "}
-                    ve{" "}
-                    <Link href={localizedPath("terms", locale)} className="font-semibold underline">
-                      {locale === "tr" ? "Kullanım Koşulları" : "Terms"}
-                    </Link>
-                  </span>
-                </label>
-
-                <div className="mt-4">
-                  <TurnstileWidget
-                    ref={turnstileRef}
-                    action="payment_create"
-                    locale={locale}
-                    onVerify={onVerify}
-                    onExpire={onTurnstileReset}
-                    onError={onTurnstileReset}
-                  />
-                </div>
-
-                {error && (
-                  <div
-                    role="alert"
-                    className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800"
-                  >
-                    <AlertCircle className="size-4 shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={
-                    !selectedPackage ||
-                    !terms ||
-                    !turnstileToken ||
-                    submitting ||
-                    (method === "card" ? !cardValid : !bankDetails)
-                  }
-                  className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-forest disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
-                >
-                  {submitting ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" />
-                      {locale === "tr" ? "İşleniyor…" : "Processing…"}
-                    </>
-                  ) : (
-                    <>
-                      <LockKeyhole className="size-4" />
-                      {method === "card"
-                        ? locale === "tr"
-                          ? `Ödemeyi Tamamla (${money(finalPrice, selectedPackage?.currency)})`
-                          : `Pay (${money(finalPrice, selectedPackage?.currency)})`
-                        : locale === "tr"
-                          ? "Havale Bildirimi Oluştur"
-                          : "Create Bank Transfer Order"}
-                      <ArrowRight className="size-4" />
+                      <BankTransferPanel locale={locale} details={bankDetails} />
+
+                      <div className="mt-7 border-t border-border pt-6">
+                        <h3 className="font-semibold text-ink text-sm">
+                          {locale === "tr" ? "Fatura / İletişim Bilgileri" : "Contact & Billing Information"}
+                        </h3>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                          <label className="text-xs font-semibold text-ink">
+                            {copy.fullName}
+                            <input
+                              required
+                              value={payerName}
+                              onChange={(event) => setPayerName(event.target.value)}
+                              autoComplete="name"
+                              className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            />
+                          </label>
+                          <label className="text-xs font-semibold text-ink">
+                            {copy.email}
+                            <input
+                              required
+                              type="email"
+                              value={payerEmail}
+                              onChange={(event) => setPayerEmail(event.target.value)}
+                              autoComplete="email"
+                              className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            />
+                          </label>
+                          <label className="text-xs font-semibold text-ink sm:col-span-2">
+                            {copy.phone}
+                            <input
+                              value={payerPhone}
+                              onChange={(event) => setPayerPhone(event.target.value)}
+                              autoComplete="tel"
+                              className="mt-1.5 min-h-12 w-full rounded-xl border border-input bg-surface px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      <label className="mt-6 flex cursor-pointer items-start gap-3 text-xs leading-5 text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          checked={terms}
+                          onChange={(event) => setTerms(event.target.checked)}
+                          className="mt-1 size-4 accent-[var(--primary)]"
+                        />
+                        <span>
+                          {copy.terms}{" "}
+                          <Link href={localizedPath("privacy", locale)} className="font-semibold underline">
+                            {locale === "tr" ? "Gizlilik Politikası" : "Privacy Policy"}
+                          </Link>{" "}
+                          ve{" "}
+                          <Link href={localizedPath("terms", locale)} className="font-semibold underline">
+                            {locale === "tr" ? "Kullanım Koşulları" : "Terms"}
+                          </Link>
+                        </span>
+                      </label>
+
+                      <div className="mt-4">
+                        <TurnstileWidget
+                          ref={turnstileRef}
+                          action="payment_create"
+                          locale={locale}
+                          onVerify={onVerify}
+                          onExpire={onTurnstileReset}
+                          onError={onTurnstileReset}
+                        />
+                      </div>
+
+                      {error && (
+                        <div
+                          role="alert"
+                          className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800"
+                        >
+                          <AlertCircle className="size-4 shrink-0" />
+                          <span>{error}</span>
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={
+                          !selectedPackage ||
+                          !terms ||
+                          !turnstileToken ||
+                          submitting ||
+                          !bankDetails
+                        }
+                        className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-forest disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 cursor-pointer"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="size-4 animate-spin" />
+                            {locale === "tr" ? "İşleniyor…" : "Processing…"}
+                          </>
+                        ) : (
+                          <>
+                            <LockKeyhole className="size-4" />
+                            {locale === "tr" ? "Havale Bildirimi Oluştur" : "Create Bank Transfer Order"}
+                            <ArrowRight className="size-4" />
+                          </>
+                        )}
+                      </button>
                     </>
                   )}
-                </button>
+                </div>
               </form>
             </div>
           </div>

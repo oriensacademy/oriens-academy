@@ -6,7 +6,24 @@ import { StudentAuthPage } from "@/components/student/StudentAuthPage";
 import { Footer } from "@/components/sections/Footer";
 import { getDictionary, isLocale } from "@/content/dictionaries";
 import { examBySlug, examRecords } from "@/content/exams";
-import { examDetailPath, examHubSegment, localizedPath, paymentResultPath, paymentResultSegment, paymentSegment, resolveExamSlug, studentAuthRootSegment, studentLoginSegment, studentRegisterPath, studentRegisterSegment, unifiedLoginPath } from "@/lib/routes";
+import {
+  examDetailPath,
+  examHubSegment,
+  localizedPath,
+  paymentFailedPath,
+  paymentFailedSegment,
+  paymentResultPath,
+  paymentResultSegment,
+  paymentSegment,
+  paymentSuccessPath,
+  paymentSuccessSegment,
+  resolveExamSlug,
+  studentAuthRootSegment,
+  studentLoginSegment,
+  studentRegisterPath,
+  studentRegisterSegment,
+  unifiedLoginPath,
+} from "@/lib/routes";
 
 type Params = { lang: string; examHub: string; slug: string };
 
@@ -33,6 +50,8 @@ export function generateStaticParams({ params }: { params: { lang: string } }) {
       slug,
     })),
     { examHub: paymentSegment(lang), slug: paymentResultSegment(lang) },
+    { examHub: paymentSegment(lang), slug: paymentSuccessSegment(lang) },
+    { examHub: paymentSegment(lang), slug: paymentFailedSegment(lang) },
     { examHub: studentAuthRootSegment(lang), slug: studentLoginSegment(lang) },
     { examHub: studentAuthRootSegment(lang), slug: studentRegisterSegment(lang) },
   ];
@@ -43,11 +62,44 @@ export const dynamicParams = false;
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { lang, examHub, slug } = await params;
   if (!isLocale(lang)) return {};
-  const isPaymentResult = examHub === paymentSegment(lang) && slug === paymentResultSegment(lang);
+  const isPaymentResult =
+    examHub === paymentSegment(lang) &&
+    (slug === paymentResultSegment(lang) ||
+      slug === paymentSuccessSegment(lang) ||
+      slug === paymentFailedSegment(lang));
+
   if (isPaymentResult) {
-    const title = lang === "tr" ? "Ödeme Sonucu | Oriens Academy" : "Payment Result | Oriens Academy";
-    const description = lang === "tr" ? "Sunucu tarafında doğrulanan ödeme durumu." : "Server-verified payment status.";
-    return { title, description, robots: { index: false, follow: false }, alternates: { canonical: paymentResultPath(lang), languages: { tr: paymentResultPath("tr"), en: paymentResultPath("en"), "x-default": paymentResultPath("tr") } } };
+    const isSuccess = slug === paymentSuccessSegment(lang);
+    const isFailed = slug === paymentFailedSegment(lang);
+    const title = isSuccess
+      ? lang === "tr"
+        ? "Ödeme Başarılı | Oriens Academy"
+        : "Payment Successful | Oriens Academy"
+      : isFailed
+        ? lang === "tr"
+          ? "Ödeme Başarısız | Oriens Academy"
+          : "Payment Failed | Oriens Academy"
+        : lang === "tr"
+          ? "Ödeme Sonucu | Oriens Academy"
+          : "Payment Result | Oriens Academy";
+
+    const canonical = isSuccess
+      ? paymentSuccessPath(lang)
+      : isFailed
+        ? paymentFailedPath(lang)
+        : paymentResultPath(lang);
+
+    return {
+      title,
+      robots: { index: false, follow: false },
+      alternates: {
+        canonical,
+        languages: {
+          tr: isSuccess ? paymentSuccessPath("tr") : isFailed ? paymentFailedPath("tr") : paymentResultPath("tr"),
+          en: isSuccess ? paymentSuccessPath("en") : isFailed ? paymentFailedPath("en") : paymentResultPath("en"),
+        },
+      },
+    };
   }
   const isStudentLogin = examHub === studentAuthRootSegment(lang) && slug === studentLoginSegment(lang);
   const isStudentRegister = examHub === studentAuthRootSegment(lang) && slug === studentRegisterSegment(lang);
@@ -89,7 +141,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function ExamPage({ params }: { params: Promise<Params> }) {
   const { lang, examHub, slug } = await params;
   if (!isLocale(lang)) notFound();
-  if (examHub === paymentSegment(lang) && slug === paymentResultSegment(lang)) {
+  if (
+    examHub === paymentSegment(lang) &&
+    (slug === paymentResultSegment(lang) ||
+      slug === paymentSuccessSegment(lang) ||
+      slug === paymentFailedSegment(lang))
+  ) {
     return <><main id="main-content"><PaymentResultPage /></main><Footer /></>;
   }
   if (examHub === studentAuthRootSegment(lang) && slug === studentLoginSegment(lang)) redirect(unifiedLoginPath(lang));

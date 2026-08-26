@@ -96,6 +96,10 @@ export function studentRegisterSegment(locale: Locale): string { return locale =
 export function studentLoginPath(locale: Locale): string { return `/${locale}/${studentAuthRootSegment(locale)}/${studentLoginSegment(locale)}`; }
 export function studentRegisterPath(locale: Locale): string { return `/${locale}/${studentAuthRootSegment(locale)}/${studentRegisterSegment(locale)}`; }
 export function paymentResultSegment(locale: Locale): string { return locale === "tr" ? "sonuc" : "result"; }
+export function paymentSuccessSegment(locale: Locale): string { return locale === "tr" ? "basarili" : "success"; }
+export function paymentFailedSegment(locale: Locale): string { return locale === "tr" ? "basarisiz" : "failed"; }
+export function paymentSuccessPath(locale: Locale): string { return `${localizedPath("payment", locale)}/${paymentSuccessSegment(locale)}`; }
+export function paymentFailedPath(locale: Locale): string { return `${localizedPath("payment", locale)}/${paymentFailedSegment(locale)}`; }
 export function paymentResultPath(locale: Locale, reference?: string, token?: string): string {
   const path = `${localizedPath("payment", locale)}/${paymentResultSegment(locale)}`;
   if (!reference || !token) return path;
