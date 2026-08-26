@@ -7,6 +7,11 @@ import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
 import { createPaytrToken, type CreatePaytrTokenResult } from "@/lib/payments/client";
 
+interface ErrorState {
+  title: string;
+  subtitle: string;
+}
+
 export function HostedCardPanel({
   locale,
   packageId,
@@ -27,7 +32,7 @@ export function HostedCardPanel({
 
   const [loading, setLoading] = useState(Boolean(packageId));
   const [iframeToken, setIframeToken] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const [attempt, setAttempt] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -57,12 +62,26 @@ export function HostedCardPanel({
         setIframeToken(result.iframe_token);
         onTokenReady?.(result);
       } else {
-        setError(
-          result.message ||
-            (isTr
-              ? "Ödeme ekranı şu anda hazırlanamadı. Lütfen tekrar deneyin."
-              : "Payment screen could not be prepared. Please try again.")
-        );
+        const isNetwork = result.errorCode === "NETWORK_ERROR";
+        if (isNetwork) {
+          setError({
+            title: isTr ? "Bağlantı Kurulamadı" : "Connection Failed",
+            subtitle: isTr
+              ? "İnternet bağlantınızı kontrol edip yeniden deneyin."
+              : "Please check your network and try again.",
+          });
+        } else {
+          setError({
+            title:
+              result.message ||
+              (isTr
+                ? "Ödeme ekranı şu anda hazırlanamadı."
+                : "Payment screen could not be prepared."),
+            subtitle: isTr
+              ? "Güvenli ödeme oturumu başlatılamadı. Lütfen tekrar deneyin."
+              : "Could not initialize secure payment session. Please try again.",
+          });
+        }
       }
     });
 
@@ -71,7 +90,7 @@ export function HostedCardPanel({
     };
   }, [packageId, couponCode, payerName, payerPhone, locale, onTokenReady, isTr, attempt]);
 
-  // Load PayTR official iframeResizer script
+  // Load PayTR official iframeResizer script (V2)
   useEffect(() => {
     if (!iframeToken) return;
 
@@ -94,7 +113,7 @@ export function HostedCardPanel({
     if (!script) {
       script = document.createElement("script");
       script.id = scriptId;
-      script.src = "https://www.paytr.com/js/iframeResizer.min.js";
+      script.src = "https://www.paytr.com/js/iframeResizer.min.js?v2";
       script.async = true;
       script.onload = () => initResizer();
       document.body.appendChild(script);
@@ -137,19 +156,15 @@ export function HostedCardPanel({
           <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-100 text-red-700">
             <AlertCircle className="size-6" />
           </div>
-          <p className="mt-3 font-semibold text-sm text-red-900">{error}</p>
-          <p className="mt-1 text-xs text-red-700">
-            {isTr
-              ? "Lütfen internet bağlantınızı kontrol edip yeniden deneyiniz."
-              : "Please check your network and try again."}
-          </p>
+          <p className="mt-3 font-semibold text-sm text-red-900">{error.title}</p>
+          <p className="mt-1 text-xs text-red-700">{error.subtitle}</p>
           <button
             type="button"
             onClick={retry}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-forest cursor-pointer"
+            className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-forest cursor-pointer"
           >
-            <RefreshCw className="size-3.5" />
-            {isTr ? "Tekrar Dene" : "Try Again"}
+            <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>{isTr ? "Tekrar Dene" : "Try Again"}</span>
           </button>
         </div>
       )}

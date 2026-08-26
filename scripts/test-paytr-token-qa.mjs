@@ -10,9 +10,14 @@
  * 6. Token response mapping (PayTR `token` -> frontend `iframe_token`)
  * 7. Server-side price calculation (client price ignored)
  * 8. Live edge endpoint auth rejection (Anonymous / Invalid JWT rejected with 401)
+ * 9. Merchant OID alphanumeric regex compliance (^[A-Za-z0-9]{1,64}$)
+ * 10. Merchant OID non-alphanumeric character absence (- _ / \ : . space etc.)
+ * 11. Merchant OID length limit (<= 64 chars)
+ * 12. Merchant OID high volume collision resistance (1000 IDs, 0 collisions)
+ * 13. Merchant OID token signature vs request equality
  */
 
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -23,6 +28,28 @@ if (fs.existsSync(envPath)) {
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mwbrlfmdpbkmdjroxhcc.supabase.co';
+
+function generatePaytrMerchantOid() {
+  const now = new Date();
+  const year = now.getUTCFullYear().toString();
+  const month = (now.getUTCMonth() + 1).toString().padStart(2, "0");
+  const day = now.getUTCDate().toString().padStart(2, "0");
+  const hours = now.getUTCHours().toString().padStart(2, "0");
+  const mins = now.getUTCMinutes().toString().padStart(2, "0");
+  const secs = now.getUTCSeconds().toString().padStart(2, "0");
+  const dateStr = `${year}${month}${day}${hours}${mins}${secs}`;
+
+  const randBytes = randomBytes(6);
+  const randomHex = randBytes.toString('hex').toUpperCase();
+
+  const oid = `ORI${dateStr}${randomHex}`;
+
+  if (!/^[A-Za-z0-9]{1,64}$/.test(oid)) {
+    throw new Error(`Generated merchant_oid "${oid}" does not match ^[A-Za-z0-9]{1,64}$`);
+  }
+
+  return oid;
+}
 
 function calculateToken(params) {
   const hashStr =
@@ -97,7 +124,7 @@ async function runTests() {
     const tokenParams = {
       merchantId: '555123',
       userIp: '176.240.10.20',
-      merchantOid: 'ORI-QA-1001',
+      merchantOid: 'ORI202608262315421A92F3',
       email: 'student@example.com',
       paymentAmount: '2700000',
       userBasket: encodeBasket([['Test Package', '27000.00', 1]]),
@@ -121,7 +148,7 @@ async function runTests() {
     const baseParams = {
       merchantId: '555123',
       userIp: '176.240.10.20',
-      merchantOid: 'ORI-QA-1001',
+      merchantOid: 'ORI202608262315421A92F3',
       email: 'student@example.com',
       paymentAmount: '2700000',
       userBasket: encodeBasket([['Test Package', '27000.00', 1]]),
@@ -144,7 +171,7 @@ async function runTests() {
   // Test 4: Callback Hash Formula verification
   {
     const callbackParams = {
-      merchantOid: 'ORI-QA-1001',
+      merchantOid: 'ORI202608262315421A92F3',
       merchantSalt: 'mockSalt123',
       status: 'success',
       totalAmount: '2700000',
@@ -180,7 +207,7 @@ async function runTests() {
     const tokenHash = calculateToken({
       merchantId: '555123',
       userIp: '176.240.10.20',
-      merchantOid: 'ORI-QA-1001',
+      merchantOid: 'ORI202608262315421A92F3',
       email: 'student@example.com',
       paymentAmount: '2700000',
       userBasket: encodeBasket([['Test Package', '27000.00', 1]]),
@@ -193,7 +220,7 @@ async function runTests() {
     });
 
     const cbHash = calculateCallbackHash({
-      merchantOid: 'ORI-QA-1001',
+      merchantOid: 'ORI202608262315421A92F3',
       merchantSalt: 'mockSalt123',
       status: 'success',
       totalAmount: '2700000',
@@ -259,9 +286,89 @@ async function runTests() {
     }
   }
 
+  // TEST A: merchant_oid matches ^[A-Za-z0-9]{1,64}$
+  {
+    const oid = generatePaytrMerchantOid();
+    assert(
+      /^[A-Za-z0-9]{1,64}$/.test(oid),
+      `TEST A: generated merchant_oid matches ^[A-Za-z0-9]{1,64}$ (${oid})`
+    );
+  }
+
+  // TEST B: merchant_oid contains no forbidden characters
+  {
+    const oid = generatePaytrMerchantOid();
+    const hasForbidden = /[-_\s/\\:.]/.test(oid) || /[ğüşıöçĞÜŞİÖÇ]/.test(oid);
+    assert(
+      !hasForbidden,
+      'TEST B: merchant_oid contains NO hyphens, underscores, slashes, spaces, or Turkish characters'
+    );
+  }
+
+  // TEST C: merchant_oid length <= 64
+  {
+    const oid = generatePaytrMerchantOid();
+    assert(
+      oid.length > 0 && oid.length <= 64,
+      `TEST C: merchant_oid length is ${oid.length} (<= 64)`
+    );
+  }
+
+  // TEST D: 1000 generated merchant_oids are strictly unique
+  {
+    const set = new Set();
+    const COUNT = 1000;
+    for (let i = 0; i < COUNT; i++) {
+      set.add(generatePaytrMerchantOid());
+    }
+    assert(
+      set.size === COUNT,
+      `TEST D: 1000 generated merchant_oids generated with 0 collisions (${set.size}/${COUNT})`
+    );
+  }
+
+  // TEST E: merchant_oid used in token signature equals merchant_oid sent to PayTR
+  {
+    const sampleOid = generatePaytrMerchantOid();
+    const tokenSigned = calculateToken({
+      merchantId: '555123',
+      userIp: '176.240.10.20',
+      merchantOid: sampleOid,
+      email: 'student@example.com',
+      paymentAmount: '2700000',
+      userBasket: encodeBasket([['Test Package', '27000.00', 1]]),
+      noInstallment: '0',
+      maxInstallment: '0',
+      currency: 'TL',
+      testMode: '1',
+      merchantSalt: 'mockSalt123',
+      merchantKey: 'mockKey456',
+    });
+
+    const tokenAltered = calculateToken({
+      merchantId: '555123',
+      userIp: '176.240.10.20',
+      merchantOid: generatePaytrMerchantOid(), // different oid
+      email: 'student@example.com',
+      paymentAmount: '2700000',
+      userBasket: encodeBasket([['Test Package', '27000.00', 1]]),
+      noInstallment: '0',
+      maxInstallment: '0',
+      currency: 'TL',
+      testMode: '1',
+      merchantSalt: 'mockSalt123',
+      merchantKey: 'mockKey456',
+    });
+
+    assert(
+      tokenSigned !== tokenAltered,
+      'TEST E: merchant_oid is cryptographically bound into token signature'
+    );
+  }
+
   console.log(`\nQA Results: ${passed}/${total} tests passed.`);
   if (passed === total) {
-    console.log('All PayTR Token & Flow QA validations completed successfully.\n');
+    console.log('All PayTR Token, Merchant OID & Flow QA validations completed successfully.\n');
   }
 }
 

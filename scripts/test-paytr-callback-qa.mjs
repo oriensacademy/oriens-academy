@@ -84,10 +84,10 @@ async function runTests() {
   // Find a student profile for linked student tests
   const { data: existingStudent } = await admin.from('student_profiles').select('id,email,full_name').eq('active', true).limit(1).maybeSingle();
 
-  const testRef = `ORI-QA-${Date.now()}`;
-  const testRef2 = `ORI-QA-FAIL-${Date.now()}`;
-  const testRefInstallment = `ORI-QA-INST-${Date.now()}`;
-  const testRefMismatch = `ORI-QA-MISMATCH-${Date.now()}`;
+  const testRef = `ORIQA${Date.now()}S1`;
+  const testRef2 = `ORIQAFAIL${Date.now()}F2`;
+  const testRefInstallment = `ORIQAINST${Date.now()}I3`;
+  const testRefMismatch = `ORIQAMISMATCH${Date.now()}M4`;
 
   let testTxId = null;
   let testTxId2 = null;

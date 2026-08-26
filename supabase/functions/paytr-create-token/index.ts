@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, handlePreflight } from "../_shared/cors.ts";
 import {
   encodePaytrUserBasket,
+  generatePaytrMerchantOid,
   requestPaytrIframeToken,
 } from "../_shared/payments/paytr.ts";
 import { createStatusCredential, sha256 } from "../_shared/payments/security.ts";
@@ -185,8 +186,18 @@ Deno.serve(async (req: Request) => {
       user.user_metadata?.phone ||
       "05000000000";
 
-    // 8. Generate unique merchant_oid and status credential
-    const { token: statusToken, reference: merchantOid } = createStatusCredential();
+    // 8. Generate unique canonical alphanumeric merchant_oid and status credential
+    const merchantOid = generatePaytrMerchantOid();
+    if (!/^[A-Za-z0-9]{1,64}$/.test(merchantOid)) {
+      console.error("[paytr-create-token] Invalid merchant_oid generated:", merchantOid);
+      return buildJsonResponse(
+        { error_code: "INTERNAL_ERROR", message: "Geçersiz sipariş numarası oluşturuldu." },
+        500,
+        req
+      );
+    }
+
+    const { token: statusToken } = createStatusCredential(merchantOid);
     const statusTokenHash = await sha256(statusToken);
 
     // 9. Client IP extraction
