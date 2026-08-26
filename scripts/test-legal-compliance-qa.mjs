@@ -71,7 +71,7 @@ async function runLegalComplianceQA() {
     console.log('▶ Legal 3, 4 & 6: Testing server-side legal acceptance validation rejection...');
     
     // Simulate token request without termsAccepted
-    const { data: funcRes1, error: funcErr1 } = await admin.functions.invoke('paytr-create-token', {
+    const { data: funcRes1 } = await admin.functions.invoke('paytr-create-token', {
       body: {
         packageId: 'package10',
         termsAccepted: false,
@@ -84,7 +84,7 @@ async function runLegalComplianceQA() {
     }
 
     // Simulate token request without refundPolicyAccepted
-    const { data: funcRes2, error: funcErr2 } = await admin.functions.invoke('paytr-create-token', {
+    const { data: funcRes2 } = await admin.functions.invoke('paytr-create-token', {
       body: {
         packageId: 'package10',
         termsAccepted: true,
@@ -132,6 +132,7 @@ async function runLegalComplianceQA() {
         payer_phone: '05442939040',
         metadata: {
           locale: 'tr',
+          provider_test_mode: false,
           sales_terms_version: '2026-08-27',
           sales_terms_accepted_at: nowIso,
           pre_information_version: '2026-08-27',
@@ -157,12 +158,13 @@ async function runLegalComplianceQA() {
       !meta.sales_terms_accepted_at ||
       !meta.refund_policy_accepted_at ||
       meta.single_lesson_list_price_snapshot !== 3200 ||
-      meta.package_list_price_snapshot !== 27000
+      meta.package_list_price_snapshot !== 27000 ||
+      meta.provider_test_mode !== false
     ) {
       throw new Error(`Invalid metadata stored: ${JSON.stringify(meta)}`);
     }
 
-    console.log('  ✓ Acceptance evidence, server timestamps, and historic single-lesson refund snapshots verified.');
+    console.log('  ✓ Acceptance evidence, server timestamps, provider_test_mode=false, and historic refund snapshots verified.');
     passed++;
   } catch (err) {
     console.error('  ✗ Legal 7, 8 & 9 failed:', err.message);
@@ -190,9 +192,9 @@ async function runLegalComplianceQA() {
     failed++;
   }
 
-  // LEGAL 11 & 12: Canonical Contact & Legal Links
+  // LEGAL 11 & 12: Canonical Contact & Legal Links & Zero Placeholders
   try {
-    console.log('▶ Legal 11 & 12: Verifying canonical contact config & WhatsApp / 0850 phone isolation...');
+    console.log('▶ Legal 11 & 12: Verifying canonical contact config & zero customer-visible placeholders...');
     const contactSource = fs.readFileSync(path.resolve(process.cwd(), 'src/config/contact.ts'), 'utf8');
     const legalSource = fs.readFileSync(path.resolve(process.cwd(), 'src/config/legal.ts'), 'utf8');
 
@@ -204,7 +206,15 @@ async function runLegalComplianceQA() {
       throw new Error('Legal config missing canonical emails');
     }
 
-    console.log('  ✓ Canonical contact information, WhatsApp (+90 544 293 90 40) and Corporate Line (0850 304 04 67) verified.');
+    // Check for forbidden placeholder strings in legal configuration
+    const forbiddenStrings = ['[BOŞ ALAN]', '[TBD]', 'bilgi eklenecek', 'vergi no bekleniyor', 'MERSİS bekleniyor'];
+    for (const f of forbiddenStrings) {
+      if (legalSource.includes(f)) {
+        throw new Error(`Found forbidden placeholder: ${f}`);
+      }
+    }
+
+    console.log('  ✓ Canonical contact verified and zero placeholder strings confirmed.');
     passed++;
   } catch (err) {
     console.error('  ✗ Legal 11 & 12 failed:', err.message);

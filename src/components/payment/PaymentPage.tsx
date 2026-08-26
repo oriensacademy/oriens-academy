@@ -657,6 +657,63 @@ export function PaymentPage() {
                     )}
                   </span>
                 </label>
+
+                {/* Checkbox-Free Informational Notice */}
+                <div className="pt-2 border-t border-[#EAEFEA] text-[11px] text-[#68756C] leading-relaxed">
+                  {isTr ? (
+                    <>
+                      Kişisel verileriniz,{" "}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActiveModal("privacy");
+                        }}
+                        className="font-medium text-primary underline hover:text-forest transition-colors cursor-pointer"
+                      >
+                        Gizlilik Politikası
+                      </button>{" "}
+                      ve{" "}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActiveModal("kvkk");
+                        }}
+                        className="font-medium text-primary underline hover:text-forest transition-colors cursor-pointer"
+                      >
+                        KVKK Aydınlatma Metni
+                      </button>{" "}
+                      kapsamında işlenmektedir.
+                    </>
+                  ) : (
+                    <>
+                      Your personal data is processed in accordance with the{" "}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActiveModal("privacy");
+                        }}
+                        className="font-medium text-primary underline hover:text-forest transition-colors cursor-pointer"
+                      >
+                        Privacy Policy
+                      </button>{" "}
+                      and{" "}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setActiveModal("kvkk");
+                        }}
+                        className="font-medium text-primary underline hover:text-forest transition-colors cursor-pointer"
+                      >
+                        Personal Data / KVKK Notice
+                      </button>
+                      .
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* METHOD-SPECIFIC PANELS */}

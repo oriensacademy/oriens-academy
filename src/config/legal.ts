@@ -36,7 +36,7 @@ export const LEGAL_CONFIG: LegalEntityConfig = {
   kepAddress: null,
   address: {
     tr: "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul",
-    en: "Emaar Square, The Heights E Block, Ünalan Neighborhood, Libadiye Street No:82, Üsküdar / Istanbul",
+    en: "Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul",
   },
   addressLines: {
     tr: [
@@ -46,7 +46,7 @@ export const LEGAL_CONFIG: LegalEntityConfig = {
     ],
     en: [
       "Emaar Square, The Heights E Block",
-      "Ünalan Neighborhood, Libadiye Street No:82",
+      "Ünalan Mah., Libadiye Cd. No:82",
       "Üsküdar / Istanbul",
     ],
   },
@@ -102,61 +102,114 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.salesAgreement,
       lastUpdated: "27 Ağustos 2026",
       title: "Mesafeli Satış Sözleşmesi",
-      badge: "Tüketici Sözleşmesi",
+      badge: "Hizmet Sözleşmesi",
       intro:
-        "İşbu Mesafeli Satış Sözleşmesi (\"Sözleşme\"), 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği hükümleri uyarınca, aşağıda bilgileri yer alan Satıcı ile Alıcı arasında elektronik ortamda akdedilmiştir.",
+        "İşbu Mesafeli Satış Sözleşmesi (\"Sözleşme\"), 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği hükümleri uyarınca, aşağıda bilgileri yer alan Hizmet Sağlayıcı ile Alıcı/Hizmet Alan arasında elektronik ortamda akdedilmiştir.",
       sections: [
         {
           heading: "1. Taraflar",
           paragraphs: [
-            "SATICI: Oriens Academy (\"Satıcı\")\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nE-posta: info@oriens-academy.com / payments@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
-            "ALICI (\"Öğrenci/Müşteri\"): Web sitesi (oriens-academy.com) üzerinden eğitim ve sınav danışmanlığı paketi satın alan, sipariş formunda adı, soyadı, e-posta adresi ve iletişim bilgileri kayıt altına alınan gerçek veya tüzel kişi.",
+            "HİZMET SAĞLAYICI: Oriens Academy\nWeb Sitesi: https://oriens-academy.com\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nGenel E-posta: info@oriens-academy.com | Ödeme/Muhasebe: payments@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
+            "ALICI / HİZMET ALAN: Oriens Academy web sitesi (oriens-academy.com) üzerinden çevrim içi eğitim, sınav hazırlığı veya akademik danışmanlık hizmeti satın alan, sipariş/ödeme aşamasında bilgilerini sisteme giren veya kayıtlı kullanıcı hesabını kullanan gerçek veya tüzel kişidir.",
           ],
         },
         {
           heading: "2. Sözleşmenin Konusu",
           paragraphs: [
-            "İşbu Sözleşme'nin konusu; Alıcı'nın Satıcı'ya ait oriens-academy.com internet sitesi üzerinden elektronik ortamda siparişini verdiği, nitelikleri ve satış fiyatı sipariş özetinde ve Ön Bilgilendirme Formu'nda belirtilen uluslararası eğitim danışmanlığı, sınav hazırlığı ve özel ders paketlerinin satışı ve ifası ile ilgili olarak tarafların hak ve yükümlülüklerinin belirlenmesidir.",
+            "İşbu Sözleşme'nin konusu; Alıcı'nın Hizmet Sağlayıcı'ya ait oriens-academy.com internet sitesi üzerinden elektronik ortamda siparişini verdiği, nitelikleri ve satış bedeli sipariş özetinde ve Ön Bilgilendirme Formu'nda belirtilen uluslararası eğitim, sınav hazırlığı ve akademik danışmanlık hizmet paketlerinin satışı ve ifasına ilişkin tarafların hak ve yükümlülüklerinin düzenlenmesidir.",
           ],
         },
         {
-          heading: "3. Hizmet, Fiyatlandırma ve Ödeme",
+          heading: "3. Satın Alınan Hizmet ve Kapsamı",
           paragraphs: [
-            "Satın alınan ders paketinin kapsamı, ders adedi, varsa uygulanan kupon indirimi, toplam bedel ve seçilen ödeme yöntemi (Kredi/Banka Kartı veya Banka Havalesi/EFT) ödeme aşamasında Alıcı tarafından onaylanan sipariş özetinde gösterilir.",
-            "Kartlı ödemelerde tahsilat PayTR Ödeme ve Elektronik Para Kuruluşu A.Ş. güvenli altyapısı üzerinden gerçekleştirilir. Kart bilgileri Satıcı sunucularında tutulmaz.",
-            "Banka havalesi/EFT ile yapılan alımlarda, sipariş Satıcı'nın banka hesabına ilgili tutar intikal edip onaylanana kadar beklemede kalır.",
+            "Sözleşme konusu hizmet; SAT, IB, AP, ESAT, TMUA, IGCSE, GRE, GMAT, UCAT, IMAT gibi uluslararası akademik sınavlara hazırlık ve yurt dışı üniversite kabul süreçlerine yönelik bire bir veya grup çevrim içi özel ders, deneme sınavı değerlendirmesi ve mentorluk oturumlarını kapsar.",
           ],
         },
         {
-          heading: "4. Hizmetin İfası ve Teslimat",
+          heading: "4. Paket ve Ders Bilgileri",
           paragraphs: [
-            "Satın alınan paket kapsamındaki ders kredileri, ödeme onayı ile birlikte Alıcı'nın öğrenci portalı hesabına otomatik veya sistem onaylı olarak tanımlanır.",
-            "Dersler ve danışmanlık oturumları, öğrenci ve eğitmen takvimine uygun olarak belirlenen saatlerde çevrim içi video konferans araçları üzerinden birebir veya grup formatında gerçekleştirilir.",
+            "Satın alınan ders paketinin türü, ders saati adedi, geçerlilik süresi ve temel nitelikleri sipariş anında Alıcı'ya sunulan ve elektronik ortamda teyit edilen Sipariş Özeti'nde ve Ön Bilgilendirme Formu'nda açıkça gösterilmektedir.",
           ],
         },
         {
-          heading: "5. Cayma Hakkı, İptal ve İade Esasları",
+          heading: "5. Toplam Ödeme Tutarı",
           paragraphs: [
-            "Alıcı, satın aldığı ders paketine ilişkin olarak ilgili tüketici mevzuatı kapsamında belirlenen haklara sahiptir. Tamamen kullanılmamış paketlerde, mevzuata ve işbu sözleşmeye uygun bildirimle iptal ve iade talep edilebilir.",
-            "Paket kapsamında bir veya daha fazla dersin kullanılmış olması halinde, iade hesabında tamamlanan dersler, satın alma sırasında kullanıcıya bildirilen indirimsiz standart tek ders liste bedeli üzerinden hesaplanır. Tamamlanan derslerin toplam bedeli müşterinin fiilen ödediği paket bedelinden mahsup edilir ve varsa kalan bakiye, uygulanabilir mevzuat ve ödeme kuruluşu/banka süreçleri çerçevesinde ödeme yöntemine uygun şekilde iade edilir. Bu hesaplama müşteriye ek borç veya negatif iade bakiyesi doğurmaz. Tüketicinin emredici mevzuattan doğan hakları saklıdır.",
+            "Hizmet bedeli; seçilen paketin liste fiyatı, varsa uygulanan indirim veya kupon düşüldükten sonra kalan nihai toplam tutardır. Tüm vergiler ve işlem bedelleri toplam tutara dahildir.",
           ],
         },
         {
-          heading: "6. Güvenlik ve Kişisel Veriler",
+          heading: "6. İndirimler ve Kampanyalar",
           paragraphs: [
-            "Alıcı'nın ödeme ve üyelik işlemleri sırasında paylaştığı kişisel veriler, 6698 sayılı Kişisel Verilerin Korunması Kanunu'na uygun olarak işlenir. Kart bilgileri PayTR'ın güvenli ödeme altyapısı üzerinden işlenir ve Oriens Academy sunucularında saklanmaz.",
+            "Kullanılan indirim kuponları veya promosyonlar sipariş anında doğrulanır ve toplam fiyattan düşülür. İndirim koşulları yalnızca tanımlandığı paket ve süre için geçerlidir.",
           ],
         },
         {
-          heading: "7. Uyuşmazlıkların Çözümü",
+          heading: "7. Ödeme Yöntemleri",
           paragraphs: [
-            "İşbu Sözleşme'den doğabilecek uyuşmazlıklarda, Ticaret Bakanlığı'nca her yıl ilan edilen parasal sınırlar dahilinde Alıcı'nın veya Satıcı'nın yerleşim yerindeki İl veya İlçe Tüketici Hakem Heyetleri ile Tüketici Mahkemeleri yetkilidir.",
+            "Ödemeler, internet sitesi üzerinden kredi kartı / banka kartı veya doğrudan banka havalesi / EFT yoluyla gerçekleştirilebilir.",
           ],
         },
         {
-          heading: "8. Yürürlük",
+          heading: "8. PayTR ile Güvenli Kart Ödemesi",
           paragraphs: [
-            "Alıcı, web sitesi üzerinden siparişini tamamlamadan önce işbu Sözleşme'yi ve Ön Bilgilendirme Formu'nu okuyup elektronik ortamda onayladığını kabul, beyan ve taahhüt eder.",
+            "Kredi kartı ve banka kartı işlemleri, TCMB ve BDDK lisanslı PayTR Ödeme ve Elektronik Para Kuruluşu A.Ş. güvenli ödeme altyapısı üzerinden 256-bit SSL şifreleme ve 3D Secure doğrulaması ile gerçekleştirilir. Kart bilgileri hiçbir surette Oriens Academy sunucularında tutulmaz ve işlenmez.",
+          ],
+        },
+        {
+          heading: "9. Banka Havalesi / EFT",
+          paragraphs: [
+            "Havale / EFT ile yapılan ödemelerde, sipariş tamamlandıktan sonra verilen sipariş referans numarasının banka dekontunun açıklama alanına yazılması zorunludur. Tutar Hizmet Sağlayıcı'nın banka hesabına intikal ettiğinde ve eşleştiğinde paket aktif hale getirilir.",
+          ],
+        },
+        {
+          heading: "10. Hizmetin Sunulması ve İfası",
+          paragraphs: [
+            "Ödemenin başarıyla tamamlanmasını müteakip ders kredileri Alıcı'nın öğrenci portalına tanımlanır. Hizmet, Alıcı ile mutabık kalınan gün ve saatlerde çevrim içi video konferans platformları üzerinden ifa edilir.",
+          ],
+        },
+        {
+          heading: "11. Derslerin Planlanması ve İletişim",
+          paragraphs: [
+            "Ders oturumlarının takvimi, öğrenci yönetim paneli veya yetkili akademik koordinatörler aracılığıyla organize edilir. Taraflar planlanan ders saatlerine uymakla yükümlüdür.",
+          ],
+        },
+        {
+          heading: "12. İptal, İade ve Cayma Esasları",
+          paragraphs: [
+            "Alıcı, hizmete ilişkin yasal mevzuat kapsamındaki haklarını kullanabilir. Paket kapsamında henüz hiçbir ders oturumu gerçekleştirilmemişse, mevzuat çerçevesinde tam iade talep edilebilir.",
+          ],
+        },
+        {
+          heading: "13. Kullanılmış Derslerin İade Hesabı",
+          paragraphs: [
+            "Paket kapsamında bir veya daha fazla dersin kullanılmış olması halinde, iade hesabında tamamlanan dersler, satın alma sırasında kullanıcıya bildirilen indirimsiz standart tek ders liste bedeli üzerinden hesaplanır.",
+            "Tamamlanan derslerin toplam bedeli, müşterinin paket için fiilen ödediği toplam tutardan mahsup edilir.",
+            "Mahsup sonrasında kalan bir bakiye bulunması halinde bu bakiye, uygulanabilir mevzuat ile banka veya ödeme kuruluşunun işlem süreçleri çerçevesinde, ödemenin gerçekleştirildiği yönteme uygun şekilde iade edilir.",
+            "Bu hesaplama hiçbir durumda müşteriye ek borç veya negatif iade bakiyesi doğurmaz.",
+          ],
+        },
+        {
+          heading: "14. Yasal Tüketici Hakları",
+          paragraphs: [
+            "Yürürlükteki mevzuattan doğan tüketici hakları saklıdır. Hizmet Sağlayıcı, mevzuata ve dürüstlük kuralına uygun olarak tüketici memnuniyetini esas alır.",
+          ],
+        },
+        {
+          heading: "15. İletişim ve Destek Kanalları",
+          paragraphs: [
+            "Hizmet sürecine, faturalandırmaya veya ders planlamasına ilişkin tüm soru ve bildirimler için support@oriens-academy.com, payments@oriens-academy.com e-posta adresleri veya 0850 304 04 67 numaralı kurumsal hat üzerinden Hizmet Sağlayıcı'ya ulaşılabilir.",
+          ],
+        },
+        {
+          heading: "16. Uyuşmazlıkların Çözümü",
+          paragraphs: [
+            "İşbu Sözleşme'den doğabilecek uyuşmazlıklarda, Ticaret Bakanlığı'nca ilan edilen parasal sınırlar dahilinde Alıcı'nın yerleşim yerindeki veya tüketici işleminin yapıldığı yerdeki Tüketici Hakem Heyetleri ile Tüketici Mahkemeleri yetkilidir.",
+          ],
+        },
+        {
+          heading: "17. Elektronik Onay ve Yürürlük",
+          paragraphs: [
+            "Alıcı, internet sitesi üzerinden siparişi tamamlamadan önce işbu Sözleşme'nin tüm maddelerini okuduğunu, anladığını ve elektronik ortamda onaylayarak kabul ettiğini beyan eder. Sözleşme, ödemenin onaylandığı an itibarıyla yürürlüğe girer.",
           ],
         },
       ],
@@ -166,41 +219,45 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.preInformation,
       lastUpdated: "27 Ağustos 2026",
       title: "Ön Bilgilendirme Formu",
-      badge: "Sipariş Ön Bilgilendirmesi",
+      badge: "Sipariş Öncesi Bilgilendirme",
       intro:
-        "İşbu Ön Bilgilendirme Formu, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği'nin 5. maddesi uyarınca Alıcı'yı sipariş öncesinde bilgilendirmek amacıyla hazırlanmıştır.",
+        "İşbu Ön Bilgilendirme Formu, 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği uyarınca, Alıcı'nın siparişini onaylamasından önce bilgilendirilmesi amacıyla hazırlanmıştır.",
       sections: [
         {
-          heading: "1. Satıcı Bilgileri",
+          heading: "1. Hizmet Sağlayıcı Bilgileri",
           paragraphs: [
-            "Unvan / Marka: Oriens Academy\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40\nE-posta: info@oriens-academy.com / payments@oriens-academy.com",
+            "Hizmet Sağlayıcı: Oriens Academy\nWeb Sitesi: https://oriens-academy.com\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nE-posta: info@oriens-academy.com / payments@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
           ],
         },
         {
           heading: "2. Hizmetin Temel Nitelikleri ve Fiyatı",
           paragraphs: [
-            "Satın alınmak istenen uluslararası eğitim/sınav hazırlığı paketinin adı, ders saati adedi, geçerlilik süresi ve vergiler dahil toplam satış bedeli sipariş ekranında ve sepet özetinde Alıcı'ya açıkça gösterilmektedir.",
-            "Sipariş esnasında geçerli bir kupon kodu kullanılması durumunda, indirim tutarı anlık olarak hesaplanarak ödenecek net tutara yansıtılır.",
+            "Satın alınan eğitim veya danışmanlık paketinin adı, ders saati adedi, liste fiyatı, uygulanan indirim ve vergiler dahil ödenecek toplam tutar sipariş onay ekranında ve özet tablosunda açıkça belirtilmektedir.",
           ],
         },
         {
-          heading: "3. Ödeme ve İfa Bilgileri",
+          heading: "3. Ödeme ve İfa Esasları",
           paragraphs: [
-            "Ödeme; anlaşmalı ödeme kuruluşu PayTR altyapısıyla kredi/banka kartı veya doğrudan banka havalesi/EFT yöntemiyle yapılabilir.",
-            "Ödemesi başarıyla tamamlanan paketler anında veya havale onayını takiben öğrencinin hesabına tanımlanır. Dersler dijital platformlar üzerinden çevrim içi olarak ifa edilir.",
+            "Ödeme; kredi kartı, banka kartı veya banka havalesi/EFT yöntemiyle yapılabilir. Kart ödemeleri PayTR 256-bit SSL şifreli güvenli altyapısıyla gerçekleştirilir. Ödeme onaylandığında ders hakları öğrenci hesabına aktarılır.",
           ],
         },
         {
-          heading: "4. Cayma Hakkı ve İade Koşulları Özeti",
+          heading: "4. Cayma ve İade Bilgilendirmesi",
           paragraphs: [
-            "Alıcı, sözleşme konusu hizmetin ifasına başlanmamış olması kaydıyla yasal süre içerisinde cayma hakkını kullanabilir.",
-            "Ders paketinin kısmen kullanılmış olması durumunda iade hesabında; tamamlanan dersler satın alma esnasında bildirilen standart tek ders liste fiyatı üzerinden hesaplanarak ödenen paket bedelinden mahsup edilir ve kalan tutar Alıcı'ya iade edilir.",
+            "Alıcı, hizmete ilişkin mevzuattan doğan haklarını kullanabilir. Paket kapsamında ders kullanımı başlamadan önce tam iade talep edilebilir. Ders kullanımı gerçekleşmiş paketlerde ise İptal ve İade Koşulları'nda yer alan mahsup hesabı uygulanır.",
           ],
         },
         {
-          heading: "5. Şikayet ve İtiraz",
+          heading: "5. İade Mahsup Kuralı",
           paragraphs: [
-            "Alıcı, hizmete ilişkin soru, talep veya şikayetlerini support@oriens-academy.com e-posta adresine veya 0850 304 04 67 numaralı kurumsal hatta iletebilir. Uyuşmazlık halinde Tüketici Hakem Heyetleri ve Tüketici Mahkemeleri görevlidir.",
+            "Paket kapsamında bir veya daha fazla dersin kullanılmış olması halinde, iade hesabında tamamlanan dersler, satın alma sırasında bildirilen indirimsiz standart tek ders liste bedeli üzerinden hesaplanarak fiilen ödenen tutardan düşülür. Kalan tutar Alıcı'ya iade edilir.",
+            "Yürürlükteki mevzuattan doğan tüketici hakları saklıdır.",
+          ],
+        },
+        {
+          heading: "6. Şikayet ve İtiraz",
+          paragraphs: [
+            "Tüketiciler, şikayet ve itirazları konusunda başvurularını yasal parasal sınırlar dahilinde Tüketici Hakem Heyetlerine veya Tüketici Mahkemelerine yapabilirler.",
           ],
         },
       ],
@@ -210,39 +267,49 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.refundPolicy,
       lastUpdated: "27 Ağustos 2026",
       title: "İptal ve İade Koşulları",
-      badge: "İade Politikası",
+      badge: "Tüketici İade Politikası",
       intro:
-        "Oriens Academy olarak öğrenci memnuniyetini ve şeffaf eğitim süreçlerini esas alıyoruz. Paket satın alımlarına, ders iptallerine ve iade süreçlerine ilişkin resmi kurallar aşağıda yer almaktadır.",
+        "Oriens Academy olarak, sunduğumuz uluslararası sınav hazırlığı ve akademik danışmanlık hizmetlerinde şeffaf, adil ve mevzuata uygun bir iptal ve iade süreci işletmekteyiz.",
       sections: [
         {
-          heading: "1. Genel Esaslar",
+          heading: "1. Hizmet Başlamadan Önce İptal",
           paragraphs: [
-            "Oriens Academy üzerinden satın alınan tüm eğitim ve danışmanlık paketleri tüketici hakları mevzuatına tabidir. İade talepleri payments@oriens-academy.com adresine yazılı olarak veya öğrenci paneli destek kanalı üzerinden iletilmelidir.",
+            "Satın alınan eğitim paketi kapsamında henüz hiçbir ders oturumu gerçekleştirilmemişse, Alıcı sözleşme tarihinden itibaren yasal süreler içerisinde herhangi bir gerekçe göstermeksizin iptal ve tam iade talebinde bulunabilir.",
           ],
         },
         {
-          heading: "2. Kullanılmamış Paketlerin İadesi",
+          heading: "2. Kısmen Kullanılmış Paketlerde İade Hesabı",
           paragraphs: [
-            "Satın alındıktan sonra hiçbir dersi kullanılmamış ve randevusu tamamlanmamış paketler için yasal süre içerisinde yapılan başvurularda, ödenen tutarın tamamı kesintisiz olarak Alıcı'nın ödeme yaptığı yöntem üzerinden iade edilir.",
+            "Paket kapsamında bir veya daha fazla dersin kullanılmış olması halinde, iade hesabında tamamlanan dersler, satın alma sırasında kullanıcıya bildirilen indirimsiz standart tek ders liste bedeli üzerinden hesaplanır.",
+            "Tamamlanan derslerin toplam bedeli, müşterinin paket için fiilen ödediği toplam tutardan mahsup edilir.",
+            "Mahsup sonrasında kalan bir bakiye bulunması halinde bu bakiye, uygulanabilir mevzuat ile banka veya ödeme kuruluşunun işlem süreçleri çerçevesinde, ödemenin gerçekleştirildiği yönteme uygun şekilde iade edilir.",
+            "Bu hesaplama hiçbir durumda müşteriye ek borç veya negatif iade bakiyesi doğurmaz.",
+            "Yürürlükteki mevzuattan doğan tüketici hakları saklıdır.",
           ],
         },
         {
-          heading: "3. Kısmen Kullanılmış Paketlerin İade Hesabı",
+          heading: "3. Örnek İade Hesaplaması",
           paragraphs: [
-            "Paket kapsamında bir veya daha fazla dersin kullanılmış olması halinde, iade hesabında tamamlanan dersler, satın alma sırasında kullanıcıya bildirilen indirimsiz standart tek ders liste bedeli üzerinden hesaplanır. Tamamlanan derslerin toplam bedeli müşterinin fiilen ödediği paket bedelinden mahsup edilir ve varsa kalan bakiye, uygulanabilir mevzuat ve ödeme kuruluşu/banka süreçleri çerçevesinde ödeme yöntemine uygun şekilde iade edilir. Bu hesaplama müşteriye ek borç veya negatif iade bakiyesi doğurmaz. Tüketicinin emredici mevzuattan doğan hakları saklıdır.",
+            "Aşağıdaki örnek, kuralın işleyişini açıklamak amacıyla hazırlanmış bilgilendirme amaçlı bir örnek hesaplamadır (Gerçek iadelerde sipariş anındaki kayıtlı snapshot değerleri esas alınır):",
+          ],
+          bullets: [
+            "Paket için fiilen ödenen tutar: 27.000 TL",
+            "Satın alma tarihindeki indirimsiz standart tek ders liste bedeli: 3.200 TL",
+            "Tamamlanan / kullanılan ders adedi: 3 ders",
+            "Ders kullanım bedeli (3 × 3.200 TL): 9.600 TL",
+            "İade edilebilir kalan tutar (27.000 TL - 9.600 TL): 17.400 TL",
           ],
         },
         {
-          heading: "4. Mükerrer / Hatalı Tahsilatlar",
+          heading: "4. İade Süreci ve Geri Ödeme Şekli",
           paragraphs: [
-            "Teknik bir aksaklık veya kullanıcı hatası nedeniyle aynı paket için mükerrer tahsilat yapılması durumunda, fazla tahsil edilen tutar derhal tespit edilerek tam tutarıyla iade edilir.",
+            "İade talepleri payments@oriens-academy.com e-posta adresine yazılı olarak iletilir. İncelenen ve onaylanan iadeler, ödemenin yapıldığı karta veya banka hesabına, bankacılık ve ödeme kuruluşu işlem süreleri dahilinde aktarılır.",
           ],
         },
         {
-          heading: "5. İade Süreci ve Geri Ödeme Kanalları",
+          heading: "5. İletişim",
           paragraphs: [
-            "Kredi veya banka kartı ile yapılan ödemelerde iade, PayTR sistemi üzerinden ödemenin yapıldığı karta iletilir. Bankaların yansıtma süreleri ilgili finans kuruluşunun süreçlerine bağlıdır.",
-            "Banka havalesi/EFT ile yapılan ödemelerde iadeler, ödemeyi yapan Alıcı'nın adıyla eşleşen banka hesabına transfer edilir.",
+            "İptal, iade ve muhasebe süreçlerine dair tüm destek talepleriniz için payments@oriens-academy.com veya 0850 304 04 67 numaralı kurumsal hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
           ],
         },
       ],
@@ -252,53 +319,39 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.kvkkNotice,
       lastUpdated: "27 Ağustos 2026",
       title: "KVKK Aydınlatma Metni",
-      badge: "6698 Sayılı Kanun Kapsamında",
+      badge: "Kişisel Verilerin Korunması",
       intro:
-        "Oriens Academy olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu (\"KVKK\") uyarınca veri sorumlusu sıfatıyla, kişisel verilerinizin güvenliğine ve gizliliğine azami hassasiyet göstermekteyiz.",
+        "Oriens Academy (\"Hizmet Sağlayıcı\") olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu (\"KVKK\") uyarınca, veri sorumlusu sıfatıyla kişisel verilerinizin güvenliğine ve gizliliğine azami önem veriyoruz.",
       sections: [
         {
           heading: "1. Veri Sorumlusu",
           paragraphs: [
-            "Kişisel verileriniz, veri sorumlusu sıfatıyla Oriens Academy (Emaar Square, The Heights E Blok, Üsküdar / İstanbul) tarafından işlenmektedir.",
+            "Hizmet Sağlayıcı: Oriens Academy\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nİletişim E-posta: info@oriens-academy.com | Destek: support@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
           ],
         },
         {
-          heading: "2. İşlenen Kişisel Veri Kategorileri",
+          heading: "2. İşlenen Kişisel Veriler",
           paragraphs: [
-            "Akademi hizmetleri kapsamında aşağıdaki veri kategorileri işlenebilmektedir:",
-          ],
-          bullets: [
-            "Kimlik Verileri: Ad, soyad.",
-            "İletişim Verileri: E-posta adresi, telefon numarası.",
-            "Eğitim ve Akademik Veriler: Hedeflenen sınav (IB, AP, SAT vb.), sınıf düzeyi, ders notları, randevu ve ödev geçmişi.",
-            "Finans ve İşlem Verileri: Satın alınan paket bilgisi, işlem tutarı, ödeme referans numarası, kupon kodu (Ham kart verisi veya CVV kesinlikle işlenmez/saklanmaz).",
-            "İşlem Güvenliği Verileri: IP adresi, oturum giriş kayıtları, güvenlik doğrulama logları.",
+            "Kimlik bilgileri (ad, soyad), iletişim bilgileri (e-posta, telefon numarası, adres), müşteri işlem ve sipariş verileri, öğrenci eğitim takip ve değerlendirme verileri ile web sitesi kullanım/log kayıtları işlenmektedir.",
           ],
         },
         {
-          heading: "3. Kişisel Verilerin İşlenme Amaçları ve Hukuki Sebepleri",
+          heading: "3. Kişisel Verilerin İşlenme Amaçları",
           paragraphs: [
-            "Kişisel verileriniz; KVKK'nın 5. maddesinde belirtilen \"bir sözleşmenin kurulması veya ifasıyla doğrudan doğruya ilgili olması\", \"veri sorumlusunun hukuki yükümlülüğünü yerine getirebilmesi\" ve \"meşru menfaat\" hukuki sebeplerine dayalı olarak aşağıdaki amaçlarla işlenir:",
-          ],
-          bullets: [
-            "Eğitim danışmanlığı, seviye tespiti ve ders planlaması süreçlerinin yürütülmesi,",
-            "Öğrenci portalı hesabının oluşturulması ve hesap güvenliğinin sağlanması,",
-            "Ödeme, faturalandırma ve finansal mutabakat işlemlerinin gerçekleştirilmesi,",
-            "Talep, soru ve destek bildirimlerinin yanıtlanması,",
-            "Hukuki ve idari yükümlülüklerin yerine getirilmesi.",
+            "Kişisel verileriniz; eğitim ve danışmanlık hizmetlerinin sunulması, ders planlamalarının yapılması, sipariş ve ödeme süreçlerinin yönetilmesi, yasal yükümlülüklerin yerine getirilmesi ve müşteri destek süreçlerinin yürütülmesi amaçlarıyla işlenir.",
           ],
         },
         {
-          heading: "4. Kişisel Verilerin Aktarılması",
+          heading: "4. Verilerin Aktarılması",
           paragraphs: [
-            "Kişisel verileriniz, yalnızca hizmetin ifası ve yasal zorunluluklar çerçevesinde; ödeme altyapısı sağlayıcımız PayTR, veri tabanı ve kimlik doğrulama altyapısı sağlayıcımız Supabase, e-posta iletim altyapısı ve yetkili kamu kurum ve kuruluşları ile mevzuata uygun olarak paylaşılmaktadır. Verileriniz üçüncü şahıslara ticari amaçla satılmaz.",
+            "Kişisel verileriniz, yalnızca hizmetin gerektirdiği ölçüde yetkili kamu kurumlarına, ödeme altyapısı sağlayıcımız PayTR'a ve bilişim altyapı hizmeti aldığımız güvenli bulut sağlayıcılarına aktarılabilmektedir.",
           ],
         },
         {
-          heading: "5. İlgili Kişinin Hakları (KVKK m. 11)",
+          heading: "5. İlgili Kişinin Hakları (Madde 11)",
           paragraphs: [
-            "KVKK'nın 11. maddesi uyarınca; verilerinizin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme, işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme, eksik veya yanlış işlenmişse düzeltilmesini isteme ve silinmesini talep etme haklarına sahipsiniz.",
-            "Başvurularınızı kimliğinizi teyit eden belgeler ile info@oriens-academy.com e-posta adresine iletebilirsiniz.",
+            "KVKK'nın 11. maddesi uyarınca; verilerinizin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme, işlenme amacına uygun kullanılıp kullanılmadığını öğrenme, eksik/yanlış verilerin düzeltilmesini ve silinmesini isteme haklarına sahipsiniz.",
+            "Taleplerinizi info@oriens-academy.com e-posta adresine iletebilirsiniz.",
           ],
         },
       ],
@@ -310,30 +363,24 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       title: "Çerez Politikası",
       badge: "Çerez ve Gizlilik Tercihleri",
       intro:
-        "İşbu Çerez Politikası, Oriens Academy web sitesini (oriens-academy.com) ziyaret eden kullanıcıların deneyimini geliştirmek, site güvenliğini sağlamak ve ziyaretçi istatistiklerini analiz etmek amacıyla kullanılan çerezler hakkında bilgilendirme sunar.",
+        "Oriens Academy web sitesi (oriens-academy.com), ziyaretçilerimizin kullanıcı deneyimini geliştirmek ve güvenli bir gezinme ortamı sunmak amacıyla çerezler (cookies) kullanmaktadır.",
       sections: [
         {
           heading: "1. Çerez Nedir?",
           paragraphs: [
-            "Çerezler (Cookies), ziyaret ettiğiniz internet siteleri tarafından tarayıcınız aracılığıyla cihazınıza kaydedilen küçük metin dosyalarıdır. Çerezler web sitesinin verimli çalışmasını ve tercihlerinize uygun hizmet sunulmasını sağlar.",
+            "Çerezler, bir web sitesini ziyaret ettiğinizde cihazınıza kaydedilen küçük metin dosyalarıdır. Tercihlerinizin hatırlanmasına ve sitenin güvenli çalışmasına yardımcı olur.",
           ],
         },
         {
-          heading: "2. Sitemizde Kullanılan Çerez Türleri",
+          heading: "2. Kullanılan Çerez Türleri",
           paragraphs: [
-            "Platformumuzda kullanılan çerezler kullanım amaçlarına göre aşağıdaki gibidir:",
-          ],
-          bullets: [
-            "Zorunlu Çerezler: Web sitesinin temel fonksiyonlarının çalışması, oturum güvenliği ve Cloudflare Turnstile güvenlik doğrulamaları için kesinlikle gereklidir.",
-            "Analitik ve Performans Çerezleri: Ziyaretçi sayılarını ve trafik kaynaklarını anonim olarak ölçümlememize (Google Analytics 4 & GTM) olanak tanır. Kullanıcının açık rızasıyla aktif hale getirilir.",
-            "Pazarlama / Hedefleme Çerezleri: Kullanıcıların ilgi alanlarına uygun akademik içerik ve kampanya sunulmasını sağlar. Kullanıcının açık rızasına tabidir.",
+            "Sitemizde zorunlu çerezler (oturum açma, güvenlik, sepet/ödeme işlemleri) ile kullanıcı onayına tabi analitik ve tercih çerezleri kullanılmaktadır.",
           ],
         },
         {
-          heading: "3. Çerez Tercihlerini Yönetme",
+          heading: "3. Çerez Yönetimi ve Tercihler",
           paragraphs: [
-            "Web sitemizi ilk ziyaretinizde karşınıza çıkan Çerez Tercihleri Paneli üzerinden dilediğiniz zaman tercihlerinizi özelleştirebilir, zorunlu olmayan çerezleri devre dışı bırakabilirsiniz.",
-            "Ayrıca tarayıcı ayarlarınızdan çerezleri silebilir veya engelleyebilirsiniz.",
+            "Ziyaretçilerimiz web sitemizde yer alan çerez bildirim paneli veya tarayıcı ayarları üzerinden diledikleri zaman çerez tercihlerini güncelleyebilir veya engelleyebilirler.",
           ],
         },
       ],
@@ -343,32 +390,32 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.privacyPolicy,
       lastUpdated: "27 Ağustos 2026",
       title: "Gizlilik Politikası",
-      badge: "Veri Gizliliği",
+      badge: "Gizlilik ve Veri Güvenliği",
       intro:
-        "Bu Gizlilik Politikası, Oriens Academy web sitesi ve dijital hizmetleri kapsamında kişisel bilgilerin nasıl toplandığını, korunduğunu ve işlendiğini açıklar.",
+        "Oriens Academy, kullanıcılarının ve öğrencilerinin gizliliğini korumayı temel ilke olarak kabul eder. Bu politika, sitemizi ziyaret ettiğinizde veya hizmetlerimizden faydalandığınızda verilerinizin nasıl korunduğunu açıklar.",
       sections: [
         {
-          heading: "1. Genel İlke ve Kapsam",
+          heading: "1. Bilgi Toplama ve Kullanım",
           paragraphs: [
-            "Oriens Academy, kullanıcılarının gizliliğine ve kişisel verilerinin korunmasına büyük önem verir. Detaylı veri koruma ilkelerimiz için lütfen KVKK Aydınlatma Metni sayfamızı inceleyiniz.",
+            "Sitemiz üzerinden hesap oluşturma, randevu alma veya ödeme yapma süreçlerinde adınız, e-posta adresiniz ve telefon numaranız gibi temel bilgiler toplanır. Bu bilgiler sadece eğitim hizmetinizin ifası için kullanılır.",
           ],
         },
         {
-          heading: "2. Hesap ve Öğrenci Bilgileri",
+          heading: "2. Ödeme Bilgilerinin Güvenliği",
           paragraphs: [
-            "Öğrenci portalı üyeliği ile birlikte profil, ders randevuları, akademik ödevler ve paket kullanım verileri yalnızca eğitim hizmetinin sunulması amacıyla işlenir. Parolalar Supabase Auth tarafından kriptografik olarak güvenle saklanır.",
+            "Kredi kartı ve banka kartı ödemeleri lisanslı ödeme kuruluşu PayTR'ın 256-bit SSL şifreli ve 3D Secure korumalı altyapısı üzerinden gerçekleştirilir. Kart bilgileriniz hiçbir şekilde sunucularımızda kaydedilmez.",
           ],
         },
         {
-          heading: "3. Ödeme ve Kart Güvenliği",
+          heading: "3. Üçüncü Taraf Entegrasyonları",
           paragraphs: [
-            "Kart bilgileriniz PayTR’ın 256-bit SSL şifreli güvenli ödeme altyapısı üzerinden işlenir ve Oriens Academy sunucularında saklanmaz. PAN (kart numarası) ve CVV bilgileri sistemimize hiçbir zaman temas etmez.",
+            "Hizmet sunumu için gerekli olan güvenli altyapı sağlayıcıları (Supabase, PayTR, Google Takvim/Meet) haricinde verileriniz üçüncü taraflarla paylaşılmaz veya ticari amaçla satılmaz.",
           ],
         },
         {
-          heading: "4. İletişim ve Destek",
+          heading: "4. İletişim",
           paragraphs: [
-            "Gizlilik politikamız veya verilerinizle ilgili her türlü soru ve başvuru için info@oriens-academy.com adresi üzerinden bizimle iletişime geçebilirsiniz.",
+            "Gizlilik politikamızla ilgili tüm sorularınız için info@oriens-academy.com veya support@oriens-academy.com adreslerinden bize ulaşabilirsiniz.",
           ],
         },
       ],
@@ -378,38 +425,40 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.terms,
       lastUpdated: "27 Ağustos 2026",
       title: "Kullanım Koşulları",
-      badge: "Genel Şartlar",
+      badge: "Site Kullanım Şartları",
       intro:
-        "Bu Kullanım Koşulları, Oriens Academy web sitesi (oriens-academy.com) ile sunulan eğitim ve danışmanlık hizmetlerinin genel kullanım şartlarını düzenler.",
+        "Oriens Academy web sitesini (oriens-academy.com) ziyaret ederek veya hizmetlerimizden yararlanarak işbu Kullanım Koşulları'nı kabul etmiş sayılırsınız.",
       sections: [
         {
-          heading: "1. Hizmet Kapsamı ve Genel Bilgilendirme",
+          heading: "1. Hizmetlerin Kapsamı",
           paragraphs: [
-            "Oriens Academy, uluslararası lise ve üniversite sınavlarına hazırlık, özel ders ve akademik danışmanlık hizmetleri sunmaktadır. Web sitesindeki içerikler bilgilendirme amaçlıdır.",
+            "Oriens Academy, uluslararası akademik sınavlara hazırlık ve üniversite kabul danışmanlığı alanında çevrim içi eğitim hizmetleri sunar.",
           ],
         },
         {
-          heading: "2. Öğrenci Hesapları ve Güvenlik",
+          heading: "2. Fikri Mülkiyet Hakları",
           paragraphs: [
-            "Öğrenci, hesabının giriş bilgilerinin gizliliğini korumakla yükümlüdür. Hesap üzerinden yapılan tüm işlemler öğrencinin sorumluluğundadır.",
+            "Web sitesinde yer alan tüm metinler, tasarımlar, logolar, ders içerikleri ve materyaller Oriens Academy'ye aittir ve telif hakları mevzuatı ile korunmaktadır. İzinsiz kopyalanamaz veya çoğaltılamaz.",
           ],
         },
         {
-          heading: "3. Satış, İptal ve İade Hükümleri",
+          heading: "3. Bağlantılı Yasal Belgeler",
           paragraphs: [
-            "Web sitesi üzerinden yapılan paket satın alımlarında Mesafeli Satış Sözleşmesi ve İptal/İade Koşulları geçerlidir. Paket iadelerinde kısmen kullanılmış dersler standart tek ders liste fiyatı üzerinden mahsup edilir.",
+            "Hizmet alımı ve site kullanımı sırasında geçerli olan diğer sözleşme ve politikalarımıza aşağıdaki bağlantılardan ulaşabilirsiniz:",
+          ],
+          bullets: [
+            "Mesafeli Satış Sözleşmesi (/tr/mesafeli-satis-sozlesmesi)",
+            "Ön Bilgilendirme Formu (/tr/on-bilgilendirme-formu)",
+            "İptal ve İade Koşulları (/tr/iptal-ve-iade-kosullari)",
+            "KVKK Aydınlatma Metni (/tr/kvkk-aydinlatma-metni)",
+            "Gizlilik Politikası (/tr/privacy)",
+            "Çerez Politikası (/tr/cerez-politikasi)",
           ],
         },
         {
-          heading: "4. Fikri Mülkiyet Hakları",
+          heading: "4. İletişim",
           paragraphs: [
-            "Oriens Academy web sitesinde yer alan tüm eğitim materyalleri, marka işaretleri, metinler, grafikler ve yazılımlar Oriens Academy'ye aittir; izinsiz çoğaltılamaz ve ticari amaçla kullanılamaz.",
-          ],
-        },
-        {
-          heading: "5. İletişim",
-          paragraphs: [
-            "Kullanım koşulları ile ilgili sorularınız için info@oriens-academy.com adresinden bize ulaşabilirsiniz.",
+            "Kullanım koşullarına dair bildirimleriniz için info@oriens-academy.com e-posta adresi veya 0850 304 04 67 kurumsal hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
           ],
         },
       ],
@@ -421,59 +470,114 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.salesAgreement,
       lastUpdated: "August 27, 2026",
       title: "Distance Sales Agreement",
-      badge: "Consumer Agreement",
+      badge: "Service Agreement",
       intro:
-        "This Distance Sales Agreement (\"Agreement\") is concluded electronically between the Seller and the Buyer pursuant to Turkish Law No. 6502 on the Protection of Consumers and the Regulation on Distance Contracts.",
+        "This Distance Sales Agreement (\"Agreement\") has been concluded electronically between the Service Provider and the Buyer / Service Recipient in accordance with consumer protection regulations.",
       sections: [
         {
           heading: "1. Parties",
           paragraphs: [
-            "SELLER: Oriens Academy (\"Seller\")\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com / payments@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
-            "BUYER (\"Student/Customer\"): The natural or legal person who purchases educational and exam consultancy packages via oriens-academy.com and whose contact information is registered in the order summary.",
+            "SERVICE PROVIDER: Oriens Academy\nWebsite: https://oriens-academy.com\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com / payments@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
+            "BUYER / SERVICE RECIPIENT: The individual or legal entity purchasing online academic tutoring, exam preparation, or admissions advisory packages on oriens-academy.com whose contact and billing details are registered during checkout or within their student account.",
           ],
         },
         {
-          heading: "2. Subject of Agreement",
+          heading: "2. Subject of the Agreement",
           paragraphs: [
-            "The subject of this Agreement is the determination of the rights and obligations of the parties regarding the electronic sale and performance of international academic consultancy, exam preparation, and tutoring packages.",
+            "The subject of this Agreement is the determination of rights and obligations regarding the sale and delivery of online exam preparation, tutoring, and academic consulting packages ordered electronically by the Buyer on oriens-academy.com.",
           ],
         },
         {
-          heading: "3. Service, Pricing, and Payment",
+          heading: "3. Scope of Service",
           paragraphs: [
-            "The package scope, lesson count, applicable coupon discounts, total price, and selected payment method (Credit/Debit Card via PayTR or Bank Transfer/EFT) are displayed and confirmed in the order summary prior to payment.",
-            "Card payments are processed through the secure payment infrastructure of PayTR Payment and Electronic Money Institution. Card credentials are never stored on Seller servers.",
+            "The services covered encompass one-on-one or group online lessons, mock exam assessments, and mentorship sessions for international exams including SAT, IB, AP, ESAT, TMUA, IGCSE, GRE, GMAT, UCAT, IMAT, and global university admissions.",
           ],
         },
         {
-          heading: "4. Performance and Delivery",
+          heading: "4. Package and Lesson Information",
           paragraphs: [
-            "Lesson credits included in the purchased package are credited to the Buyer's student portal upon payment confirmation. Lessons are conducted live online via video conference according to mutual scheduling.",
+            "The package type, total lesson hours, validity, and features are clearly specified in the Order Summary and Pre-Information Form confirmed by the Buyer prior to purchase.",
           ],
         },
         {
-          heading: "5. Right of Withdrawal, Cancellation, and Refund Policy",
+          heading: "5. Total Payment Amount",
           paragraphs: [
-            "The Buyer holds statutory cancellation rights in accordance with consumer protection regulations. For completely unused packages, full refunds may be requested within statutory notice periods.",
-            "In the event that one or more lessons have been used under the package, completed lessons are calculated based on the non-discounted standard single-lesson list price communicated at the time of purchase. The total cost of completed lessons is deducted from the actual package price paid, and any remaining balance is refunded in accordance with applicable legislation and payment institution/banking workflows. This calculation does not create additional debt or a negative refund balance for the customer. Statutory consumer rights remain reserved.",
+            "The total payable amount is the final price calculated after deducting applicable discounts and coupons from the package list price. All applicable taxes and service fees are included.",
           ],
         },
         {
-          heading: "6. Security & Data Protection",
+          heading: "6. Discounts and Coupons",
           paragraphs: [
-            "Personal data provided during ordering is processed in accordance with personal data protection laws. Card information is processed through PayTR's secure payment infrastructure and is not stored on Oriens Academy servers.",
+            "Discounts and promotional codes are validated at checkout and deducted from the payable total. Promotional conditions apply only to the designated package and time frame.",
           ],
         },
         {
-          heading: "7. Dispute Resolution",
+          heading: "7. Payment Methods",
           paragraphs: [
-            "In disputes arising from this Agreement, Turkish Consumer Arbitration Committees and Consumer Courts within monetary jurisdictions are authorized.",
+            "Payments can be made via credit card, debit card, or direct bank transfer (EFT/wire transfer) through the official platform.",
           ],
         },
         {
-          heading: "8. Enforcement",
+          heading: "8. Secure Card Payment via PayTR",
           paragraphs: [
-            "By completing the electronic order, the Buyer acknowledges and accepts all terms of this Agreement and the Pre-Information Form.",
+            "Card payments are processed securely through PayTR Payment and Electronic Money Institution infrastructure with 256-bit SSL encryption and mandatory 3D Secure verification. Card credentials are never stored on Oriens Academy servers.",
+          ],
+        },
+        {
+          heading: "9. Bank Transfer / Wire",
+          paragraphs: [
+            "For bank transfers, the unique payment reference code must be included in the bank transaction description. The package is credited once the transfer is confirmed in the Service Provider's bank account.",
+          ],
+        },
+        {
+          heading: "10. Service Delivery",
+          paragraphs: [
+            "Upon successful payment, lesson credits are allocated to the student portal. Sessions are conducted online via video conferencing platforms at mutually agreed schedules.",
+          ],
+        },
+        {
+          heading: "11. Scheduling and Attendance",
+          paragraphs: [
+            "Lesson scheduling is coordinated through the student dashboard or assigned academic coordinators. Both parties commit to adhering to scheduled class timings.",
+          ],
+        },
+        {
+          heading: "12. Cancellation and Refund Principles",
+          paragraphs: [
+            "The Buyer is entitled to statutory consumer rights. If no lesson sessions have commenced, a full refund may be requested within statutory cancellation windows.",
+          ],
+        },
+        {
+          heading: "13. Refund Calculation for Utilized Lessons",
+          paragraphs: [
+            "If one or more lessons have already been completed under a package, completed lessons are calculated and deducted based on the undiscounted standard single-lesson list price communicated at purchase time.",
+            "The total cost of completed lessons is deducted from the actual total amount paid by the customer for the package.",
+            "Any remaining positive balance is refunded to the original payment method in accordance with applicable regulations and payment processor settlement cycles.",
+            "This calculation shall under no circumstances generate additional debt or a negative balance for the customer.",
+          ],
+        },
+        {
+          heading: "14. Statutory Consumer Rights",
+          paragraphs: [
+            "All consumer rights arising under applicable legislation are fully preserved and respected.",
+          ],
+        },
+        {
+          heading: "15. Contact and Support",
+          paragraphs: [
+            "For billing, scheduling, or service inquiries, you can reach the Service Provider via support@oriens-academy.com, payments@oriens-academy.com, or 0850 304 04 67.",
+          ],
+        },
+        {
+          heading: "16. Dispute Resolution",
+          paragraphs: [
+            "Disputes arising from this Agreement shall be submitted to Consumer Arbitration Committees or Consumer Courts within statutory jurisdiction thresholds.",
+          ],
+        },
+        {
+          heading: "17. Electronic Confirmation and Enforcement",
+          paragraphs: [
+            "The Buyer declares having reviewed, understood, and agreed to all terms of this Agreement electronically before placing the order. The Agreement takes effect immediately upon payment confirmation.",
           ],
         },
       ],
@@ -483,38 +587,44 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.preInformation,
       lastUpdated: "August 27, 2026",
       title: "Pre-Information Form",
-      badge: "Pre-Order Notice",
+      badge: "Pre-Order Information",
       intro:
-        "This Pre-Information Form is provided to inform the Buyer prior to concluding a distance contract pursuant to applicable consumer protection legislation.",
+        "This Pre-Information Form is provided in accordance with consumer regulations to inform the Buyer prior to confirming their online order.",
       sections: [
         {
-          heading: "1. Seller Information",
+          heading: "1. Service Provider Details",
           paragraphs: [
-            "Brand: Oriens Academy\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40\nEmail: info@oriens-academy.com / payments@oriens-academy.com",
+            "Service Provider: Oriens Academy\nWebsite: https://oriens-academy.com\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com / payments@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
           ],
         },
         {
-          heading: "2. Service Characteristics and Total Price",
+          heading: "2. Key Characteristics and Price",
           paragraphs: [
-            "The package name, number of lesson hours, validity, and total all-inclusive price in TRY are clearly presented in the checkout summary prior to payment confirmation.",
+            "The package name, lesson count, list price, applied discounts, and total payable amount are explicitly displayed on the checkout confirmation screen and order summary.",
           ],
         },
         {
-          heading: "3. Payment & Delivery",
+          heading: "3. Payment and Performance",
           paragraphs: [
-            "Payments are accepted via Credit/Debit card through PayTR or via direct Bank Transfer/EFT. Purchased packages are activated electronically upon payment verification.",
+            "Payments are accepted via credit/debit cards (via PayTR 256-bit SSL) or bank transfer. Lesson credits are allocated to the student account upon payment confirmation.",
           ],
         },
         {
-          heading: "4. Summary of Refund Policy",
+          heading: "4. Cancellation and Refunds",
           paragraphs: [
-            "For partially used packages, completed lessons are deducted at the non-discounted single-lesson list price snapshot, and the remaining net balance is refunded.",
+            "Buyers can request cancellation prior to lesson delivery. Where lessons have commenced, the deduction rule set out in the Cancellation & Refund Policy applies.",
           ],
         },
         {
-          heading: "5. Inquiries & Complaints",
+          heading: "5. Refund Deduction Rule",
           paragraphs: [
-            "For any inquiries, contact support@oriens-academy.com or call 0850 304 04 67.",
+            "If lessons have been used, completed lessons are deducted at the undiscounted standard single-lesson list price communicated at purchase, and the remaining balance is refunded. Statutory rights are fully preserved.",
+          ],
+        },
+        {
+          heading: "6. Inquiries and Complaints",
+          paragraphs: [
+            "Inquiries or complaints may be directed to support@oriens-academy.com or submitted to competent Consumer Arbitration bodies.",
           ],
         },
       ],
@@ -524,38 +634,49 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.refundPolicy,
       lastUpdated: "August 27, 2026",
       title: "Cancellation & Refund Policy",
-      badge: "Refund Terms",
+      badge: "Consumer Refund Policy",
       intro:
-        "At Oriens Academy, we uphold academic excellence and customer satisfaction. Below are our transparent cancellation and refund rules.",
+        "Oriens Academy provides transparent, fair, and compliant refund terms for our international academic tutoring and university admissions programs.",
       sections: [
         {
-          heading: "1. General Principles",
+          heading: "1. Cancellation Before Service Commencement",
           paragraphs: [
-            "All educational and tutoring packages purchased through Oriens Academy are subject to consumer protection standards. Refund requests should be submitted in writing to payments@oriens-academy.com.",
+            "If no tutoring sessions have taken place under the purchased package, the Buyer may request cancellation and receive a full refund within statutory cancellation periods without penalty.",
           ],
         },
         {
-          heading: "2. Completely Unused Packages",
+          heading: "2. Refund Calculation for Partially Used Packages",
           paragraphs: [
-            "For packages where no lessons have taken place, a 100% full refund is issued upon request within statutory notice periods.",
+            "If one or more lessons have already been completed under a package, completed lessons are calculated and deducted based on the undiscounted standard single-lesson list price communicated at purchase time.",
+            "The total cost of completed lessons is deducted from the actual total amount paid by the customer for the package.",
+            "Any remaining positive balance is refunded to the original payment method in accordance with applicable regulations and payment processor settlement cycles.",
+            "This calculation shall under no circumstances generate additional debt or a negative balance for the customer.",
+            "All statutory consumer rights under applicable law are preserved.",
           ],
         },
         {
-          heading: "3. Partially Used Package Refund Calculation",
+          heading: "3. Illustrative Calculation Example",
           paragraphs: [
-            "In the event that one or more lessons have been used under the package, completed lessons are calculated based on the non-discounted standard single-lesson list price communicated at the time of purchase. The total cost of completed lessons is deducted from the actual package price paid, and any remaining balance is refunded in accordance with applicable legislation and payment institution/banking workflows. This calculation does not create additional debt or a negative refund balance for the customer. Statutory consumer rights remain reserved.",
+            "The following is an illustrative calculation demonstrating the rule (actual refunds utilize snapshot values recorded at transaction time):",
+          ],
+          bullets: [
+            "Actual amount paid for package: 27,000 TRY",
+            "Undiscounted standard single-lesson list price at purchase: 3,200 TRY",
+            "Completed / utilized lessons: 3 lessons",
+            "Lesson usage deduction (3 × 3,200 TRY): 9,600 TRY",
+            "Refundable remaining balance (27,000 TRY - 9,600 TRY): 17,400 TRY",
           ],
         },
         {
-          heading: "4. Duplicate or Erroneous Charges",
+          heading: "4. Processing and Payouts",
           paragraphs: [
-            "In the event of accidental duplicate payments, the surplus charge is verified and promptly refunded in full.",
+            "Refund requests must be submitted in writing to payments@oriens-academy.com. Approved refunds are credited back to the original card or bank account according to standard banking processing cycles.",
           ],
         },
         {
-          heading: "5. Refund Channels & Timelines",
+          heading: "5. Support Contact",
           paragraphs: [
-            "Card refunds are credited back to the original card via PayTR. Bank transfer refunds are remitted to the verified bank account belonging to the purchasing student/payer.",
+            "For inquiries regarding refunds and accounting, please contact payments@oriens-academy.com or our corporate line at 0850 304 04 67.",
           ],
         },
       ],
@@ -567,43 +688,36 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       title: "Personal Data (KVKK) Notice",
       badge: "Data Protection Notice",
       intro:
-        "Oriens Academy acts as the data controller regarding personal data processed through our academic consultancy and online learning platform.",
+        "Oriens Academy (\"Service Provider\"), acting as data controller, prioritizes the security, confidentiality, and lawful processing of your personal data.",
       sections: [
         {
           heading: "1. Data Controller",
           paragraphs: [
-            "Your personal data is processed by Oriens Academy (Emaar Square, The Heights E Block, Üsküdar / Istanbul).",
+            "Service Provider: Oriens Academy\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com | Support: support@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
           ],
         },
         {
           heading: "2. Categories of Processed Data",
           paragraphs: [
-            "We may process the following data categories:",
-          ],
-          bullets: [
-            "Identity: Full name.",
-            "Contact: Email address, telephone number.",
-            "Academic: Target examination (IB, AP, SAT), grade level, tutoring notes, appointments.",
-            "Financial & Transaction: Purchased package, paid amount, payment reference (No raw PAN/CVV card data is ever collected or stored).",
-            "Technical & Security: IP address, access logs, Cloudflare Turnstile verification signals.",
+            "Identity data (name, surname), contact data (email, phone number, address), transaction and order records, student learning logs, and web log data.",
           ],
         },
         {
-          heading: "3. Purposes and Legal Grounds for Processing",
+          heading: "3. Purposes of Processing",
           paragraphs: [
-            "Data is processed under contract performance, statutory compliance, and legitimate interest for educational service delivery, student portal access, secure payment processing, and support fulfillment.",
+            "To deliver educational and consulting services, schedule lessons, process payments, fulfill statutory obligations, and provide customer support.",
           ],
         },
         {
           heading: "4. Data Transfers",
           paragraphs: [
-            "Data is transferred only to trusted infrastructure providers (PayTR for payments, Supabase for authentication/database, email service providers) strictly as necessary. Data is never sold to third parties.",
+            "Data is shared strictly to the extent necessary with authorized public institutions, our licensed payment processor PayTR, and secure cloud infrastructure providers.",
           ],
         },
         {
-          heading: "5. Your Rights",
+          heading: "5. Data Subject Rights",
           paragraphs: [
-            "You have the right to request access, rectification, or deletion of your personal data by contacting info@oriens-academy.com.",
+            "You possess the right to learn whether your data is processed, request information, request correction or deletion, and object to unlawful processing. Requests can be submitted to info@oriens-academy.com.",
           ],
         },
       ],
@@ -613,31 +727,26 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.cookiePolicy,
       lastUpdated: "August 27, 2026",
       title: "Cookie Policy",
-      badge: "Cookies & Preferences",
+      badge: "Cookie and Privacy Preferences",
       intro:
-        "This Cookie Policy explains how Oriens Academy uses cookies and similar technologies on oriens-academy.com.",
+        "Oriens Academy uses cookies on oriens-academy.com to enhance browsing experience, maintain security, and optimize platform functionality.",
       sections: [
         {
           heading: "1. What are Cookies?",
           paragraphs: [
-            "Cookies are small text files stored on your device that enable website security, session persistence, and traffic measurement.",
+            "Cookies are small text files placed on your device to remember user preferences and ensure smooth navigation across secure sessions.",
           ],
         },
         {
-          heading: "2. Cookie Categories",
+          heading: "2. Categories of Cookies Used",
           paragraphs: [
-            "We categorize cookies into:",
-          ],
-          bullets: [
-            "Necessary & Security: Essential for website operation, session integrity, and Turnstile bot protection.",
-            "Analytics: Enables anonymous aggregated measurement of website visits (Google Analytics 4 & GTM) based on your consent.",
-            "Marketing: Used for relevant academic content delivery subject to your explicit consent.",
+            "We utilize strictly necessary cookies (authentication, session security, checkout) alongside optional analytics and preference cookies based on user consent.",
           ],
         },
         {
-          heading: "3. Managing Your Preferences",
+          heading: "3. Managing Cookie Preferences",
           paragraphs: [
-            "You can manage your cookie preferences at any time through our Cookie Preferences banner or your web browser settings.",
+            "You may review and adjust your cookie preferences at any time using our on-site cookie consent banner or browser privacy settings.",
           ],
         },
       ],
@@ -647,32 +756,32 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.privacyPolicy,
       lastUpdated: "August 27, 2026",
       title: "Privacy Policy",
-      badge: "Privacy Overview",
+      badge: "Privacy and Security",
       intro:
-        "This Privacy Policy outlines how Oriens Academy collects and safeguards personal information across our website and educational services.",
+        "Oriens Academy is dedicated to safeguarding the privacy and personal data of our students and site visitors.",
       sections: [
         {
-          heading: "1. Principles & KVKK Compliance",
+          heading: "1. Information Collection",
           paragraphs: [
-            "Oriens Academy is committed to data privacy. For detailed information regarding our data processing principles, please review our Personal Data (KVKK) Notice.",
+            "We collect basic contact and academic information (name, email, phone) when you create an account, book a consultation, or enroll in a course.",
           ],
         },
         {
-          heading: "2. Student Portal & Accounts",
+          heading: "2. Payment Security",
           paragraphs: [
-            "Student portal records (appointments, homework, package balance) are processed solely for educational delivery. Passwords are cryptographically managed via Supabase Auth.",
+            "Payment transactions are secured via PayTR's 256-bit SSL encrypted and 3D Secure verified infrastructure. Sensitive card numbers are never stored on our servers.",
           ],
         },
         {
-          heading: "3. Payment Security",
+          heading: "3. Third-Party Integrations",
           paragraphs: [
-            "Your card information is processed through PayTR's secure payment infrastructure and is not stored on Oriens Academy servers.",
+            "We only partner with trusted service providers (Supabase, PayTR, Google Calendar/Meet) necessary for service fulfillment. We do not sell user data.",
           ],
         },
         {
           heading: "4. Contact",
           paragraphs: [
-            "For inquiries regarding privacy, please contact info@oriens-academy.com.",
+            "For questions regarding our privacy practices, contact info@oriens-academy.com or support@oriens-academy.com.",
           ],
         },
       ],
@@ -682,38 +791,40 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
       version: LEGAL_VERSIONS.terms,
       lastUpdated: "August 27, 2026",
       title: "Terms of Service",
-      badge: "General Terms",
+      badge: "Website Terms",
       intro:
-        "These Terms of Service govern your use of the Oriens Academy website (oriens-academy.com) and associated academic tutoring services.",
+        "By accessing or using oriens-academy.com and associated educational services, you agree to these Terms of Service.",
       sections: [
         {
-          heading: "1. Scope of Service",
+          heading: "1. Service Scope",
           paragraphs: [
-            "Oriens Academy provides international curriculum tutoring, exam preparation, and academic consultancy.",
+            "Oriens Academy provides online tutoring and university admissions advisory programs for international academic examinations.",
           ],
         },
         {
-          heading: "2. Student Accounts",
+          heading: "2. Intellectual Property",
           paragraphs: [
-            "Users are responsible for maintaining account confidentiality and providing accurate information.",
+            "All website materials, logos, course documentation, and lesson content remain the exclusive intellectual property of Oriens Academy and are protected by copyright laws.",
           ],
         },
         {
-          heading: "3. Sales, Cancellation, and Refunds",
+          heading: "3. Related Legal Documents",
           paragraphs: [
-            "Purchases are governed by our Distance Sales Agreement and Cancellation & Refund Policy. Partial package refunds deduct completed lessons at the non-discounted single-lesson list price.",
+            "Please review our complementary consumer and data protection policies:",
+          ],
+          bullets: [
+            "Distance Sales Agreement (/en/distance-sales-agreement)",
+            "Pre-Information Form (/en/pre-information-form)",
+            "Cancellation & Refund Policy (/en/cancellation-refund-policy)",
+            "Personal Data (KVKK) Notice (/en/kvkk-notice)",
+            "Privacy Policy (/en/privacy)",
+            "Cookie Policy (/en/cookie-policy)",
           ],
         },
         {
-          heading: "4. Intellectual Property",
+          heading: "4. Contact",
           paragraphs: [
-            "All website materials, marks, and educational content are the intellectual property of Oriens Academy.",
-          ],
-        },
-        {
-          heading: "5. Inquiries",
-          paragraphs: [
-            "For questions regarding our terms, reach us at info@oriens-academy.com.",
+            "For questions regarding terms of use, contact info@oriens-academy.com or 0850 304 04 67.",
           ],
         },
       ],

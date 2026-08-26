@@ -226,7 +226,7 @@ export function HostedCardPanel({
           <div className="space-y-1.5 flex-1">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <p className="font-semibold text-ink">
-                {isTr ? "256-Bit SSL & 3D Secure Güvencesi" : "256-Bit SSL & 3D Secure Protection"}
+                {isTr ? "Güvenli Kart Ödemesi" : "Secure Card Payment"}
               </p>
               <Image
                 src="/images/payment-methods.png"
