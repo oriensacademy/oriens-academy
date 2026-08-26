@@ -19,7 +19,12 @@ export type LocalizedRouteId =
   | "forgotPassword"
   | "changePassword"
   | "privacy"
-  | "terms";
+  | "terms"
+  | "salesAgreement"
+  | "preInformation"
+  | "refundPolicy"
+  | "kvkk"
+  | "cookie";
 
 const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   home: { tr: "", en: "" },
@@ -39,6 +44,11 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   changePassword: { tr: "sifre-degistir", en: "change-password" },
   privacy: { tr: "privacy", en: "privacy" },
   terms: { tr: "terms", en: "terms" },
+  salesAgreement: { tr: "mesafeli-satis-sozlesmesi", en: "distance-sales-agreement" },
+  preInformation: { tr: "on-bilgilendirme-formu", en: "pre-information-form" },
+  refundPolicy: { tr: "iptal-ve-iade-kosullari", en: "cancellation-refund-policy" },
+  kvkk: { tr: "kvkk-aydinlatma-metni", en: "kvkk-notice" },
+  cookie: { tr: "cerez-politikasi", en: "cookie-policy" },
 };
 
 export function localizedPath(route: LocalizedRouteId, locale: Locale): string {
@@ -81,34 +91,144 @@ export function contactSegment(locale: Locale): string {
 export function assessmentSegment(locale: Locale): string {
   return localizedSegments.assessment[locale];
 }
-export function examTestSegment(locale: Locale): string { return localizedSegments.examTest[locale]; }
-export function paymentSegment(locale: Locale): string { return localizedSegments.payment[locale]; }
-export function studentAccountSegment(locale: Locale): string { return localizedSegments.studentAccount[locale]; }
-export function unifiedLoginSegment(locale: Locale): string { return localizedSegments.login[locale]; }
-export function unifiedLoginPath(locale: Locale): string { return localizedPath("login", locale); }
-export function forgotPasswordSegment(locale: Locale): string { return localizedSegments.forgotPassword[locale]; }
-export function forgotPasswordPath(locale: Locale): string { return localizedPath("forgotPassword", locale); }
-export function changePasswordSegment(locale: Locale): string { return localizedSegments.changePassword[locale]; }
-export function changePasswordPath(locale: Locale): string { return localizedPath("changePassword", locale); }
-export function studentAuthRootSegment(locale: Locale): string { return locale === "tr" ? "ogrenci" : "student"; }
-export function studentLoginSegment(locale: Locale): string { return locale === "tr" ? "giris" : "login"; }
-export function studentRegisterSegment(locale: Locale): string { return locale === "tr" ? "kayit" : "register"; }
-export function studentLoginPath(locale: Locale): string { return `/${locale}/${studentAuthRootSegment(locale)}/${studentLoginSegment(locale)}`; }
-export function studentRegisterPath(locale: Locale): string { return `/${locale}/${studentAuthRootSegment(locale)}/${studentRegisterSegment(locale)}`; }
-export function paymentResultSegment(locale: Locale): string { return locale === "tr" ? "sonuc" : "result"; }
-export function paymentSuccessSegment(locale: Locale): string { return locale === "tr" ? "basarili" : "success"; }
-export function paymentFailedSegment(locale: Locale): string { return locale === "tr" ? "basarisiz" : "failed"; }
-export function paymentSuccessPath(locale: Locale): string { return `${localizedPath("payment", locale)}/${paymentSuccessSegment(locale)}`; }
-export function paymentFailedPath(locale: Locale): string { return `${localizedPath("payment", locale)}/${paymentFailedSegment(locale)}`; }
+
+export function examTestSegment(locale: Locale): string {
+  return localizedSegments.examTest[locale];
+}
+
+export function paymentSegment(locale: Locale): string {
+  return localizedSegments.payment[locale];
+}
+
+export function studentAccountSegment(locale: Locale): string {
+  return localizedSegments.studentAccount[locale];
+}
+
+export function unifiedLoginSegment(locale: Locale): string {
+  return localizedSegments.login[locale];
+}
+
+export function unifiedLoginPath(locale: Locale): string {
+  return localizedPath("login", locale);
+}
+
+export function forgotPasswordSegment(locale: Locale): string {
+  return localizedSegments.forgotPassword[locale];
+}
+
+export function forgotPasswordPath(locale: Locale): string {
+  return localizedPath("forgotPassword", locale);
+}
+
+export function changePasswordSegment(locale: Locale): string {
+  return localizedSegments.changePassword[locale];
+}
+
+export function changePasswordPath(locale: Locale): string {
+  return localizedPath("changePassword", locale);
+}
+
+export function studentAuthRootSegment(locale: Locale): string {
+  return locale === "tr" ? "ogrenci" : "student";
+}
+
+export function studentLoginSegment(locale: Locale): string {
+  return locale === "tr" ? "giris" : "login";
+}
+
+export function studentRegisterSegment(locale: Locale): string {
+  return locale === "tr" ? "kayit" : "register";
+}
+
+export function studentLoginPath(locale: Locale): string {
+  return `/${locale}/${studentAuthRootSegment(locale)}/${studentLoginSegment(locale)}`;
+}
+
+export function studentRegisterPath(locale: Locale): string {
+  return `/${locale}/${studentAuthRootSegment(locale)}/${studentRegisterSegment(locale)}`;
+}
+
+export function paymentResultSegment(locale: Locale): string {
+  return locale === "tr" ? "sonuc" : "result";
+}
+
+export function paymentSuccessSegment(locale: Locale): string {
+  return locale === "tr" ? "basarili" : "success";
+}
+
+export function paymentFailedSegment(locale: Locale): string {
+  return locale === "tr" ? "basarisiz" : "failed";
+}
+
+export function paymentSuccessPath(locale: Locale): string {
+  return `${localizedPath("payment", locale)}/${paymentSuccessSegment(locale)}`;
+}
+
+export function paymentFailedPath(locale: Locale): string {
+  return `${localizedPath("payment", locale)}/${paymentFailedSegment(locale)}`;
+}
+
 export function paymentResultPath(locale: Locale, reference?: string, token?: string): string {
   const path = `${localizedPath("payment", locale)}/${paymentResultSegment(locale)}`;
   if (!reference || !token) return path;
   return `${path}?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(token)}`;
 }
-export function privacySegment(locale: Locale): string { return localizedSegments.privacy[locale]; }
-export function termsSegment(locale: Locale): string { return localizedSegments.terms[locale]; }
 
+export function privacySegment(locale: Locale): string {
+  return localizedSegments.privacy[locale];
+}
 
+export function privacyPath(locale: Locale): string {
+  return localizedPath("privacy", locale);
+}
+
+export function termsSegment(locale: Locale): string {
+  return localizedSegments.terms[locale];
+}
+
+export function termsPath(locale: Locale): string {
+  return localizedPath("terms", locale);
+}
+
+export function salesAgreementSegment(locale: Locale): string {
+  return localizedSegments.salesAgreement[locale];
+}
+
+export function salesAgreementPath(locale: Locale): string {
+  return localizedPath("salesAgreement", locale);
+}
+
+export function preInformationSegment(locale: Locale): string {
+  return localizedSegments.preInformation[locale];
+}
+
+export function preInformationPath(locale: Locale): string {
+  return localizedPath("preInformation", locale);
+}
+
+export function refundPolicySegment(locale: Locale): string {
+  return localizedSegments.refundPolicy[locale];
+}
+
+export function refundPolicyPath(locale: Locale): string {
+  return localizedPath("refundPolicy", locale);
+}
+
+export function kvkkSegment(locale: Locale): string {
+  return localizedSegments.kvkk[locale];
+}
+
+export function kvkkPath(locale: Locale): string {
+  return localizedPath("kvkk", locale);
+}
+
+export function cookiePolicySegment(locale: Locale): string {
+  return localizedSegments.cookie[locale];
+}
+
+export function cookiePolicyPath(locale: Locale): string {
+  return localizedPath("cookie", locale);
+}
 
 export function primaryNavigationPath(anchor: string, locale: Locale): string {
   if (anchor === "#exam-preparation") return localizedPath("exams", locale);
@@ -147,9 +267,14 @@ export function isPrimaryNavigationActive(
   const exams = localizedPath("exams", locale);
 
   if (target === home) return current === home;
-  if (target !== exams && !Object.values(localizedSegments).some(
-    (segments) => target === `/${locale}/${segments[locale]}`,
-  )) return false;
+  if (
+    target !== exams &&
+    !Object.values(localizedSegments).some(
+      (segments) => target === `/${locale}/${segments[locale]}`
+    )
+  ) {
+    return false;
+  }
 
   return target === exams ? current === target || current.startsWith(`${target}/`) : current === target;
 }
@@ -208,11 +333,21 @@ export function examDetailPath(locale: Locale, slug: string): string {
 
 export function pathForLocale(pathname: string, target: Locale): string {
   const cleanPath = pathname.replace(/\/$/, "") || "/";
-  if (/^\/(?:tr\/ogrenci\/giris|en\/student\/login|tr\/giris|en\/login)$/.test(cleanPath)) return unifiedLoginPath(target);
-  if (/^\/(?:tr\/sifremi-unuttum|en\/forgot-password)$/.test(cleanPath)) return forgotPasswordPath(target);
-  if (/^\/(?:tr\/sifre-degistir|en\/change-password)$/.test(cleanPath)) return changePasswordPath(target);
-  if (/^\/(?:tr\/ogrenci\/kayit|en\/student\/register)$/.test(cleanPath)) return studentRegisterPath(target);
-  if (/^\/(?:tr\/odeme\/sonuc|en\/payment\/result)$/.test(cleanPath)) return paymentResultPath(target);
+  if (/^\/(?:tr\/ogrenci\/giris|en\/student\/login|tr\/giris|en\/login)$/.test(cleanPath)) {
+    return unifiedLoginPath(target);
+  }
+  if (/^\/(?:tr\/sifremi-unuttum|en\/forgot-password)$/.test(cleanPath)) {
+    return forgotPasswordPath(target);
+  }
+  if (/^\/(?:tr\/sifre-degistir|en\/change-password)$/.test(cleanPath)) {
+    return changePasswordPath(target);
+  }
+  if (/^\/(?:tr\/ogrenci\/kayit|en\/student\/register)$/.test(cleanPath)) {
+    return studentRegisterPath(target);
+  }
+  if (/^\/(?:tr\/odeme\/sonuc|en\/payment\/result)$/.test(cleanPath)) {
+    return paymentResultPath(target);
+  }
   const detailMatch = cleanPath.match(/^\/(?:tr\/sinavlar|en\/exams)\/([^/]+)$/);
   if (detailMatch) {
     const slug = detailMatch[1];

@@ -1,54 +1,153 @@
 "use client";
 
+import Link from "next/link";
+import { Cookie, FileText, Shield, ArrowRight, SlidersHorizontal } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
+import { LEGAL_DOCS, type LegalDocKey } from "@/config/legal";
+import {
+  cookiePolicyPath,
+  kvkkPath,
+  localizedPath,
+  preInformationPath,
+  privacyPath,
+  refundPolicyPath,
+  salesAgreementPath,
+  termsPath,
+} from "@/lib/routes";
+import { reopenConsentPreferences } from "@/components/analytics/ConsentBanner";
 
-const copy = {
-  tr: {
-    privacy: { title: "Gizlilik Politikası", intro: "Bu politika, Oriens Academy web sitesi ve iletişim hizmetleri kapsamında işlenen verileri açıklar.", sections: [
-      ["Toplanan bilgiler", "İletişim ve görüşme formlarında paylaştığınız ad, e-posta, telefon, mesaj ve akademik ihtiyaç bilgileri işlenebilir. Güvenlik ve hizmet sürekliliği için sınırlı teknik günlük verileri de tutulabilir."],
-      ["İşleme amacı", "Veriler; talebinizi yanıtlamak, görüşme planlamak, eğitim ve danışmanlık hizmeti sunmak, güvenliği sağlamak ve hizmet kalitesini geliştirmek için kullanılır."],
-      ["Öğrenci hesabı", "Hesap oluşturulduğunda profil, randevu, ders, ödev, paket kullanımı ve ödeme geçmişi verileri eğitim hizmetini sunmak amacıyla işlenebilir. Parolalar Supabase Auth tarafından yönetilir; Oriens Academy parolaları veritabanında manuel olarak saklamaz."],
-      ["İletişim ve hizmet sunumu", "Talebinizle ilgili e-posta veya verdiğiniz diğer iletişim kanalları üzerinden sizinle iletişim kurulabilir."],
-      ["Saklama ve güvenlik", "Veriler yalnızca hizmet, güvenlik ve geçerli yükümlülükler için gerekli süre boyunca saklanır. Yetkisiz erişimi azaltmak amacıyla uygun teknik ve organizasyonel önlemler uygulanır."],
-      ["Üçüncü taraf altyapısı", "Barındırma, veritabanı, e-posta ve güvenlik hizmetleri için güvenilir altyapı sağlayıcıları kullanılabilir. Veriler yalnızca hizmetin gerektirdiği ölçüde paylaşılır."],
-      ["Ödeme verileri", "Ödeme kayıtları; paket, tutar, yöntem ve banka işlem referansı gibi işlem bilgilerini içerebilir. Oriens Academy ham kart numarası veya CVV saklamaz. Kartlı ödeme etkinleştirildiğinde kart bilgileri doğrudan bankanın barındırdığı veya tokenlaştırılmış güvenli ödeme akışında işlenir."],
-      ["Talepleriniz", "Verilerinizle ilgili erişim, düzeltme veya silme talebinizi info@oriens-academy.com adresine iletebilirsiniz."],
-    ]},
-    terms: { title: "Kullanım Koşulları", intro: "Bu koşullar Oriens Academy web sitesi ile eğitim ve danışmanlık hizmetlerinin genel kullanım çerçevesini açıklar.", sections: [
-      ["Hizmet kapsamı", "Oriens Academy sınav hazırlığı, akademik destek ve eğitim danışmanlığı sunar. Web sitesi içerikleri genel bilgilendirme niteliğindedir ve belirli bir kabul veya sonuç garantisi oluşturmaz."],
-      ["Planlama ve randevular", "Görüşme ve ders saatleri karşılıklı uygunluğa göre kesinleşir. Değişiklik veya iptal talepleri mümkün olduğunca erken iletilmelidir."],
-      ["Öğrenci hesapları", "Öğrenci, hesap bilgilerinin güvenliğini korumaktan ve doğru bilgi sağlamaktan sorumludur. Hesap yalnızca ilgili öğrenciye ait kayıtları gösterir; yetkisiz erişim girişimlerine izin verilmez."],
-      ["Ödemeler ve paketler", "Güncel fiyat, paket kapsamı, ödeme ve varsa iptal koşulları satın alma veya hizmet onayı öncesinde kullanıcıya bildirilir. Havale/EFT bildirimleri banka hesabında doğrulanana kadar beklemede kalır; kartlı ödemeler yalnızca banka tarafından doğrulanan sonuç üzerine başarılı sayılır."],
-      ["Fikri mülkiyet ve kabul edilebilir kullanım", "Site içeriği ve eğitim materyalleri izin olmadan çoğaltılamaz veya ticari amaçla kullanılamaz. Siteye zarar veren, yanıltıcı veya hukuka aykırı kullanıma izin verilmez."],
-      ["Sorumluluğun sınırı", "Hizmetler akademik gelişimi desteklemek üzere sunulur; sınav, kabul veya kariyer sonuçları öğrencinin çalışması ve üçüncü taraf kararları dahil birçok etkene bağlıdır."],
-      ["Değişiklikler ve iletişim", "Hizmetler veya bu koşullar gerektiğinde güncellenebilir. Sorular için info@oriens-academy.com adresinden iletişime geçebilirsiniz."],
-    ]},
-  },
-  en: {
-    privacy: { title: "Privacy Policy", intro: "This policy explains how data is handled through the Oriens Academy website and contact services.", sections: [
-      ["Information we collect", "We may process your name, email, phone number, message and academic needs submitted through contact and consultation forms. Limited technical log data may also be retained for security and service continuity."],
-      ["Purpose of processing", "Data is used to answer requests, schedule consultations, deliver education and consultancy services, protect the service and improve quality."],
-      ["Student accounts", "When an account is created, profile, appointment, lesson, homework, package usage and payment-history data may be processed to provide education services. Passwords are managed by Supabase Auth; Oriens Academy does not manually store passwords in its database."],
-      ["Communication and service delivery", "We may contact you about your request by email or through another contact method you provide."],
-      ["Retention and security", "Data is retained only as long as needed for service, security and applicable obligations. Appropriate technical and organisational safeguards are used to reduce unauthorised access."],
-      ["Third-party infrastructure", "Trusted hosting, database, email and security providers may process data only to the extent required to deliver the service."],
-      ["Payment data", "Payment records may include transaction details such as package, amount, method and a bank transaction reference. Oriens Academy does not store raw card numbers or CVV values. Once card payment is enabled, card details are processed directly through the bank's hosted or tokenised secure payment flow."],
-      ["Your requests", "You may request access, correction or deletion of your data by contacting info@oriens-academy.com."],
-    ]},
-    terms: { title: "Terms of Service", intro: "These terms provide the general framework for using the Oriens Academy website, education and consultancy services.", sections: [
-      ["Service scope", "Oriens Academy provides exam preparation, academic support and education consultancy. Website content is informational and does not guarantee a particular admission or result."],
-      ["Scheduling", "Consultations and lesson times are confirmed according to mutual availability. Changes or cancellations should be communicated as early as possible."],
-      ["Student accounts", "Students are responsible for protecting their account credentials and providing accurate information. An account displays only records belonging to that student; unauthorised access attempts are prohibited."],
-      ["Payments and packages", "Current pricing, package scope, payment terms and applicable cancellation conditions are communicated before purchase or service confirmation. Bank transfers remain pending until verified in the bank account; card payments are treated as successful only after a bank-verified result."],
-      ["Intellectual property and acceptable use", "Website content and educational materials may not be reproduced or used commercially without permission. Harmful, misleading or unlawful use is prohibited."],
-      ["Limitation of liability", "Services support academic development; exam, admission and career results depend on many factors including student work and third-party decisions."],
-      ["Changes and contact", "Services or these terms may be updated when needed. Contact info@oriens-academy.com with questions."],
-    ]},
-  },
-} as const;
-
-export function LegalPage({ kind }: { kind: "privacy" | "terms" }) {
+export function LegalPage({ kind }: { kind: LegalDocKey }) {
   const locale = useLocale();
-  const page = copy[locale][kind];
-  return <section className="pt-28 pb-20 md:pt-36 md:pb-28"><div className="mx-auto max-w-[900px] px-6 md:px-12"><p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-accent">Oriens Academy</p><h1 className="mt-4 font-heading text-[clamp(2.8rem,7vw,5rem)] font-normal leading-[1.02] tracking-[-0.025em] text-ink">{page.title}</h1><p className="mt-6 max-w-[68ch] text-lg leading-relaxed text-ink/70">{page.intro}</p><div className="mt-12 divide-y divide-border border-y border-border">{page.sections.map(([title, body]) => <section key={title} className="py-7"><h2 className="font-heading text-2xl text-ink">{title}</h2><p className="mt-3 max-w-[72ch] text-base leading-[1.75] text-ink/72">{body}</p></section>)}</div></div></section>;
+  const isTr = locale === "tr";
+  const doc = LEGAL_DOCS[locale][kind] || LEGAL_DOCS[locale].privacy;
+
+  const legalLinks: Array<{ label: string; href: string; key: LegalDocKey }> = isTr
+    ? [
+        { label: "Mesafeli Satış Sözleşmesi", href: salesAgreementPath(locale), key: "salesAgreement" },
+        { label: "Ön Bilgilendirme Formu", href: preInformationPath(locale), key: "preInformation" },
+        { label: "İptal ve İade Koşulları", href: refundPolicyPath(locale), key: "refundPolicy" },
+        { label: "KVKK Aydınlatma Metni", href: kvkkPath(locale), key: "kvkk" },
+        { label: "Çerez Politikası", href: cookiePolicyPath(locale), key: "cookie" },
+        { label: "Gizlilik Politikası", href: privacyPath(locale), key: "privacy" },
+        { label: "Kullanım Koşulları", href: termsPath(locale), key: "terms" },
+      ]
+    : [
+        { label: "Distance Sales Agreement", href: salesAgreementPath(locale), key: "salesAgreement" },
+        { label: "Pre-Information Form", href: preInformationPath(locale), key: "preInformation" },
+        { label: "Cancellation & Refund Policy", href: refundPolicyPath(locale), key: "refundPolicy" },
+        { label: "Personal Data (KVKK) Notice", href: kvkkPath(locale), key: "kvkk" },
+        { label: "Cookie Policy", href: cookiePolicyPath(locale), key: "cookie" },
+        { label: "Privacy Policy", href: privacyPath(locale), key: "privacy" },
+        { label: "Terms of Service", href: termsPath(locale), key: "terms" },
+      ];
+
+  return (
+    <section className="pt-28 pb-20 md:pt-36 md:pb-28">
+      <div className="mx-auto max-w-[900px] px-6 md:px-12">
+        {/* Header Badge & Title */}
+        <div className="space-y-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
+            <Shield className="size-3.5" />
+            <span>{doc.badge}</span>
+            <span className="text-primary/40">·</span>
+            <span>v{doc.version}</span>
+          </div>
+
+          <h1 className="font-heading text-[clamp(2.4rem,6vw,4.5rem)] font-normal leading-[1.05] tracking-[-0.025em] text-ink">
+            {doc.title}
+          </h1>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground pt-1">
+            <span>{isTr ? "Son Güncelleme:" : "Last Updated:"} {doc.lastUpdated}</span>
+            <span>·</span>
+            <span>Oriens Academy</span>
+          </div>
+        </div>
+
+        {/* Intro */}
+        <p className="mt-8 max-w-[72ch] text-base md:text-lg leading-relaxed text-ink/75">
+          {doc.intro}
+        </p>
+
+        {/* Cookie preferences interactive trigger */}
+        {kind === "cookie" && (
+          <div className="mt-6 rounded-2xl border border-border bg-surface-muted/60 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Cookie className="size-5 text-primary" />
+              <div>
+                <strong className="block text-xs font-bold text-ink">
+                  {isTr ? "Çerez Tercihlerinizi Özelleştirin" : "Customize Your Cookie Preferences"}
+                </strong>
+                <span className="text-[11px] text-muted-foreground">
+                  {isTr
+                    ? "İstediğiniz zaman analitik ve pazarlama çerezlerini açıp kapatabilirsiniz."
+                    : "You can toggle analytics and advertising cookies at any time."}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={reopenConsentPreferences}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer"
+            >
+              <SlidersHorizontal className="size-3.5" />
+              <span>{isTr ? "Tercihleri Aç" : "Open Preferences"}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Document Sections */}
+        <div className="mt-12 divide-y divide-border border-y border-border">
+          {doc.sections.map((section, idx) => (
+            <section key={idx} className="py-8 space-y-3.5">
+              <h2 className="font-heading text-xl md:text-2xl text-ink font-semibold">
+                {section.heading}
+              </h2>
+              {section.paragraphs.map((p, pIdx) => (
+                <p
+                  key={pIdx}
+                  className="max-w-[76ch] text-sm md:text-base leading-[1.8] text-ink/80 whitespace-pre-line"
+                >
+                  {p}
+                </p>
+              ))}
+              {section.bullets && section.bullets.length > 0 && (
+                <ul className="mt-3 space-y-2 pl-4 text-sm md:text-base text-ink/80 list-disc">
+                  {section.bullets.map((b, bIdx) => (
+                    <li key={bIdx} className="leading-relaxed">
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
+
+        {/* Bottom Legal Navigation */}
+        <div className="mt-16 rounded-3xl border border-border bg-surface p-6 md:p-8 shadow-xs">
+          <div className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-wider">
+            <FileText className="size-4" />
+            <span>{isTr ? "İlgili Yasal Dokümanlar" : "Related Legal Policies"}</span>
+          </div>
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {legalLinks
+              .filter((item) => item.key !== kind)
+              .map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="group flex items-center justify-between rounded-xl border border-border/80 bg-surface-muted/40 p-3 text-xs text-ink hover:border-primary hover:bg-surface-muted transition-colors"
+                >
+                  <span className="font-medium group-hover:text-primary transition-colors">
+                    {item.label}
+                  </span>
+                  <ArrowRight className="size-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </Link>
+              ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }

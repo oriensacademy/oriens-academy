@@ -1,19 +1,22 @@
 export const CONTACT = {
   email: "info@oriens-academy.com",
   emailHref: "mailto:info@oriens-academy.com",
+  contactEmail: "contact@oriens-academy.com",
+  supportEmail: "support@oriens-academy.com",
+  paymentsEmail: "payments@oriens-academy.com",
   // WhatsApp
   whatsappDisplay: "+90 544 293 90 40",
   whatsappHref: "https://wa.me/905442939040",
-  // Phone / Telefon (0850 Corporate Line)
+  // Corporate Phone (0850)
   phoneDisplay: "0850 304 04 67",
   phoneHref: "tel:08503040467",
   landlineDisplay: "0850 304 04 67",
   landlineHref: "tel:08503040467",
   corporatePhoneDisplay: "0850 304 04 67",
   corporatePhoneHref: "tel:08503040467",
-  // Mobile (Internal reference)
+  // Mobile / Internal WhatsApp reference
   mobileDisplay: "+90 544 293 90 40",
-  mobileHref: "tel:+905442939040",
+  mobileHref: "https://wa.me/905442939040",
   instagramHref: "https://instagram.com/oriens.academy",
   businessAddress: {
     tr: "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul",
@@ -33,4 +36,4 @@ export const CONTACT = {
   },
 } as const;
 
-export type ContactChannel = "instagram" | "whatsapp" | "phone" | "mobile" | "mail";
+export type ContactChannel = "instagram" | "whatsapp" | "phone" | "mail";

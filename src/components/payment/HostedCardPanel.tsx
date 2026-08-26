@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
-import { AlertCircle, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertCircle, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
 import { createPaytrToken, type CreatePaytrTokenResult } from "@/lib/payments/client";
@@ -18,6 +18,8 @@ export function HostedCardPanel({
   couponCode,
   payerName,
   payerPhone,
+  termsAccepted = false,
+  refundPolicyAccepted = false,
   onTokenReady,
 }: {
   locale: Locale;
@@ -25,12 +27,15 @@ export function HostedCardPanel({
   couponCode?: string;
   payerName?: string;
   payerPhone?: string;
+  termsAccepted?: boolean;
+  refundPolicyAccepted?: boolean;
   onTokenReady?: (tokenResult: CreatePaytrTokenResult) => void;
 }) {
   const copy = getPaymentCopy(locale);
   const isTr = locale === "tr";
+  const isGated = !termsAccepted || !refundPolicyAccepted;
 
-  const [loading, setLoading] = useState(Boolean(packageId));
+  const [loading, setLoading] = useState(false);
   const [iframeToken, setIframeToken] = useState<string | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -43,7 +48,7 @@ export function HostedCardPanel({
   }, []);
 
   useEffect(() => {
-    if (!packageId) {
+    if (!packageId || !termsAccepted || !refundPolicyAccepted) {
       return;
     }
 
@@ -55,6 +60,8 @@ export function HostedCardPanel({
       payerName,
       payerPhone,
       locale,
+      termsAccepted,
+      refundPolicyAccepted,
     }).then((result) => {
       if (!active) return;
       setLoading(false);
@@ -88,7 +95,18 @@ export function HostedCardPanel({
     return () => {
       active = false;
     };
-  }, [packageId, couponCode, payerName, payerPhone, locale, onTokenReady, isTr, attempt]);
+  }, [
+    packageId,
+    couponCode,
+    payerName,
+    payerPhone,
+    locale,
+    termsAccepted,
+    refundPolicyAccepted,
+    onTokenReady,
+    isTr,
+    attempt,
+  ]);
 
   // Load PayTR official iframeResizer script (V2)
   useEffect(() => {
@@ -137,7 +155,24 @@ export function HostedCardPanel({
 
   return (
     <div className="space-y-6">
-      {loading && (
+      {/* Gated Waiting State when legal agreements are not accepted yet */}
+      {isGated && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#DDE4DC] bg-[#F9FAF8] py-12 px-6 text-center space-y-2">
+          <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-800 border border-amber-200">
+            <FileCheck2 className="size-5" />
+          </div>
+          <h3 className="font-heading text-sm sm:text-base font-bold text-[#10271B]">
+            {isTr ? "Yasal Onay Bekleniyor" : "Legal Confirmation Required"}
+          </h3>
+          <p className="max-w-md text-xs text-[#68756C] leading-relaxed">
+            {isTr
+              ? "Kart ile güvenli ödeme ekranını başlatmak için lütfen aşağıdaki Ön Bilgilendirme, Mesafeli Satış ve İptal/İade koşullarını onaylayınız."
+              : "Please agree to the Pre-Information, Distance Sales, and Cancellation & Refund terms below to launch the secure card payment panel."}
+          </p>
+        </div>
+      )}
+
+      {loading && !isGated && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface-muted/50 py-16 px-6 text-center">
           <Loader2 className="size-8 animate-spin text-primary" />
           <p className="mt-4 font-heading text-base font-semibold text-ink">
@@ -151,7 +186,7 @@ export function HostedCardPanel({
         </div>
       )}
 
-      {error && !loading && (
+      {error && !loading && !isGated && (
         <div className="rounded-2xl border border-red-200 bg-red-50/80 p-6 text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-100 text-red-700">
             <AlertCircle className="size-6" />
@@ -169,7 +204,7 @@ export function HostedCardPanel({
         </div>
       )}
 
-      {iframeToken && !loading && (
+      {iframeToken && !loading && !isGated && (
         <div className="relative min-h-[620px] w-full overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
           <iframe
             ref={iframeRef}
@@ -202,7 +237,9 @@ export function HostedCardPanel({
               />
             </div>
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {copy.secureText}
+              {isTr
+                ? "Kart bilgileriniz PayTR’ın güvenli ödeme altyapısı üzerinden işlenir ve Oriens Academy sunucularında saklanmaz."
+                : "Your card information is processed through PayTR's secure payment infrastructure and is not stored on Oriens Academy servers."}
             </p>
           </div>
         </div>

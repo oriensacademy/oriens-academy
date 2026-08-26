@@ -7,10 +7,18 @@ import Image from "next/image";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { useLocale } from "@/content/locale-context";
-import { localizedPath } from "@/lib/routes";
+import {
+  cookiePolicyPath,
+  kvkkPath,
+  localizedPath,
+  preInformationPath,
+  privacyPath,
+  refundPolicyPath,
+  salesAgreementPath,
+  termsPath,
+} from "@/lib/routes";
 import { CONTACT } from "@/config/contact";
 import { FooterSection } from "@/components/ui/footer-section";
-
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 
 export function Footer() {
@@ -18,7 +26,7 @@ export function Footer() {
   const isTr = locale === "tr";
   const { showPricing } = usePublicSettings();
 
-  const navigationItems = (isTr
+  const navigationItems = isTr
     ? [
         { label: "Sınav Hazırlığı", href: "/tr/sinavlar/" },
         { label: "Metot", href: "/tr#method" },
@@ -32,13 +40,57 @@ export function Footer() {
         { label: "University Support", href: "/en/university-support/" },
         { label: "About Us", href: "/en/about/" },
         ...(showPricing ? [{ label: "Pricing", href: "/en/pricing/" }] : []),
-      ]);
+      ];
+
+  const legalItems = isTr
+    ? [
+        { label: "Gizlilik Politikası", href: privacyPath(locale) },
+        { label: "KVKK Aydınlatma Metni", href: kvkkPath(locale) },
+        { label: "Çerez Politikası", href: cookiePolicyPath(locale) },
+        { label: "Kullanım Koşulları", href: termsPath(locale) },
+        { label: "Mesafeli Satış Sözleşmesi", href: salesAgreementPath(locale) },
+        { label: "Ön Bilgilendirme Formu", href: preInformationPath(locale) },
+        { label: "İptal ve İade Koşulları", href: refundPolicyPath(locale) },
+      ]
+    : [
+        { label: "Privacy Policy", href: privacyPath(locale) },
+        { label: "KVKK Notice", href: kvkkPath(locale) },
+        { label: "Cookie Policy", href: cookiePolicyPath(locale) },
+        { label: "Terms of Service", href: termsPath(locale) },
+        { label: "Distance Sales Agreement", href: salesAgreementPath(locale) },
+        { label: "Pre-Information Form", href: preInformationPath(locale) },
+        { label: "Cancellation & Refund Policy", href: refundPolicyPath(locale) },
+      ];
 
   const contacts = [
-    { label: "WhatsApp", value: CONTACT.mobileDisplay, href: CONTACT.whatsappHref, icon: MessageSquare, external: true },
-    { label: isTr ? "Telefon" : "Phone", value: CONTACT.landlineDisplay, href: CONTACT.landlineHref, icon: Phone, external: false },
-    { label: isTr ? "E-posta" : "Email", value: CONTACT.email, href: CONTACT.emailHref, icon: Mail, external: false },
-    { label: "Instagram", value: "@oriens.academy", href: CONTACT.instagramHref, icon: FaInstagram, external: true },
+    {
+      label: "WhatsApp",
+      value: CONTACT.whatsappDisplay,
+      href: CONTACT.whatsappHref,
+      icon: MessageSquare,
+      external: true,
+    },
+    {
+      label: isTr ? "Telefon" : "Phone",
+      value: CONTACT.phoneDisplay,
+      href: CONTACT.phoneHref,
+      icon: Phone,
+      external: false,
+    },
+    {
+      label: isTr ? "E-posta" : "Email",
+      value: CONTACT.email,
+      href: CONTACT.emailHref,
+      icon: Mail,
+      external: false,
+    },
+    {
+      label: "Instagram",
+      value: "@oriens.academy",
+      href: CONTACT.instagramHref,
+      icon: FaInstagram,
+      external: true,
+    },
   ];
 
   return (
@@ -146,24 +198,28 @@ export function Footer() {
         </div>
       }
       legal={
-        <div className="flex flex-col gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px]">
-            &copy; 2026 Oriens Academy. {isTr ? "Tüm hakları saklıdır." : "All rights reserved."}
-          </p>
-          <div className="flex flex-wrap items-center gap-4">
-            <Link href={localizedPath("privacy", locale)} className="text-[11px] hover:text-foreground transition-colors">
-              {isTr ? "Gizlilik Politikası" : "Privacy Policy"}
-            </Link>
-            <span className="text-border">·</span>
-            <Link href={localizedPath("terms", locale)} className="text-[11px] hover:text-foreground transition-colors">
-              {isTr ? "Kullanım Koşulları" : "Terms of Service"}
-            </Link>
-            <span className="text-border hidden sm:inline">·</span>
-            <ThemeSelector locale={locale} />
+        <div className="space-y-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
+            {legalItems.map((item, idx) => (
+              <span key={item.href} className="inline-flex items-center gap-3">
+                <Link href={item.href} className="hover:text-foreground transition-colors">
+                  {item.label}
+                </Link>
+                {idx < legalItems.length - 1 && <span className="text-border">·</span>}
+              </span>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[11px]">
+              &copy; 2026 Oriens Academy. {isTr ? "Tüm hakları saklıdır." : "All rights reserved."}
+            </p>
+            <div className="flex items-center gap-3">
+              <ThemeSelector locale={locale} />
+            </div>
           </div>
         </div>
       }
     />
   );
 }
-

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { BankTransferDetails, CreatePaymentInput, CreatePaymentResult, VerifiedPaymentStatus } from "./types";
+import { LEGAL_VERSIONS } from "@/config/legal";
 
 const bankSettingKeys = ["payment.bank_account_holder", "payment.bank_name", "payment.iban"] as const;
 
@@ -15,6 +16,16 @@ export async function getPublicBankTransferDetails(): Promise<BankTransferDetail
 
 function localizedError(code: string, locale: "tr" | "en") {
   const tr = locale === "tr";
+  if (code === "LEGAL_ACCEPTANCE_REQUIRED" || code === "TERMS_REQUIRED") {
+    return tr
+      ? "Ödeme işlemine devam edebilmek için Ön Bilgilendirme Formu, Mesafeli Satış Sözleşmesi ve İptal/İade Koşullarını kabul etmeniz gerekmektedir."
+      : "You must accept the Pre-Information Form, Distance Sales Agreement, and Cancellation & Refund Policy to proceed.";
+  }
+  if (code === "PHONE_REQUIRED") {
+    return tr
+      ? "Ödeme güvenliği ve fatura süreçleri için geçerli bir telefon numarası gereklidir."
+      : "A valid telephone number is required for payment processing.";
+  }
   if (code === "PENDING_BANK_CREDENTIALS" || code === "PAYTR_NOT_CONFIGURED") return tr ? "Kartlı ödeme altyapısı şu anda kullanılamıyor." : "Card payments are currently unavailable.";
   if (code === "PACKAGE_NOT_PURCHASABLE") return tr ? "Bu paket çevrim içi satın almaya açık değil." : "This package is not enabled for online purchase.";
   if (code.includes("TURNSTILE") || code.includes("BOT_")) return tr ? "Güvenlik doğrulaması tamamlanamadı." : "Security verification could not be completed.";
@@ -23,7 +34,16 @@ function localizedError(code: string, locale: "tr" | "en") {
 
 export async function createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
   try {
-    const { data, error } = await getSupabaseClient().functions.invoke("create-payment", { body: input });
+    const { data, error } = await getSupabaseClient().functions.invoke("create-payment", {
+      body: {
+        ...input,
+        legalVersions: {
+          salesAgreement: LEGAL_VERSIONS.salesAgreement,
+          preInformation: LEGAL_VERSIONS.preInformation,
+          refundPolicy: LEGAL_VERSIONS.refundPolicy,
+        },
+      },
+    });
     if (error) {
       let errorCode = "NETWORK_ERROR";
       const context = (error as { context?: unknown }).context;
@@ -46,6 +66,13 @@ export interface CreatePaytrTokenInput {
   payerName?: string;
   payerPhone?: string;
   locale: "tr" | "en";
+  termsAccepted?: boolean;
+  refundPolicyAccepted?: boolean;
+  legalVersions?: {
+    salesAgreement?: string;
+    preInformation?: string;
+    refundPolicy?: string;
+  };
 }
 
 export interface CreatePaytrTokenResult {
@@ -66,8 +93,19 @@ export async function createPaytrToken(input: CreatePaytrTokenInput): Promise<Cr
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
 
+    const payload = {
+      ...input,
+      termsAccepted: Boolean(input.termsAccepted),
+      refundPolicyAccepted: Boolean(input.refundPolicyAccepted),
+      legalVersions: {
+        salesAgreement: LEGAL_VERSIONS.salesAgreement,
+        preInformation: LEGAL_VERSIONS.preInformation,
+        refundPolicy: LEGAL_VERSIONS.refundPolicy,
+      },
+    };
+
     const { data, error } = await supabase.functions.invoke("paytr-create-token", {
-      body: input,
+      body: payload,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
