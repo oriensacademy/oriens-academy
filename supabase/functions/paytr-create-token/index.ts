@@ -1,11 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import {
-  generatePaytrToken,
+  calculatePaytrToken,
   encodePaytrUserBasket,
-  generatePaytrMerchantOid,
 } from "../_shared/payments/paytr.ts";
-import { createStatusCredential, sha256 } from "../_shared/payments/security.ts";
+import { createStatusCredential, generatePaytrMerchantOid, sha256 } from "../_shared/payments/security.ts";
 
 Deno.serve(async (req: Request) => {
   // 1. CORS Preflight & Method Validation
@@ -317,22 +316,20 @@ Deno.serve(async (req: Request) => {
     const merchantFailUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/failed" : "tr/odeme/basarisiz"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
 
     // 15. Generate PayTR HMAC-SHA256 Token Signature
-    const paytrToken = generatePaytrToken(
-      {
-        merchantId,
-        userIp,
-        merchantOid,
-        email: userEmail,
-        paymentAmount: paymentAmountKurus,
-        userBasket,
-        noInstallment: "0",
-        maxInstallment: "12",
-        currency,
-        testMode,
-      },
+    const paytrToken = await calculatePaytrToken({
+      merchantId,
+      userIp,
+      merchantOid,
+      email: userEmail,
+      paymentAmount: paymentAmountKurus,
+      userBasket,
+      noInstallment: "0",
+      maxInstallment: "12",
+      currency,
+      testMode,
+      merchantSalt,
       merchantKey,
-      merchantSalt
-    );
+    });
 
     // 16. Request iframe token from PayTR API
     const formData = new URLSearchParams();
