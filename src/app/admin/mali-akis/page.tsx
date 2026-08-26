@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   ArrowDownRight,
+  ChevronLeft,
+  ChevronRight,
+  FilterX,
   Landmark,
   PiggyBank,
   RefreshCw,
@@ -13,8 +17,12 @@ import {
   WalletCards,
 } from "lucide-react";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
-import { listAdminPayments, type AdminPaymentRow } from "@/lib/admin/payments";
-
+import {
+  getAdminFinancialMetrics,
+  listAdminPaymentsPaginated,
+  type AdminFinancialMetrics,
+  type AdminPaymentRow,
+} from "@/lib/admin/payments";
 import { formatCurrency } from "@/lib/format/currency";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
@@ -32,148 +40,117 @@ function formatMoney(amount: number, currency = "TRY") {
 }
 
 export default function AdminFinancialFlowPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
+
+  // Read filters from URL
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const pageSize = Math.max(10, Math.min(100, Number(searchParams.get("pageSize") || "25")));
+  const search = searchParams.get("search") || "";
+  const status = searchParams.get("status") || "all";
+  const paymentMethod = searchParams.get("paymentMethod") || "all";
+  const packageId = searchParams.get("packageId") || "all";
+  const period = (searchParams.get("period") as "all" | "today" | "last_7_days" | "last_30_days" | "this_month" | "this_year") || "all";
+
+  const [searchInput, setSearchInput] = useState(search);
   const [rows, setRows] = useState<AdminPaymentRow[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [uniquePackages, setUniquePackages] = useState<string[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [metrics, setMetrics] = useState<AdminFinancialMetrics>({
+    totalCollected: 0,
+    paidPackagesCount: 0,
+    currentMonthCollected: 0,
+    totalPendingAmount: 0,
+    pendingCount: 0,
+    bankTransferPendingAmount: 0,
+    bankTransferPendingCount: 0,
+    totalDiscountGiven: 0,
+    refundedAmount: 0,
+    refundedCount: 0,
+    filteredTotalVolume: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Filters
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [methodFilter, setMethodFilter] = useState("all");
-  const [packageFilter, setPackageFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("all");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const r = await listAdminPayments();
-    setRows(r.data);
-    setError(r.error || "");
-    setLoading(false);
-  }, []);
+  const updateUrl = useCallback(
+    (updates: Record<string, string | number | null>) => {
+      const current = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([k, v]) => {
+        if (v === null || v === "" || v === "all" || (k === "page" && v === 1) || (k === "pageSize" && v === 25)) {
+          current.delete(k);
+        } else {
+          current.set(k, String(v));
+        }
+      });
+      startTransition(() => {
+        router.replace(`${pathname}?${current.toString()}`);
+      });
+    },
+    [router, pathname, searchParams]
+  );
 
   useEffect(() => {
     let active = true;
-    listAdminPayments().then((r) => {
+    Promise.all([
+      listAdminPaymentsPaginated({
+        page,
+        pageSize,
+        search,
+        status,
+        paymentMethod,
+        packageId,
+        period,
+      }),
+      getAdminFinancialMetrics({
+        search,
+        status,
+        paymentMethod,
+        packageId,
+        period,
+      }),
+    ]).then(([listRes, metricsRes]) => {
       if (!active) return;
-      setRows(r.data);
-      setError(r.error || "");
+      setRows(listRes.data);
+      setTotalCount(listRes.totalCount);
+      setPageCount(listRes.pageCount || 1);
+      setMetrics(metricsRes.metrics);
+      if (metricsRes.uniquePackages?.length > 0) {
+        setUniquePackages(metricsRes.uniquePackages);
+      }
+      setError(listRes.error || metricsRes.error || "");
       setLoading(false);
     });
+
     return () => {
       active = false;
     };
-  }, []);
+  }, [page, pageSize, search, status, paymentMethod, packageId, period, refreshTrigger]);
 
-  // Compute Financial Dashboard Metrics
-  const metrics = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+  function handleSearchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    updateUrl({ search: searchInput.trim(), page: 1 });
+  }
 
-    let totalCollected = 0;
-    let totalPendingAmount = 0;
-    let pendingCount = 0;
-    let bankTransferPendingAmount = 0;
-    let bankTransferPendingCount = 0;
-    let paidPackagesCount = 0;
-    let refundedAmount = 0;
-    let refundedCount = 0;
-    let currentMonthCollected = 0;
-    let totalDiscountGiven = 0;
+  function clearFilters() {
+    setSearchInput("");
+    router.replace(pathname);
+  }
 
-    rows.forEach((r) => {
-      const amount = Number(r.amount) || 0;
-      const meta = r.metadata ?? {};
-      const discount = Number(meta.discount_amount) || 0;
-      totalDiscountGiven += discount;
+  function refresh() {
+    setLoading(true);
+    setRefreshTrigger((c) => c + 1);
+  }
 
-      const date = new Date(r.paid_at || r.created_at);
-      const isThisMonth = date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  const hasActiveFilters = Boolean(
+    search || status !== "all" || paymentMethod !== "all" || packageId !== "all" || period !== "all"
+  );
 
-      if (r.status === "paid") {
-        totalCollected += amount;
-        paidPackagesCount += 1;
-        if (isThisMonth) {
-          currentMonthCollected += amount;
-        }
-      } else if (r.status === "pending" || r.status === "requires_action" || r.status === "processing") {
-        totalPendingAmount += amount;
-        pendingCount += 1;
-        if (r.payment_method === "bank_transfer") {
-          bankTransferPendingAmount += amount;
-          bankTransferPendingCount += 1;
-        }
-      } else if (r.status === "refunded") {
-        refundedAmount += amount;
-        refundedCount += 1;
-      }
-    });
-
-    return {
-      totalCollected,
-      totalPendingAmount,
-      pendingCount,
-      bankTransferPendingAmount,
-      bankTransferPendingCount,
-      paidPackagesCount,
-      refundedAmount,
-      refundedCount,
-      currentMonthCollected,
-      totalDiscountGiven,
-    };
-  }, [rows]);
-
-  // Extract unique packages
-  const uniquePackages = useMemo(() => {
-    return Array.from(new Set(rows.map((r) => r.package_id).filter(Boolean))).sort();
-  }, [rows]);
-
-  // Filtered rows
-  const filteredRows = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("tr-TR");
-    const now = new Date();
-
-    return rows.filter((r) => {
-      const meta = r.metadata ?? {};
-      const searchable = [
-        r.payer_name || "",
-        r.payer_email || "",
-        r.payer_phone || "",
-        r.public_reference || "",
-        r.package_id || "",
-        meta.coupon_code || "",
-      ]
-        .join(" ")
-        .toLocaleLowerCase("tr-TR");
-
-      const matchesSearch = !query || searchable.includes(query);
-      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-      const matchesMethod = methodFilter === "all" || r.payment_method === methodFilter;
-      const matchesPackage = packageFilter === "all" || r.package_id === packageFilter;
-
-      let matchesPeriod = true;
-      if (periodFilter !== "all") {
-        const itemDate = new Date(r.created_at);
-        if (periodFilter === "this_month") {
-          matchesPeriod =
-            itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
-        } else if (periodFilter === "last_30_days") {
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(now.getDate() - 30);
-          matchesPeriod = itemDate >= thirtyDaysAgo;
-        } else if (periodFilter === "this_year") {
-          matchesPeriod = itemDate.getFullYear() === now.getFullYear();
-        }
-      }
-
-      return matchesSearch && matchesStatus && matchesMethod && matchesPackage && matchesPeriod;
-    });
-  }, [rows, search, statusFilter, methodFilter, packageFilter, periodFilter]);
-
-  const filteredTotalVolume = useMemo(() => {
-    return filteredRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-  }, [filteredRows]);
+  const startRecord = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endRecord = Math.min(totalCount, page * pageSize);
 
   return (
     <div className="space-y-6">
@@ -185,16 +162,16 @@ export default function AdminFinancialFlowPage() {
             <h1 className="text-xl font-bold text-ink">Mali Akış / Financial Overview</h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Akademinin tüm paket tahsilatlarını, bekleyen havalelerini, kupon indirimlerini ve finansal akışını canlı izleyin.
+            Akademinin tüm paket tahsilatlarını, bekleyen havalelerini, kupon indirimlerini ve finansal akışını sunucu taraflı izleyin.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={load}
+            onClick={refresh}
             disabled={loading}
-            className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50"
+            className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer"
           >
-            <RefreshCw className="size-3.5" />
+            <RefreshCw className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
             Yenile
           </button>
         </div>
@@ -254,74 +231,116 @@ export default function AdminFinancialFlowPage() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="grid gap-3 rounded-xl border border-border bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_160px_160px_160px_160px]">
-        <label className="relative">
-          <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-          <span className="sr-only">İşlem ara</span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Öğrenci, e-posta, referans veya kupon ara…"
-            className="min-h-9 w-full rounded-lg border border-input pl-9 pr-3 text-xs focus:border-primary focus:outline-hidden"
-          />
-        </label>
+      <div className="rounded-2xl border border-border bg-white p-4 shadow-xs space-y-3">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Öğrenci, e-posta, referans veya kupon kodu ara…"
+              className="min-h-9 w-full rounded-lg border border-input pl-9 pr-3 text-xs text-ink focus:border-primary focus:outline-hidden"
+            />
+          </div>
+          <button
+            type="submit"
+            className="inline-flex min-h-9 items-center justify-center rounded-lg bg-ink px-4 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors"
+          >
+            Filtrele
+          </button>
+        </form>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
-        >
-          <option value="all">Tüm Durumlar</option>
-          <option value="paid">Ödendi (Paid)</option>
-          <option value="pending">Bekliyor (Pending)</option>
-          <option value="requires_action">Doğrulama Gerekli</option>
-          <option value="processing">İşleniyor</option>
-          <option value="refunded">İade (Refunded)</option>
-          <option value="failed">Başarısız (Failed)</option>
-        </select>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5 pt-1 border-t border-border/50">
+          <select
+            value={status}
+            onChange={(e) => updateUrl({ status: e.target.value, page: 1 })}
+            className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
+          >
+            <option value="all">Tüm Durumlar</option>
+            <option value="paid">Ödendi (Paid)</option>
+            <option value="pending">Bekliyor (Pending)</option>
+            <option value="requires_action">Doğrulama Gerekli</option>
+            <option value="processing">İşleniyor</option>
+            <option value="refunded">İade (Refunded)</option>
+            <option value="failed">Başarısız (Failed)</option>
+            <option value="cancelled">İptal (Cancelled)</option>
+          </select>
 
-        <select
-          value={methodFilter}
-          onChange={(e) => setMethodFilter(e.target.value)}
-          className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
-        >
-          <option value="all">Tüm Yöntemler</option>
-          <option value="bank_transfer">Banka Havalesi / EFT</option>
-          <option value="card">Kredi / Banka Kartı</option>
-        </select>
+          <select
+            value={paymentMethod}
+            onChange={(e) => updateUrl({ paymentMethod: e.target.value, page: 1 })}
+            className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
+          >
+            <option value="all">Tüm Yöntemler</option>
+            <option value="bank_transfer">Banka Havalesi / EFT</option>
+            <option value="card">Kredi / Banka Kartı</option>
+          </select>
 
-        <select
-          value={packageFilter}
-          onChange={(e) => setPackageFilter(e.target.value)}
-          className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
-        >
-          <option value="all">Tüm Paketler</option>
-          {uniquePackages.map((pkg) => (
-            <option key={pkg} value={pkg}>
-              {pkg}
-            </option>
-          ))}
-        </select>
+          <select
+            value={packageId}
+            onChange={(e) => updateUrl({ packageId: e.target.value, page: 1 })}
+            className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
+          >
+            <option value="all">Tüm Paketler</option>
+            {uniquePackages.map((pkg) => (
+              <option key={pkg} value={pkg}>
+                {pkg}
+              </option>
+            ))}
+          </select>
 
-        <select
-          value={periodFilter}
-          onChange={(e) => setPeriodFilter(e.target.value)}
-          className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
-        >
-          <option value="all">Tüm Zamanlar</option>
-          <option value="this_month">Bu Ay</option>
-          <option value="last_30_days">Son 30 Gün</option>
-          <option value="this_year">Bu Yıl</option>
-        </select>
+          <select
+            value={period}
+            onChange={(e) => updateUrl({ period: e.target.value, page: 1 })}
+            className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
+          >
+            <option value="all">Tüm Zamanlar</option>
+            <option value="today">Bugün</option>
+            <option value="last_7_days">Son 7 Gün</option>
+            <option value="last_30_days">Son 30 Gün</option>
+            <option value="this_month">Bu Ay</option>
+            <option value="this_year">Bu Yıl</option>
+          </select>
+
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50/70 px-3 text-xs font-semibold text-red-700 hover:bg-red-100 cursor-pointer transition-colors"
+            >
+              <FilterX className="size-3.5" />
+              Filtreleri Sıfırla
+            </button>
+          ) : (
+            <div className="hidden lg:block text-right self-center text-[11px] text-muted-foreground">
+              Toplam <strong>{totalCount}</strong> işlem
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filter Summary Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground px-1">
         <div>
-          Gösterilen: <strong className="text-ink">{filteredRows.length}</strong> / {rows.length} işlem
+          Kayıtlar: <strong className="text-ink">{startRecord}–{endRecord}</strong> / {totalCount} işlem
         </div>
-        <div>
-          Filtrelenen Hacim: <strong className="text-ink text-sm font-bold">{formatMoney(filteredTotalVolume)}</strong>
+        <div className="flex items-center gap-3">
+          <div>
+            Filtrelenen Hacim: <strong className="text-ink text-sm font-bold">{formatMoney(metrics.filteredTotalVolume)}</strong>
+          </div>
+          <div className="flex items-center gap-1.5 pl-3 border-l border-border">
+            <label className="text-[11px] text-muted-foreground">Sayfa Başına:</label>
+            <select
+              value={pageSize}
+              onChange={(e) => updateUrl({ pageSize: Number(e.target.value), page: 1 })}
+              className="rounded-lg border border-input bg-white px-2 py-1 text-xs text-ink"
+            >
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -330,9 +349,11 @@ export default function AdminFinancialFlowPage() {
         <div className="rounded-2xl border border-border bg-white p-12">
           <AdminWaveStatus label="Mali kayıtlar yükleniyor…" />
         </div>
-      ) : filteredRows.length === 0 ? (
+      ) : rows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-white p-12 text-center text-xs text-muted-foreground">
-          Filtrelere uygun finansal işlem kaydı bulunamadı.
+          {hasActiveFilters
+            ? "Filtrelere uygun finansal işlem kaydı bulunamadı. Lütfen filtrelerinizi kontrol edin."
+            : "Henüz mali kayıt bulunmuyor."}
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
@@ -352,7 +373,7 @@ export default function AdminFinancialFlowPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredRows.map((row) => {
+                {rows.map((row) => {
                   const meta = row.metadata ?? {};
                   const couponCode = meta.coupon_code;
                   const discountAmount = Number(meta.discount_amount) || 0;
@@ -411,6 +432,63 @@ export default function AdminFinancialFlowPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Toolbar */}
+          {pageCount > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border px-4 py-3 bg-[#F9FAF8] text-xs">
+              <div className="text-muted-foreground">
+                Sayfa <strong>{page}</strong> / {pageCount} (Toplam {totalCount} işlem)
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => updateUrl({ page: page - 1 })}
+                  className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-white text-ink hover:bg-surface-muted disabled:opacity-40 cursor-pointer"
+                  aria-label="Önceki Sayfa"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                {Array.from({ length: Math.min(5, pageCount) }, (_, i) => {
+                  let pageNum: number;
+                  if (pageCount <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= pageCount - 2) {
+                    pageNum = pageCount - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+
+                  const isActive = pageNum === page;
+                  return (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => updateUrl({ page: pageNum })}
+                      className={`inline-flex size-8 items-center justify-center rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                        isActive
+                          ? "bg-ink text-white"
+                          : "border border-border bg-white text-ink hover:bg-surface-muted"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  disabled={page >= pageCount}
+                  onClick={() => updateUrl({ page: page + 1 })}
+                  className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-white text-ink hover:bg-surface-muted disabled:opacity-40 cursor-pointer"
+                  aria-label="Sonraki Sayfa"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
