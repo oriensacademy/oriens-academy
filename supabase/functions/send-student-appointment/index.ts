@@ -1,6 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
-import { dispatchBookingEmails, dispatchAppointmentConfirmedEmails } from "../_shared/email/service.ts";
+import {
+  dispatchBookingEmails,
+  dispatchAppointmentConfirmedEmails,
+  dispatchAppointmentUpdatedEmail,
+} from "../_shared/email/service.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -29,6 +33,9 @@ Deno.serve(async (req: Request) => {
 
   const body = await req.json().catch(() => ({}));
   const bookingId = String(body.bookingId || "");
+  const isUpdate = Boolean(body.isUpdate);
+  const previousStartsAt = body.previousStartsAt ? String(body.previousStartsAt) : null;
+
   if (!UUID.test(bookingId)) {
     return buildJsonResponse({ error_code: "INVALID_BOOKING" }, 400, req);
   }
@@ -57,7 +64,20 @@ Deno.serve(async (req: Request) => {
     data.appointment_subject ||
     (data.exam_code ? `Sınav Hazırlığı (${data.exam_code.toUpperCase()})` : (data.custom_exam || "Birebir Akademik Seans"));
 
-  if (slot?.starts_at) {
+  if (isUpdate && slot?.starts_at) {
+    await dispatchAppointmentUpdatedEmail(admin, {
+      appointmentId: data.id,
+      studentName: data.full_name,
+      studentEmail: data.email,
+      lessonTitle: resolvedTitle,
+      startsAt: slot.starts_at,
+      endsAt: slot.ends_at,
+      locationOrMeetingUrl: data.live_meeting_url || (locale === "en" ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim"),
+      notes: data.notes,
+      locale,
+      previousStartsAt,
+    });
+  } else if (slot?.starts_at) {
     await dispatchAppointmentConfirmedEmails(admin, {
       appointmentId: data.id,
       studentName: data.full_name,

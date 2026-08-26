@@ -37,7 +37,8 @@ export async function saveStudentPreferences(
   studentId: string,
   exams: string[],
   countries: string[],
-  markOnboardingCompleted = true
+  markOnboardingCompleted = true,
+  language?: "tr" | "en"
 ): Promise<{ success: boolean; profile: Record<string, unknown> | null; error: string | null }> {
   const supabase = getSupabaseClient();
   const normalizedExams = Array.from(new Set(exams.map((value) => value.trim()).filter(Boolean)));
@@ -50,6 +51,7 @@ export async function saveStudentPreferences(
       p_exams: normalizedExams,
       p_countries: normalizedCountries,
       p_mark_onboarding_completed: markOnboardingCompleted,
+      p_language: language || null,
     });
     if (error) return { success: false, profile: null, error: error.message };
     if (!data || data.success !== true || !data.profile) {

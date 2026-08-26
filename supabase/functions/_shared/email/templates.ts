@@ -302,6 +302,45 @@ function formatSupportLabel(type: string, locale: "tr" | "en"): string {
   return locale === "tr" ? "Genel Akademik Danışmanlık" : "General Consultation";
 }
 
+export function humanizePaymentMethod(method?: string | null, locale: "tr" | "en" = "tr"): string {
+  const isTr = locale === "tr";
+  if (!method) return isTr ? "Kart ile Ödeme" : "Card Payment";
+  const normalized = method.toLowerCase().trim();
+  if (normalized === "card" || normalized === "credit_card" || normalized === "hosted_card" || normalized === "paytr") {
+    return isTr ? "Kart ile Ödeme" : "Card Payment";
+  }
+  if (normalized === "bank_transfer" || normalized === "wire" || normalized === "eft" || normalized === "havale") {
+    return isTr ? "Banka Havalesi / EFT" : "Bank Transfer / EFT";
+  }
+  return isTr ? "Kart ile Ödeme" : "Card Payment";
+}
+
+export function humanizeEventType(eventType?: string | null, locale: "tr" | "en" = "tr"): string {
+  const isTr = locale === "tr";
+  if (!eventType) return isTr ? "Ders" : "Lesson";
+  const normalized = eventType.toLowerCase().trim();
+  if (normalized === "lesson") return isTr ? "Ders" : "Lesson";
+  if (normalized === "discovery" || normalized === "pre_consultation") return isTr ? "Ön Görüşme" : "Pre-Consultation";
+  if (normalized === "additional_consultation") return isTr ? "Ek Görüşme" : "Follow-up Meeting";
+  if (normalized === "consultation") return isTr ? "Danışmanlık" : "Consultation";
+  if (normalized === "other") return isTr ? "Diğer" : "Other";
+  return isTr ? "Ders" : "Lesson";
+}
+
+export function humanizePaymentStatus(status?: string | null, locale: "tr" | "en" = "tr"): string {
+  const isTr = locale === "tr";
+  if (!status) return isTr ? "Bekliyor" : "Pending";
+  const normalized = status.toLowerCase().trim();
+  if (normalized === "paid" || normalized === "completed" || normalized === "success") {
+    return isTr ? "Ödendi" : "Paid";
+  }
+  if (normalized === "pending") return isTr ? "Bekliyor" : "Pending";
+  if (normalized === "failed" || normalized === "rejected") return isTr ? "Başarısız" : "Failed";
+  if (normalized === "cancelled") return isTr ? "İptal Edildi" : "Cancelled";
+  if (normalized === "refunded") return isTr ? "İade Edildi" : "Refunded";
+  return isTr ? "Ödendi" : "Paid";
+}
+
 function joinText(lines: Array<string | null | undefined | false>): string {
   return lines.filter((line) => line !== null && line !== undefined && line !== false).join("\n").trim();
 }
@@ -851,34 +890,42 @@ export function renderAdminAppointmentCreatedEmail(data: AppointmentEmailData, a
 export function renderStudentAppointmentUpdatedEmail(data: AppointmentEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? `Ders Randevusu Saati Güncellendi: ${data.lessonTitle} | Oriens Academy`
-    : `Lesson Time Updated: ${data.lessonTitle} | Oriens Academy`;
+    ? `Ders / Görüşme Bilgileriniz Güncellendi: ${data.lessonTitle} | Oriens Academy`
+    : `Your Lesson / Meeting Has Been Updated: ${data.lessonTitle} | Oriens Academy`;
 
   const newTime = formatDateTime(data.startsAt, data.locale);
   const oldTime = data.previousStartsAt ? formatDateTime(data.previousStartsAt, data.locale) : null;
 
-  const cardHtml = summaryCard(isTr ? "Güncel Ders Bilgisi" : "Updated Appointment", [
-    { label: isTr ? "Ders" : "Lesson", value: escapeHtml(data.lessonTitle) },
+  const cardHtml = summaryCard(isTr ? "Güncel Ders / Görüşme Bilgisi" : "Updated Lesson / Meeting", [
+    { label: isTr ? "Etkinlik" : "Event", value: escapeHtml(data.lessonTitle) },
     { label: isTr ? "Yeni Tarih & Saat" : "New Date & Time", value: `<strong style="color:${PALETTE.goldDark};">${newTime}</strong>` },
-    oldTime ? { label: isTr ? "Önceki Tarih" : "Previous Time", value: oldTime } : { label: "", value: "" },
-    { label: isTr ? "Eğitmen" : "Instructor", value: data.teacherName ? escapeHtml(data.teacherName) : "Oriens Faculty" },
-    { label: isTr ? "Güncelleme Notu" : "Update Reason", value: data.notes ? escapeHtml(data.notes) : (isTr ? "Saat düzenlemesi yapıldı." : "Schedule adjustment."), fullWidth: true },
+    ...(oldTime ? [{ label: isTr ? "Önceki Zaman" : "Previous Time", value: oldTime }] : []),
+    { label: isTr ? "Eğitmen / Danışman" : "Instructor", value: data.teacherName ? escapeHtml(data.teacherName) : "Oriens Faculty" },
+    ...(data.locationOrMeetingUrl ? [{ label: isTr ? "Bağlantı" : "Meeting Link", value: `<a href="${data.locationOrMeetingUrl}" style="color:${PALETTE.primary};font-weight:700;">${isTr ? "Online Ders Odası" : "Join Online"} &rarr;</a>` }] : []),
+    { label: isTr ? "Güncelleme Notu" : "Update Note", value: data.notes ? escapeHtml(data.notes) : (isTr ? "Tarih/saat düzenlemesi yapıldı." : "Schedule adjustment."), fullWidth: true },
   ]);
 
   const bodyHtml = `
-    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Ders randevunuzun tarihi veya saati güncellenmiştir.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your lesson appointment time has been rescheduled.`}</div>
+    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Ders veya görüşme randevunuzun detayları güncellenmiştir.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your scheduled lesson or meeting details have been updated.`}</div>
     ${cardHtml}
-    ${actionButton(isTr ? "Detayları Görüntüle" : "View in Portal", `${BASE_URL}/${data.locale}/hesabim`)}`;
+    ${data.locationOrMeetingUrl ? actionButton(isTr ? "Ders / Görüşmeye Katıl" : "Join Lesson / Meeting", data.locationOrMeetingUrl) : actionButton(isTr ? "Öğrenci Portalında Aç" : "View in Portal", `${BASE_URL}/${data.locale}/hesabim`)}`;
 
   const html = renderEmailShell({
     locale: data.locale,
     eyebrow: isTr ? "Randevu Güncellemesi" : "Schedule Update",
-    title: isTr ? "Ders Saati Değişti" : "Appointment Rescheduled",
+    title: isTr ? "Ders / Görüşme Bilgileriniz Güncellendi" : "Your Lesson / Meeting Has Been Updated",
     bodyHtml,
     footerEmail: "support@oriens-academy.com",
   });
 
-  const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${isTr ? "Yeni Saat" : "New Time"}: ${newTime}`]);
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`, "",
+    `${isTr ? "Etkinlik" : "Event"}: ${data.lessonTitle}`,
+    `${isTr ? "Yeni Zaman" : "New Time"}: ${newTime}`,
+    oldTime ? `${isTr ? "Önceki Zaman" : "Previous Time"}: ${oldTime}` : null,
+    data.locationOrMeetingUrl ? `${isTr ? "Bağlantı" : "Link"}: ${data.locationOrMeetingUrl}` : null,
+    data.notes ? `${isTr ? "Not" : "Note"}: ${data.notes}` : null,
+  ]);
   return { subject, html, text };
 }
 
@@ -975,7 +1022,7 @@ export function renderStudentPackagePurchasedEmail(data: PackagePurchaseEmailDat
     { label: isTr ? "Toplam Ders Sayısı" : "Total Lessons", value: `${data.lessonCount} ${isTr ? "Ders" : "Lessons"}` },
     { label: isTr ? "Ders Başı Ücret" : "Per Lesson", value: formattedPerLesson },
     { label: isTr ? "Toplam Tutar" : "Total Amount", value: `<strong style="color:${PALETTE.goldDark};">${formattedTotal}</strong>` },
-    { label: isTr ? "Ödeme Yöntemi" : "Payment Method", value: data.paymentMethod === "bank_transfer" ? (isTr ? "Banka Havalesi / EFT" : "Bank Transfer") : (isTr ? "Kredi Kartı" : "Credit Card") },
+    { label: isTr ? "Ödeme Yöntemi" : "Payment Method", value: humanizePaymentMethod(data.paymentMethod, data.locale) },
     { label: isTr ? "Referans No" : "Reference No", value: escapeHtml(data.orderReference) },
   ]);
 
@@ -1012,7 +1059,7 @@ export function renderStudentPaymentSuccessEmail(data: PaymentSuccessEmailData) 
     { label: isTr ? "Paket" : "Package", value: escapeHtml(data.packageName) },
     { label: isTr ? "Ödenen Tutar" : "Amount Paid", value: `<strong style="color:${PALETTE.goldDark};">${formattedAmount}</strong>` },
     { label: isTr ? "İşlem Referansı" : "Reference", value: escapeHtml(data.paymentReference) },
-    { label: isTr ? "Ödeme Yöntemi" : "Payment Method", value: escapeHtml(data.paymentMethod) },
+    { label: isTr ? "Ödeme Yöntemi" : "Payment Method", value: humanizePaymentMethod(data.paymentMethod, data.locale) },
     { label: isTr ? "Ödeme Zamanı" : "Payment Date", value: formattedDate },
     { label: isTr ? "Durum" : "Status", value: infoBadge(isTr ? "ÖDENDİ" : "PAID", "gold") },
   ]);
@@ -1174,7 +1221,7 @@ export function renderAdminPaymentNotificationEmail(data: AdminPaymentNotificati
     { label: isTr ? "Telefon" : "Phone", value: data.payerPhone ? escapeHtml(data.payerPhone) : "—" },
     { label: isTr ? "Paket" : "Package", value: escapeHtml(data.packageName) },
     { label: isTr ? "Tutar" : "Amount", value: `<strong style="color:${PALETTE.goldDark};">${formattedAmount}</strong>` },
-    { label: isTr ? "Yöntem / Durum" : "Method & Status", value: `${data.paymentMethod} &middot; ${infoBadge(data.status.toUpperCase(), data.status === "paid" ? "gold" : "neutral")}` },
+    { label: isTr ? "Yöntem / Durum" : "Method & Status", value: `${humanizePaymentMethod(data.paymentMethod, adminLocale)} &middot; ${infoBadge(humanizePaymentStatus(data.status, adminLocale), data.status === "paid" ? "gold" : "neutral")}` },
     { label: isTr ? "Referans Kodu" : "Reference", value: escapeHtml(data.paymentReference) },
     { label: isTr ? "Tarih" : "Timestamp", value: formattedDate },
   ]);

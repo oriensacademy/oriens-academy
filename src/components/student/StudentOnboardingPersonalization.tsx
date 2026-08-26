@@ -28,6 +28,7 @@ export function StudentOnboardingPersonalization({
 
   const [selectedExams, setSelectedExams] = useState<string[]>(initialExams);
   const [selectedCountries, setSelectedCountries] = useState<string[]>(initialCountries);
+  const [selectedLanguage, setSelectedLanguage] = useState<"tr" | "en">(isTr ? "tr" : "en");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,7 +57,13 @@ export function StudentOnboardingPersonalization({
     try {
       setSaving(true);
       setError("");
-      const result = await saveStudentPreferences(targetUserId, selectedExams, selectedCountries, true);
+      const result = await saveStudentPreferences(
+        targetUserId,
+        selectedExams,
+        selectedCountries,
+        true,
+        selectedLanguage
+      );
       if (!result.success) throw new Error(result.error || (isTr ? "Tercihler kaydedilemedi." : "Preferences could not be saved."));
       onComplete(selectedExams, selectedCountries);
     } catch (err) {
@@ -163,6 +170,52 @@ export function StudentOnboardingPersonalization({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Preferred Communication Language Selection */}
+      <div className="mt-8">
+        <label className="flex items-center gap-2 text-xs font-bold tracking-wider text-ink uppercase">
+          <Globe className="size-4 text-primary" />
+          <span>{isTr ? "Tercih Edilen İletişim Dili" : "Preferred Communication Language"}</span>
+        </label>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {isTr
+            ? "Ders, randevu, ödeme ve destek bildirimlerinizin iletileceği dil."
+            : "The language used for your lesson, booking, payment, and support notifications."}
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setSelectedLanguage("tr")}
+            className={`flex items-center justify-between rounded-xl border p-3.5 text-xs font-semibold transition-all ${
+              selectedLanguage === "tr"
+                ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary/20"
+                : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-surface-muted"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base">🇹🇷</span>
+              <span>Türkçe</span>
+            </div>
+            {selectedLanguage === "tr" && <Check className="size-4 text-primary" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedLanguage("en")}
+            className={`flex items-center justify-between rounded-xl border p-3.5 text-xs font-semibold transition-all ${
+              selectedLanguage === "en"
+                ? "border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary/20"
+                : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-surface-muted"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base">🇬🇧</span>
+              <span>English</span>
+            </div>
+            {selectedLanguage === "en" && <Check className="size-4 text-primary" />}
+          </button>
         </div>
       </div>
 

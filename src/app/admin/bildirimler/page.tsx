@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { NotificationDetailSheet } from "@/components/admin/NotificationDetailSheet";
 import type { NotificationDeliveryRow, DeliveryStatus } from "@/lib/admin/notifications";
-import { listAdminNotifications } from "@/lib/admin/notifications";
+import { listAdminNotifications, humanizeNotificationSubject } from "@/lib/admin/notifications";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
 import {
@@ -34,9 +34,12 @@ function NotificationsContent() {
   // Filters & Pagination State
   const [statusFilter, setStatusFilter] = useState<DeliveryStatus | "all">("all");
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = useState(25);
 
   // Selected Notification for Detail Sheet
   const [selectedDelivery, setSelectedDelivery] = useState<NotificationDeliveryRow | null>(null);
@@ -47,6 +50,9 @@ function NotificationsContent() {
     const { data, totalCount: count, error } = await listAdminNotifications({
       status: statusFilter,
       eventType: eventTypeFilter !== "all" ? eventTypeFilter : undefined,
+      channel: channelFilter !== "all" ? channelFilter : undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
       search: searchTerm,
       limit: pageSize,
       offset: (page - 1) * pageSize,
@@ -58,7 +64,7 @@ function NotificationsContent() {
       setDeliveries(data);
       setTotalCount(count);
     }
-  }, [statusFilter, eventTypeFilter, searchTerm, page]);
+  }, [statusFilter, eventTypeFilter, channelFilter, dateFrom, dateTo, searchTerm, page, pageSize]);
 
   useEffect(() => {
     let mounted = true;
@@ -68,6 +74,9 @@ function NotificationsContent() {
       listAdminNotifications({
         status: statusFilter,
         eventType: eventTypeFilter !== "all" ? eventTypeFilter : undefined,
+        channel: channelFilter !== "all" ? channelFilter : undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
         search: searchTerm,
         limit: pageSize,
         offset: (page - 1) * pageSize,
@@ -82,13 +91,13 @@ function NotificationsContent() {
           }
         }
       });
-    }, 0);
+    }, 150);
 
     return () => {
       mounted = false;
       clearTimeout(timer);
     };
-  }, [statusFilter, eventTypeFilter, searchTerm, page]);
+  }, [statusFilter, eventTypeFilter, channelFilter, dateFrom, dateTo, searchTerm, page, pageSize]);
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
@@ -104,7 +113,7 @@ function NotificationsContent() {
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Sistem tarafından gönderilen tüm e-posta bildirimlerinin canlı teslimat durumlarını inceleyin.
+            Sistem tarafından gönderilen tüm e-posta bildirimlerinin canlı teslimat durumlarını ve şablon konularını inceleyin.
           </p>
         </div>
 
@@ -121,18 +130,37 @@ function NotificationsContent() {
 
       {/* Filter Bar */}
       <div className="rounded-xl border border-border bg-white p-4 shadow-xs space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-          <Filter className="size-4 text-[#10271B]" />
-          <span>Filtreleme & Arama</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+            <Filter className="size-4 text-[#10271B]" />
+            <span>Filtreleme & Arama</span>
+          </div>
+          {(statusFilter !== "all" || eventTypeFilter !== "all" || channelFilter !== "all" || dateFrom || dateTo || searchTerm) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter("all");
+                setEventTypeFilter("all");
+                setChannelFilter("all");
+                setDateFrom("");
+                setDateTo("");
+                setSearchTerm("");
+                setPage(1);
+              }}
+              className="text-[11px] font-semibold text-primary hover:underline"
+            >
+              Filtreleri Temizle
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative lg:col-span-2">
             <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Alıcı e-posta veya Mesaj ID…"
+              placeholder="Alıcı, konu, referans veya mesaj ID…"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -141,7 +169,6 @@ function NotificationsContent() {
               className="w-full rounded-lg border border-input bg-white pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#10271B] focus:outline-hidden"
             />
           </div>
-
 
           {/* Status Dropdown */}
           <div>
@@ -153,10 +180,27 @@ function NotificationsContent() {
               }}
               className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
             >
-              <option value="all">Tüm Durumlar / All Statuses</option>
+              <option value="all">Tüm Durumlar (All)</option>
               <option value="sent">Gönderildi (Sent)</option>
               <option value="failed">Başarısız (Failed)</option>
               <option value="pending">Bekliyor (Pending)</option>
+            </select>
+          </div>
+
+          {/* Channel Dropdown */}
+          <div>
+            <select
+              value={channelFilter}
+              onChange={(e) => {
+                setChannelFilter(e.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
+            >
+              <option value="all">Tüm Kanallar (All)</option>
+              <option value="email">E-posta (Email)</option>
+              <option value="sms">SMS</option>
+              <option value="push">Push</option>
             </select>
           </div>
 
@@ -170,10 +214,42 @@ function NotificationsContent() {
               }}
               className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
             >
-              <option value="all">Tüm Bildirim Türleri / All Events</option>
-              <option value="contact">İletişim Formu (contact.*)</option>
-              <option value="booking">Randevu Talebi (booking.*)</option>
+              <option value="all">Tüm Olay Türleri</option>
+              <option value="welcome">Hoş Geldiniz</option>
+              <option value="booking">Randevu / Onay</option>
+              <option value="appointment">Ders / Seans</option>
+              <option value="payment">Ödeme & Paket</option>
+              <option value="contact">İletişim Formu</option>
             </select>
+          </div>
+        </div>
+
+        {/* Date Range Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 border-t border-border/60">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Başlangıç:</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-input bg-white px-2.5 py-1.5 text-xs text-foreground"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Bitiş:</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-lg border border-input bg-white px-2.5 py-1.5 text-xs text-foreground"
+            />
           </div>
         </div>
       </div>
@@ -224,9 +300,9 @@ function NotificationsContent() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-3">Etkinlik Türü (Event)</th>
+                  <th className="px-4 py-3">Konu & Bildirim Türü</th>
                   <th className="px-4 py-3">Alıcı (Recipient)</th>
-                  <th className="px-4 py-3">Sağlayıcı</th>
+                  <th className="px-4 py-3">Kanal / Sağlayıcı</th>
                   <th className="px-4 py-3">Durum</th>
                   <th className="px-4 py-3">Tarih</th>
                   <th className="px-4 py-3 text-right">İşlem</th>
@@ -234,24 +310,24 @@ function NotificationsContent() {
               </thead>
               <tbody className="divide-y divide-border">
                 {deliveries.map((del) => {
-                  const isAdminEvent = del.event_type.includes("admin_notification");
+                  const subject = humanizeNotificationSubject(del, "tr");
                   return (
                     <tr
                       key={del.id}
                       onClick={() => setSelectedDelivery(del)}
                       className="cursor-pointer transition-colors hover:bg-background-soft/80"
                     >
-                      <td className="px-4 py-3.5">
-                        <div className="text-xs font-semibold text-[#10271B]">
-                          {isAdminEvent ? "Yönetici Bildirim E-postası" : "Öğrenci Onay E-postası"}
+                      <td className="px-4 py-3.5 max-w-sm">
+                        <div className="text-xs font-semibold text-[#10271B] truncate">
+                          {subject}
                         </div>
-                        <div className="font-mono text-[10px] text-muted-foreground">
+                        <div className="font-mono text-[10px] text-muted-foreground truncate">
                           {del.event_type}
                         </div>
                       </td>
 
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                        <div className="flex items-center gap-1.5 font-semibold text-foreground font-mono">
                           <Mail className="size-3.5 text-muted-foreground shrink-0" />
                           <span>{del.recipient}</span>
                         </div>
@@ -262,8 +338,8 @@ function NotificationsContent() {
                         )}
                       </td>
 
-                      <td className="px-4 py-3.5 uppercase font-semibold text-muted-foreground">
-                        {del.provider}
+                      <td className="px-4 py-3.5 text-muted-foreground font-semibold">
+                        <span className="uppercase text-foreground">{del.channel || "email"}</span> &middot; <span className="uppercase text-[11px]">{del.provider}</span>
                       </td>
 
                       <td className="px-4 py-3.5">
@@ -298,10 +374,28 @@ function NotificationsContent() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
-            <div>
-              Toplam <span className="font-bold text-foreground">{totalCount}</span> bildirim kaydı
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span>
+                Toplam <strong className="text-foreground">{totalCount}</strong> bildirim
+              </span>
+              <div className="flex items-center gap-1 text-[11px]">
+                <span>Sayfa Başına:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="rounded border border-input bg-white px-2 py-0.5 text-xs text-foreground font-medium"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
             </div>
+
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -312,7 +406,7 @@ function NotificationsContent() {
                 <ChevronLeft className="size-3.5" />
                 <span>Önceki</span>
               </button>
-              <span className="font-semibold text-foreground">
+              <span className="font-semibold text-foreground px-1">
                 {page} / {totalPages}
               </span>
               <button
@@ -341,6 +435,7 @@ function NotificationsContent() {
 function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
   switch (status) {
     case "sent":
+    case "delivered":
       return (
         <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
           <CheckCircle2 className="size-3" />
@@ -369,3 +464,4 @@ function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
       );
   }
 }
+

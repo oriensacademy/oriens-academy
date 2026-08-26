@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AlertCircle, ChevronRight, RefreshCw, Search, Users } from "lucide-react";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { CreateBookingModal } from "@/components/admin/CreateBookingModal";
@@ -11,15 +12,27 @@ import { formatExamBadges, formatDestinationBadges } from "@/lib/student/prefere
 type StatusFilter = "all" | "active" | "inactive";
 
 export default function AdminStudentsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-muted-foreground">Öğrenci paneli yükleniyor…</div>}>
+      <AdminStudentsContent />
+    </Suspense>
+  );
+}
+
+function AdminStudentsContent() {
+  const searchParams = useSearchParams();
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selected, setSelected] = useState<StudentProfile | null>(null);
   const [bookingStudent, setBookingStudent] = useState<StudentProfile | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [exam, setExam] = useState("all");
   const [packageFilter, setPackageFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const targetStudentId = searchParams.get("student");
+  const initialSearchParam = searchParams.get("search");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -37,11 +50,22 @@ export default function AdminStudentsPage() {
       setStudents(result.data);
       setError(result.error || "");
       setLoading(false);
+
+      // Deep link resolution
+      if (targetStudentId) {
+        const found = result.data.find((s) => s.id === targetStudentId);
+        if (found) setSelected(found);
+      } else if (initialSearchParam) {
+        const found = result.data.find(
+          (s) => s.email.toLowerCase() === initialSearchParam.toLowerCase() || s.fullName.toLowerCase() === initialSearchParam.toLowerCase()
+        );
+        if (found) setSelected(found);
+      }
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [targetStudentId, initialSearchParam]);
 
   // Collect all unique exams across multi-select arrays and single fields
   const exams = useMemo(() => {

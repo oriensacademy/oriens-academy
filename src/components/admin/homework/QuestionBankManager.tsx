@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Archive, BookOpen, CheckCircle2, ChevronDown, Copy, Edit2, Eye, Layers, Plus, Search, X } from "lucide-react";
 import {
   archiveQuestionBankItem,
@@ -143,6 +141,23 @@ export function QuestionBankManager() {
     }
   };
 
+  const createMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target as Node)) {
+        setCreateMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [createMenuOpen]);
+
   return (
     <div className="space-y-5">
       <section className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
@@ -155,20 +170,29 @@ export function QuestionBankManager() {
           <p className="mt-1 text-xs text-muted-foreground">Ödev ve materyallerde tekrar kullanılabilen canonical soru kayıtlarını yönetin.</p>
         </div>
 
-        <div className="relative self-start sm:self-auto">
+        <div ref={createMenuRef} className="relative self-start sm:self-auto">
           <button
             type="button"
             aria-haspopup="menu"
             aria-expanded={createMenuOpen}
             onClick={() => setCreateMenuOpen((open) => !open)}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-forest"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-forest cursor-pointer"
           >
             <Plus className="size-4" /> Yeni Soru <ChevronDown className="size-3.5" />
           </button>
           {createMenuOpen && (
             <div role="menu" className="absolute right-0 top-full z-30 mt-2 w-56 rounded-2xl border border-border bg-white p-1.5 shadow-xl">
               {(Object.keys(QUESTION_TYPE_LABELS) as HomeworkQuestionType[]).map((type) => (
-                <button key={type} type="button" role="menuitem" onClick={() => openCreate(type)} className="block w-full rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surface-muted">
+                <button
+                  key={type}
+                  type="button"
+                  role="menuitem"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCreate(type);
+                  }}
+                  className="block w-full rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                >
                   {QUESTION_TYPE_LABELS[type]}
                 </button>
               ))}

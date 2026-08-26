@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useId, useState } from "react";
 import { ExamSearch } from "./exam-selector/ExamSearch";
-import { CompassNeedle } from "@/components/brand/CompassNeedle";
 import { examCodes } from "@/content/shared";
 import { useHomeContent } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
@@ -100,9 +100,16 @@ function SelectedExam({
       aria-live="polite"
     >
       <div className="flex items-center gap-3">
-        <svg width="24" height="24" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-          <CompassNeedle rotation={8} revealFrom={0} size={30} />
-        </svg>
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-forest/10 border border-forest/20 p-1" aria-hidden="true">
+          <Image
+            src="/brand/oriens-icon.png"
+            alt=""
+            width={24}
+            height={24}
+            className="size-full object-contain"
+            priority
+          />
+        </div>
         <div>
           <p className="font-heading text-xl text-ink">
             {code}

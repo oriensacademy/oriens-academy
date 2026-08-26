@@ -258,6 +258,9 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
     if (Array.isArray(raw) && raw.length > 0) return raw;
     return data.profile.target_country ? [data.profile.target_country] : [];
   });
+  const [preferredLanguage, setPreferredLanguage] = useState<"tr" | "en">(
+    data.profile.preferred_language === "en" ? "en" : "tr"
+  );
 
   const [busy, setBusy] = useState(false);
   const [emailForm, setEmailForm] = useState({ email: data.profile.email });
@@ -293,6 +296,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
         target_countries: selectedCountries,
         target_exam: selectedExams[0] || null,
         target_country: selectedCountries[0] || null,
+        preferred_language: preferredLanguage,
       });
 
       if (profileError) {
@@ -301,7 +305,7 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
         return;
       }
 
-      await saveStudentPreferences(userId, selectedExams, selectedCountries, true);
+      await saveStudentPreferences(userId, selectedExams, selectedCountries, true, preferredLanguage);
       setBusy(false);
       setMsg(locale === "tr" ? "Akademik profiliniz başarıyla güncellendi." : "Academic profile updated successfully.");
       onReload();
@@ -476,6 +480,53 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* PREFERRED COMMUNICATION LANGUAGE */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-ink block mb-1">
+              {locale === "tr" ? "Tercih Edilen İletişim Dili" : "Preferred Communication Language"}
+            </label>
+            <p className="text-xs text-muted-foreground mb-3">
+              {locale === "tr"
+                ? "Ders, randevu, ödeme ve destek bildirimlerinizin iletileceği dil."
+                : "The language used for your lesson, booking, payment, and support notifications."}
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+              <button
+                type="button"
+                onClick={() => setPreferredLanguage("tr")}
+                className={cn(
+                  "flex items-center justify-between rounded-xl border p-3 text-xs font-semibold transition-all cursor-pointer",
+                  preferredLanguage === "tr"
+                    ? "border-primary bg-primary text-white shadow-xs"
+                    : "border-border bg-surface text-ink hover:border-primary/50 hover:bg-surface-muted"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span>🇹🇷</span>
+                  <span>Türkçe</span>
+                </div>
+                {preferredLanguage === "tr" && <Check className="size-4 shrink-0" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPreferredLanguage("en")}
+                className={cn(
+                  "flex items-center justify-between rounded-xl border p-3 text-xs font-semibold transition-all cursor-pointer",
+                  preferredLanguage === "en"
+                    ? "border-primary bg-primary text-white shadow-xs"
+                    : "border-border bg-surface text-ink hover:border-primary/50 hover:bg-surface-muted"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span>🇬🇧</span>
+                  <span>English</span>
+                </div>
+                {preferredLanguage === "en" && <Check className="size-4 shrink-0" />}
+              </button>
             </div>
           </div>
 

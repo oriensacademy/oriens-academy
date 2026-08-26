@@ -202,3 +202,79 @@ export async function updateAdminBookingStatus(
     return { success: false, error: "Güncelleme sırasında bir hata oluştu." };
   }
 }
+
+export interface UpdateBookingEventParams {
+  bookingId: string;
+  eventType?: ScheduleEventType;
+  subject?: string | null;
+  exam?: string | null;
+  startsAt?: string | null;
+  endsAt?: string | null;
+  liveMeetingUrl?: string | null;
+  notes?: string | null;
+  status?: BookingStatus;
+  sendNotification?: boolean;
+}
+
+/**
+ * Updates an existing scheduled event atomically without creating a second event row.
+ * Dispatches reschedule notification email when meaningful schedule/meeting parameters are modified.
+ */
+export async function updateAdminBookingEvent(
+  params: UpdateBookingEventParams
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = getSupabaseClient();
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error: rpcErr } = await (supabase as any).rpc("admin_update_booking_event", {
+      p_booking_id: params.bookingId,
+      p_event_type: params.eventType || null,
+      p_subject: params.subject || null,
+      p_exam: params.exam || null,
+      p_starts_at: params.startsAt || null,
+      p_ends_at: params.endsAt || null,
+      p_live_meeting_url: params.liveMeetingUrl || null,
+      p_notes: params.notes || null,
+      p_status: params.status || null,
+    });
+
+    if (rpcErr) {
+      console.error("[Admin Bookings] Error updating event via RPC:", rpcErr);
+      return { success: false, error: rpcErr.message };
+    }
+
+    const result = data as {
+      success?: boolean;
+      meaningfully_changed?: boolean;
+      previous_starts_at?: string | null;
+      new_starts_at?: string | null;
+      error_code?: string;
+    } | null;
+
+    if (!result?.success) {
+      return { success: false, error: result?.error_code || "Randevu güncellenemedi." };
+    }
+
+    // If meaningfully changed and notification is enabled, send reschedule email
+    if (params.sendNotification !== false && result.meaningfully_changed) {
+      try {
+        await supabase.functions.invoke("send-student-appointment", {
+          body: {
+            bookingId: params.bookingId,
+            isUpdate: true,
+            previousStartsAt: result.previous_starts_at,
+          },
+        });
+      } catch (emailErr) {
+        console.warn("[Admin Bookings] Reschedule notification dispatch status:", emailErr);
+      }
+    }
+
+    return { success: true, error: null };
+  } catch (err) {
+    console.error("[Admin Bookings] Unexpected error updating booking event:", err);
+    return { success: false, error: "Etkinlik güncellenirken beklenmeyen bir hata oluştu." };
+  }
+}
+
