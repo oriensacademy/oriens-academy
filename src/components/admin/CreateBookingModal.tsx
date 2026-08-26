@@ -42,7 +42,7 @@ export function CreateBookingModal({
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
 
-  const [eventType, setEventType] = useState<"lesson" | "discovery" | "consultation" | "other">("lesson");
+  const [eventType, setEventType] = useState<"lesson" | "discovery" | "additional_consultation" | "consultation" | "other">("lesson");
   const [fullName, setFullName] = useState(initialName);
   const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState(initialPhone);
@@ -179,9 +179,11 @@ export function CreateBookingModal({
         ? "[Ders]"
         : eventType === "discovery"
         ? "[Ön Görüşme]"
+        : eventType === "additional_consultation"
+        ? "[Ek Görüşme]"
         : eventType === "consultation"
         ? "[Danışmanlık]"
-        : "[Görüşme]";
+        : "[Diğer]";
 
     const combinedSubject = subject.startsWith("[") ? subject : `${eventPrefix} ${subject.trim()}`;
 
@@ -245,10 +247,11 @@ export function CreateBookingModal({
           {/* Event Type Selector */}
           <div>
             <span className="block text-xs font-semibold text-muted-foreground mb-1.5">Etkinlik Türü</span>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
               {[
                 { id: "lesson", label: "Ders" },
                 { id: "discovery", label: "Ön Görüşme" },
+                { id: "additional_consultation", label: "Ek Görüşme" },
                 { id: "consultation", label: "Danışmanlık" },
                 { id: "other", label: "Diğer" },
               ].map((t) => (

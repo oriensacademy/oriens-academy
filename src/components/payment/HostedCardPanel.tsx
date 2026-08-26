@@ -41,7 +41,13 @@ export function HostedCardPanel({
   const [attempt, setAttempt] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Cache last fetched token to prevent redundant network delays
+  const cachedKeyRef = useRef<string>("");
+  const cachedTokenRef = useRef<string>("");
+
   const retry = useCallback(() => {
+    cachedKeyRef.current = "";
+    cachedTokenRef.current = "";
     setLoading(true);
     setError(null);
     setAttempt((c) => c + 1);
@@ -52,48 +58,62 @@ export function HostedCardPanel({
       return;
     }
 
-    let active = true;
-
-    createPaytrToken({
-      packageId,
-      couponCode,
-      payerName,
-      payerPhone,
-      locale,
-      termsAccepted,
-      refundPolicyAccepted,
-    }).then((result) => {
-      if (!active) return;
+    const currentKey = `${packageId}:${couponCode || ""}:${payerName || ""}:${payerPhone || ""}:${locale}:${attempt}`;
+    if (cachedKeyRef.current === currentKey && cachedTokenRef.current) {
+      setIframeToken(cachedTokenRef.current);
       setLoading(false);
-      if (result.success && result.iframe_token) {
-        setIframeToken(result.iframe_token);
-        onTokenReady?.(result);
-      } else {
-        const isNetwork = result.errorCode === "NETWORK_ERROR";
-        if (isNetwork) {
-          setError({
-            title: isTr ? "Bağlantı Kurulamadı" : "Connection Failed",
-            subtitle: isTr
-              ? "İnternet bağlantınızı kontrol edip yeniden deneyin."
-              : "Please check your network and try again.",
-          });
+      return;
+    }
+
+    let active = true;
+    setLoading(true);
+    setError(null);
+
+    const timer = setTimeout(() => {
+      createPaytrToken({
+        packageId,
+        couponCode,
+        payerName,
+        payerPhone,
+        locale,
+        termsAccepted,
+        refundPolicyAccepted,
+      }).then((result) => {
+        if (!active) return;
+        setLoading(false);
+        if (result.success && result.iframe_token) {
+          cachedKeyRef.current = currentKey;
+          cachedTokenRef.current = result.iframe_token;
+          setIframeToken(result.iframe_token);
+          onTokenReady?.(result);
         } else {
-          setError({
-            title:
-              result.message ||
-              (isTr
-                ? "Ödeme ekranı şu anda hazırlanamadı."
-                : "Payment screen could not be prepared."),
-            subtitle: isTr
-              ? "Güvenli ödeme oturumu başlatılamadı. Lütfen tekrar deneyin."
-              : "Could not initialize secure payment session. Please try again.",
-          });
+          const isNetwork = result.errorCode === "NETWORK_ERROR";
+          if (isNetwork) {
+            setError({
+              title: isTr ? "Bağlantı Kurulamadı" : "Connection Failed",
+              subtitle: isTr
+                ? "İnternet bağlantınızı kontrol edip yeniden deneyin."
+                : "Please check your network and try again.",
+            });
+          } else {
+            setError({
+              title:
+                result.message ||
+                (isTr
+                  ? "Ödeme ekranı şu anda hazırlanamadı."
+                  : "Payment screen could not be prepared."),
+              subtitle: isTr
+                ? "Güvenli ödeme oturumu başlatılamadı. Lütfen tekrar deneyin."
+                : "Could not initialize secure payment session. Please try again.",
+            });
+          }
         }
-      }
-    });
+      });
+    }, 250);
 
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, [
     packageId,
@@ -131,117 +151,101 @@ export function HostedCardPanel({
     if (!script) {
       script = document.createElement("script");
       script.id = scriptId;
-      script.src = "https://www.paytr.com/js/iframeResizer.min.js?v2";
+      script.src = "https://www.paytr.com/js/iframeResizer.min.js";
       script.async = true;
-      script.onload = () => initResizer();
+      script.onload = initResizer;
       document.body.appendChild(script);
     } else {
       initResizer();
     }
-
-    return () => {
-      try {
-        const iframe = document.getElementById("paytriframe") as unknown as {
-          iFrameResizer?: { close: () => void };
-        };
-        if (iframe?.iFrameResizer) {
-          iframe.iFrameResizer.close();
-        }
-      } catch {
-        /* ignore */
-      }
-    };
   }, [iframeToken]);
 
   return (
-    <div className="space-y-6">
-      {/* Gated Waiting State when legal agreements are not accepted yet */}
-      {isGated && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#DDE4DC] bg-[#F9FAF8] py-12 px-6 text-center space-y-2">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-800 border border-amber-200">
-            <FileCheck2 className="size-5" />
+    <div className="space-y-4">
+      {/* 1. Legal Acceptance Gated State */}
+      {isGated ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#819586]/40 bg-[#F6F8F3] p-8 text-center sm:p-10">
+          <div className="flex size-12 items-center justify-center rounded-full bg-[#10271B]/5 text-primary">
+            <FileCheck2 className="size-6 text-[#10271B]" />
           </div>
-          <h3 className="font-heading text-sm sm:text-base font-bold text-[#10271B]">
-            {isTr ? "Yasal Onay Bekleniyor" : "Legal Confirmation Required"}
+          <h3 className="mt-4 font-heading text-base font-semibold text-[#10271B]">
+            {isTr ? "Sözleşme Onayı Bekleniyor" : "Agreement Acceptance Required"}
           </h3>
-          <p className="max-w-md text-xs text-[#68756C] leading-relaxed">
+          <p className="mt-2 max-w-md text-xs leading-relaxed text-[#68756C]">
             {isTr
-              ? "Kart ile güvenli ödeme ekranını başlatmak için lütfen aşağıdaki Ön Bilgilendirme, Mesafeli Satış ve İptal/İade koşullarını onaylayınız."
-              : "Please agree to the Pre-Information, Distance Sales, and Cancellation & Refund terms below to launch the secure card payment panel."}
+              ? "Güvenli PayTR ödeme ekranının açılması için lütfen yukarıdaki Ön Bilgilendirme Formu, Mesafeli Satış Sözleşmesi ve İptal/İade Koşullarını onaylayınız."
+              : "Please accept the Pre-Information Form, Distance Sales Agreement, and Cancellation/Refund Policy above to enable the secure PayTR payment screen."}
           </p>
-        </div>
-      )}
-
-      {loading && !isGated && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface-muted/50 py-16 px-6 text-center">
-          <Loader2 className="size-8 animate-spin text-primary" />
-          <p className="mt-4 font-heading text-base font-semibold text-ink">
-            {isTr ? "Güvenli ödeme ekranı hazırlanıyor..." : "Preparing secure payment screen..."}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {isTr
-              ? "PayTR 256-bit SSL şifreli kart paneline bağlanılıyor."
-              : "Connecting to PayTR 256-bit SSL encrypted payment gateway."}
-          </p>
-        </div>
-      )}
-
-      {error && !loading && !isGated && (
-        <div className="rounded-2xl border border-red-200 bg-red-50/80 p-6 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-red-100 text-red-700">
-            <AlertCircle className="size-6" />
+          <div className="mt-5 flex items-center gap-2 rounded-xl bg-white px-3.5 py-2 text-[11px] font-medium text-[#10271B] border border-border shadow-xs">
+            <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
+            <span>
+              {isTr
+                ? "Onayınızın ardından 256-Bit SSL korumalı kart formu yüklenecektir."
+                : "256-bit SSL encrypted card form will load upon acceptance."}
+            </span>
           </div>
-          <p className="mt-3 font-semibold text-sm text-red-900">{error.title}</p>
+        </div>
+      ) : loading ? (
+        /* 2. Loading State */
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-[#F6F8F3] p-12 text-center">
+          <Loader2 className="size-8 animate-spin text-[#819586]" />
+          <p className="mt-4 text-xs font-semibold text-[#10271B]">
+            {isTr ? "Güvenli kart formu hazırlanıyor…" : "Preparing secure payment form…"}
+          </p>
+          <p className="mt-1 text-[11px] text-[#68756C]">
+            {isTr
+              ? "PayTR 256-Bit SSL korumalı ödeme oturumu açılıyor."
+              : "Establishing PayTR 256-bit SSL encrypted checkout session."}
+          </p>
+        </div>
+      ) : error ? (
+        /* 3. Error State */
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+            <AlertCircle className="size-5" />
+          </div>
+          <h3 className="mt-3 font-semibold text-red-900 text-xs">{error.title}</h3>
           <p className="mt-1 text-xs text-red-700">{error.subtitle}</p>
           <button
             type="button"
             onClick={retry}
-            className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-forest cursor-pointer"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-red-300 bg-white px-4 py-2 text-xs font-semibold text-red-900 hover:bg-red-50 transition-colors cursor-pointer shadow-xs"
           >
-            <RefreshCw className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>{isTr ? "Tekrar Dene" : "Try Again"}</span>
+            <RefreshCw className="size-3.5" />
+            <span>{isTr ? "Tekrar Dene" : "Retry"}</span>
           </button>
         </div>
-      )}
-
-      {iframeToken && !loading && !isGated && (
-        <div className="relative min-h-[620px] w-full overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
+      ) : iframeToken ? (
+        /* 4. Active PayTR iFrame */
+        <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
           <iframe
             ref={iframeRef}
-            src={`https://www.paytr.com/odeme/guvenli/${iframeToken}`}
             id="paytriframe"
-            frameBorder="0"
+            title="PayTR Secure Payment"
+            src={`https://www.paytr.com/odeme/guvenli/${iframeToken}`}
+            className="w-full border-0 min-h-[480px]"
             scrolling="no"
-            style={{ width: "100%", minHeight: "650px", border: "none" }}
-            className="w-full"
-            title="PayTR Secure Card Payment"
           />
         </div>
-      )}
+      ) : null}
 
-      {/* Security & 3D Secure Protection Notice with Visa/Mastercard Marks */}
-      <div className="rounded-xl border border-[#DDE4DC] bg-[#F8FAF7] p-4 text-xs text-[#10271B]">
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="size-5 shrink-0 text-[#819586] mt-0.5" />
-          <div className="space-y-1.5 flex-1">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <p className="font-semibold text-ink">
-                {isTr ? "Güvenli Kart Ödemesi" : "Secure Card Payment"}
-              </p>
-              <Image
-                src="/images/payment-methods.png"
-                alt="Visa & Mastercard"
-                width={120}
-                height={30}
-                className="h-4 w-auto object-contain opacity-90"
-              />
-            </div>
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {isTr
-                ? "Kart bilgileriniz PayTR’ın güvenli ödeme altyapısı üzerinden işlenir ve Oriens Academy sunucularında saklanmaz."
-                : "Your card information is processed through PayTR's secure payment infrastructure and is not stored on Oriens Academy servers."}
-            </p>
+      {/* Trust & Provider Badges */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px] text-[#68756C]">
+        <div className="flex items-center gap-1.5 font-medium">
+          <ShieldCheck className="size-4 text-emerald-600" />
+          <span>{copy.secureText}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <Image
+              src="/images/paytr-logo.svg"
+              alt="PayTR"
+              width={56}
+              height={18}
+              className="h-4 w-auto grayscale contrast-200 opacity-70"
+            />
           </div>
+          <span className="text-[10px] text-muted-foreground">256-Bit SSL · 3D Secure</span>
         </div>
       </div>
     </div>

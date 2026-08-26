@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { PricingPackageRow, BillingBasis, PurchaseMode } from "@/lib/admin/pricing";
+import type { PricingPackageRow, BillingBasis } from "@/lib/admin/pricing";
 import {
   createAdminPricingPackage,
   updateAdminPricingPackage,
@@ -36,19 +36,15 @@ export function PricingModal({
   const [priceAmount, setPriceAmount] = useState<string>("");
   const [currency, setCurrency] = useState("TRY");
   const [billingBasis, setBillingBasis] = useState<BillingBasis>("session");
-  const [purchaseMode, setPurchaseMode] = useState<PurchaseMode>("consultation_only");
-  const [active, setActive] = useState(true);
-  const [featured, setFeatured] = useState(false);
   const [displayOrder, setDisplayOrder] = useState<number>(0);
   const [nameTr, setNameTr] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [descriptionTr, setDescriptionTr] = useState("");
   const [descriptionEn, setDescriptionEn] = useState("");
-  const [lessonCount, setLessonCount] = useState("");
+  const [lessonCount, setLessonCount] = useState("1");
   const [discount, setDiscount] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
   const [oldTotal, setOldTotal] = useState("");
-  const [currentTotal, setCurrentTotal] = useState("");
   const [badgeTr, setBadgeTr] = useState("");
   const [badgeEn, setBadgeEn] = useState("");
 
@@ -56,32 +52,37 @@ export function PricingModal({
     const timer = setTimeout(() => {
       if (editingPackage) {
         setId(editingPackage.id);
-        setPriceAmount(editingPackage.price_amount !== null ? String(editingPackage.price_amount) : "");
+        const effectivePrice = editingPackage.current_total ?? editingPackage.price_amount;
+        setPriceAmount(effectivePrice !== null ? String(effectivePrice) : "");
         setCurrency(editingPackage.currency || "TRY");
         setBillingBasis(editingPackage.billing_basis as BillingBasis);
-        setPurchaseMode((editingPackage.purchase_mode as PurchaseMode) || "consultation_only");
-        setActive(editingPackage.active);
-        setFeatured(editingPackage.featured);
         setDisplayOrder(editingPackage.display_order || 0);
-        setNameTr(editingPackage.name_tr || ""); setNameEn(editingPackage.name_en || "");
-        setDescriptionTr(editingPackage.description_tr || ""); setDescriptionEn(editingPackage.description_en || "");
-        setLessonCount(editingPackage.lesson_count === null ? "" : String(editingPackage.lesson_count));
+        setNameTr(editingPackage.name_tr || "");
+        setNameEn(editingPackage.name_en || "");
+        setDescriptionTr(editingPackage.description_tr || "");
+        setDescriptionEn(editingPackage.description_en || "");
+        setLessonCount(editingPackage.lesson_count === null ? "1" : String(editingPackage.lesson_count));
         setDiscount(editingPackage.discount_percentage === null ? "" : String(editingPackage.discount_percentage));
         setUnitPrice(editingPackage.unit_price === null ? "" : String(editingPackage.unit_price));
         setOldTotal(editingPackage.old_total === null ? "" : String(editingPackage.old_total));
-        setCurrentTotal(editingPackage.current_total === null ? "" : String(editingPackage.current_total));
-        setBadgeTr(editingPackage.badge_tr || ""); setBadgeEn(editingPackage.badge_en || "");
+        setBadgeTr(editingPackage.badge_tr || "");
+        setBadgeEn(editingPackage.badge_en || "");
       } else {
         setId("");
         setPriceAmount("");
         setCurrency("TRY");
         setBillingBasis("session");
-        setPurchaseMode("consultation_only");
-        setActive(true);
-        setFeatured(false);
         setDisplayOrder(0);
-        setNameTr(""); setNameEn(""); setDescriptionTr(""); setDescriptionEn("");
-        setLessonCount(""); setDiscount(""); setUnitPrice(""); setOldTotal(""); setCurrentTotal(""); setBadgeTr(""); setBadgeEn("");
+        setNameTr("");
+        setNameEn("");
+        setDescriptionTr("");
+        setDescriptionEn("");
+        setLessonCount("1");
+        setDiscount("");
+        setUnitPrice("");
+        setOldTotal("");
+        setBadgeTr("");
+        setBadgeEn("");
       }
       setErrorMsg(null);
       setSuccessMsg(null);
@@ -92,6 +93,25 @@ export function PricingModal({
 
   if (!isOpen) return null;
 
+  // Auto-calculate unit price when price or lesson count changes
+  const handlePriceChange = (val: string) => {
+    setPriceAmount(val);
+    const numPrice = parseFloat(val);
+    const count = parseInt(lessonCount, 10) || 1;
+    if (!isNaN(numPrice) && numPrice > 0 && count > 0) {
+      setUnitPrice(String(Math.round(numPrice / count)));
+    }
+  };
+
+  const handleLessonCountChange = (val: string) => {
+    setLessonCount(val);
+    const count = parseInt(val, 10) || 1;
+    const numPrice = parseFloat(priceAmount);
+    if (!isNaN(numPrice) && numPrice > 0 && count > 0) {
+      setUnitPrice(String(Math.round(numPrice / count)));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -99,29 +119,40 @@ export function PricingModal({
     setSubmitting(true);
 
     const parsedPrice = priceAmount.trim() !== "" ? parseFloat(priceAmount) : null;
-    const numberOrNull = (value: string) => value.trim() === "" ? null : Number(value);
-    const details = {
-      name_tr: nameTr.trim() || null, name_en: nameEn.trim() || null,
-      description_tr: descriptionTr.trim() || null, description_en: descriptionEn.trim() || null,
-      lesson_count: numberOrNull(lessonCount), discount_percentage: numberOrNull(discount),
-      unit_price: numberOrNull(unitPrice), old_total: numberOrNull(oldTotal), current_total: numberOrNull(currentTotal),
-      badge_tr: badgeTr.trim() || null, badge_en: badgeEn.trim() || null,
-      purchase_mode: purchaseMode,
-    };
+    const parsedLessons = parseInt(lessonCount, 10) || 1;
+    const numberOrNull = (value: string) => (value.trim() === "" ? null : Number(value));
 
-    if (parsedPrice !== null && (isNaN(parsedPrice) || parsedPrice < 0)) {
+    if (parsedPrice === null || isNaN(parsedPrice) || parsedPrice < 0) {
       setErrorMsg("Fiyat tutarı geçerli ve pozitif bir sayı olmalıdır.");
       setSubmitting(false);
       return;
     }
+
+    const calculatedUnitPrice = numberOrNull(unitPrice) ?? (parsedLessons > 0 ? Math.round(parsedPrice / parsedLessons) : parsedPrice);
+    const calculatedOldTotal = numberOrNull(oldTotal);
+    const calculatedDiscount = numberOrNull(discount);
+
+    const details = {
+      name_tr: nameTr.trim() || null,
+      name_en: nameEn.trim() || null,
+      description_tr: descriptionTr.trim() || null,
+      description_en: descriptionEn.trim() || null,
+      lesson_count: parsedLessons,
+      discount_percentage: calculatedDiscount,
+      unit_price: calculatedUnitPrice,
+      old_total: calculatedOldTotal,
+      current_total: parsedPrice,
+      badge_tr: badgeTr.trim() || null,
+      badge_en: badgeEn.trim() || null,
+      purchase_mode: "purchasable" as const,
+    };
 
     if (editingPackage) {
       const { success, error } = await updateAdminPricingPackage(editingPackage.id, {
         price_amount: parsedPrice,
         currency,
         billing_basis: billingBasis,
-        active,
-        featured,
+        active: true,
         display_order: displayOrder,
         ...details,
       });
@@ -143,8 +174,7 @@ export function PricingModal({
         price_amount: parsedPrice,
         currency,
         billing_basis: billingBasis,
-        active,
-        featured,
+        active: true,
         display_order: displayOrder,
         ...details,
       });
@@ -217,12 +247,9 @@ export function PricingModal({
               disabled={!!editingPackage}
               value={id}
               onChange={(e) => setId(e.target.value)}
-              placeholder="single_session / monthly_mentorship"
+              placeholder="single / package10"
               className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground placeholder:text-muted-foreground disabled:bg-muted disabled:opacity-60"
             />
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Paketi tanımlayan benzersiz metin kimlik.
-            </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -232,76 +259,58 @@ export function PricingModal({
             <AdminTextField label="Description (EN)" value={descriptionEn} onChange={setDescriptionEn} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <AdminNumberField label="Ders" value={lessonCount} onChange={setLessonCount} />
-            <AdminNumberField label="İndirim %" value={discount} onChange={setDiscount} />
-            <AdminNumberField label="Birim" value={unitPrice} onChange={setUnitPrice} />
-            <AdminNumberField label="Eski Toplam" value={oldTotal} onChange={setOldTotal} />
-            <AdminNumberField label="Yeni Toplam" value={currentTotal} onChange={setCurrentTotal} />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <AdminTextField label="Rozet (TR)" value={badgeTr} onChange={setBadgeTr} />
-            <AdminTextField label="Badge (EN)" value={badgeEn} onChange={setBadgeEn} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          {/* Primary Price and Lesson Count */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Fiyat Tutarı (Amount)
+                Paket Satış Fiyatı (TL) *
               </label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
+                required
                 value={priceAmount}
-                onChange={(e) => setPriceAmount(e.target.value)}
-                placeholder="Örn: 85.00"
-                className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
+                onChange={(e) => handlePriceChange(e.target.value)}
+                placeholder="Örn: 27000"
+                className="w-full rounded-lg border border-input bg-white p-2 text-xs font-bold text-foreground"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Para Birimi (Currency)
+                Ders Adedi (Saat) *
               </label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
-              >
-                <option value="EUR">EUR (€)</option>
-                <option value="USD">USD ($)</option>
-                <option value="TRY">TRY (TL)</option>
-              </select>
+              <input
+                type="number"
+                min="1"
+                required
+                value={lessonCount}
+                onChange={(e) => handleLessonCountChange(e.target.value)}
+                placeholder="Örn: 10"
+                className="w-full rounded-lg border border-input bg-white p-2 text-xs font-semibold text-foreground"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                Birim Ders Ücreti (TL)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={unitPrice}
+                onChange={(e) => setUnitPrice(e.target.value)}
+                placeholder="Otomatik hesaplanır"
+                className="w-full rounded-lg border border-input bg-surface-muted/50 p-2 text-xs text-foreground"
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">
-              Faturalandırma Türü (Billing Basis)
-            </label>
-            <select
-              value={billingBasis}
-              onChange={(e) => setBillingBasis(e.target.value as BillingBasis)}
-              className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
-            >
-              <option value="session">Ders / Seans Başına (session)</option>
-              <option value="month">Aylık (month)</option>
-              <option value="custom">Özel Paket (custom)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">Satın Alma Türü / Purchase Mode</label>
-            <select value={purchaseMode} onChange={(event) => setPurchaseMode(event.target.value as PurchaseMode)} className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground">
-              <option value="consultation_only">Yalnızca Görüşme / Consultation Only</option>
-              <option value="purchasable">Çevrim İçi Satın Alınabilir / Purchasable</option>
-            </select>
-            <p className="mt-1 text-[10px] text-muted-foreground">Kart altyapısı, banka sağlayıcısı ayrıca yapılandırılmadan etkinleşmez.</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          {/* Discounts & Comparison Info */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <AdminNumberField label="İndirimsiz Liste Fiyatı (Eski Fiyat)" value={oldTotal} onChange={setOldTotal} />
+            <AdminNumberField label="İndirim Oranı (%)" value={discount} onChange={setDiscount} />
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 Sıralama (Display Order)
@@ -313,41 +322,26 @@ export function PricingModal({
                 className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
               />
             </div>
+          </div>
 
-            <div className="flex flex-col justify-end space-y-2">
-              <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={(e) => setActive(e.target.checked)}
-                  className="rounded border-input text-[#10271B]"
-                />
-                <span>Aktif Paket</span>
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featured}
-                  onChange={(e) => setFeatured(e.target.checked)}
-                  className="rounded border-input text-[#10271B]"
-                />
-                <span>Öne Çıkarılan</span>
-              </label>
-            </div>
+          {/* Presentation Badges */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <AdminTextField label="Rozet (TR) (Örn: En Çok Tercih Edilen)" value={badgeTr} onChange={setBadgeTr} />
+            <AdminTextField label="Badge (EN) (e.g. Most Popular)" value={badgeEn} onChange={setBadgeEn} />
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-input bg-white px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
+              className="rounded-lg border border-input bg-white px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted cursor-pointer"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={submitting || (!editingPackage && !id)}
-              className="flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C] disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C] disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
                 <>
@@ -365,10 +359,50 @@ export function PricingModal({
   );
 }
 
-function AdminTextField({ label, value, onChange, required = false }: { label: string; value: string; onChange: (value: string) => void; required?: boolean }) {
-  return <label className="block text-xs font-semibold text-muted-foreground">{label}<input required={required} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground" /></label>;
+function AdminTextField({
+  label,
+  value,
+  onChange,
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+}) {
+  return (
+    <label className="block text-xs font-semibold text-muted-foreground">
+      {label}
+      <input
+        required={required}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
+      />
+    </label>
+  );
 }
 
-function AdminNumberField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="block text-xs font-semibold text-muted-foreground">{label}<input type="number" min="0" step="0.01" value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground" /></label>;
+function AdminNumberField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block text-xs font-semibold text-muted-foreground">
+      {label}
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
+      />
+    </label>
+  );
 }

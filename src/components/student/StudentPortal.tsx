@@ -20,9 +20,9 @@ import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAtte
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { cn } from "@/lib/utils";
 
-const sectionIds = ["overview", "profile", "appointments", "lessons", "homework", "package", "payments", "exam_history", "support"] as const;
+const sectionIds = ["overview", "profile", "lessons", "homework", "package", "payments", "exam_history", "support"] as const;
 type SectionId = typeof sectionIds[number];
-const icons = [LayoutDashboard, UserRound, CalendarDays, BookOpen, ClipboardList, Package, CreditCard, Award, MessageCircle];
+const icons = [LayoutDashboard, UserRound, BookOpen, ClipboardList, Package, CreditCard, Award, MessageCircle];
 
 export function StudentPortal() {
   const locale = useLocale(); const copy = getStudentCopy(locale); const router = useRouter();
@@ -66,11 +66,11 @@ export function StudentPortal() {
   if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Öğrenci hesabı yükleniyor…" : "Loading student account…")}</div></div></section>;
 
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
-    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Öğrenci Hesabı" : "Student Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {data.profile.full_name.split(" ")[0]}</h1></div><div className="flex gap-2"><button onClick={() => load(userId)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><RefreshCw className="size-4" />{locale === "tr" ? "Yenile" : "Refresh"}</button><button onClick={logout} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></div></header>
-    <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "appointments" && <Appointments data={data} locale={locale} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "exam_history" && <ExamHistoryView userId={userId} locale={locale} />}{section === "support" && <SupportSection userId={userId} locale={locale} />}</main>
+    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Öğrenci Hesabı" : "Student Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {data.profile.full_name.split(" ")[0]}</h1></div><div className="flex gap-2"><button onClick={() => load(userId)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><RefreshCw className="size-4" />{locale === "tr" ? "Yenile" : "Refresh"}</button><button onClick={logout} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></div></header>
+    <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</nav>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} userId={userId} locale={locale} onReload={() => load(userId)} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(userId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "exam_history" && <ExamHistoryView userId={userId} locale={locale} />}{section === "support" && <SupportSection userId={userId} locale={locale} />}</main>
     </div>
-  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px]", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</div></nav></section>;
+  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{sectionIds.map((id, index) => { const Icon = icons[index]; return <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[index]}</button>; })}</div></nav></section>;
 }
 
 function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-7"><div className="font-heading text-2xl text-ink">{title}</div><div className="mt-5">{children}</div></section>; }
@@ -119,7 +119,7 @@ function status(value: string, locale: "tr" | "en") {
 }
 
 function Overview({ data, locale, onNavigate }: { data: StudentPortalData; locale: "tr"|"en"; onNavigate: (id: SectionId) => void }) {
-  const purchase = data.purchases.find((p) => p.status === "active") || data.purchases[0];
+  const purchase = data.currentPackage || data.purchases[0];
   
   const nextBooking = useMemo(() => {
     return data.bookings
@@ -215,12 +215,22 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
       )}
 
       <div className="rounded-2xl border border-border bg-surface p-6">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{locale === "tr" ? "Son Ödeme" : "Latest Payment"}</h3>
-        <p className="mt-2 text-2xl font-bold text-ink">
-          {payment ? new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: payment.currency }).format(payment.amount) : "—"}
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {locale === "tr" ? "Yaklaşan Ders / Seans" : "Upcoming Session"}
+        </h3>
+        <p className="mt-2 text-xl font-bold text-ink">
+          {nextLesson
+            ? nextLesson.title
+            : nextBooking
+            ? (nextBooking.appointment_subject || nextBooking.exam_code || "Randevu")
+            : (locale === "tr" ? "Planlanmadı" : "Not Scheduled")}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {payment ? `${fmt(payment.created_at, locale)} · ${status(payment.status, locale)}` : (locale === "tr" ? "Kayıt yok" : "No record")}
+          {nextLesson
+            ? `${nextLesson.subject} · ${fmt(nextLesson.lesson_date, locale, true)}`
+            : nextBooking
+            ? fmt(nextBooking.availability_slots?.starts_at || nextBooking.created_at, locale, true)
+            : (locale === "tr" ? "Aktif planlanmış ders bulunmuyor" : "No active scheduled session")}
         </p>
       </div>
 
@@ -538,114 +548,168 @@ function Profile({ data, userId, locale, onReload }: { data: StudentPortalData; 
   );
 }
 
-function Appointments({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
-  const upcoming = data.bookings.filter((b) => !["completed", "cancelled"].includes(b.status));
-  const past = data.bookings.filter((b) => ["completed", "cancelled"].includes(b.status));
-
-  return (
-    <div className="space-y-6">
-      <Panel title={locale === "tr" ? "Yaklaşan Randevular" : "Upcoming Appointments"}>
-        {upcoming.length ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {upcoming.map((b) => (
-              <article key={b.id} className="rounded-xl border border-border p-4 bg-surface flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between gap-3">
-                    <h3 className="font-semibold text-ink">{b.appointment_subject || b.exam_code || b.custom_exam || "Randevu"}</h3>
-                    <span className="text-xs text-muted-foreground">{status(b.status, locale)}</span>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {fmt(b.availability_slots?.starts_at || b.created_at, locale, true)}
-                  </p>
-                </div>
-                {b.live_meeting_url && (
-                  <div className="mt-4 pt-3 border-t border-primary/10">
-                    <a
-                      href={b.live_meeting_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
-                    >
-                      <Video className="size-4 text-warm-accent" />
-                      {locale === "tr" ? "Görüşmeye Katıl" : "Join Meeting"}
-                      <ExternalLink className="size-3" />
-                    </a>
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <Empty>{locale === "tr" ? "Yaklaşan randevunuz bulunmuyor." : "No upcoming appointments."}</Empty>
-        )}
-      </Panel>
-
-      <Panel title={locale === "tr" ? "Geçmiş Randevular" : "Past Appointments"}>
-        {past.length ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {past.map((b) => (
-              <article key={b.id} className="rounded-xl border border-border p-4 bg-surface">
-                <div className="flex justify-between gap-3">
-                  <h3 className="font-semibold text-ink">{b.appointment_subject || b.exam_code || b.custom_exam || "Randevu"}</h3>
-                  <span className="text-xs text-muted-foreground">{status(b.status, locale)}</span>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {fmt(b.availability_slots?.starts_at || b.created_at, locale, true)}
-                </p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <Empty>{locale === "tr" ? "Geçmiş randevu kaydı bulunmuyor." : "No past appointments."}</Empty>
-        )}
-      </Panel>
-    </div>
-  );
+interface UnifiedSessionItem {
+  id: string;
+  sourceType: "lesson" | "booking";
+  eventType: "lesson" | "pre_consultation" | "additional_consultation" | "consultation" | "discovery" | "other";
+  title: string;
+  subject: string;
+  examCode?: string | null;
+  dateIso: string;
+  durationMinutes: number;
+  status: string;
+  teacherNote?: string | null;
+  liveMeetingUrl?: string | null;
 }
 
 function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en" }) {
-  const upcoming = data.lessons.filter((l) => l.status === "scheduled");
-  const history = data.lessons.filter((l) => l.status !== "scheduled");
+  const isTr = locale === "tr";
+
+  const allSessions: UnifiedSessionItem[] = useMemo(() => {
+    const lessonItems: UnifiedSessionItem[] = data.lessons.map((l) => ({
+      id: l.id,
+      sourceType: "lesson",
+      eventType: "lesson",
+      title: l.title,
+      subject: l.subject,
+      examCode: l.exam_code,
+      dateIso: l.lesson_date,
+      durationMinutes: l.duration_minutes || 60,
+      status: l.status,
+      teacherNote: l.teacher_note,
+      liveMeetingUrl: l.live_meeting_url,
+    }));
+
+    const bookingItems: UnifiedSessionItem[] = data.bookings.map((b) => {
+      let resolvedType: UnifiedSessionItem["eventType"] = "consultation";
+      const rawType = (b.event_type || "").toLowerCase();
+      if (rawType === "lesson" || b.appointment_subject?.startsWith("[Ders]")) {
+        resolvedType = "lesson";
+      } else if (rawType === "pre_consultation" || rawType === "discovery" || b.appointment_subject?.startsWith("[Ön Görüşme]")) {
+        resolvedType = "pre_consultation";
+      } else if (rawType === "additional_consultation" || b.appointment_subject?.startsWith("[Ek Görüşme]")) {
+        resolvedType = "additional_consultation";
+      } else if (rawType === "other") {
+        resolvedType = "other";
+      }
+
+      return {
+        id: b.id,
+        sourceType: "booking",
+        eventType: resolvedType,
+        title: b.appointment_subject || b.exam_code || b.custom_exam || (isTr ? "Randevu" : "Session"),
+        subject: b.exam_code ? b.exam_code.toUpperCase() : (isTr ? "Akademik Danışmanlık" : "Academic Consultation"),
+        examCode: b.exam_code,
+        dateIso: b.availability_slots?.starts_at || b.created_at,
+        durationMinutes: 60,
+        status: b.status,
+        teacherNote: null,
+        liveMeetingUrl: b.live_meeting_url,
+      };
+    });
+
+    return [...lessonItems, ...bookingItems];
+  }, [data.lessons, data.bookings, isTr]);
+
+  const upcoming = useMemo(() => {
+    return allSessions
+      .filter((s) => !["completed", "cancelled"].includes(s.status))
+      .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+  }, [allSessions]);
+
+  const history = useMemo(() => {
+    return allSessions
+      .filter((s) => ["completed", "cancelled"].includes(s.status))
+      .sort((a, b) => b.dateIso.localeCompare(a.dateIso));
+  }, [allSessions]);
+
+  const renderBadge = (eventType: UnifiedSessionItem["eventType"]) => {
+    switch (eventType) {
+      case "lesson":
+        return (
+          <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+            {isTr ? "Canlı Ders" : "Live Lesson"}
+          </span>
+        );
+      case "pre_consultation":
+      case "discovery":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+            <span>{isTr ? "Ön Görüşme" : "Pre-Consultation"}</span>
+            <span className="text-[9px] text-emerald-600 font-normal">({isTr ? "Paketten düşmez" : "Free"})</span>
+          </span>
+        );
+      case "additional_consultation":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-50 border border-purple-200 px-2 py-0.5 text-[10px] font-semibold text-purple-800">
+            <span>{isTr ? "Ek Görüşme" : "Follow-up"}</span>
+            <span className="text-[9px] text-purple-600 font-normal">({isTr ? "Paketten düşmez" : "Free"})</span>
+          </span>
+        );
+      case "consultation":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+            <span>{isTr ? "Danışmanlık" : "Consultation"}</span>
+            <span className="text-[9px] text-amber-600 font-normal">({isTr ? "Paketten düşmez" : "Free"})</span>
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-surface-muted border border-border px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            <span>{isTr ? "Diğer" : "Other"}</span>
+            <span className="text-[9px] font-normal">({isTr ? "Paketten düşmez" : "Free"})</span>
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* 1. Upcoming Live Lessons */}
-      <Panel title={locale === "tr" ? "Yaklaşan Canlı Dersler" : "Upcoming Live Lessons"}>
+      {/* 1. Yaklaşan Ders ve Görüşmeler */}
+      <Panel title={isTr ? "Yaklaşan Ders ve Görüşmeler" : "Upcoming Lessons & Meetings"}>
         {upcoming.length ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            {upcoming.map((l) => (
-              <article key={l.id} className="rounded-2xl border border-primary/30 p-5 bg-surface shadow-xs flex flex-col justify-between">
+            {upcoming.map((s) => (
+              <article
+                key={`${s.sourceType}-${s.id}`}
+                className="rounded-2xl border border-primary/25 p-5 bg-surface shadow-xs flex flex-col justify-between"
+              >
                 <div>
-                  <div className="flex justify-between items-start gap-3">
-                    <h3 className="font-semibold text-ink text-base">{l.title}</h3>
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
-                      {status(l.status, locale)}
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    {renderBadge(s.eventType)}
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {status(s.status, locale)}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-primary font-medium">
-                    {l.subject}
-                    {l.exam_code ? ` · ${l.exam_code.toUpperCase()}` : ""}
+
+                  <h3 className="mt-3 font-heading text-lg font-bold text-ink">{s.title}</h3>
+                  <p className="mt-1 text-xs text-primary font-medium">
+                    {s.subject}
+                    {s.examCode ? ` · ${s.examCode.toUpperCase()}` : ""}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {fmt(l.lesson_date, locale, true)} · {l.duration_minutes} {locale === "tr" ? "dk" : "min"}
+                    {fmt(s.dateIso, locale, true)} · {s.durationMinutes} {isTr ? "dk" : "min"}
                   </p>
-                  {l.teacher_note && (
-                    <p className="mt-3 rounded bg-surface-muted p-2.5 text-xs text-ink/80 border border-border">
-                      <strong>{locale === "tr" ? "Eğitmen Notu" : "Teacher Note"}:</strong> {l.teacher_note}
+
+                  {s.teacherNote && (
+                    <p className="mt-3 rounded-lg bg-surface-muted p-2.5 text-xs text-ink/80 border border-border">
+                      <strong>{isTr ? "Eğitmen Notu" : "Teacher Note"}:</strong> {s.teacherNote}
                     </p>
                   )}
                 </div>
 
-                {l.live_meeting_url && (
+                {s.liveMeetingUrl && (
                   <div className="mt-4 pt-3 border-t border-primary/10">
                     <a
-                      href={l.live_meeting_url}
+                      href={s.liveMeetingUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
+                      className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
                     >
                       <Video className="size-4 text-warm-accent" />
-                      {locale === "tr" ? "Canlı Derse Katıl" : "Join Live Lesson"}
+                      {s.eventType === "lesson"
+                        ? isTr ? "Canlı Derse Katıl" : "Join Live Lesson"
+                        : isTr ? "Görüşmeye Katıl" : "Join Meeting"}
                       <ExternalLink className="size-3" />
                     </a>
                   </div>
@@ -655,38 +719,46 @@ function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en
           </div>
         ) : (
           <Empty>
-            {locale === "tr"
-              ? "Şu anda planlanmış aktif bir canlı dersiniz bulunmuyor."
-              : "No upcoming live lessons scheduled at this moment."}
+            {isTr
+              ? "Şu anda planlanmış aktif bir canlı ders veya görüşmeniz bulunmuyor."
+              : "No upcoming live lessons or meetings scheduled at this moment."}
           </Empty>
         )}
       </Panel>
 
-      {/* 2. Completed Lesson History */}
-      <Panel title={locale === "tr" ? "Tamamlanan Ders Geçmişi" : "Lesson History"}>
+      {/* 2. Geçmiş Ders ve Görüşmeler */}
+      <Panel title={isTr ? "Geçmiş Ders ve Görüşmeler" : "Past Lessons & Meetings"}>
         {history.length ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            {history.map((l) => (
-              <article key={l.id} className="rounded-xl border border-border p-4 bg-surface">
-                <div className="flex justify-between gap-3">
-                  <h3 className="font-semibold text-ink">{l.title}</h3>
-                  <span className="text-xs text-muted-foreground">{status(l.status, locale)}</span>
+            {history.map((s) => (
+              <article
+                key={`${s.sourceType}-${s.id}`}
+                className="rounded-xl border border-border p-4 bg-surface"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  {renderBadge(s.eventType)}
+                  <span className="text-xs text-muted-foreground">{status(s.status, locale)}</span>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {l.subject}
-                  {l.exam_code ? ` · ${l.exam_code.toUpperCase()}` : ""}
+                <h3 className="mt-2 font-semibold text-ink">{s.title}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {s.subject}
+                  {s.examCode ? ` · ${s.examCode.toUpperCase()}` : ""}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {fmt(l.lesson_date, locale, true)} · {l.duration_minutes} {locale === "tr" ? "dk" : "min"}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {fmt(s.dateIso, locale, true)} · {s.durationMinutes} {isTr ? "dk" : "min"}
                 </p>
-                {l.teacher_note && (
-                  <p className="mt-3 border-t border-border pt-3 text-xs leading-5 text-ink/75">{l.teacher_note}</p>
+                {s.teacherNote && (
+                  <p className="mt-2.5 border-t border-border pt-2 text-xs leading-5 text-ink/75">
+                    {s.teacherNote}
+                  </p>
                 )}
               </article>
             ))}
           </div>
         ) : (
-          <Empty>{locale === "tr" ? "Henüz tamamlanmış ders kaydı yok." : "No completed lesson records yet."}</Empty>
+          <Empty>
+            {isTr ? "Henüz tamamlanmış ders veya görüşme kaydı yok." : "No completed lesson or meeting records yet."}
+          </Empty>
         )}
       </Panel>
     </div>
@@ -705,7 +777,7 @@ function Homework({
 }
 
 function PackageView({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
-  const p = data.purchases.find((x) => x.status === "active") || data.purchases[0];
+  const p = data.currentPackage || data.purchases[0];
   if (!p) {
     return (
       <Panel title={locale === "tr" ? "Paketim" : "My Package"}>
@@ -903,7 +975,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
   // Composer
   const [composerText, setComposerText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const activeThread = threads.find((t) => t.id === activeThreadId) || null;
 
@@ -961,14 +1033,14 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
     };
   }, [activeThreadId]);
 
-  // Scroll to bottom when messages update
+  // Scroll to bottom inside internal container only (never moves document viewport)
   useEffect(() => {
-    if (activeThreadId && messages.length) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (activeThreadId && messages.length && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, activeThreadId]);
 
-  // Handle new thread creation
+  // Handle new thread creation without unexpected document jump
   const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubject.trim() || !newInitialMsg.trim()) {
@@ -1024,23 +1096,23 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full">
       {/* 1. If viewing a specific thread conversation */}
       {activeThread ? (
         <Panel
           title={
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
                 <button
                   type="button"
                   onClick={() => setActiveThreadId(null)}
-                  className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-ink hover:bg-surface transition-colors"
+                  className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-ink hover:bg-surface transition-colors cursor-pointer shrink-0"
                   aria-label={isTr ? "Geri" : "Back"}
                 >
                   <ChevronLeft className="size-4" />
                 </button>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="rounded-md bg-sage-soft px-2 py-0.5 text-[11px] font-bold text-ink">
                       {SUPPORT_CATEGORIES.find((c) => c.id === activeThread.category)?.[isTr ? "labelTr" : "labelEn"] || activeThread.category}
                     </span>
@@ -1048,14 +1120,14 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                       {SUPPORT_STATUS_LABELS[activeThread.status]?.[locale] || activeThread.status}
                     </span>
                   </div>
-                  <h3 className="mt-1 font-heading text-xl text-ink">{activeThread.subject}</h3>
+                  <h3 className="mt-1 font-heading text-xl text-ink truncate">{activeThread.subject}</h3>
                 </div>
               </div>
             </div>
           }
         >
           {/* Chat message stream */}
-          <div className="flex flex-col space-y-4 max-h-[480px] min-h-[260px] overflow-y-auto pr-1 py-2">
+          <div ref={chatContainerRef} className="flex flex-col space-y-4 max-h-[480px] min-h-[260px] overflow-y-auto overflow-x-hidden pr-1 py-2 min-w-0 max-w-full">
             {loadingMessages ? (
               <div className="py-12 text-center text-xs text-muted-foreground">
                 {isTr ? "Mesajlar yükleniyor…" : "Loading conversation…"}
@@ -1067,7 +1139,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                   <div
                     key={m.id}
                     className={cn(
-                      "flex flex-col max-w-[85%] sm:max-w-[75%]",
+                      "flex flex-col max-w-[85%] sm:max-w-[75%] min-w-0",
                       isStudent ? "ml-auto items-end" : "mr-auto items-start"
                     )}
                   >
@@ -1076,7 +1148,7 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                     </span>
                     <div
                       className={cn(
-                        "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-xs",
+                        "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-xs break-words [overflow-wrap:anywhere] max-w-full",
                         isStudent
                           ? "bg-primary text-primary-foreground rounded-tr-xs"
                           : "bg-surface-muted border border-border text-ink rounded-tl-xs"
@@ -1092,7 +1164,6 @@ function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en
                 {isTr ? "Henüz mesaj bulunmuyor." : "No messages yet."}
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Composer */}

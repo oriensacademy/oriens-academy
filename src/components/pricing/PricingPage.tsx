@@ -64,18 +64,25 @@ export function PricingPage() {
 
   const tiers: PricingTier[] = activePackages.map((item) => {
     const itemContent = getItemContent(item.id);
+    const defaultBadge = item.id === "package10"
+      ? (locale === "tr" ? "En Çok Tercih Edilen" : "Most Popular")
+      : item.id === "package30"
+      ? (locale === "tr" ? "En Avantajlı Paket" : "Best Value")
+      : null;
+    const dynamicBadge = (locale === "tr" ? item.badge_tr : item.badge_en) || defaultBadge;
+
     return {
       id: item.id,
-      name: itemContent.title || item.id,
+      name: (locale === "tr" ? item.name_tr : item.name_en) || itemContent.title || item.id,
       icon: iconFor(item.id),
       price: item.current_total ?? item.price_amount ?? 0,
       oldPrice: item.old_total,
       unitPrice: item.unit_price,
       discount: item.discount_percentage,
-      description: itemContent.description || "",
+      description: (locale === "tr" ? item.description_tr : item.description_en) || itemContent.description || "",
       features: itemContent.features || [],
-      popular: item.id === "package10" && item.featured,
-      badge: itemContent.badge,
+      popular: item.id === "package10" || item.featured,
+      badge: dynamicBadge,
       color: item.id === "package10" ? "gold" : item.id === "package30" ? "forest" : item.id === "package20" ? "ivory" : "sage",
       ctaLabel: locale === "tr" ? "Görüşme Planla" : "Book a Consultation",
       ctaHref: `${localizedPath("home", locale)}?package=${encodeURIComponent(item.id)}#consultation-form`,

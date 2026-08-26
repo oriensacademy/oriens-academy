@@ -7,7 +7,14 @@ export type BookingStatus =
   | "cancelled"
   | "completed"
   | "no_show";
-export type ScheduleEventType = "lesson" | "discovery" | "consultation" | "other";
+
+export type ScheduleEventType =
+  | "lesson"
+  | "discovery"
+  | "pre_consultation"
+  | "additional_consultation"
+  | "consultation"
+  | "other";
 
 export type BookingWithSlot = Tables<"bookings"> & {
   availability_slots: {

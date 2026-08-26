@@ -128,7 +128,16 @@ export function CreativePricing({
                     )}>
                       %{tier.discount} {locale === "tr" ? "İndirim" : "Discount"}
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className={cn(
+                      "rounded-full border px-2.5 py-1 font-ui text-xs font-semibold",
+                      isInverted
+                        ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground/80"
+                        : "border-transparent bg-[#EFF4EE] text-[#55675A]"
+                    )}>
+                      {locale === "tr" ? "İndirimsiz" : "Standard Price"}
+                    </span>
+                  )}
                 </div>
 
                 <h3 data-pricing-slot="title" className={cn(

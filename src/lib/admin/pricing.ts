@@ -42,7 +42,7 @@ export interface PricingDetailsInput {
 }
 
 export interface CreatePricingPackageInput extends PricingDetailsInput {
-  id: string; // e.g. "single_session", "monthly_mentorship"
+  id: string; // e.g. "single", "package10"
   price_amount: number | null;
   currency?: string;
   billing_basis: BillingBasis;
@@ -60,19 +60,19 @@ export interface UpdatePricingPackageInput extends PricingDetailsInput {
   display_order?: number;
 }
 
-const DEFAULT_PACKAGES: PublicPricingPackage[] = [
+export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
   {
     id: "single",
-    name_tr: "Tek Seans / Birebir Ders",
-    name_en: "Single Session / 1-on-1 Lesson",
-    description_tr: "Hedefe yönelik nokta atışı konu anlatımı ve soru çözümü.",
-    description_en: "Targeted single lesson and question practice.",
+    name_tr: "1 Ders",
+    name_en: "Single Lesson",
+    description_tr: "Esnek ve ihtiyaca yönelik birebir ders.",
+    description_en: "Flexible support based on your needs.",
     lesson_count: 1,
-    price_amount: 4500,
-    current_total: 4500,
-    old_total: 4500,
-    unit_price: 4500,
-    discount_percentage: 0,
+    price_amount: 3200,
+    current_total: 3200,
+    old_total: null,
+    unit_price: 3200,
+    discount_percentage: null,
     currency: "TRY",
     active: true,
     featured: false,
@@ -83,16 +83,16 @@ const DEFAULT_PACKAGES: PublicPricingPackage[] = [
   },
   {
     id: "package5",
-    name_tr: "5 Derslik Eğitim Paketi",
+    name_tr: "5 Derslik Paket",
     name_en: "5-Lesson Package",
-    description_tr: "Temel eksikleri kapatma ve yoğun sınav hazırlığı.",
-    description_en: "Essential topic mastery and focused exam prep.",
+    description_tr: "Düzenli akademik destek ve konu eksiklerini kapatma.",
+    description_en: "Consistent academic support and topic mastery.",
     lesson_count: 5,
-    price_amount: 21500,
-    current_total: 21500,
-    old_total: 22500,
-    unit_price: 4300,
-    discount_percentage: 5,
+    price_amount: 15000,
+    current_total: 15000,
+    old_total: 16000,
+    unit_price: 3000,
+    discount_percentage: 7,
     currency: "TRY",
     active: true,
     featured: false,
@@ -103,16 +103,16 @@ const DEFAULT_PACKAGES: PublicPricingPackage[] = [
   },
   {
     id: "package10",
-    name_tr: "10 Derslik Kapsamlı Paket",
-    name_en: "10-Lesson Comprehensive Package",
+    name_tr: "10 Derslik Paket",
+    name_en: "10-Lesson Package",
     description_tr: "En çok tercih edilen, tüm müfredatı kapsayan özel çalışma programı.",
     description_en: "Most popular comprehensive course covering full syllabus.",
     lesson_count: 10,
-    price_amount: 40500,
-    current_total: 40500,
-    old_total: 45000,
-    unit_price: 4050,
-    discount_percentage: 10,
+    price_amount: 27000,
+    current_total: 27000,
+    old_total: 32000,
+    unit_price: 2700,
+    discount_percentage: 15,
     currency: "TRY",
     active: true,
     featured: true,
@@ -123,16 +123,16 @@ const DEFAULT_PACKAGES: PublicPricingPackage[] = [
   },
   {
     id: "package20",
-    name_tr: "20 Derslik İleri Düzey Paket",
-    name_en: "20-Lesson Advanced Package",
+    name_tr: "20 Derslik Paket",
+    name_en: "20-Lesson Package",
     description_tr: "Derinlemesine konu hakimiyeti, ödev takip ve deneme sınavı analizleri.",
     description_en: "In-depth subject mastery, homework tracking, and mock exam analysis.",
     lesson_count: 20,
-    price_amount: 76500,
-    current_total: 76500,
-    old_total: 90000,
-    unit_price: 3825,
-    discount_percentage: 15,
+    price_amount: 51000,
+    current_total: 51000,
+    old_total: 64000,
+    unit_price: 2550,
+    discount_percentage: 20,
     currency: "TRY",
     active: true,
     featured: false,
@@ -143,36 +143,42 @@ const DEFAULT_PACKAGES: PublicPricingPackage[] = [
   },
   {
     id: "package30",
-    name_tr: "30 Derslik Tam Mentorluk Paketi",
-    name_en: "30-Lesson Full Mentorship Package",
-    description_tr: "Tüm akademik yıl boyunca eksiksiz rehberlik ve garantili başarı programı.",
-    description_en: "Complete academic year guidance and guaranteed progress.",
+    name_tr: "30 Derslik Paket",
+    name_en: "30-Lesson Package",
+    description_tr: "Tüm akademik yıl boyunca kesintisiz destek ve maksimum avantaj.",
+    description_en: "Complete academic year guidance and maximum value.",
     lesson_count: 30,
-    price_amount: 108000,
-    current_total: 108000,
-    old_total: 135000,
-    unit_price: 3600,
-    discount_percentage: 20,
+    price_amount: 72000,
+    current_total: 72000,
+    old_total: 96000,
+    unit_price: 2400,
+    discount_percentage: 25,
     currency: "TRY",
     active: true,
     featured: false,
     display_order: 5,
-    badge_tr: "Tam Kapsam",
-    badge_en: "Full Mentorship",
+    badge_tr: "En Avantajlı Paket",
+    badge_en: "Best Value",
     purchase_mode: "purchasable",
   },
 ];
 
+/**
+ * Fetches public pricing packages directly from Supabase at runtime.
+ * Ensures runtime dynamism on static Next.js export builds without rebuild.
+ */
 export async function getPublicPricingPackages(): Promise<PublicPricingPackage[]> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-      ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      ?? "";
-    if (!supabaseUrl || !publishableKey) return DEFAULT_PACKAGES;
+    const publishableKey =
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+      "";
+    if (!supabaseUrl || !publishableKey) return CANONICAL_DEFAULT_PACKAGES;
 
     const query = new URLSearchParams({
-      select: "id,price_amount,currency,active,featured,display_order,name_tr,name_en,description_tr,description_en,lesson_count,discount_percentage,unit_price,old_total,current_total,badge_tr,badge_en,purchase_mode",
+      select:
+        "id,price_amount,currency,active,featured,display_order,name_tr,name_en,description_tr,description_en,lesson_count,discount_percentage,unit_price,old_total,current_total,badge_tr,badge_en,purchase_mode",
       active: "eq.true",
       order: "display_order.asc",
     });
@@ -184,11 +190,23 @@ export async function getPublicPricingPackages(): Promise<PublicPricingPackage[]
       cache: "no-store",
     });
 
-    if (!response.ok) return DEFAULT_PACKAGES;
+    if (!response.ok) return CANONICAL_DEFAULT_PACKAGES;
     const data = (await response.json()) as PublicPricingPackage[];
-    return data && data.length > 0 ? data : DEFAULT_PACKAGES;
+    if (data && data.length > 0) {
+      // Normalize price_amount and current_total to prevent any drift
+      return data.map((pkg) => {
+        const canonicalPrice = Number(pkg.current_total ?? pkg.price_amount ?? 0);
+        return {
+          ...pkg,
+          price_amount: canonicalPrice,
+          current_total: canonicalPrice,
+          purchase_mode: "purchasable",
+        };
+      });
+    }
+    return CANONICAL_DEFAULT_PACKAGES;
   } catch {
-    return DEFAULT_PACKAGES;
+    return CANONICAL_DEFAULT_PACKAGES;
   }
 }
 
@@ -209,18 +227,20 @@ export async function listAdminPricingPackages(): Promise<{
       .order("created_at", { ascending: true });
 
     if (error) {
-      return { data: (DEFAULT_PACKAGES as unknown) as PricingPackageRow[], error: null };
+      return { data: (CANONICAL_DEFAULT_PACKAGES as unknown) as PricingPackageRow[], error: null };
     }
 
-    return { data: (data as PricingPackageRow[]) || (DEFAULT_PACKAGES as unknown as PricingPackageRow[]), error: null };
+    return {
+      data: (data as PricingPackageRow[]) || ((CANONICAL_DEFAULT_PACKAGES as unknown) as PricingPackageRow[]),
+      error: null,
+    };
   } catch {
-    return { data: (DEFAULT_PACKAGES as unknown) as PricingPackageRow[], error: null };
+    return { data: (CANONICAL_DEFAULT_PACKAGES as unknown) as PricingPackageRow[], error: null };
   }
 }
 
 /**
  * Creates a new pricing package.
- * Validates check constraint (price_amount >= 0, billing_basis in ('session', 'month', 'custom')).
  */
 export async function createAdminPricingPackage(
   input: CreatePricingPackageInput
@@ -231,7 +251,8 @@ export async function createAdminPricingPackage(
     return { data: null, error: "Paket kimliği (ID/slug) gereklidir." };
   }
 
-  if (input.price_amount !== null && (isNaN(input.price_amount) || input.price_amount < 0)) {
+  const effectivePrice = input.price_amount ?? input.current_total ?? 0;
+  if (isNaN(effectivePrice) || effectivePrice < 0) {
     return { data: null, error: "Fiyat tutarı negatif olamaz." };
   }
 
@@ -245,25 +266,25 @@ export async function createAdminPricingPackage(
 
     const insertPayload: TablesInsert<"pricing_packages"> = {
       id: input.id.trim().toLowerCase().replace(/\s+/g, "_"),
-      price_amount: input.price_amount,
-      currency: input.currency || "EUR",
+      price_amount: effectivePrice,
+      current_total: effectivePrice,
+      currency: input.currency || "TRY",
       billing_basis: input.billing_basis,
-      active: input.active !== undefined ? input.active : true,
-      featured: input.featured !== undefined ? input.featured : false,
+      active: true,
+      featured: input.featured ?? false,
       display_order: input.display_order || 0,
       updated_by: userData.user?.id || null,
       name_tr: input.name_tr || null,
       name_en: input.name_en || null,
       description_tr: input.description_tr || null,
       description_en: input.description_en || null,
-      lesson_count: input.lesson_count ?? null,
+      lesson_count: input.lesson_count ?? 1,
       discount_percentage: input.discount_percentage ?? null,
-      unit_price: input.unit_price ?? null,
+      unit_price: input.unit_price ?? (input.lesson_count ? Math.round(effectivePrice / input.lesson_count) : effectivePrice),
       old_total: input.old_total ?? null,
-      current_total: input.current_total ?? input.price_amount,
       badge_tr: input.badge_tr || null,
       badge_en: input.badge_en || null,
-      purchase_mode: input.purchase_mode ?? "consultation_only",
+      purchase_mode: "purchasable",
     };
 
     const { data, error } = await supabase
@@ -273,7 +294,7 @@ export async function createAdminPricingPackage(
       .single();
 
     if (error) {
-      if (error.code === "23505") { // unique_violation
+      if (error.code === "23505") {
         return { data: null, error: "Bu paket kimliğine (ID) sahip bir fiyat paketi zaten mevcut." };
       }
       console.error("[Admin Pricing] Error creating package:", error);
@@ -297,7 +318,7 @@ export async function createAdminPricingPackage(
 }
 
 /**
- * Updates an existing pricing package.
+ * Updates an existing pricing package with strict price synchronization.
  */
 export async function updateAdminPricingPackage(
   id: string,
@@ -305,8 +326,14 @@ export async function updateAdminPricingPackage(
 ): Promise<{ success: boolean; error: string | null }> {
   const supabase = getSupabaseClient();
 
-  if (input.price_amount !== undefined && input.price_amount !== null && (isNaN(input.price_amount) || input.price_amount < 0)) {
-    return { success: false, error: "Fiyat tutarı negatif olamaz." };
+  const effectivePrice = input.price_amount !== undefined && input.price_amount !== null
+    ? input.price_amount
+    : input.current_total !== undefined && input.current_total !== null
+    ? input.current_total
+    : undefined;
+
+  if (effectivePrice !== undefined && (isNaN(effectivePrice) || effectivePrice < 0)) {
+    return { success: false, error: "Fiyat tutarı geçerli ve pozitif bir sayı olmalıdır." };
   }
 
   try {
@@ -314,6 +341,8 @@ export async function updateAdminPricingPackage(
 
     const updatePayload: TablesUpdate<"pricing_packages"> = {
       ...input,
+      ...(effectivePrice !== undefined ? { price_amount: effectivePrice, current_total: effectivePrice } : {}),
+      purchase_mode: "purchasable",
       updated_at: new Date().toISOString(),
       updated_by: userData.user?.id || null,
     };
@@ -363,7 +392,6 @@ export async function deleteAdminPricingPackage(
       return { success: false, error: error.message };
     }
 
-    // Write audit log
     const { data: userData } = await supabase.auth.getUser();
     await supabase.from("audit_logs").insert({
       actor_user_id: userData.user?.id || null,
