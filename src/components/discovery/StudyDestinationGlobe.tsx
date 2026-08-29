@@ -7,18 +7,12 @@ import type { Feature, FeatureCollection, Geometry } from "geojson";
 import { useReducedMotion } from "motion/react";
 import type { Locale } from "@/content/dictionaries";
 import type { StudyRegion } from "./globe-types";
+import { resolveStudyDestination } from "@/data/study-destinations";
 
-type CountryProperties = { ADMIN?: string; ADM0_A3?: string; CONTINENT?: string };
+type CountryProperties = { ADMIN?: string; NAME?: string; NAME_TR?: string; NAME_EN?: string; ADM0_A3?: string; CONTINENT?: string };
 type CountryFeature = Feature<Geometry, CountryProperties>;
 type Rotation = [number, number];
 
-const REGION_CODES: Record<StudyRegion["id"], Set<string>> = {
-  uk: new Set(["GBR"]),
-  europe: new Set(["FRA", "ITA", "NLD", "CHE", "DEU", "ESP", "PRT", "BEL", "AUT", "DNK", "NOR", "SWE", "FIN", "IRL", "POL", "CZE"]),
-  us: new Set(["USA"]),
-  canada: new Set(["CAN"]),
-  other: new Set(["AUS", "NZL", "JPN", "SGP"]),
-};
 const GLOBE_GRATICULE = geoGraticule().step([20, 20])();
 
 let countryCache: CountryFeature[] | null = null;
@@ -41,9 +35,18 @@ function loadCountries() {
   return countryRequest;
 }
 
-function regionForFeature(feature: CountryFeature, regions: StudyRegion[]) {
-  const code = feature.properties?.ADM0_A3 ?? "";
-  return regions.find((candidate) => REGION_CODES[candidate.id].has(code)) ?? null;
+function regionForFeature(feature: CountryFeature, regions: StudyRegion[]): StudyRegion | null {
+  const code = (feature.properties?.ADM0_A3 ?? "").toUpperCase();
+  if (!code) return null;
+
+  // 1. Direct match among pre-seeded featured regions
+  const direct = regions.find((r) => r.countryCode === code || r.id === code.toLowerCase());
+  if (direct) return direct;
+
+  // 2. Dynamic country-level resolution for any other clicked country
+  const trName = feature.properties?.NAME_TR || feature.properties?.NAME || feature.properties?.ADMIN;
+  const enName = feature.properties?.NAME_EN || feature.properties?.NAME || feature.properties?.ADMIN;
+  return resolveStudyDestination(code, trName, enName);
 }
 
 export function StudyDestinationGlobe({
@@ -130,18 +133,24 @@ export function StudyDestinationGlobe({
     context.stroke();
 
     const normalFeatures: CountryFeature[] = [];
-    const otherFeatures: CountryFeature[] = [];
     const selectedFeatures: CountryFeature[] = [];
     const hoveredFeatures: CountryFeature[] = [];
     const visibleCenter = currentProjection.invert?.([size / 2, size / 2]) ?? [0, 0];
+
+    const currentTargetCode = regionRef.current?.countryCode || (regionRef.current?.id ? regionRef.current.id.toUpperCase() : "");
+
     for (const feature of featuresRef.current) {
       const centroid = countryCentroids.get(feature) ?? geoCentroid(feature);
       if (geoDistance(centroid, visibleCenter) > Math.PI / 2 + 0.32) continue;
-      const featureRegion = regionForFeature(feature, regions);
-      if (feature === hoveredFeatureRef.current) hoveredFeatures.push(feature);
-      else if (featureRegion?.id === regionRef.current?.id) selectedFeatures.push(feature);
-      else if (featureRegion?.id === "other") otherFeatures.push(feature);
-      else normalFeatures.push(feature);
+      const code = (feature.properties?.ADM0_A3 ?? "").toUpperCase();
+      
+      if (feature === hoveredFeatureRef.current) {
+        hoveredFeatures.push(feature);
+      } else if (currentTargetCode && (code === currentTargetCode || code === regionRef.current?.id?.toUpperCase())) {
+        selectedFeatures.push(feature);
+      } else {
+        normalFeatures.push(feature);
+      }
     }
 
     const drawCountryGroup = (features: CountryFeature[], fill: string, width = 0.55) => {
@@ -154,15 +163,12 @@ export function StudyDestinationGlobe({
       context.lineWidth = width;
       context.stroke();
     };
-    if (!regionRef.current && !hoveredFeatureRef.current) {
-      drawCountryGroup([...normalFeatures, ...otherFeatures], "#D8E1D7");
-    } else {
-      drawCountryGroup(normalFeatures, "#D8E1D7");
-      drawCountryGroup(otherFeatures, "#C5B58A");
-    }
+
+    drawCountryGroup(normalFeatures, "#D8E1D7");
     drawCountryGroup(selectedFeatures, "#607867", 1.1);
     drawCountryGroup(hoveredFeatures, "#819586", 1.1);
 
+    // Draw pinned destination markers for featured countries
     const hoveredRegion = hoveredFeatureRef.current ? regionForFeature(hoveredFeatureRef.current, regions) : null;
     for (const candidate of regions) {
       const point = currentProjection([candidate.focus.lng, candidate.focus.lat]);
@@ -170,8 +176,8 @@ export function StudyDestinationGlobe({
       if (!point || !onFront) {
         continue;
       }
-      const active = candidate.id === regionRef.current?.id;
-      const hovered = candidate.id === hoveredRegion?.id;
+      const active = candidate.id === regionRef.current?.id || candidate.countryCode === regionRef.current?.countryCode;
+      const hovered = candidate.id === hoveredRegion?.id || candidate.countryCode === hoveredRegion?.countryCode;
       if (active || hovered) {
         context.beginPath();
         context.arc(point[0], point[1], active ? 8.5 : 7, 0, Math.PI * 2);
@@ -220,29 +226,25 @@ export function StudyDestinationGlobe({
       interpolate: geoInterpolate(from, [region.focus.lng, region.focus.lat]),
       id: region.id,
     };
+    rootRef.current?.setAttribute("data-focus-target", region.id);
   }, [reducedMotion, region]);
 
   useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const resize = new ResizeObserver(([entry]) => {
-      sizeRef.current = Math.max(300, Math.min(compact ? 500 : 620, Math.floor(entry.contentRect.width)));
-      dirtyRef.current = true;
-    });
-    const visibility = new IntersectionObserver(([entry]) => {
+    const observer = new IntersectionObserver(([entry]) => {
       isVisibleRef.current = entry.isIntersecting;
-      dirtyRef.current = true;
-    }, { rootMargin: "120px" });
-    resize.observe(root);
-    visibility.observe(root);
-    return () => { resize.disconnect(); visibility.disconnect(); };
-  }, [compact]);
+      if (entry.isIntersecting) {
+        resumeAfterRef.current = performance.now() + 600;
+        dirtyRef.current = true;
+      }
+    }, { threshold: 0.2 });
+    if (rootRef.current) observer.observe(rootRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let frame = 0;
-    let paused = false;
     let previous = performance.now();
-    frameStatsRef.current = { started: previous, frames: 0 };
+    let paused = false;
     const tick = (time: number) => {
       if (document.hidden) {
         paused = true;
@@ -356,7 +358,10 @@ export function StudyDestinationGlobe({
       const feature = featureAt(point);
       if (feature !== hoveredFeatureRef.current) {
         hoveredFeatureRef.current = feature;
-        setHoveredName(feature?.properties?.ADMIN ?? null);
+        const displayName = isTr
+          ? feature?.properties?.NAME_TR || feature?.properties?.ADMIN || feature?.properties?.NAME
+          : feature?.properties?.NAME_EN || feature?.properties?.ADMIN || feature?.properties?.NAME;
+        setHoveredName(displayName ?? null);
         const interactiveRegion = feature ? regionForFeature(feature, regions) : null;
         setHoveredRegionId(interactiveRegion?.id ?? null);
         onHoverRegion?.(interactiveRegion?.id ?? null);
@@ -388,7 +393,7 @@ export function StudyDestinationGlobe({
     if (!isPointerOverRef.current) scheduleResume();
   }
 
-  if (loadError) return <div className="flex aspect-square items-center justify-center rounded-full border border-[#B7C3B8] bg-[#EEF2EC] p-10 text-center text-sm text-[#68756C]">{isTr ? "Harita yüklenemedi. Bölge düğmelerini kullanabilirsiniz." : "The map could not load. Use the region controls instead."}</div>;
+  if (loadError) return <div className="flex aspect-square items-center justify-center rounded-full border border-[#B7C3B8] bg-[#EEF2EC] p-10 text-center text-sm text-[#68756C]">{isTr ? "Harita yüklenemedi. Ülke düğmelerini kullanabilirsiniz." : "The map could not load. Use the country controls instead."}</div>;
 
   return (
     <div
@@ -418,7 +423,7 @@ export function StudyDestinationGlobe({
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label={isTr ? "Sürüklenebilir dünya bölgeleri görseli" : "Draggable world regions visual"}
+        aria-label={isTr ? "Sürüklenebilir dünya haritası ve eğitim destinasyonları" : "Draggable world map and study destinations"}
         className="relative z-0 size-full cursor-grab touch-pan-y select-none active:cursor-grabbing"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

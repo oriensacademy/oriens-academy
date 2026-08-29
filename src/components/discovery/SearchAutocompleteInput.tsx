@@ -1,59 +1,104 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Search, Sparkles, X, ChevronRight, GraduationCap, Globe, BookOpen, Award } from "lucide-react";
+import { useEffect, useRef, useState, useId } from "react";
+import { Search, Sparkles, X, ChevronRight, GraduationCap, Award, Globe, BookOpen, ArrowUpRight } from "lucide-react";
 import type { GroupedSearchResults, SearchResultItem } from "@/lib/search/retrieval-engine";
 import { retrieveSearchResults } from "@/lib/search/retrieval-engine";
+import { retrieveSearchResultsFromDatabase } from "@/lib/search/db-retrieval-service";
+import { getVerifiedOfficialUniversityUrl } from "@/data/official-universities";
+import { useLocale } from "@/content/locale-context";
 
 interface SearchAutocompleteInputProps {
   initialQuery?: string;
   onSearchSubmit?: (query: string) => void;
   onSelectResult?: (item: SearchResultItem) => void;
+  className?: string;
 }
 
-const EXAMPLE_QUERIES = [
+const EXAMPLE_QUERIES_TR = [
   "Cambridge",
-  "SAT",
-  "Italy Medicine",
-  "IB 38 Computer Science UK",
+  "Digital SAT",
+  "İtalya Tıp (IMAT)",
+  "Oxford LNAT",
+  "IB Diploma",
+];
+
+const EXAMPLE_QUERIES_EN = [
+  "Cambridge",
+  "Digital SAT",
+  "Italy Medicine (IMAT)",
+  "Oxford LNAT",
+  "IB Diploma",
 ];
 
 export function SearchAutocompleteInput({
   initialQuery = "",
   onSearchSubmit,
   onSelectResult,
+  className = "",
 }: SearchAutocompleteInputProps) {
+  const locale = useLocale();
+  const isTr = locale === "tr";
+  const listboxId = useId();
+
   const [query, setQuery] = useState(initialQuery);
   const [isOpen, setIsOpen] = useState(false);
-  const [results, setResults] = useState<GroupedSearchResults | null>(null);
+  const [results, setResults] = useState<GroupedSearchResults | null>(() => retrieveSearchResults(initialQuery.trim()));
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [isLoading, setIsLoading] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Debounced search retrieval
+  // Debounced search retrieval with runtime DB RPC + deterministic local fallback
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (query.trim().length >= 1) {
-        const res = retrieveSearchResults(query);
-        setResults(res);
-      } else {
-        const defaultRes = retrieveSearchResults("");
-        setResults(defaultRes);
-      }
-    }, 200);
+    let isCancelled = false;
+    const cleanQuery = query.trim();
 
-    return () => clearTimeout(timer);
+    const timer = setTimeout(async () => {
+      if (cleanQuery.length === 0) {
+        if (!isCancelled) {
+          setResults(retrieveSearchResults(""));
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const dbRes = await retrieveSearchResultsFromDatabase(cleanQuery);
+        if (!isCancelled) {
+          setResults(dbRes);
+          setIsLoading(false);
+        }
+      } catch {
+        if (!isCancelled) {
+          const fallbackRes = retrieveSearchResults(cleanQuery);
+          setResults(fallbackRes);
+          setIsLoading(false);
+        }
+      }
+    }, 180);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [query]);
 
+  // Grouped items: Prioritize Qualifications (Sınavlar) and Universities (Üniversiteler)
+  const qualificationItems = results?.groups.qualifications ?? [];
+  const universityItems = results?.groups.universities ?? [];
+  const countryItems = results?.groups.countries ?? [];
+  const programItems = results?.groups.programs ?? [];
+
   // Flattened active items for keyboard navigation
-  const allItems: SearchResultItem[] = results
-    ? [
-        ...results.groups.universities,
-        ...results.groups.programs,
-        ...results.groups.qualifications,
-        ...results.groups.countries,
-      ]
-    : [];
+  const allItems: SearchResultItem[] = [
+    ...qualificationItems,
+    ...universityItems,
+    ...programItems,
+    ...countryItems,
+  ];
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -68,7 +113,10 @@ export function SearchAutocompleteInput({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
-      if (e.key === "ArrowDown") setIsOpen(true);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        setIsOpen(true);
+        e.preventDefault();
+      }
       return;
     }
 
@@ -109,20 +157,23 @@ export function SearchAutocompleteInput({
     }
   };
 
+  const exampleQueries = isTr ? EXAMPLE_QUERIES_TR : EXAMPLE_QUERIES_EN;
+
   return (
-    <div ref={containerRef} className="relative w-full max-w-4xl mx-auto">
+    <div ref={containerRef} className={`relative w-full max-w-3xl mx-auto ${className}`}>
       {/* Search Input Box */}
       <form onSubmit={handleFormSubmit} className="relative flex items-center">
         <div className="relative w-full flex items-center">
-          <Search className="absolute left-4 size-5 text-emerald-400/80 pointer-events-none" />
+          <Search className="absolute left-4.5 size-5 text-[#819586] pointer-events-none transition-colors" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
             role="combobox"
             aria-expanded={isOpen}
             aria-haspopup="listbox"
-            aria-controls="autocomplete-listbox"
+            aria-controls={listboxId}
             aria-autocomplete="list"
+            aria-activedescendant={activeIndex >= 0 ? `search-item-${allItems[activeIndex]?.id}` : undefined}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -131,8 +182,8 @@ export function SearchAutocompleteInput({
             }}
             onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
-            placeholder="Search universities, countries, programs or qualifications..."
-            className="w-full h-14 pl-12 pr-28 rounded-2xl bg-slate-900/80 border border-slate-700/80 text-slate-100 placeholder-slate-400 text-base font-normal shadow-xl backdrop-blur-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/80 transition-all duration-200"
+            placeholder={isTr ? "Sınav, üniversite veya hedef ülke arayın (örn: IB, Cambridge, SAT)..." : "Search exams, universities or destinations (e.g. IB, Cambridge, SAT)..."}
+            className="w-full h-13 pl-12 pr-28 rounded-2xl bg-surface border border-border text-ink placeholder:text-muted-foreground text-sm md:text-base font-normal shadow-xs focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
           />
 
           {query && (
@@ -143,8 +194,8 @@ export function SearchAutocompleteInput({
                 setResults(retrieveSearchResults(""));
                 inputRef.current?.focus();
               }}
-              className="absolute right-24 p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              aria-label="Clear search query"
+              className="absolute right-20 p-1.5 rounded-full text-muted-foreground hover:text-ink hover:bg-surface-muted transition-colors cursor-pointer"
+              aria-label={isTr ? "Aramayı temizle" : "Clear search query"}
             >
               <X className="size-4" />
             </button>
@@ -152,76 +203,78 @@ export function SearchAutocompleteInput({
 
           <button
             type="submit"
-            className="absolute right-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-semibold text-sm shadow-md transition-all duration-200 active:scale-95"
+            className="absolute right-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs tracking-wider uppercase shadow-xs hover:opacity-90 transition-all duration-200 active:scale-95 cursor-pointer"
           >
-            Search
+            {isTr ? "Ara" : "Search"}
           </button>
         </div>
       </form>
 
-      {/* Subtle Example Helper Queries */}
-      <div className="mt-3 flex flex-wrap items-center gap-2 px-1 text-xs text-slate-400">
-        <span className="flex items-center gap-1 font-medium text-slate-400">
-          <Sparkles className="size-3 text-emerald-400" />
-          Try:
+      {/* Helper Queries */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 px-1 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1 font-medium text-ink/70">
+          <Sparkles className="size-3 text-primary" aria-hidden="true" />
+          {isTr ? "Örnek:" : "Try:"}
         </span>
-        {EXAMPLE_QUERIES.map((example) => (
+        {exampleQueries.map((example) => (
           <button
             key={example}
             type="button"
             onClick={() => {
               setQuery(example);
-              onSearchSubmit?.(example);
+              setIsOpen(true);
+              inputRef.current?.focus();
             }}
-            className="px-2.5 py-1 rounded-lg bg-slate-800/60 border border-slate-700/50 text-slate-300 hover:text-emerald-300 hover:bg-slate-800 hover:border-emerald-500/40 transition-all"
+            className="px-2 py-0.5 rounded-md bg-surface border border-border text-ink/80 hover:text-primary hover:border-primary/40 transition-colors cursor-pointer text-[11px]"
           >
             {example}
           </button>
         ))}
       </div>
 
-      {/* Grouped Autocomplete Overlay Menu */}
-      {isOpen && results && results.totalCount > 0 && (
+      {/* Grouped Autocomplete Overlay Dropdown */}
+      {isOpen && (
         <div
-          id="autocomplete-listbox"
+          id={listboxId}
           role="listbox"
-          className="absolute z-50 mt-2 w-full max-h-[70vh] overflow-y-auto rounded-2xl bg-slate-900/95 border border-slate-700/80 shadow-2xl backdrop-blur-2xl p-3 divide-y divide-slate-800/80 text-left"
+          className="absolute z-50 mt-2 w-full max-h-[70vh] overflow-y-auto rounded-2xl bg-surface border border-border shadow-xl p-2.5 divide-y divide-border/60 text-left"
         >
-          {/* Group 1: UNIVERSITIES */}
-          {results.groups.universities.length > 0 && (
-            <div className="py-2">
-              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold tracking-wider text-emerald-400 uppercase">
-                <GraduationCap className="size-3.5" />
-                Universities
+          {/* GROUP 1: SINAVLAR / QUALIFICATIONS */}
+          {qualificationItems.length > 0 && (
+            <div className="py-2 first:pt-1">
+              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold tracking-wider text-primary uppercase">
+                <Award className="size-3.5" aria-hidden="true" />
+                <span>{isTr ? "Sınavlar" : "Exams & Qualifications"}</span>
               </div>
-              <ul className="mt-1 space-y-1">
-                {results.groups.universities.map((item) => {
+              <ul className="mt-1 space-y-0.5">
+                {qualificationItems.map((item) => {
                   const globalIdx = allItems.findIndex((i) => i.id === item.id);
                   const isActive = globalIdx === activeIndex;
                   return (
                     <li
+                      id={`search-item-${item.id}`}
                       key={item.id}
                       role="option"
                       aria-selected={isActive}
                       onClick={() => handleSelectItem(item)}
                       className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
                         isActive
-                          ? "bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 pl-4"
-                          : "text-slate-200 hover:bg-slate-800/70 hover:text-white"
+                          ? "bg-sage-soft text-ink border border-primary/20 pl-4 font-medium"
+                          : "text-ink hover:bg-surface-muted"
                       }`}
                     >
-                      <div>
-                        <div className="font-medium text-sm text-slate-100 flex items-center gap-2">
-                          {item.title}
+                      <div className="min-w-0 pr-2">
+                        <div className="font-semibold text-sm text-ink flex items-center gap-2">
+                          <span>{item.title}</span>
                           {item.badge && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 border border-slate-700 text-slate-300 font-mono">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-surface-muted border border-border text-secondary font-mono">
                               {item.badge}
                             </span>
                           )}
                         </div>
-                        {item.subtitle && <p className="text-xs text-slate-400 mt-0.5">{item.subtitle}</p>}
+                        {item.subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.subtitle}</p>}
                       </div>
-                      <ChevronRight className="size-4 text-slate-500 group-hover:text-slate-300" />
+                      <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                     </li>
                   );
                 })}
@@ -229,76 +282,59 @@ export function SearchAutocompleteInput({
             </div>
           )}
 
-          {/* Group 2: PROGRAMS */}
-          {results.groups.programs.length > 0 && (
+          {/* GROUP 2: ÜNİVERSİTELER / UNIVERSITIES */}
+          {universityItems.length > 0 && (
             <div className="py-2">
-              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold tracking-wider text-teal-400 uppercase">
-                <BookOpen className="size-3.5" />
-                Programs & Fields of Study
+              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold tracking-wider text-secondary uppercase">
+                <GraduationCap className="size-3.5" aria-hidden="true" />
+                <span>{isTr ? "Üniversiteler" : "Universities"}</span>
               </div>
-              <ul className="mt-1 space-y-1">
-                {results.groups.programs.map((item) => {
+              <ul className="mt-1 space-y-0.5">
+                {universityItems.map((item) => {
                   const globalIdx = allItems.findIndex((i) => i.id === item.id);
                   const isActive = globalIdx === activeIndex;
-                  return (
-                    <li
-                      key={item.id}
-                      role="option"
-                      aria-selected={isActive}
-                      onClick={() => handleSelectItem(item)}
-                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
-                        isActive
-                          ? "bg-teal-500/20 text-teal-200 border border-teal-500/30 pl-4"
-                          : "text-slate-200 hover:bg-slate-800/70 hover:text-white"
-                      }`}
-                    >
-                      <div>
-                        <div className="font-medium text-sm text-slate-100">{item.title}</div>
-                        {item.subtitle && <p className="text-xs text-slate-400 mt-0.5">{item.subtitle}</p>}
-                      </div>
-                      <ChevronRight className="size-4 text-slate-500" />
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+                  const verifiedUrl = item.officialUrl || getVerifiedOfficialUniversityUrl(item.title);
 
-          {/* Group 3: QUALIFICATIONS */}
-          {results.groups.qualifications.length > 0 && (
-            <div className="py-2">
-              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold tracking-wider text-amber-400 uppercase">
-                <Award className="size-3.5" />
-                Qualifications
-              </div>
-              <ul className="mt-1 space-y-1">
-                {results.groups.qualifications.map((item) => {
-                  const globalIdx = allItems.findIndex((i) => i.id === item.id);
-                  const isActive = globalIdx === activeIndex;
                   return (
                     <li
+                      id={`search-item-${item.id}`}
                       key={item.id}
                       role="option"
                       aria-selected={isActive}
                       onClick={() => handleSelectItem(item)}
                       className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
                         isActive
-                          ? "bg-amber-500/20 text-amber-200 border border-amber-500/30 pl-4"
-                          : "text-slate-200 hover:bg-slate-800/70 hover:text-white"
+                          ? "bg-sage-soft text-ink border border-primary/20 pl-4 font-medium"
+                          : "text-ink hover:bg-surface-muted"
                       }`}
                     >
-                      <div>
-                        <div className="font-medium text-sm text-slate-100 flex items-center gap-2">
-                          {item.title}
+                      <div className="min-w-0 pr-2">
+                        <div className="font-semibold text-sm text-ink flex items-center gap-2">
+                          <span>{item.title}</span>
                           {item.badge && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-surface-muted border border-border text-muted-foreground font-mono">
                               {item.badge}
                             </span>
                           )}
                         </div>
-                        {item.subtitle && <p className="text-xs text-slate-400 mt-0.5">{item.subtitle}</p>}
+                        {item.subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.subtitle}</p>}
                       </div>
-                      <ChevronRight className="size-4 text-slate-500" />
+                      <div className="flex items-center gap-2 shrink-0">
+                        {verifiedUrl && (
+                          <span
+                            title={isTr ? "Doğrulanmış Resmi Üniversite Sayfası" : "Verified Official University Website"}
+                            className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(verifiedUrl, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            <span>{isTr ? "Resmi Site" : "Official Site"}</span>
+                            <ArrowUpRight className="size-3" aria-hidden="true" />
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
+                      </div>
                     </li>
                   );
                 })}
@@ -306,38 +342,89 @@ export function SearchAutocompleteInput({
             </div>
           )}
 
-          {/* Group 4: COUNTRIES */}
-          {results.groups.countries.length > 0 && (
+          {/* GROUP 3: PROGRAMLAR / FIELDS */}
+          {programItems.length > 0 && (
             <div className="py-2">
-              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold tracking-wider text-sky-400 uppercase">
-                <Globe className="size-3.5" />
-                Countries
+              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                <BookOpen className="size-3.5" aria-hidden="true" />
+                <span>{isTr ? "Bölümler & Çalışma Alanları" : "Programs & Fields"}</span>
               </div>
-              <ul className="mt-1 space-y-1">
-                {results.groups.countries.map((item) => {
+              <ul className="mt-1 space-y-0.5">
+                {programItems.map((item) => {
                   const globalIdx = allItems.findIndex((i) => i.id === item.id);
                   const isActive = globalIdx === activeIndex;
                   return (
                     <li
+                      id={`search-item-${item.id}`}
                       key={item.id}
                       role="option"
                       aria-selected={isActive}
                       onClick={() => handleSelectItem(item)}
                       className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
                         isActive
-                          ? "bg-sky-500/20 text-sky-200 border border-sky-500/30 pl-4"
-                          : "text-slate-200 hover:bg-slate-800/70 hover:text-white"
+                          ? "bg-sage-soft text-ink border border-primary/20 pl-4 font-medium"
+                          : "text-ink hover:bg-surface-muted"
                       }`}
                     >
-                      <div>
-                        <div className="font-medium text-sm text-slate-100">{item.title}</div>
-                        {item.subtitle && <p className="text-xs text-slate-400 mt-0.5">{item.subtitle}</p>}
+                      <div className="min-w-0 pr-2">
+                        <div className="font-semibold text-sm text-ink">{item.title}</div>
+                        {item.subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.subtitle}</p>}
                       </div>
-                      <ChevronRight className="size-4 text-slate-500" />
+                      <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                     </li>
                   );
                 })}
               </ul>
+            </div>
+          )}
+
+          {/* GROUP 4: ÜLKELER / DESTINATIONS */}
+          {countryItems.length > 0 && (
+            <div className="py-2 last:pb-1">
+              <div className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                <Globe className="size-3.5" aria-hidden="true" />
+                <span>{isTr ? "Ülkeler & Rotalar" : "Destinations"}</span>
+              </div>
+              <ul className="mt-1 space-y-0.5">
+                {countryItems.map((item) => {
+                  const globalIdx = allItems.findIndex((i) => i.id === item.id);
+                  const isActive = globalIdx === activeIndex;
+                  return (
+                    <li
+                      id={`search-item-${item.id}`}
+                      key={item.id}
+                      role="option"
+                      aria-selected={isActive}
+                      onClick={() => handleSelectItem(item)}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                        isActive
+                          ? "bg-sage-soft text-ink border border-primary/20 pl-4 font-medium"
+                          : "text-ink hover:bg-surface-muted"
+                      }`}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="font-semibold text-sm text-ink">{item.title}</div>
+                        {item.subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.subtitle}</p>}
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* EMPTY STATE */}
+          {allItems.length === 0 && !isLoading && (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              <p className="font-medium text-ink">
+                {isTr ? "Sonuç bulunamadı." : "No results found."}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {isTr
+                  ? "Aramak istediğiniz sınav adını (örn. IB, SAT, AP) veya hedef üniversiteyi yazabilirsiniz."
+                  : "Try searching for an exam code (e.g. IB, SAT, AP) or target university."}
+              </p>
             </div>
           )}
         </div>

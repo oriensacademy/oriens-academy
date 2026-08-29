@@ -111,7 +111,7 @@ export function AboutPage() {
         <div className="mx-auto max-w-[1280px] px-6 md:px-12">
           <Reveal className="grid gap-6 lg:grid-cols-12"><div className="lg:col-span-6"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.outcomes.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.outcomes.title}</h2></div><p className="max-w-[60ch] self-end text-base leading-[1.75] text-ink/70 lg:col-span-6">{content.outcomes.intro}</p></Reveal>
           {metrics.length > 0 && <dl className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{metrics.map((metric) => <div key={metric.id} className="border-t border-ink pt-5"><dt className="text-sm text-ink/70">{metric.label}</dt><dd className="mt-4 font-heading text-4xl text-ink">{metric.value}</dd></div>)}</dl>}
-          <ol className="mt-12 grid border-t border-l border-border sm:grid-cols-2 lg:grid-cols-5">
+          <ol className="mt-12 grid border-t border-l border-border sm:grid-cols-2 lg:grid-cols-3">
             {content.outcomes.items.map((item, index) => <Reveal key={item.title} className="border-r border-b border-border p-6" delay={index * 0.04} y={8}><li><span className="text-xs tabular-nums text-muted-foreground">{number(index)}</span><h3 className="mt-8 font-heading text-xl text-ink">{item.title}</h3><p className="mt-3 text-sm leading-[1.7] text-ink/70">{item.description}</p></li></Reveal>)}
           </ol>
           <p className="mt-7 max-w-[78ch] border-l-2 border-brand-accent pl-4 text-sm leading-relaxed text-muted-foreground">{content.outcomes.disclaimer}</p>

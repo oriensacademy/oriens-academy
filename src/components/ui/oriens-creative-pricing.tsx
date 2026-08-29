@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Check, ShoppingBag, CheckCircle2 } from "lucide-react";
+import { Check, ShoppingBag, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useCart } from "@/lib/cart/cart-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { localizedPath } from "@/lib/routes";
@@ -69,6 +69,18 @@ export function CreativePricing({
           <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-[#68756C] md:text-lg">
             {description}
           </p>
+
+          {/* Subtle premium trust marker */}
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#D0DBD0] bg-white/80 px-4 py-1.5 shadow-[0_2px_8px_rgba(16,40,30,0.04)] backdrop-blur-xs">
+            <ShieldCheck className="size-4 text-[#43644E]" aria-hidden="true" />
+            <span className="text-xs font-semibold text-[#1F382B]">
+              {locale === "tr" ? "Şeffaf Fiyatlandırma" : "Transparent Pricing"}
+            </span>
+            <span className="text-xs text-[#607065]" aria-hidden="true">·</span>
+            <span className="text-xs text-[#526458]">
+              {locale === "tr" ? "Her öğrenci için aynı standart ücretler." : "Standard pricing for every student."}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 items-stretch gap-7 md:grid-cols-2 lg:grid-cols-6 xl:grid-cols-5 xl:gap-5">
@@ -190,7 +202,7 @@ export function CreativePricing({
                       "mt-3 min-h-5 text-xs",
                       isInverted ? "text-primary-foreground/85" : "text-[#68756C]"
                     )}>
-                      <span>{locale === "tr" ? "Ders başı: " : "Per lesson: "}</span>
+                      <span>{locale === "tr" ? "Birim Ders Ücreti: " : "Unit Lesson Price: "}</span>
                       <strong className={isInverted ? "text-primary-foreground" : "text-[#10271B]"}>{money(tier.unitPrice)}</strong>
                     </div>
                   ) : <div aria-hidden="true" className="mt-3 min-h-5 text-xs invisible">—</div>}

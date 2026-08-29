@@ -36,7 +36,7 @@ export const pricing = {
       },
       package5: {
         title: "5 Derslik Paket",
-        description: "Düzenli akademik destek",
+        description: "Düzenli çalışma için esnek başlangıç paketi.",
         features: ["60 dakikalık 5 birebir ders", "%7 paket indirimi", "Düzenli konu takibi"],
         unitPrice: "3.000 TL",
         totalPrice: "15.000 TL",
@@ -45,7 +45,7 @@ export const pricing = {
       },
       package10: {
         title: "10 Derslik Paket",
-        description: "Düzenli akademik destek",
+        description: "Sınav hazırlığı ve konu takibi için dengeli çalışma paketi.",
         features: ["60 dakikalık 10 birebir ders", "%15 paket indirimi", "Sınav ve ödev takibi"],
         unitPrice: "2.700 TL",
         totalPrice: "27.000 TL",

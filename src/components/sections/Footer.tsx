@@ -86,14 +86,12 @@ export function Footer() {
   const navigationItems = isTr
     ? [
         { label: "Sınav Hazırlığı", href: "/tr/sinavlar/" },
-        { label: "Metot", href: "/tr#method" },
         { label: "Üniversite Desteği", href: "/tr/universite-destegi/" },
         { label: "Hakkımızda", href: "/tr/hakkimizda/" },
         ...(showPricing ? [{ label: "Ücretler", href: "/tr/ucretler/" }] : []),
       ]
     : [
         { label: "Exam Preparation", href: "/en/exams/" },
-        { label: "Method", href: "/en#method" },
         { label: "University Support", href: "/en/university-support/" },
         { label: "About Us", href: "/en/about/" },
         ...(showPricing ? [{ label: "Pricing", href: "/en/pricing/" }] : []),

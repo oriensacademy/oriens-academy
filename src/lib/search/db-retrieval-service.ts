@@ -175,8 +175,7 @@ export async function retrieveSearchResultsFromDatabase(
         if (explicitUniversity && !row.subtitle?.toLowerCase().startsWith(explicitUniversity.title.toLowerCase())) return false;
         if (countryIso2 && row.country_iso2 !== countryIso2) return false;
       }
-      if (row.entity_type !== "UNIVERSITY") return true;
-      return !hasStructuredEntity || hasUniversityEntity;
+      return true;
     })
     .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score));
 

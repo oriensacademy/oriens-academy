@@ -33,14 +33,14 @@ export function NavHeader({ items, className }: NavHeaderProps) {
       ? [
           { label: "Sınavlar", href: "/tr/sinavlar" },
           { label: "Üniversite Desteği", href: "/tr/universite-destegi" },
-          { label: "Ücretler", href: "/tr/ucretler" },
           { label: "Hakkımızda", href: "/tr/hakkimizda" },
+          { label: "Ücretler", href: "/tr/ucretler" },
         ]
       : [
           { label: "Exams", href: "/en/exams" },
           { label: "University Support", href: "/en/university-support" },
-          { label: "Pricing", href: "/en/pricing" },
           { label: "About", href: "/en/about" },
+          { label: "Pricing", href: "/en/pricing" },
         ];
 
   const navItems = items || defaultItems;

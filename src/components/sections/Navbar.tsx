@@ -52,8 +52,8 @@ export function Navbar() {
         id: localizedPath("universitySupport", locale),
         label: locale === "tr" ? "Üniversite Desteği" : "University Support",
       },
-      ...(showPricing ? [{ id: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
       { id: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
+      ...(showPricing ? [{ id: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
     ],
     [locale, showPricing],
   );
@@ -63,9 +63,9 @@ export function Navbar() {
     { href: localizedPath("home", locale), label: locale === "tr" ? "Ana Sayfa" : "Home" },
     { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
     { href: localizedPath("universitySupport", locale), label: locale === "tr" ? "Üniversite Desteği" : "University Support" },
+    { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     ...(showPricing ? [{ href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
     ...(showPricing && (cartCount > 0 || isStudent) ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
-    { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
     { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
     { href: accountHref, label: accountLabel },
   ], [accountHref, accountLabel, cartCount, isStudent, locale, showPricing]);

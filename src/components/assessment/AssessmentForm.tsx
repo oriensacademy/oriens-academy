@@ -154,17 +154,23 @@ Notes / Goals: ${notes || "-"}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           >
             <option value="IB">IB (International Baccalaureate)</option>
-            <option value="SAT">Digital SAT</option>
             <option value="AP">AP (Advanced Placement)</option>
+            <option value="IGCSE">Cambridge IGCSE</option>
+            <option value="A-Level">A-Level (Cambridge / Edexcel)</option>
+            <option value="SAT">Digital SAT</option>
+            <option value="ACT">ACT</option>
             <option value="ESAT">ESAT (Engineering & Science)</option>
-            <option value="TARA">TARA</option>
-            <option value="TMUA">TMUA Mathematics</option>
-            <option value="IGCSE">IGCSE / GCSE</option>
-            <option value="GRE">GRE</option>
-            <option value="GMAT">GMAT Focus Edition</option>
-            <option value="UCAT">UCAT / UKCAT</option>
+            <option value="TMUA">TMUA (Mathematics)</option>
+            <option value="TARA">TARA (Architecture / TEST-ARCHED)</option>
+            <option value="UCAT">UCAT (Medical Aptitude)</option>
+            <option value="LNAT">LNAT (Law)</option>
             <option value="IMAT">IMAT (Italy Medicine)</option>
-            <option value="OMPT">OMPT (Netherlands Math)</option>
+            <option value="GAMSAT">GAMSAT (Graduate Medicine)</option>
+            <option value="MCAT">MCAT (Medicine)</option>
+            <option value="LSAT">LSAT (JD Law)</option>
+            <option value="GRE">GRE General Test</option>
+            <option value="GMAT">GMAT Focus Edition</option>
+            <option value="OMPT">OMPT (Mathematics Placement)</option>
             <option value="Diger">{isTr ? "Diğer / Genel Akademik" : "Other / General Academic"}</option>
           </select>
         </div>

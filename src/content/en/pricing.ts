@@ -36,7 +36,7 @@ export const pricing = {
       },
       package5: {
         title: "5-Lesson Package",
-        description: "Consistent academic support",
+        description: "Flexible starter package for structured study.",
         features: ["5 60-minute 1:1 lessons", "7% package discount", "Regular topic review"],
         unitPrice: "3,000 TRY",
         totalPrice: "15,000 TRY",
@@ -45,7 +45,7 @@ export const pricing = {
       },
       package10: {
         title: "10-Lesson Package",
-        description: "Consistent academic support",
+        description: "Balanced study package for exam preparation and topic mastery.",
         features: ["10 60-minute 1:1 lessons", "15% package discount", "Exam and homework tracking"],
         unitPrice: "2,700 TRY",
         totalPrice: "27,000 TRY",

@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
+import { examRecords } from "@/content/exams";
 
 interface TestimonialModalProps {
   isOpen: boolean;
@@ -258,9 +259,11 @@ export function TestimonialModal({
                 onChange={(e) => setExamCode(e.target.value)}
                 className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
               >
-                <option value="ib">IB Diploma</option>
-                <option value="sat">SAT</option>
-                <option value="ap">AP (Advanced Placement)</option>
+                {examRecords.map((exam) => (
+                  <option key={exam.slug} value={exam.slug}>
+                    {exam.code} ({exam.slug})
+                  </option>
+                ))}
                 <option value="general">Genel / Diğer</option>
               </select>
             </div>

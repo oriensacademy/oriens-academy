@@ -8,18 +8,26 @@ export interface PreferenceOption {
 }
 
 export const SUPPORTED_EXAMS: PreferenceOption[] = [
-  { id: "SAT", name_tr: "SAT", name_en: "SAT", badge: "US / Global" },
-  { id: "IB", name_tr: "IB Diploma", name_en: "IB Diploma", badge: "Curriculum" },
-  { id: "AP", name_tr: "Advanced Placement (AP)", name_en: "Advanced Placement (AP)", badge: "US / Global" },
-  { id: "TMUA", name_tr: "TMUA (Cambridge / LSE)", name_en: "TMUA (Cambridge / LSE)", badge: "UK" },
-  { id: "ESAT", name_tr: "ESAT (Engineering / Science)", name_en: "ESAT (Engineering / Science)", badge: "UK" },
-  { id: "IMAT", name_tr: "IMAT (İtalya Tıp)", name_en: "IMAT (Italy Medicine)", badge: "Italy" },
-  { id: "UCAT", name_tr: "UCAT (UK Tıp)", name_en: "UCAT (UK Medicine)", badge: "UK / Australia" },
+  { id: "IB", name_tr: "IB Diploma", name_en: "IB Diploma", badge: "Diploma" },
+  { id: "AP", name_tr: "Advanced Placement (AP)", name_en: "Advanced Placement (AP)", badge: "Curriculum" },
+  { id: "IGCSE", name_tr: "Cambridge IGCSE", name_en: "Cambridge IGCSE", badge: "Secondary" },
+  { id: "A-Level", name_tr: "A-Level", name_en: "A-Level", badge: "UK / Global" },
+  { id: "SAT", name_tr: "Digital SAT", name_en: "Digital SAT", badge: "US / Global" },
+  { id: "ACT", name_tr: "ACT", name_en: "ACT", badge: "US / Global" },
+  { id: "ESAT", name_tr: "ESAT (Engineering / Science)", name_en: "ESAT (Engineering / Science)", badge: "UK STEM" },
+  { id: "TMUA", name_tr: "TMUA (Cambridge / LSE)", name_en: "TMUA (Cambridge / LSE)", badge: "UK Math" },
+  { id: "TARA", name_tr: "TARA / TEST-ARCHED (Mimarlık)", name_en: "TARA (Architecture)", badge: "Architecture" },
+  { id: "UCAT", name_tr: "UCAT (Tıp / Diş Hekimliği)", name_en: "UCAT (Medicine / Dentistry)", badge: "UK / Australia" },
+  { id: "LNAT", name_tr: "LNAT (Hukuk)", name_en: "LNAT (Law)", badge: "UK Law" },
+  { id: "IMAT", name_tr: "IMAT (İtalya İngilizce Tıp)", name_en: "IMAT (Italy Medicine)", badge: "Italy" },
+  { id: "GAMSAT", name_tr: "GAMSAT (Lisansüstü Tıp)", name_en: "GAMSAT (Graduate Medicine)", badge: "UK / Australia" },
+  { id: "MCAT", name_tr: "MCAT (Kuzey Amerika Tıp)", name_en: "MCAT (US/CA Medicine)", badge: "US / Canada" },
+  { id: "LSAT", name_tr: "LSAT (JD Hukuk)", name_en: "LSAT (JD Law)", badge: "US / Canada" },
+  { id: "GRE", name_tr: "GRE General Test", name_en: "GRE General Test", badge: "Graduate" },
+  { id: "GMAT", name_tr: "GMAT Focus Edition", name_en: "GMAT Focus Edition", badge: "Business / MBA" },
   { id: "OMPT", name_tr: "OMPT (Hollanda Matematik)", name_en: "OMPT (Netherlands Math)", badge: "Netherlands" },
   { id: "IELTS", name_tr: "IELTS Academic", name_en: "IELTS Academic", badge: "Language" },
   { id: "TOEFL", name_tr: "TOEFL iBT", name_en: "TOEFL iBT", badge: "Language" },
-  { id: "GRE", name_tr: "GRE", name_en: "GRE", badge: "Graduate" },
-  { id: "GMAT", name_tr: "GMAT Focus", name_en: "GMAT Focus", badge: "Graduate" },
 ];
 
 export const SUPPORTED_DESTINATIONS: PreferenceOption[] = [

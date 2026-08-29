@@ -5,7 +5,7 @@ import { Fingerprint, Globe2, Target, Users, type LucideIcon } from "lucide-reac
 export const hero = {
   eyebrow: "Uluslararası Sınav Hazırlık & Üniversite Ders Desteği",
   headline: "Dünyanın en iyi üniversitelerine giden rotanı birlikte çizelim.",
-  body: "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT ve OMPT sınavlarına; sınavın mantığını çözen, hedef odaklı ve ölçülebilir bir hazırlık süreci sunuyoruz.",
+  body: "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT sınavlarına; sınavın mantığını çözen, hedef odaklı ve ölçülebilir bir hazırlık süreci sunuyoruz.",
   ctaPrimary: "Ücretsiz Tanışma Görüşmesi",
   ctaSecondary: "Sınavları İncele",
 };
@@ -26,12 +26,12 @@ export const examPreparation = {
   body: "Her sınavın kendi dili, puanlama mantığı ve zaman baskısı olduğu için hazırlık o sınava özel kurgulanır.",
   categories: [
     {
-      label: "Uluslararası Sınavlar",
-      exams: ["IB", "AP", "SAT", "ESAT", "TARA", "TMUA"],
+      label: "Uluslararası Müfredat ve Diplomalar",
+      exams: ["IB", "AP", "IGCSE", "A-Level", "SAT", "ACT"],
     },
     {
-      label: "Kabul ve Yerleştirme Sınavları",
-      exams: ["IGCSE", "GRE", "GMAT", "UKCAT", "IMAT", "OMPT"],
+      label: "Kabul ve Bölüm Sınavları",
+      exams: ["ESAT", "TMUA", "TARA", "UCAT", "LNAT", "IMAT", "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"],
     },
   ],
 };
@@ -116,7 +116,7 @@ export const whyOriens = {
     {
       icon: Fingerprint as LucideIcon,
       title: "10+ Yıl Deneyim",
-      copy: "Robert Kolej, St. Joseph, Liceo Italiano ve Üsküdar Amerikan öğrencileriyle 10 yılı aşkın birebir deneyim.",
+      copy: "Robert Kolej, St. Joseph, Liceo Italiano, Üsküdar Amerikan, Galatasaray Lisesi, Saint Benoit, Notre Dame de Sion, Alman Lisesi ve Avusturya Lisesi öğrencileriyle 10 yılı aşkın birebir deneyim.",
     },
     {
       icon: Target as LucideIcon,
@@ -126,7 +126,7 @@ export const whyOriens = {
     {
       icon: Globe2 as LucideIcon,
       title: "Uluslararası Sınavlar",
-      copy: "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, OMPT uzmanlığı.",
+      copy: "IB, AP, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, OMPT, IGCSE uzmanlığı.",
     },
     {
       icon: Users as LucideIcon,
@@ -139,8 +139,18 @@ export const whyOriens = {
 export const instructorAbout = {
   eyebrow: "Eğitmenimiz",
   name: "Doğuhan — Matematik & Fizik Eğitmeni",
-  body: "10 yılı aşkın süredir IB, AP, SAT, ESAT, TARA, TMUA ve IGCSE öğrencileriyle birebir çalışıyor; ezber değil sınavın mantığını çözen bir sistem sunuyor.",
-  credentials: ["Robert Kolej", "St. Joseph", "Liceo Italiano", "Üsküdar Amerikan"],
+  body: "Matematik-Fizik eğitmeni. 10 yılı aşkın süredir IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA ve IGCSE öğrencileriyle birebir çalışıyor; aralarında Robert Kolej, St. Joseph, Liceo Italiano, Üsküdar Amerikan, Galatasaray Lisesi, Saint Benoit Fransız Lisesi, Notre Dame de Sion, İstanbul Alman Lisesi ve Avusturya Lisesi gibi yabancı müfredat okullarının öğrencileri de var. Yaklaşım; ezber değil, sınavın mantığını çözmek üzerine kurulu.",
+  credentials: [
+    "Robert Kolej",
+    "St. Joseph",
+    "Liceo Italiano",
+    "Üsküdar Amerikan Lisesi",
+    "Galatasaray Lisesi",
+    "Saint Benoit Fransız Lisesi",
+    "Notre Dame de Sion",
+    "İstanbul Alman Lisesi",
+    "Avusturya Lisesi",
+  ],
   photoPlaceholder: "Tutor Doğuhan",
   tangentCaption: "Uluslararası sınav hazırlığı ve üniversite ders desteği.",
 };
@@ -260,7 +270,7 @@ export const faq = {
     {
       id: "faq-1",
       q: "Oriens Academy hangi sınav sistemlerini kapsıyor?",
-      a: "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT ve OMPT sınavlarını kapsıyoruz.",
+      a: "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT sınavlarını kapsıyoruz.",
     },
     {
       id: "faq-2",

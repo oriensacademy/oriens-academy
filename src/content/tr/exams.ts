@@ -4,7 +4,7 @@ export { examDetailText } from "./exam-details";
 export const metadata = {
   title: "Sınav Hazırlığı | Oriens Academy",
   description:
-    "IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT ve OMPT için hedefe yönelik sınav hazırlığı ve akademik rehberlik.",
+    "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT için hedefe yönelik sınav hazırlığı ve akademik rehberlik.",
 };
 
 export const page = {
@@ -62,21 +62,13 @@ export const detailPage = {
 };
 
 export const categories: Record<ExamCategoryId, { label: string; description: string }> = {
-  "university-admissions": {
-    label: "Lisans Kabul Sınavları",
-    description: "Uluslararası ve programa özgü lisans başvurularında kullanılan kabul sınavları.",
+  "international-curriculum": {
+    label: "Uluslararası Müfredat & Diploma",
+    description: "Lise düzeyinde uluslararası diploma, müfredat ve genel üniversite yeterlilik programları.",
   },
-  "academic-programmes": {
-    label: "Akademik Programlar",
-    description: "Lise düzeyinde uluslararası müfredat, ders ve yeterlilik sınavları.",
-  },
-  "medical-admissions": {
-    label: "Tıp Kabul Sınavları",
-    description: "Birleşik Krallık ve İtalya'daki tıp programlarına yönelik seçme sınavları.",
-  },
-  "graduate-admissions": {
-    label: "Lisansüstü Kabul Sınavları",
-    description: "Yüksek lisans, doktora ve işletme okulu başvurularında kullanılan sınavlar.",
+  "admission-specific": {
+    label: "Kabul & Programa Özel Sınavlar",
+    description: "Mühendislik, tıp, hukuk, mimarlık, işletme ve lisansüstü kabule yönelik programa özgü seçme sınavları.",
   },
 };
 
@@ -97,38 +89,6 @@ export const examText: ExamTextMap = {
     subjects: ["Calculus", "Statistics", "Physics", "Chemistry"],
     ctaLabel: "AP hazırlığını keşfet",
   },
-  SAT: {
-    title: "SAT",
-    shortDescription: "Dijital SAT için teşhis, konu kapatma, süre yönetimi ve deneme analizi odaklı plan.",
-    purpose: "Başta ABD olmak üzere lisans başvurularında akademik yeterlilik göstergesi",
-    audience: "Uluslararası lisans adayları",
-    subjects: ["Reading & Writing", "Math", "Digital strategy"],
-    ctaLabel: "SAT hazırlığını keşfet",
-  },
-  ESAT: {
-    title: "Engineering and Science Admissions Test",
-    shortDescription: "Mühendislik ve fen programları için modül seçimine uygun, ileri düzey problem çözme hazırlığı.",
-    purpose: "Seçili Birleşik Krallık mühendislik ve fen programlarına kabul",
-    audience: "Mühendislik ve fen bilimleri adayları",
-    subjects: ["Mathematics 1", "Mathematics 2", "Physics", "Chemistry"],
-    ctaLabel: "ESAT hazırlığını keşfet",
-  },
-  TARA: {
-    title: "Test of Academic Reasoning for Admissions",
-    shortDescription: "Konu bilgisinden bağımsız akıl yürütme, problem çözme ve açık yazım becerilerine hazırlık.",
-    purpose: "Oxford ve UCL'deki seçili lisans programlarına kabul",
-    audience: "TARA isteyen programlara başvuran adaylar",
-    subjects: ["Critical Thinking", "Problem Solving", "Writing Task"],
-    ctaLabel: "TARA hazırlığını keşfet",
-  },
-  TMUA: {
-    title: "Test of Mathematics for University Admission",
-    shortDescription: "İleri matematiksel düşünme ve zaman baskısı altında ispat temelli akıl yürütme hazırlığı.",
-    purpose: "Seçili Birleşik Krallık matematik, ekonomi ve bilgisayar bilimi programlarına kabul",
-    audience: "Matematik yoğun program adayları",
-    subjects: ["Mathematical Thinking", "Reasoning", "Problem Solving"],
-    ctaLabel: "TMUA hazırlığını keşfet",
-  },
   IGCSE: {
     title: "International GCSE",
     shortDescription: "Temeli sağlamlaştıran, müfredat kapsamı ve soru tipi hâkimiyetini birlikte geliştiren destek.",
@@ -136,6 +96,102 @@ export const examText: ExamTextMap = {
     audience: "IGCSE öğrencileri",
     subjects: ["Mathematics", "Additional Mathematics", "Sciences"],
     ctaLabel: "IGCSE hazırlığını keşfet",
+  },
+  "A-Level": {
+    title: "GCE A-Level",
+    shortDescription: "Birleşik Krallık ve dünya üniversiteleri için derinlemesine konu hâkimiyeti ve sınav tekniği hazırlığı.",
+    purpose: "Birleşik Krallık ve uluslararası lisans başvurularında temel akademik yeterlilik",
+    audience: "A-Level müfredatını takip eden öğrenciler",
+    subjects: ["Pure Mathematics", "Further Mathematics", "Physics", "Chemistry"],
+    ctaLabel: "A-Level hazırlığını keşfet",
+  },
+  SAT: {
+    title: "Digital SAT",
+    shortDescription: "Dijital SAT için teşhis, konu kapatma, süre yönetimi ve deneme analizi odaklı plan.",
+    purpose: "Başta ABD olmak üzere lisans başvurularında akademik yeterlilik göstergesi",
+    audience: "Uluslararası lisans adayları",
+    subjects: ["Reading & Writing", "Math", "Digital strategy"],
+    ctaLabel: "SAT hazırlığını keşfet",
+  },
+  ACT: {
+    title: "ACT (American College Testing)",
+    shortDescription: "Hızlı problem çözme, fen okuryazarlığı ve zaman yönetimi odaklı kapsamlı ACT hazırlığı.",
+    purpose: "ABD ve uluslararası lisans başvurularında akademik yeterlilik",
+    audience: "ABD ve global üniversitelere başvuran lise öğrencileri",
+    subjects: ["Math", "Science Reasoning", "Reading", "English"],
+    ctaLabel: "ACT hazırlığını keşfet",
+  },
+  ESAT: {
+    title: "Engineering and Science Admissions Test",
+    shortDescription: "Mühendislik ve fen programları için modül seçimine uygun, ileri düzey problem çözme hazırlığı.",
+    purpose: "Cambridge, Imperial ve seçili Birleşik Krallık mühendislik ve fen programlarına kabul",
+    audience: "Mühendislik ve fen bilimleri adayları",
+    subjects: ["Mathematics 1", "Mathematics 2", "Physics", "Chemistry"],
+    ctaLabel: "ESAT hazırlığını keşfet",
+  },
+  TMUA: {
+    title: "Test of Mathematics for University Admission",
+    shortDescription: "İleri matematiksel düşünme ve zaman baskısı altında ispat temelli akıl yürütme hazırlığı.",
+    purpose: "Cambridge, Imperial, LSE ve Warwick matematik, ekonomi ve bilgisayar bilimi programlarına kabul",
+    audience: "Matematik yoğun program adayları",
+    subjects: ["Mathematical Thinking", "Reasoning", "Problem Solving"],
+    ctaLabel: "TMUA hazırlığını keşfet",
+  },
+  TARA: {
+    title: "Mimarlık Kabul Sınavı (TEST-ARCHED)",
+    shortDescription: "Mekânsal düşünme, teknik çizim mantığı, geometri ve mimarlık tarihi odaklı kabul sınavı hazırlığı.",
+    purpose: "İtalya ve uluslararası üniversitelerin mimarlık lisans programlarına kabul",
+    audience: "Mimarlık ve tasarım programlarına başvuran adaylar",
+    subjects: ["Spatial Reasoning", "Physics & Structures", "History of Architecture", "Mathematics"],
+    ctaLabel: "TARA hazırlığını keşfet",
+  },
+  UCAT: {
+    title: "University Clinical Aptitude Test (UCAT)",
+    shortDescription: "Tıp ve diş hekimliği başvuruları için bilişsel beceri, karar verme ve süre yönetimi hazırlığı.",
+    purpose: "Birleşik Krallık, Avustralya ve uluslararası tıp ve diş hekimliği programlarına kabul",
+    audience: "Tıp ve diş hekimliği adayları",
+    subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "Abstract Reasoning", "SJT"],
+    ctaLabel: "UCAT hazırlığını keşfet",
+  },
+  LNAT: {
+    title: "National Admissions Test for Law (LNAT)",
+    shortDescription: "Hukuk başvuruları için eleştirel metin analizi, mantıksal çıkarım ve argüman yazma hazırlığı.",
+    purpose: "Oxford, Cambridge, UCL, LSE, KCL ve seçili hukuk fakültelerine kabul",
+    audience: "Hukuk lisans programı adayları",
+    subjects: ["Critical Reading", "Argument Analysis", "Deductive Logic", "Essay Writing"],
+    ctaLabel: "LNAT hazırlığını keşfet",
+  },
+  IMAT: {
+    title: "International Medical Admissions Test",
+    shortDescription: "İtalya'daki İngilizce tıp programları için bilimsel bilgi ve akıl yürütme hazırlığı.",
+    purpose: "İtalya'daki İngilizce eğitim veren seçili tıp programlarına kabul",
+    audience: "İtalya'da tıp okumak isteyen adaylar",
+    subjects: ["Biology", "Chemistry", "Physics", "Mathematics", "Logical Reasoning"],
+    ctaLabel: "IMAT hazırlığını keşfet",
+  },
+  GAMSAT: {
+    title: "Graduate Medical School Admissions Test",
+    shortDescription: "Lisansüstü tıp başvuruları için beşeri bilimler, yazılı iletişim ve biyolojik/fiziksel bilimler hazırlığı.",
+    purpose: "Birleşik Krallık, İrlanda ve Avustralya lisansüstü tıp (Graduate Entry Medicine) programlarına kabul",
+    audience: "Lisansüstü tıp programlarına başvuran üniversite mezunları",
+    subjects: ["Humanities Reasoning", "Written Communication", "Biological & Physical Sciences"],
+    ctaLabel: "GAMSAT hazırlığını keşfet",
+  },
+  MCAT: {
+    title: "Medical College Admission Test (MCAT)",
+    shortDescription: "ABD ve Kanada tıp fakülteleri için biyokimya, fizik, psikoloji ve eleştirel analiz hazırlığı.",
+    purpose: "ABD ve Kanada tıp fakültelerine (MD / DO) kabul",
+    audience: "Kuzey Amerika tıp fakültesi adayları",
+    subjects: ["Biological Systems", "Chemical Foundations", "CARS", "Psychological Foundations"],
+    ctaLabel: "MCAT hazırlığını keşfet",
+  },
+  LSAT: {
+    title: "Law School Admission Test (LSAT)",
+    shortDescription: "Hukuk yüksek lisans ve JD programları için analitik akıl yürütme, mantık oyunları ve okuma hazırlığı.",
+    purpose: "ABD, Kanada ve global JD / LLM hukuk programlarına kabul",
+    audience: "Hukuk fakültesi ve JD adayları",
+    subjects: ["Logical Reasoning", "Analytical Reasoning", "Reading Comprehension", "Argumentative Writing"],
+    ctaLabel: "LSAT hazırlığını keşfet",
   },
   GRE: {
     title: "Graduate Record Examination",
@@ -146,35 +202,19 @@ export const examText: ExamTextMap = {
     ctaLabel: "GRE hazırlığını keşfet",
   },
   GMAT: {
-    title: "Graduate Management Admission Test",
+    title: "Graduate Management Admission Test (Focus)",
     shortDescription: "İşletme okulu başvuruları için veri, nicel ve sözel akıl yürütmeyi bütünleyen hazırlık.",
     purpose: "MBA ve diğer lisansüstü işletme programlarına kabul",
     audience: "İşletme okulu adayları",
     subjects: ["Quantitative", "Verbal", "Data Insights"],
     ctaLabel: "GMAT hazırlığını keşfet",
   },
-  UKCAT: {
-    title: "UKCAT / UCAT",
-    shortDescription: "Güncel adı UCAT olan sınav için bilişsel beceri, karar verme ve süre yönetimi hazırlığı.",
-    purpose: "Birleşik Krallık'taki seçili tıp ve diş hekimliği programlarına kabul",
-    audience: "Tıp ve diş hekimliği adayları",
-    subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "SJT"],
-    ctaLabel: "UKCAT / UCAT hazırlığını keşfet",
-  },
-  IMAT: {
-    title: "International Medical Admissions Test",
-    shortDescription: "İtalya'daki İngilizce tıp programları için bilimsel bilgi ve akıl yürütme hazırlığı.",
-    purpose: "İtalya'daki İngilizce eğitim veren seçili tıp programlarına kabul",
-    audience: "İtalya'da tıp okumak isteyen adaylar",
-    subjects: ["Biology", "Chemistry", "Physics", "Mathematics", "Reasoning"],
-    ctaLabel: "IMAT hazırlığını keşfet",
-  },
   OMPT: {
     title: "Online Mathematics Placement Test",
     shortDescription: "Üniversite veya programın istediği OMPT türüne göre matematik yeterliliğini kanıtlamaya hazırlık.",
-    purpose: "Uluslararası öğrenciler için programa özgü matematik kabul şartını karşılama",
+    purpose: "Hollanda ve Avrupa üniversiteleri için programa özgü matematik kabul şartını karşılama",
     audience: "OMPT isteyen programlara başvuran adaylar",
-    subjects: ["Programa özgü matematik", "Cebir ve fonksiyonlar", "Test türüne bağlı konular"],
+    subjects: ["Algebra & Functions", "Calculus", "Trigonometry", "Test Variant Specifics"],
     ctaLabel: "OMPT hazırlığını keşfet",
   },
 };

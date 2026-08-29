@@ -15,7 +15,6 @@ export const loader = {
 export const nav = {
   items: [
     { label: "Sınav Hazırlığı", href: "#exam-preparation" },
-    { label: "Metot", href: "#method" },
     { label: "Üniversite Ders Desteği", href: "#university-support" },
     { label: "Hakkımızda", href: "#about" },
     { label: "Ücretler", href: "#pricing" },

@@ -235,7 +235,7 @@ export function primaryNavigationPath(anchor: string, locale: Locale): string {
   if (anchor === "#university-support") return localizedPath("universitySupport", locale);
   if (anchor === "#pricing") return localizedPath("pricing", locale);
   if (anchor === "#about") return localizedPath("about", locale);
-  if (anchor === "#method") return `${localizedPath("home", locale)}#method`;
+  if (anchor === "#method") return localizedPath("about", locale);
   return `${localizedPath("home", locale)}${anchor}`;
 }
 
@@ -280,25 +280,38 @@ export function isPrimaryNavigationActive(
 }
 
 const CANONICAL_EXAM_SLUGS: Record<string, string> = {
-  sat: "sat",
   ib: "ib",
   ap: "ap",
-  esat: "esat",
-  tara: "tara",
-  tmua: "tmua",
   igcse: "igcse",
+  "a-level": "a-level",
+  sat: "sat",
+  act: "act",
+  esat: "esat",
+  tmua: "tmua",
+  tara: "tara",
+  ucat: "ucat",
+  lnat: "lnat",
+  imat: "imat",
+  gamsat: "gamsat",
+  mcat: "mcat",
+  lsat: "lsat",
   gre: "gre",
   gmat: "gmat",
-  ukcat: "ukcat",
-  imat: "imat",
   ompt: "ompt",
 
-  // Aliases & variations
-  ucat: "ukcat",
+  // Legacy normalization & aliases
+  ukcat: "ucat",
+  alevel: "a-level",
+  "a level": "a-level",
+  "a-levels": "a-level",
+  "a levels": "a-level",
+  "gce-a-level": "a-level",
+  "gce a level": "a-level",
   "ib-diploma": "ib",
   "ib-dp": "ib",
   "advanced-placement": "ap",
   "gmat-focus": "gmat",
+  "act-test": "act",
   ielts: "sinavlar-fallback",
   toefl: "sinavlar-fallback",
 };

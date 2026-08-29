@@ -356,15 +356,345 @@ export const examUniversityRelations: ExamUniversityRelation[] = [
       verifiedAt: "2026-08-12",
     },
   },
+  // A-Level Mappings
+  {
+    id: "alevel-cambridge",
+    examCode: "A-Level",
+    university: {
+      name: "University of Cambridge",
+      country: "United Kingdom",
+      city: "Cambridge",
+      latitude: 52.2053,
+      longitude: 0.1218,
+    },
+    relationship: "required",
+    programScope: "Undergraduate Admissions (A*A*A – A*AA)",
+    source: {
+      url: "https://www.undergraduate.study.cam.ac.uk/apply/entrance-requirements",
+      title: "University of Cambridge Entrance Requirements",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "alevel-oxford",
+    examCode: "A-Level",
+    university: {
+      name: "University of Oxford",
+      country: "United Kingdom",
+      city: "Oxford",
+      latitude: 51.7548,
+      longitude: -1.2544,
+    },
+    relationship: "required",
+    programScope: "Undergraduate Admissions (A*A*A – AAA)",
+    source: {
+      url: "https://www.ox.ac.uk/admissions/undergraduate/applying-to-oxford/guide/admissions-requirements",
+      title: "University of Oxford Admission Requirements",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "alevel-imperial",
+    examCode: "A-Level",
+    university: {
+      name: "Imperial College London",
+      country: "United Kingdom",
+      city: "London",
+      latitude: 51.4988,
+      longitude: -0.1749,
+    },
+    relationship: "required",
+    programScope: "Engineering & Science Degrees (A*A*A – AAA)",
+    source: {
+      url: "https://www.imperial.ac.uk/study/courses/undergraduate/",
+      title: "Imperial College London Course Requirements",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // ACT Mappings
+  {
+    id: "act-stanford",
+    examCode: "ACT",
+    university: {
+      name: "Stanford University",
+      country: "United States",
+      city: "Stanford, CA",
+      latitude: 37.4275,
+      longitude: -122.1697,
+    },
+    relationship: "accepted",
+    programScope: "Undergraduate Admissions",
+    source: {
+      url: "https://admission.stanford.edu/apply/first-year/testing.html",
+      title: "Stanford Testing Policy",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "act-mit",
+    examCode: "ACT",
+    university: {
+      name: "Massachusetts Institute of Technology (MIT)",
+      country: "United States",
+      city: "Cambridge, MA",
+      latitude: 42.3601,
+      longitude: -71.0942,
+    },
+    relationship: "required",
+    programScope: "Undergraduate Admissions (ACT or SAT)",
+    source: {
+      url: "https://mitadmissions.org/apply/firstyear/tests/",
+      title: "MIT Standardized Testing Policy",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // IGCSE Mappings
+  {
+    id: "igcse-cambridge",
+    examCode: "IGCSE",
+    university: {
+      name: "University of Cambridge",
+      country: "United Kingdom",
+      city: "Cambridge",
+      latitude: 52.2053,
+      longitude: 0.1218,
+    },
+    relationship: "considered",
+    programScope: "Secondary Academic Foundation",
+    source: {
+      url: "https://www.undergraduate.study.cam.ac.uk/apply/entrance-requirements",
+      title: "University of Cambridge Academic Record Policy",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // TARA Mappings
+  {
+    id: "tara-polimi",
+    examCode: "TARA",
+    university: {
+      name: "Politecnico di Milano",
+      country: "Italy",
+      city: "Milan",
+      latitude: 45.4781,
+      longitude: 9.2274,
+    },
+    relationship: "required",
+    programScope: "Laurea in Architectural Design",
+    source: {
+      url: "https://www.polimi.it/en/international-prospective-students/how-to-apply/laurea-programmes/admissions-test",
+      title: "Politecnico di Milano Architecture Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "tara-polito",
+    examCode: "TARA",
+    university: {
+      name: "Politecnico di Torino",
+      country: "Italy",
+      city: "Turin",
+      latitude: 45.0624,
+      longitude: 7.6622,
+    },
+    relationship: "required",
+    programScope: "Bachelor in Architecture",
+    source: {
+      url: "https://www.polito.it/en/education/applying-studying-graduating/admissions-and-enrolment/bachelor-s-degree-programmes",
+      title: "Politecnico di Torino Architecture Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // UCAT Mappings
+  {
+    id: "ucat-edinburgh",
+    examCode: "UCAT",
+    university: {
+      name: "University of Edinburgh",
+      country: "United Kingdom",
+      city: "Edinburgh",
+      latitude: 55.9445,
+      longitude: -3.1892,
+    },
+    relationship: "required",
+    programScope: "MBChB Medicine",
+    source: {
+      url: "https://www.ed.ac.uk/studying/undergraduate/degrees/index.php?action=view&code=A100",
+      title: "University of Edinburgh Medicine Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "ucat-kcl",
+    examCode: "UCAT",
+    university: {
+      name: "King's College London",
+      country: "United Kingdom",
+      city: "London",
+      latitude: 51.5115,
+      longitude: -0.116,
+    },
+    relationship: "required",
+    programScope: "MBBS Medicine & BDS Dentistry",
+    source: {
+      url: "https://www.kcl.ac.uk/study/undergraduate/courses/medicine-mbbs",
+      title: "King's College London Medicine Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // LNAT Mappings
+  {
+    id: "lnat-oxford",
+    examCode: "LNAT",
+    university: {
+      name: "University of Oxford",
+      country: "United Kingdom",
+      city: "Oxford",
+      latitude: 51.7548,
+      longitude: -1.2544,
+    },
+    relationship: "required",
+    programScope: "BA Jurisprudence (Law)",
+    source: {
+      url: "https://www.ox.ac.uk/admissions/undergraduate/courses/course-listing/law-jurisprudence",
+      title: "Oxford Law Admissions LNAT Requirement",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "lnat-ucl",
+    examCode: "LNAT",
+    university: {
+      name: "University College London (UCL)",
+      country: "United Kingdom",
+      city: "London",
+      latitude: 51.5246,
+      longitude: -0.134,
+    },
+    relationship: "required",
+    programScope: "LLB Law",
+    source: {
+      url: "https://www.ucl.ac.uk/prospective-students/undergraduate/degrees/law-llb",
+      title: "UCL Law Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // GAMSAT Mappings
+  {
+    id: "gamsat-nottingham",
+    examCode: "GAMSAT",
+    university: {
+      name: "University of Edinburgh",
+      country: "United Kingdom",
+      city: "Edinburgh",
+      latitude: 55.9445,
+      longitude: -3.1892,
+    },
+    relationship: "program_specific",
+    programScope: "Graduate Entry Medicine (UK/Australia)",
+    source: {
+      url: "https://gamsat.acer.org/university-admission",
+      title: "ACER GAMSAT Recognized Universities",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // MCAT Mappings
+  {
+    id: "mcat-harvard",
+    examCode: "MCAT",
+    university: {
+      name: "Harvard University",
+      country: "United States",
+      city: "Cambridge, MA",
+      latitude: 42.377,
+      longitude: -71.1167,
+    },
+    relationship: "required",
+    programScope: "MD Program (Harvard Medical School)",
+    source: {
+      url: "https://meded.hms.harvard.edu/admissions-prereqs",
+      title: "Harvard Medical School Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "mcat-toronto",
+    examCode: "MCAT",
+    university: {
+      name: "University of Toronto",
+      country: "Canada",
+      city: "Toronto, ON",
+      latitude: 43.6629,
+      longitude: -79.3957,
+    },
+    relationship: "required",
+    programScope: "MD Program (Temerty Faculty of Medicine)",
+    source: {
+      url: "https://applymd.utoronto.ca/admission-requirements",
+      title: "University of Toronto MD Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+
+  // LSAT Mappings
+  {
+    id: "lsat-harvard",
+    examCode: "LSAT",
+    university: {
+      name: "Harvard University",
+      country: "United States",
+      city: "Cambridge, MA",
+      latitude: 42.377,
+      longitude: -71.1167,
+    },
+    relationship: "required",
+    programScope: "JD Program (Harvard Law School)",
+    source: {
+      url: "https://hls.harvard.edu/jd-admissions/apply-to-harvard-law-school/application-components/",
+      title: "Harvard Law School JD Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
+  {
+    id: "lsat-toronto",
+    examCode: "LSAT",
+    university: {
+      name: "University of Toronto",
+      country: "Canada",
+      city: "Toronto, ON",
+      latitude: 43.6629,
+      longitude: -79.3957,
+    },
+    relationship: "required",
+    programScope: "JD Program (Faculty of Law)",
+    source: {
+      url: "https://www.law.utoronto.ca/jd-admissions",
+      title: "University of Toronto Faculty of Law Admissions",
+      verifiedAt: "2026-08-30",
+    },
+  },
 ];
 
 export const examMapProfiles: ExamMapProfile[] = [
   {
     examCode: "SAT",
-    label: "SAT",
+    label: "Digital SAT",
     focus: { latitude: 38, longitude: -50, zoom: 1.1 },
     countries: ["USA", "ITA", "GBR", "CAN"],
     relations: examUniversityRelations.filter((r) => r.examCode === "SAT"),
+  },
+  {
+    examCode: "ACT",
+    label: "ACT",
+    focus: { latitude: 38, longitude: -90, zoom: 1.1 },
+    countries: ["USA", "CAN"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "ACT"),
   },
   {
     examCode: "IB",
@@ -381,6 +711,20 @@ export const examMapProfiles: ExamMapProfile[] = [
     relations: examUniversityRelations.filter((r) => r.examCode === "AP"),
   },
   {
+    examCode: "A-Level",
+    label: "A-Level",
+    focus: { latitude: 53, longitude: -2, zoom: 1.8 },
+    countries: ["GBR"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "A-Level"),
+  },
+  {
+    examCode: "IGCSE",
+    label: "Cambridge IGCSE",
+    focus: { latitude: 53, longitude: -2, zoom: 1.8 },
+    countries: ["GBR"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "IGCSE"),
+  },
+  {
     examCode: "ESAT",
     label: "ESAT",
     focus: { latitude: 53, longitude: -2, zoom: 1.8 },
@@ -395,11 +739,53 @@ export const examMapProfiles: ExamMapProfile[] = [
     relations: examUniversityRelations.filter((r) => r.examCode === "TMUA"),
   },
   {
+    examCode: "TARA",
+    label: "TARA / TEST-ARCHED",
+    focus: { latitude: 45, longitude: 9, zoom: 1.8 },
+    countries: ["ITA"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "TARA"),
+  },
+  {
+    examCode: "UCAT",
+    label: "UCAT",
+    focus: { latitude: 54, longitude: -3, zoom: 1.8 },
+    countries: ["GBR", "AUS"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "UCAT"),
+  },
+  {
+    examCode: "LNAT",
+    label: "LNAT",
+    focus: { latitude: 53, longitude: -2, zoom: 1.8 },
+    countries: ["GBR"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "LNAT"),
+  },
+  {
     examCode: "IMAT",
     label: "IMAT",
     focus: { latitude: 42, longitude: 12, zoom: 1.8 },
     countries: ["ITA"],
     relations: examUniversityRelations.filter((r) => r.examCode === "IMAT"),
+  },
+  {
+    examCode: "GAMSAT",
+    label: "GAMSAT",
+    focus: { latitude: 53, longitude: -2, zoom: 1.8 },
+    countries: ["GBR", "AUS", "IRL"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "GAMSAT"),
+  },
+  {
+    examCode: "MCAT",
+    label: "MCAT",
+    focus: { latitude: 45, longitude: -85, zoom: 1.2 },
+    countries: ["USA", "CAN"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "MCAT"),
+  },
+  {
+    examCode: "LSAT",
+    label: "LSAT",
+    focus: { latitude: 45, longitude: -85, zoom: 1.2 },
+    countries: ["USA", "CAN"],
+    relations: examUniversityRelations.filter((r) => r.examCode === "LSAT"),
   },
   {
     examCode: "OMPT",
@@ -417,7 +803,7 @@ export const examMapProfiles: ExamMapProfile[] = [
   },
   {
     examCode: "GMAT",
-    label: "GMAT",
+    label: "GMAT Focus",
     focus: { latitude: 50, longitude: 0, zoom: 1.3 },
     countries: ["GBR", "FRA", "USA"],
     relations: examUniversityRelations.filter((r) => r.examCode === "GMAT"),

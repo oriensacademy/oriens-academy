@@ -32,11 +32,14 @@ const ALL_EXAM_STATIC_SLUGS = Array.from(new Set([
   // Never emit case-only aliases (for example `sat` and `SAT`). On
   // case-insensitive build filesystems they target the same output file and
   // the alias redirect can overwrite the canonical static HTML.
-  "ucat",
+  "ukcat",
+  "alevel",
+  "a-levels",
   "ib-diploma",
   "ib-dp",
   "advanced-placement",
   "gmat-focus",
+  "act-test",
   "ielts",
   "toefl",
 ]));

@@ -14,16 +14,12 @@ export type ExamVisualVariant = "coordinate" | "vector" | "function" | "geometry
  * category — the data model supports it, it is not forced to one.
  */
 export type ExamCategoryId =
-  | "university-admissions"
-  | "academic-programmes"
-  | "medical-admissions"
-  | "graduate-admissions";
+  | "international-curriculum"
+  | "admission-specific";
 
 export const examCategoryOrder: ExamCategoryId[] = [
-  "university-admissions",
-  "academic-programmes",
-  "medical-admissions",
-  "graduate-admissions",
+  "international-curriculum",
+  "admission-specific",
 ];
 
 type ExamMeta = {
@@ -41,40 +37,116 @@ type ExamMeta = {
  */
 const examMeta: Record<ExamCode, ExamMeta> = {
   IB: {
-    categories: ["academic-programmes", "university-admissions"],
-    primaryCategory: "academic-programmes",
+    categories: ["international-curriculum"],
+    primaryCategory: "international-curriculum",
     visualVariant: "geometry",
-    relatedExams: ["AP", "IGCSE"],
+    relatedExams: ["AP", "A-Level"],
     featured: true,
   },
   AP: {
-    categories: ["academic-programmes", "university-admissions"],
-    primaryCategory: "academic-programmes",
+    categories: ["international-curriculum"],
+    primaryCategory: "international-curriculum",
     visualVariant: "function",
-    relatedExams: ["IB", "IGCSE"],
+    relatedExams: ["IB", "A-Level"],
+  },
+  IGCSE: {
+    categories: ["international-curriculum"],
+    primaryCategory: "international-curriculum",
+    visualVariant: "function",
+    relatedExams: ["IB", "A-Level"],
+  },
+  "A-Level": {
+    categories: ["international-curriculum"],
+    primaryCategory: "international-curriculum",
+    visualVariant: "coordinate",
+    relatedExams: ["IB", "AP"],
   },
   SAT: {
-    categories: ["university-admissions"],
-    primaryCategory: "university-admissions",
+    categories: ["international-curriculum"],
+    primaryCategory: "international-curriculum",
     visualVariant: "coordinate",
-    relatedExams: ["OMPT", "ESAT", "TMUA"],
+    relatedExams: ["ACT", "AP"],
     featured: true,
   },
-  ESAT: { categories: ["university-admissions"], primaryCategory: "university-admissions", visualVariant: "coordinate", relatedExams: ["TMUA", "SAT"] },
-  TARA: { categories: ["university-admissions"], primaryCategory: "university-admissions", visualVariant: "route", relatedExams: ["SAT", "TMUA"] },
-  TMUA: { categories: ["university-admissions"], primaryCategory: "university-admissions", visualVariant: "vector", relatedExams: ["ESAT", "SAT"] },
-  IGCSE: { categories: ["academic-programmes"], primaryCategory: "academic-programmes", visualVariant: "function", relatedExams: ["IB", "AP"] },
+  ACT: {
+    categories: ["international-curriculum"],
+    primaryCategory: "international-curriculum",
+    visualVariant: "coordinate",
+    relatedExams: ["SAT", "AP"],
+  },
+  ESAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "coordinate",
+    relatedExams: ["TMUA", "A-Level"],
+  },
+  TMUA: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "vector",
+    relatedExams: ["ESAT", "A-Level"],
+  },
+  TARA: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "route",
+    relatedExams: ["SAT", "TMUA"],
+  },
+  UCAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "route",
+    relatedExams: ["IMAT", "GAMSAT"],
+  },
+  LNAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "vector",
+    relatedExams: ["LSAT"],
+  },
+  IMAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "geometry",
+    relatedExams: ["UCAT", "MCAT"],
+  },
+  GAMSAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "route",
+    relatedExams: ["UCAT", "MCAT"],
+  },
+  MCAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "geometry",
+    relatedExams: ["IMAT", "GAMSAT"],
+  },
+  LSAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "route",
+    relatedExams: ["LNAT", "GRE"],
+  },
   GRE: {
-    categories: ["graduate-admissions"],
-    primaryCategory: "graduate-admissions",
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
     visualVariant: "route",
     relatedExams: ["GMAT"],
     featured: true,
   },
-  GMAT: { categories: ["graduate-admissions"], primaryCategory: "graduate-admissions", visualVariant: "function", relatedExams: ["GRE"] },
-  UKCAT: { categories: ["medical-admissions"], primaryCategory: "medical-admissions", visualVariant: "route", relatedExams: ["IMAT"] },
-  IMAT: { categories: ["medical-admissions"], primaryCategory: "medical-admissions", visualVariant: "geometry", relatedExams: ["UKCAT"] },
-  OMPT: { categories: ["university-admissions"], primaryCategory: "university-admissions", visualVariant: "coordinate", relatedExams: ["SAT", "ESAT"] },
+  GMAT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "function",
+    relatedExams: ["GRE"],
+  },
+  OMPT: {
+    categories: ["admission-specific"],
+    primaryCategory: "admission-specific",
+    visualVariant: "coordinate",
+    relatedExams: ["TMUA", "SAT"],
+  },
 };
 
 export type ExamRecord = {

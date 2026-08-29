@@ -5,7 +5,7 @@ import { Fingerprint, Globe2, Target, Users, type LucideIcon } from "lucide-reac
 export const hero = {
   eyebrow: "International Exam Preparation & Academic Consultancy",
   headline: "Let's chart your course to the world's leading universities.",
-  body: "We prepare students for IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT and OMPT through a focused, measurable process built around how each exam actually works.",
+  body: "We prepare students for IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, and OMPT through a focused, measurable process built around how each exam actually works.",
   ctaPrimary: "Free Intro Call",
   ctaSecondary: "Explore Exams",
 };
@@ -26,12 +26,12 @@ export const examPreparation = {
   body: "Every exam has its own language, scoring logic, and time pressure, so preparation is built around that exam specifically.",
   categories: [
     {
-      label: "International Qualifications",
-      exams: ["IB", "AP", "SAT", "ESAT", "TARA", "TMUA"],
+      label: "International Curricula & Diplomas",
+      exams: ["IB", "AP", "IGCSE", "A-Level", "SAT", "ACT"],
     },
     {
-      label: "Admissions & Placement Tests",
-      exams: ["IGCSE", "GRE", "GMAT", "UKCAT", "IMAT", "OMPT"],
+      label: "Admissions & Programme-Specific Tests",
+      exams: ["ESAT", "TMUA", "TARA", "UCAT", "LNAT", "IMAT", "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"],
     },
   ],
 };
@@ -116,7 +116,7 @@ export const whyOriens = {
     {
       icon: Fingerprint as LucideIcon,
       title: "10+ Years Experience",
-      copy: "Over 10 years of 1-on-1 experience with Robert College, St. Joseph, Liceo Italiano, and Üsküdar American students.",
+      copy: "Over 10 years of 1-on-1 experience with students from Robert College, St. Joseph, Liceo Italiano, Üsküdar American Academy, Galatasaray, Saint Benoit, Notre Dame de Sion, Deutsche Schule Istanbul, and St. Georgs-Kolleg.",
     },
     {
       icon: Target as LucideIcon,
@@ -126,7 +126,7 @@ export const whyOriens = {
     {
       icon: Globe2 as LucideIcon,
       title: "International Exams",
-      copy: "Specialist expertise in IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, and OMPT.",
+      copy: "Specialist expertise in IB, AP, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, OMPT, and IGCSE.",
     },
     {
       icon: Users as LucideIcon,
@@ -139,8 +139,18 @@ export const whyOriens = {
 export const instructorAbout = {
   eyebrow: "Our Tutor",
   name: "Doğuhan — Mathematics & Physics Tutor",
-  body: "Over 10 years of 1-on-1 work with IB, AP, SAT, ESAT, TARA, TMUA and IGCSE students — an approach built on understanding exam logic, not memorisation.",
-  credentials: ["Robert College", "St. Joseph", "Liceo Italiano", "Üsküdar American"],
+  body: "Mathematics & Physics instructor. For over 10 years, providing one-on-one coaching for students preparing for IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA, and IGCSE; working with students from leading international curriculum schools including Robert College, St. Joseph, Liceo Italiano, Üsküdar American Academy, Galatasaray High School, Saint Benoit, Notre Dame de Sion, Deutsche Schule Istanbul, and St. Georgs-Kolleg. The approach is grounded in mastering the underlying logic of the exam rather than rote memorization.",
+  credentials: [
+    "Robert College",
+    "St. Joseph",
+    "Liceo Italiano",
+    "Üsküdar American Academy",
+    "Galatasaray High School",
+    "Saint Benoit",
+    "Notre Dame de Sion",
+    "Deutsche Schule Istanbul",
+    "St. Georgs-Kolleg",
+  ],
   photoPlaceholder: "Tutor Doğuhan",
   tangentCaption: "International exam preparation & university course support.",
 };
@@ -260,7 +270,7 @@ export const faq = {
     {
       id: "faq-1",
       q: "Which exam systems does Oriens Academy cover?",
-      a: "We cover IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT, and OMPT exams.",
+      a: "We cover IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, and OMPT exams.",
     },
     {
       id: "faq-2",
