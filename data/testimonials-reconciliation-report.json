@@ -1,0 +1,18 @@
+{
+  "source": "C:\\Users\\merto\\Desktop\\yorumlar.txt",
+  "raw_parsed_blocks": 111,
+  "valid_testimonial_records": 111,
+  "unique_source_hash_records": 110,
+  "duplicate_blocks_in_file": 1,
+  "db_testimonials_before_reconciliation": 118,
+  "prior_import_records": 110,
+  "non_imported_existing_testimonials": 8,
+  "matched_unique_source_records": 110,
+  "unmatched_source_records": 0,
+  "proven_duplicate_importer_rows": 0,
+  "duplicate_importer_rows_removed": 0,
+  "original_texts_modified": 0,
+  "backup_file": "C:\\Users\\merto\\Desktop\\oriens-academy.com\\local-backups\\testimonials-before-reconciliation-2026-08-29T22-20-12-244Z.json",
+  "applied": true,
+  "static_dataset_written": false
+}

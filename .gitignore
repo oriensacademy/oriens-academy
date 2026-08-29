@@ -44,6 +44,7 @@ yarn-error.log*
 /.agent/
 /scratch/
 /local-backups/
+/.cache/
 
 # env files (can opt-in for committing if needed)
 .env*

@@ -9,12 +9,18 @@ import { instructorAbout as enInstructor, whyOriens as enWhy } from "../src/cont
 import { nav as trNav } from "../src/content/tr/common.ts";
 import { nav as enNav } from "../src/content/en/common.ts";
 import { primaryNavigationPath } from "../src/lib/routes.ts";
+import { parseTestimonialSource } from "./lib/testimonial-source.mjs";
 
 console.log("=== RUNNING PROMPT 04 VERIFICATION SUITE ===");
 
 // TEST 1: Testimonial Import Count & Integrity
 console.log("\n[TEST 1] Testimonials Count & Raw Integrity");
-assert.equal(staticTestimonials.length, 111, `Expected exactly 111 imported reviews, got ${staticTestimonials.length}`);
+const parsedSource = parseTestimonialSource("C:\\Users\\merto\\Desktop\\yorumlar.txt");
+assert.equal(parsedSource.rawBlocks.length, 111, "Source must contain 111 parsed blocks");
+assert.equal(parsedSource.uniqueRecords.length, 110, "Source must contain 110 unique source hashes");
+assert.equal(parsedSource.duplicateBlocks, 1, "Source must contain one exact duplicate block");
+assert.equal(staticTestimonials.length, 110, `Expected exactly 110 canonical unique reviews, got ${staticTestimonials.length}`);
+assert.equal(new Set(staticTestimonials.map((review) => review.sourceHash)).size, 110, "Every canonical static review must have a unique source hash");
 
 const migrationSql = fs.readFileSync("supabase/migrations/20260830000002_import_all_testimonials.sql", "utf8");
 assert.ok(migrationSql.includes("INSERT INTO public.testimonials"), "Migration must contain inserts");

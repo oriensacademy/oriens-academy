@@ -1,0 +1,1765 @@
+[
+  {
+    "id": "b5f69a54-d03f-52d8-a49a-b14d33106ff3",
+    "ror_id": "https://ror.org/02d439m40",
+    "openalex_id": "https://openalex.org/I4210115397",
+    "wikidata_id": "Q27982338",
+    "name": "University Mental Health Research Institute",
+    "normalized_name": "university mental health research institute",
+    "native_name": null,
+    "aliases": [
+      "UMHRI"
+    ],
+    "slug": "university-mental-health-research-institute-02d439m40",
+    "iso2": "GR",
+    "iso3": "GRC",
+    "country_name": "Greece",
+    "city": "Athens",
+    "state_or_region": "Attica",
+    "latitude": 37.98376,
+    "longitude": 23.72784,
+    "website": "https://www.epipsi.gr/",
+    "institution_type": "OTHER",
+    "research_works_count": 733,
+    "research_cited_by_count": 60075,
+    "verified_url": true,
+    "search_priority": 40,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "https://www.epipsi.gr/"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4210115397",
+        "type": "education"
+      },
+      "wikidata_id": "Q27982338"
+    }
+  },
+  {
+    "id": "8c666395-4e0e-5a38-af08-f5b33fc6508c",
+    "ror_id": "https://ror.org/017ph0934",
+    "openalex_id": "https://openalex.org/I211070993",
+    "wikidata_id": "Q1029504",
+    "name": "University of National and World Economy",
+    "normalized_name": "university of national and world economy",
+    "native_name": "Ulusal ve Uluslararası Ekonomi Üniversitesi",
+    "aliases": [
+      "Karl Marx Higher Institute of Economics",
+      "Ulusal ve Uluslararası Ekonomi Üniversitesi",
+      "UNWE",
+      "Университет за национално и световно стопанство"
+    ],
+    "slug": "university-of-national-and-world-economy-017ph0934",
+    "iso2": "BG",
+    "iso3": "BGR",
+    "country_name": "Bulgaria",
+    "city": "Sofia",
+    "state_or_region": "Sofia-Capital",
+    "latitude": 42.69751,
+    "longitude": 23.32415,
+    "website": "http://www.unwe.bg/en",
+    "institution_type": "OTHER",
+    "research_works_count": 2752,
+    "research_cited_by_count": 12630,
+    "verified_url": true,
+    "search_priority": 48,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.unwe.bg/en"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_National_and_World_Economy"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I211070993",
+        "type": "education"
+      },
+      "wikidata_id": "Q1029504"
+    }
+  },
+  {
+    "id": "4b6ec3fa-69ce-50a3-ab74-5808cfdd5885",
+    "ror_id": "https://ror.org/003vfy751",
+    "openalex_id": "https://openalex.org/I208899625",
+    "wikidata_id": "Q719925",
+    "name": "Université du Burundi",
+    "normalized_name": "universite du burundi",
+    "native_name": "Université du Burundi",
+    "aliases": [
+      "University of Burundi"
+    ],
+    "slug": "universite-du-burundi-003vfy751",
+    "iso2": "BI",
+    "iso3": "BDI",
+    "country_name": "Burundi",
+    "city": "Bujumbura",
+    "state_or_region": "Bujumbura Mairie",
+    "latitude": -3.38193,
+    "longitude": 29.36142,
+    "website": "http://www.ub.edu.bi/",
+    "institution_type": "OTHER",
+    "research_works_count": 2640,
+    "research_cited_by_count": 26401,
+    "verified_url": true,
+    "search_priority": 47,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.ub.edu.bi/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_Burundi"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I208899625",
+        "type": "education"
+      },
+      "wikidata_id": "Q719925"
+    }
+  },
+  {
+    "id": "70b6aaa0-2433-5670-ab4f-72b8e82b1dbd",
+    "ror_id": "https://ror.org/03q21mh05",
+    "openalex_id": "https://openalex.org/I145487455",
+    "wikidata_id": "Q194445",
+    "name": "Cairo University",
+    "normalized_name": "cairo university",
+    "native_name": "Université du Caire",
+    "aliases": [
+      "King Fuad I University",
+      "Université du Caire",
+      "جامعة القاهرة"
+    ],
+    "slug": "cairo-university-03q21mh05",
+    "iso2": "EG",
+    "iso3": "EGY",
+    "country_name": "Egypt",
+    "city": "Giza",
+    "state_or_region": "Giza",
+    "latitude": 30.00944,
+    "longitude": 31.20861,
+    "website": "http://cu.edu.eg/Home",
+    "institution_type": "OTHER",
+    "research_works_count": 134813,
+    "research_cited_by_count": 3778068,
+    "verified_url": true,
+    "search_priority": 71,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education",
+        "funder"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://cu.edu.eg/Home"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/Cairo_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I145487455",
+        "type": "education"
+      },
+      "wikidata_id": "Q194445"
+    }
+  },
+  {
+    "id": "f6268962-47e6-52c9-abec-619d673cbe0e",
+    "ror_id": "https://ror.org/04s4j9e43",
+    "openalex_id": "https://openalex.org/I3129570296",
+    "wikidata_id": "Q3551470",
+    "name": "Omar Bongo University",
+    "normalized_name": "omar bongo university",
+    "native_name": "Université Omar Bongo",
+    "aliases": [
+      "National University of Gabon",
+      "UNG",
+      "Université Omar Bongo",
+      "UOB"
+    ],
+    "slug": "omar-bongo-university-04s4j9e43",
+    "iso2": "GA",
+    "iso3": "GAB",
+    "country_name": "Gabon",
+    "city": "Libreville",
+    "state_or_region": "Estuaire",
+    "latitude": 0.39241,
+    "longitude": 9.45356,
+    "website": "http://universiteomarbongo.org/",
+    "institution_type": "OTHER",
+    "research_works_count": 1979,
+    "research_cited_by_count": 22053,
+    "verified_url": true,
+    "search_priority": 46,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://universiteomarbongo.org/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/Omar_Bongo_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I3129570296",
+        "type": "education"
+      },
+      "wikidata_id": "Q3551470"
+    }
+  },
+  {
+    "id": "21218e91-3a03-551d-a9f7-4b2990504c1d",
+    "ror_id": "https://ror.org/030s54078",
+    "openalex_id": "https://openalex.org/I120108168",
+    "wikidata_id": "Q3550116",
+    "name": "University of the Philippines Los Baños",
+    "normalized_name": "university of the philippines los banos",
+    "native_name": null,
+    "aliases": [
+      "UP Los Baños",
+      "UPLB"
+    ],
+    "slug": "university-of-the-philippines-los-banos-030s54078",
+    "iso2": "PH",
+    "iso3": "PHL",
+    "country_name": "Philippines",
+    "city": "Los Baños",
+    "state_or_region": "Calabarzon",
+    "latitude": 14.17025,
+    "longitude": 121.24181,
+    "website": "http://www.uplb.edu.ph/",
+    "institution_type": "OTHER",
+    "research_works_count": 9977,
+    "research_cited_by_count": 201359,
+    "verified_url": true,
+    "search_priority": 55,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.uplb.edu.ph/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_the_Philippines_Los_Ba%C3%B1os"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I120108168",
+        "type": "education"
+      },
+      "wikidata_id": "Q3550116"
+    }
+  },
+  {
+    "id": "d9194b15-29e6-5e55-a6be-1a65c55fcce0",
+    "ror_id": "https://ror.org/05nv2rz39",
+    "openalex_id": "https://openalex.org/I16969244",
+    "wikidata_id": "Q1570483",
+    "name": "University of Eswatini",
+    "normalized_name": "university of eswatini",
+    "native_name": null,
+    "aliases": [
+      "UNISWA",
+      "University of Swaziland"
+    ],
+    "slug": "university-of-eswatini-05nv2rz39",
+    "iso2": "SZ",
+    "iso3": "SWZ",
+    "country_name": "Eswatini",
+    "city": "Kwaluseni",
+    "state_or_region": "Manzini Region",
+    "latitude": -26.47675,
+    "longitude": 31.33274,
+    "website": "http://www.uniswa.sz/",
+    "institution_type": "OTHER",
+    "research_works_count": 4032,
+    "research_cited_by_count": 48985,
+    "verified_url": true,
+    "search_priority": 50,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.uniswa.sz/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_Swaziland"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I16969244",
+        "type": "education"
+      },
+      "wikidata_id": "Q1570483"
+    }
+  },
+  {
+    "id": "4a6e86ee-88ea-5bde-a733-d1e08f4f8f93",
+    "ror_id": "https://ror.org/00wc07928",
+    "openalex_id": "https://openalex.org/I4287427",
+    "wikidata_id": "Q3551618",
+    "name": "University of Lomé",
+    "normalized_name": "university of lome",
+    "native_name": "Université de Lomé",
+    "aliases": [
+      "UL",
+      "Université de Lomé",
+      "University of Benin"
+    ],
+    "slug": "university-of-lome-00wc07928",
+    "iso2": "TG",
+    "iso3": "TGO",
+    "country_name": "Togo",
+    "city": "Lomé",
+    "state_or_region": "Maritime",
+    "latitude": 6.12874,
+    "longitude": 1.22154,
+    "website": "http://www.univ-lome.tg/",
+    "institution_type": "OTHER",
+    "research_works_count": 10713,
+    "research_cited_by_count": 147423,
+    "verified_url": true,
+    "search_priority": 56,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.univ-lome.tg/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_Lom%C3%A9"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4287427",
+        "type": "education"
+      },
+      "wikidata_id": "Q3551618"
+    }
+  },
+  {
+    "id": "f0e84557-f494-5e25-a840-b323ae87f11d",
+    "ror_id": "https://ror.org/001b4cb05",
+    "openalex_id": "https://openalex.org/I4210091554",
+    "wikidata_id": "Q1634051",
+    "name": "National University of Trujillo",
+    "normalized_name": "national university of trujillo",
+    "native_name": "Universidad Nacional de Trujillo",
+    "aliases": [
+      "Universidad Nacional de Trujillo",
+      "UNT"
+    ],
+    "slug": "national-university-of-trujillo-001b4cb05",
+    "iso2": "PE",
+    "iso3": "PER",
+    "country_name": "Peru",
+    "city": "Trujillo",
+    "state_or_region": "La Libertad",
+    "latitude": -8.11599,
+    "longitude": -79.02998,
+    "website": "http://www.unitru.edu.pe/",
+    "institution_type": "OTHER",
+    "research_works_count": 6870,
+    "research_cited_by_count": 42320,
+    "verified_url": true,
+    "search_priority": 53,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education",
+        "funder"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.unitru.edu.pe/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/National_University_of_Trujillo"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4210091554",
+        "type": "education"
+      },
+      "wikidata_id": "Q1634051"
+    }
+  },
+  {
+    "id": "544068d5-46fb-51c8-a418-f5c466a90b99",
+    "ror_id": "https://ror.org/03fkc8c64",
+    "openalex_id": "https://openalex.org/I4210129319",
+    "wikidata_id": "Q33527385",
+    "name": "University of the West Indies",
+    "normalized_name": "university of the west indies",
+    "native_name": null,
+    "aliases": [
+      "UWI"
+    ],
+    "slug": "university-of-the-west-indies-03fkc8c64",
+    "iso2": "JM",
+    "iso3": "JAM",
+    "country_name": "Jamaica",
+    "city": "Kingston",
+    "state_or_region": "Kingston",
+    "latitude": 17.99702,
+    "longitude": -76.79358,
+    "website": "http://www.mona.uwi.edu/",
+    "institution_type": "OTHER",
+    "research_works_count": 5829,
+    "research_cited_by_count": 369642,
+    "verified_url": true,
+    "search_priority": 52,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.mona.uwi.edu/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_the_West_Indies"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4210129319",
+        "type": "education"
+      },
+      "wikidata_id": "Q33527385"
+    }
+  },
+  {
+    "id": "2418d16e-6e60-5025-aba6-e7afc1c49bb8",
+    "ror_id": "https://ror.org/00jzexr10",
+    "openalex_id": "https://openalex.org/I198277482",
+    "wikidata_id": "Q4071715",
+    "name": "Astrakhan State Technical University",
+    "normalized_name": "astrakhan state technical university",
+    "native_name": "Астраханский государственный технический университет",
+    "aliases": [
+      "ASTU",
+      "Астраханский государственный технический университет"
+    ],
+    "slug": "astrakhan-state-technical-university-00jzexr10",
+    "iso2": "RU",
+    "iso3": "RUS",
+    "country_name": "Russia",
+    "city": "Astrakhan",
+    "state_or_region": "Astrakhan Oblast",
+    "latitude": 46.34968,
+    "longitude": 48.04076,
+    "website": "http://www.astu.org/",
+    "institution_type": "OTHER",
+    "research_works_count": 2339,
+    "research_cited_by_count": 10897,
+    "verified_url": true,
+    "search_priority": 47,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.astu.org/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/Astrakhan_State_Technical_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I198277482",
+        "type": "education"
+      },
+      "wikidata_id": "Q4071715"
+    }
+  },
+  {
+    "id": "1fd46121-c3a1-5cba-a76a-0a38e850daa7",
+    "ror_id": "https://ror.org/04f4syj68",
+    "openalex_id": "https://openalex.org/I4210156250",
+    "wikidata_id": null,
+    "name": "Polo Universitario Città di Prato",
+    "normalized_name": "polo universitario citta di prato",
+    "native_name": "Polo Universitario Città di Prato",
+    "aliases": [
+      "PIN"
+    ],
+    "slug": "polo-universitario-citta-di-prato-04f4syj68",
+    "iso2": "IT",
+    "iso3": "ITA",
+    "country_name": "Italy",
+    "city": "Prato",
+    "state_or_region": "Tuscany",
+    "latitude": 43.8805,
+    "longitude": 11.09699,
+    "website": "http://www.poloprato.unifi.it/en/home-polo.html?no_cache=1",
+    "institution_type": "OTHER",
+    "research_works_count": 268,
+    "research_cited_by_count": 1993,
+    "verified_url": true,
+    "search_priority": 34,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.poloprato.unifi.it/en/home-polo.html?no_cache=1"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4210156250",
+        "type": "education"
+      },
+      "wikidata_id": null
+    }
+  },
+  {
+    "id": "c93cb146-b56b-5438-ae58-338ed08c8021",
+    "ror_id": "https://ror.org/04cnfrn26",
+    "openalex_id": "https://openalex.org/I86211378",
+    "wikidata_id": "Q2065666",
+    "name": "University of the Arts London",
+    "normalized_name": "university of the arts london",
+    "native_name": null,
+    "aliases": [
+      "UAL"
+    ],
+    "slug": "university-of-the-arts-london-04cnfrn26",
+    "iso2": "GB",
+    "iso3": "GBR",
+    "country_name": "United Kingdom",
+    "city": "London",
+    "state_or_region": "England",
+    "latitude": 51.50853,
+    "longitude": -0.12574,
+    "website": "http://www.arts.ac.uk/",
+    "institution_type": "OTHER",
+    "research_works_count": 6108,
+    "research_cited_by_count": 47366,
+    "verified_url": true,
+    "search_priority": 52,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education",
+        "funder"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.arts.ac.uk/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_the_Arts_London"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I86211378",
+        "type": "education"
+      },
+      "wikidata_id": "Q2065666"
+    }
+  },
+  {
+    "id": "d1165a64-c4d5-50e2-aada-08006e44ea94",
+    "ror_id": "https://ror.org/05rtvan68",
+    "openalex_id": "https://openalex.org/I86346663",
+    "wikidata_id": "Q1709572",
+    "name": "Royal University of Phnom Penh",
+    "normalized_name": "royal university of phnom penh",
+    "native_name": "សាកលវិទ្យាល័យភូមិន្ទភ្នំពេញ",
+    "aliases": [
+      "Phnom Penh University",
+      "Royal Khmer University",
+      "RUPP",
+      "សាកលវិទ្យាល័យភូមិន្ទភ្នំពេញ"
+    ],
+    "slug": "royal-university-of-phnom-penh-05rtvan68",
+    "iso2": "KH",
+    "iso3": "KHM",
+    "country_name": "Cambodia",
+    "city": "Phnom Penh",
+    "state_or_region": "Phnom Penh",
+    "latitude": 11.56245,
+    "longitude": 104.91601,
+    "website": "http://www.rupp.edu.kh/",
+    "institution_type": "OTHER",
+    "research_works_count": 1443,
+    "research_cited_by_count": 15461,
+    "verified_url": true,
+    "search_priority": 44,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.rupp.edu.kh/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/Royal_University_of_Phnom_Penh"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I86346663",
+        "type": "education"
+      },
+      "wikidata_id": "Q1709572"
+    }
+  },
+  {
+    "id": "939de3ac-68c5-52c0-a577-5aa09a8e7747",
+    "ror_id": "https://ror.org/02m11x738",
+    "openalex_id": "https://openalex.org/I882953328",
+    "wikidata_id": "Q529572",
+    "name": "Furtwangen University",
+    "normalized_name": "furtwangen university",
+    "native_name": "Hochschule Furtwangen",
+    "aliases": [
+      "FHF",
+      "HFU",
+      "Hochschule Furtwangen"
+    ],
+    "slug": "furtwangen-university-02m11x738",
+    "iso2": "DE",
+    "iso3": "DEU",
+    "country_name": "Germany",
+    "city": "Furtwangen im Schwarzwald",
+    "state_or_region": "Baden-Wurttemberg",
+    "latitude": 48.05156,
+    "longitude": 8.20715,
+    "website": "http://en.hs-furtwangen.de/",
+    "institution_type": "OTHER",
+    "research_works_count": 4569,
+    "research_cited_by_count": 77630,
+    "verified_url": true,
+    "search_priority": 51,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://en.hs-furtwangen.de/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/Hochschule_Furtwangen_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I882953328",
+        "type": "education"
+      },
+      "wikidata_id": "Q529572"
+    }
+  },
+  {
+    "id": "3868fd06-cec8-5e8c-a189-7be71c0b315e",
+    "ror_id": "https://ror.org/05tkvpg69",
+    "openalex_id": "https://openalex.org/I1282913463",
+    "wikidata_id": "Q17183894",
+    "name": "Centro Agronomico Tropical de Investigacion y Ensenanza Catie",
+    "normalized_name": "centro agronomico tropical de investigacion y ensenanza catie",
+    "native_name": "Centro Agronomico Tropical de Investigacion y Ensenanza Catie",
+    "aliases": [
+      "CATIE",
+      "Tropical Agricultural Research and Higher Education Center"
+    ],
+    "slug": "centro-agronomico-tropical-de-investigacion-y-ensenanza-catie-05tkvpg69",
+    "iso2": "CR",
+    "iso3": "CRI",
+    "country_name": "Costa Rica",
+    "city": "Turrialba",
+    "state_or_region": "Cartago Province",
+    "latitude": 9.90371,
+    "longitude": -83.68361,
+    "website": "http://www.catie.ac.cr/en/",
+    "institution_type": "OTHER",
+    "research_works_count": 1987,
+    "research_cited_by_count": 171134,
+    "verified_url": true,
+    "search_priority": 46,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.catie.ac.cr/en/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/Centro_Agron%C3%B3mico_Tropical_de_Investigaci%C3%B3n_y_Ense%C3%B1anza"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I1282913463",
+        "type": "education"
+      },
+      "wikidata_id": "Q17183894"
+    }
+  },
+  {
+    "id": "7ced3bbc-1cac-5560-a395-d4374e6aa504",
+    "ror_id": "https://ror.org/007b9cn27",
+    "openalex_id": "https://openalex.org/I191043459",
+    "wikidata_id": "Q952960",
+    "name": "National Polytechnic University of Armenia",
+    "normalized_name": "national polytechnic university of armenia",
+    "native_name": "Հայաստանի ազգային պոլիտեխնիկական համալսարան",
+    "aliases": [
+      "Karl Marx Institute of Polytechnic",
+      "SEUA",
+      "State Engineering University of Armenia",
+      "Հայաստանի ազգային պոլիտեխնիկական համալսարան"
+    ],
+    "slug": "national-polytechnic-university-of-armenia-007b9cn27",
+    "iso2": "AM",
+    "iso3": "ARM",
+    "country_name": "Armenia",
+    "city": "Yerevan",
+    "state_or_region": "Yerevan",
+    "latitude": 40.18111,
+    "longitude": 44.51361,
+    "website": "https://npua.am/",
+    "institution_type": "OTHER",
+    "research_works_count": 2363,
+    "research_cited_by_count": 13901,
+    "verified_url": true,
+    "search_priority": 47,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "https://npua.am/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/National_Polytechnic_University_of_Armenia"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I191043459",
+        "type": "education"
+      },
+      "wikidata_id": "Q952960"
+    }
+  },
+  {
+    "id": "bd283c5a-7eeb-5d8d-a07a-9c4e980efa05",
+    "ror_id": "https://ror.org/03xww6m08",
+    "openalex_id": "https://openalex.org/I4210124354",
+    "wikidata_id": "Q4146986",
+    "name": "Nicolae Testemițanu State University of Medicine and Pharmacy",
+    "normalized_name": "nicolae testemitanu state university of medicine and pharmacy",
+    "native_name": "Universitatea de Medicină și Farmacie Nicolae Testemițanu din Chișinău",
+    "aliases": [
+      "Universitatea de Medicină și Farmacie Nicolae Testemițanu din Chișinău",
+      "Universitatea de Stat de Medicină și Farmacie \"Nicolae Testemițanu\"",
+      "Государственный университет медицины и фармакологии имени Николая Тестемицяну"
+    ],
+    "slug": "nicolae-testemitanu-state-university-of-medicine-and-pharmacy-03xww6m08",
+    "iso2": "MD",
+    "iso3": "MDA",
+    "country_name": "Moldova",
+    "city": "Chisinau",
+    "state_or_region": "Chișinău Municipality",
+    "latitude": 47.00556,
+    "longitude": 28.8575,
+    "website": "http://usmf.md/en/",
+    "institution_type": "OTHER",
+    "research_works_count": 5121,
+    "research_cited_by_count": 35196,
+    "verified_url": true,
+    "search_priority": 51,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://usmf.md/en/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/Nicolae_Testemi%C8%9Banu_State_University_of_Medicine_and_Pharmacy"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4210124354",
+        "type": "education"
+      },
+      "wikidata_id": "Q4146986"
+    }
+  },
+  {
+    "id": "7051cf62-1be7-5f8e-a11b-d30b7fec03a6",
+    "ror_id": "https://ror.org/04t6r6d34",
+    "openalex_id": "https://openalex.org/I10342815",
+    "wikidata_id": "Q766034",
+    "name": "International Space University",
+    "normalized_name": "international space university",
+    "native_name": null,
+    "aliases": [
+      "ISU"
+    ],
+    "slug": "international-space-university-04t6r6d34",
+    "iso2": "FR",
+    "iso3": "FRA",
+    "country_name": "France",
+    "city": "Illkirch-Graffenstaden",
+    "state_or_region": "Grand Est",
+    "latitude": 48.52894,
+    "longitude": 7.71523,
+    "website": "http://www.isunet.edu/",
+    "institution_type": "OTHER",
+    "research_works_count": 883,
+    "research_cited_by_count": 17244,
+    "verified_url": true,
+    "search_priority": 41,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.isunet.edu/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/International_Space_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I10342815",
+        "type": "education"
+      },
+      "wikidata_id": "Q766034"
+    }
+  },
+  {
+    "id": "72576ea6-82f7-5917-a11f-493a50532639",
+    "ror_id": "https://ror.org/00944ve71",
+    "openalex_id": "https://openalex.org/I22265921",
+    "wikidata_id": "Q714891",
+    "name": "National Central University",
+    "normalized_name": "national central university",
+    "native_name": null,
+    "aliases": [
+      "NCU"
+    ],
+    "slug": "national-central-university-00944ve71",
+    "iso2": "TW",
+    "iso3": "TWN",
+    "country_name": "Taiwan",
+    "city": "Taoyuan",
+    "state_or_region": "Taiwan",
+    "latitude": 24.99368,
+    "longitude": 121.29696,
+    "website": "http://www.ncu.edu.tw/en",
+    "institution_type": "OTHER",
+    "research_works_count": 46364,
+    "research_cited_by_count": 3023596,
+    "verified_url": true,
+    "search_priority": 64,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education",
+        "funder"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.ncu.edu.tw/en"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/National_Central_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I22265921",
+        "type": "education"
+      },
+      "wikidata_id": "Q714891"
+    }
+  },
+  {
+    "id": "add63404-5c75-58f8-a62d-a1edbaa1ffa0",
+    "ror_id": "https://ror.org/02e16g702",
+    "openalex_id": "https://openalex.org/I205349734",
+    "wikidata_id": "Q1057199",
+    "name": "Hokkaido University",
+    "normalized_name": "hokkaido university",
+    "native_name": "北海道大学",
+    "aliases": [
+      "Hokkaidō daigaku",
+      "北海道大学"
+    ],
+    "slug": "hokkaido-university-02e16g702",
+    "iso2": "JP",
+    "iso3": "JPN",
+    "country_name": "Japan",
+    "city": "Sapporo",
+    "state_or_region": "Hokkaido",
+    "latitude": 43.06667,
+    "longitude": 141.35,
+    "website": "https://www.global.hokudai.ac.jp/",
+    "institution_type": "OTHER",
+    "research_works_count": 259387,
+    "research_cited_by_count": 11831016,
+    "verified_url": true,
+    "search_priority": 75,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education",
+        "funder"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "https://www.global.hokudai.ac.jp/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/Hokkaido_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I205349734",
+        "type": "education"
+      },
+      "wikidata_id": "Q1057199"
+    }
+  },
+  {
+    "id": "b43c774d-f7bd-5333-ac02-11536a8c3284",
+    "ror_id": "https://ror.org/02sehzp52",
+    "openalex_id": "https://openalex.org/I7452641",
+    "wikidata_id": "Q816145",
+    "name": "Belarusian State University of Informatics and Radioelectronics",
+    "normalized_name": "belarusian state university of informatics and radioelectronics",
+    "native_name": "Беларускі дзяржаўны ўніверсітэт інфарматыкі і радыёэлектронікі",
+    "aliases": [
+      "BSUIR",
+      "Minsk Radio Engineering Institute",
+      "MREI",
+      "Беларускі дзяржаўны ўніверсітэт інфарматыкі і радыёэлектронікі",
+      "Белорусский государственный университет информатики и радиоэлектроники"
+    ],
+    "slug": "belarusian-state-university-of-informatics-and-radioelectronics-02sehzp52",
+    "iso2": "BY",
+    "iso3": "BLR",
+    "country_name": "Belarus",
+    "city": "Minsk",
+    "state_or_region": "Minsk City",
+    "latitude": 53.9,
+    "longitude": 27.56667,
+    "website": "http://www.bsuir.by/index.jsp?&lang=en",
+    "institution_type": "OTHER",
+    "research_works_count": 5852,
+    "research_cited_by_count": 56457,
+    "verified_url": true,
+    "search_priority": 52,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.bsuir.by/index.jsp?&lang=en"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/Belarusian_State_University_of_Informatics_and_Radioelectronics"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I7452641",
+        "type": "education"
+      },
+      "wikidata_id": "Q816145"
+    }
+  },
+  {
+    "id": "a26908b5-e47b-5034-a4ca-195d53bc8132",
+    "ror_id": "https://ror.org/059w0gb06",
+    "openalex_id": "https://openalex.org/I4210162459",
+    "wikidata_id": null,
+    "name": "Karakalpak State University",
+    "normalized_name": "karakalpak state university",
+    "native_name": null,
+    "aliases": [],
+    "slug": "karakalpak-state-university-059w0gb06",
+    "iso2": "UZ",
+    "iso3": "UZB",
+    "country_name": "Uzbekistan",
+    "city": "Nukus",
+    "state_or_region": "Karakalpakstan",
+    "latitude": 42.45306,
+    "longitude": 59.61028,
+    "website": "http://www.karsu.uz/index.php/en/",
+    "institution_type": "OTHER",
+    "research_works_count": 3908,
+    "research_cited_by_count": 9224,
+    "verified_url": true,
+    "search_priority": 50,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.karsu.uz/index.php/en/"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4210162459",
+        "type": "education"
+      },
+      "wikidata_id": null
+    }
+  },
+  {
+    "id": "de919e23-b54c-5c8f-a48b-0f09ece87e1f",
+    "ror_id": "https://ror.org/04zap7912",
+    "openalex_id": "https://openalex.org/I46975222",
+    "wikidata_id": "Q8061337",
+    "name": "Yunnan University of Traditional Chinese Medicine",
+    "normalized_name": "yunnan university of traditional chinese medicine",
+    "native_name": "云南中医药大学",
+    "aliases": [
+      "YUTCM",
+      "云南中医药大学"
+    ],
+    "slug": "yunnan-university-of-traditional-chinese-medicine-04zap7912",
+    "iso2": "CN",
+    "iso3": "CHN",
+    "country_name": "China",
+    "city": "Kunming",
+    "state_or_region": "Yunnan",
+    "latitude": 25.03889,
+    "longitude": 102.71833,
+    "website": "http://www.ynutcm.edu.cn/",
+    "institution_type": "OTHER",
+    "research_works_count": 4075,
+    "research_cited_by_count": 107956,
+    "verified_url": true,
+    "search_priority": 50,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.ynutcm.edu.cn/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/Yunnan_University_of_Traditional_Chinese_Medicine"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I46975222",
+        "type": "education"
+      },
+      "wikidata_id": "Q8061337"
+    }
+  },
+  {
+    "id": "49f744a8-9a57-5833-a885-76c16cf8d6e9",
+    "ror_id": "https://ror.org/03k793y62",
+    "openalex_id": "https://openalex.org/I10017102",
+    "wikidata_id": "Q1738772",
+    "name": "Agricultural University of Tirana",
+    "normalized_name": "agricultural university of tirana",
+    "native_name": "Universiteti Bujqësor i Tiranës",
+    "aliases": [
+      "UBT",
+      "Universiteti Bujqësor i Tiranës",
+      "Γεωπονικό πανεπιστήμιο Τιράνων"
+    ],
+    "slug": "agricultural-university-of-tirana-03k793y62",
+    "iso2": "AL",
+    "iso3": "ALB",
+    "country_name": "Albania",
+    "city": "Tirana",
+    "state_or_region": "Tirana",
+    "latitude": 41.3275,
+    "longitude": 19.81889,
+    "website": "http://ubt.edu.al/en",
+    "institution_type": "OTHER",
+    "research_works_count": 2239,
+    "research_cited_by_count": 33677,
+    "verified_url": true,
+    "search_priority": 46,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://ubt.edu.al/en"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/Agricultural_University_of_Tirana"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I10017102",
+        "type": "education"
+      },
+      "wikidata_id": "Q1738772"
+    }
+  },
+  {
+    "id": "288c48ae-ea8b-555b-a09b-4e9179405c42",
+    "ror_id": "https://ror.org/008wtrs16",
+    "openalex_id": "https://openalex.org/I3129271201",
+    "wikidata_id": "Q6041507",
+    "name": "Instituto Superior de Ciências Educativas",
+    "normalized_name": "instituto superior de ciencias educativas",
+    "native_name": "Instituto Superior de Ciências Educativas",
+    "aliases": [
+      "ICE",
+      "ISCE"
+    ],
+    "slug": "instituto-superior-de-ciencias-educativas-008wtrs16",
+    "iso2": "PT",
+    "iso3": "PRT",
+    "country_name": "Portugal",
+    "city": "Ramada",
+    "state_or_region": "Lisbon",
+    "latitude": 38.80368,
+    "longitude": -9.1877,
+    "website": "http://www.ice.edu.pt/",
+    "institution_type": "OTHER",
+    "research_works_count": 431,
+    "research_cited_by_count": 6375,
+    "verified_url": true,
+    "search_priority": 36,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.ice.edu.pt/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/Instituto_Superior_de_Ci%C3%AAncias_Educativas"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I3129271201",
+        "type": "education"
+      },
+      "wikidata_id": "Q6041507"
+    }
+  },
+  {
+    "id": "ce58576a-e4af-5edf-a6ba-a35113d88d0a",
+    "ror_id": "https://ror.org/02zrvx577",
+    "openalex_id": "https://openalex.org/I2802194555",
+    "wikidata_id": "Q7895105",
+    "name": "University of Bahr El-Ghazal",
+    "normalized_name": "university of bahr el ghazal",
+    "native_name": null,
+    "aliases": [
+      "UBG"
+    ],
+    "slug": "university-of-bahr-el-ghazal-02zrvx577",
+    "iso2": "SS",
+    "iso3": "SSD",
+    "country_name": "South Sudan",
+    "city": "Wau",
+    "state_or_region": "Western Bahr al Ghazal",
+    "latitude": 7.70111,
+    "longitude": 27.98972,
+    "website": null,
+    "institution_type": "OTHER",
+    "research_works_count": 445,
+    "research_cited_by_count": 1700,
+    "verified_url": false,
+    "search_priority": 37,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/University_of_Bahr_El-Ghazal"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I2802194555",
+        "type": "education"
+      },
+      "wikidata_id": "Q7895105"
+    }
+  },
+  {
+    "id": "d5f47715-b349-59d5-ae63-28fa49952a04",
+    "ror_id": "https://ror.org/04mkpd147",
+    "openalex_id": "https://openalex.org/I4210148573",
+    "wikidata_id": "Q5841811",
+    "name": "Red Universitaria Nacional",
+    "normalized_name": "red universitaria nacional",
+    "native_name": "Red Universitaria Nacional",
+    "aliases": [
+      "Corporacion Red Universitaria Nacional",
+      "REUNA"
+    ],
+    "slug": "red-universitaria-nacional-04mkpd147",
+    "iso2": "CL",
+    "iso3": "CHL",
+    "country_name": "Chile",
+    "city": "Santiago",
+    "state_or_region": "Santiago Metropolitan",
+    "latitude": -33.45694,
+    "longitude": -70.64827,
+    "website": "http://www.reuna.cl/",
+    "institution_type": "OTHER",
+    "research_works_count": 124,
+    "research_cited_by_count": 1267,
+    "verified_url": true,
+    "search_priority": 29,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.reuna.cl/"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I4210148573",
+        "type": "education"
+      },
+      "wikidata_id": "Q5841811"
+    }
+  },
+  {
+    "id": "ae12be16-e6d2-5b09-a85a-7bfcb21c6ade",
+    "ror_id": "https://ror.org/054gzqw08",
+    "openalex_id": "https://openalex.org/I154264771",
+    "wikidata_id": "Q1053764",
+    "name": "Central Connecticut State University",
+    "normalized_name": "central connecticut state university",
+    "native_name": "Universidad Estatal de Connecticut Central",
+    "aliases": [
+      "CCSU",
+      "Universidad Estatal de Connecticut Central"
+    ],
+    "slug": "central-connecticut-state-university-054gzqw08",
+    "iso2": "US",
+    "iso3": "USA",
+    "country_name": "United States",
+    "city": "New Britain",
+    "state_or_region": "Connecticut",
+    "latitude": 41.66121,
+    "longitude": -72.77954,
+    "website": "http://www.ccsu.edu/",
+    "institution_type": "OTHER",
+    "research_works_count": 5065,
+    "research_cited_by_count": 98500,
+    "verified_url": true,
+    "search_priority": 51,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education",
+        "funder"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://www.ccsu.edu/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "http://en.wikipedia.org/wiki/Central_Connecticut_State_University"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I154264771",
+        "type": "education"
+      },
+      "wikidata_id": "Q1053764"
+    }
+  },
+  {
+    "id": "98c81a09-d201-5bd2-ae49-a6e9feb39da4",
+    "ror_id": "https://ror.org/04aznd361",
+    "openalex_id": "https://openalex.org/I248710770",
+    "wikidata_id": "Q5019886",
+    "name": "Government Medical College",
+    "normalized_name": "government medical college",
+    "native_name": "கோழிக்கோடு மருத்துவக் கல்லூரி",
+    "aliases": [
+      "Calicut Medical College",
+      "CMC",
+      "கோழிக்கோடு மருத்துவக் கல்லூரி",
+      "ഗവൺമെന്റ് മെഡിക്കൽ കോളേജ്, കോഴിക്കോട്"
+    ],
+    "slug": "government-medical-college-04aznd361",
+    "iso2": "IN",
+    "iso3": "IND",
+    "country_name": "India",
+    "city": "Kozhikode",
+    "state_or_region": "Kerala",
+    "latitude": 11.24802,
+    "longitude": 75.7804,
+    "website": "http://calicutmedicalcollege.ac.in/",
+    "institution_type": "OTHER",
+    "research_works_count": 3370,
+    "research_cited_by_count": 66590,
+    "verified_url": true,
+    "search_priority": 49,
+    "source_metadata": {
+      "canonical_source": "ROR",
+      "source_version": null,
+      "ror_types": [
+        "education"
+      ],
+      "ror_status": "active",
+      "classification": {
+        "eligible": true,
+        "evidence": [
+          "ROR type: education",
+          "OpenAlex type: education"
+        ]
+      },
+      "ror_last_modified": "2024-12-11",
+      "official_domain_evidence": [],
+      "source_links": [
+        {
+          "type": "website",
+          "value": "http://calicutmedicalcollege.ac.in/"
+        },
+        {
+          "type": "wikipedia",
+          "value": "https://en.wikipedia.org/wiki/Calicut_Medical_College"
+        }
+      ],
+      "openalex_snapshot": {
+        "id": "https://openalex.org/I248710770",
+        "type": "education"
+      },
+      "wikidata_id": "Q5019886"
+    }
+  }
+]

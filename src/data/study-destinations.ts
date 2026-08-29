@@ -583,13 +583,10 @@ function convertFeaturedSeedToStudyRegion(seed: FeaturedCountrySeed): StudyRegio
       admissionsUrl: u.admissionsUrl,
       sourceUrl: u.sourceUrl,
       verifiedAt: u.verifiedAt,
-      examChips: u.examChips,
-      examRelations: u.examChips.map((c) => ({
-        examId: c.exam,
-        relationship: c.relationship,
-        programScope: c.evidence,
-        sourceUrl: u.sourceUrl,
-      })),
+      // Legacy seed chips are deliberately not exposed. Public requirement chips
+      // now come only from verified, scoped database evidence for the active cycle.
+      examChips: [],
+      examRelations: [],
     };
   });
 

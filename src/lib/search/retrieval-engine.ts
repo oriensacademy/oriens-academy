@@ -11,7 +11,7 @@ export interface SearchResultItem {
   subtitle?: string;
   slug: string;
   score: number;
-  matchLayer: 1 | 2 | 3 | 4;
+  matchLayer: 1 | 2 | 3 | 4 | 5 | 6;
   badge?: string;
   countryIso2?: string;
   countryName?: string;
@@ -918,4 +918,3 @@ function toSearchResultItem(d: DataItem): SearchResultItem {
 }
 
 export { retrieveSearchResultsFromDatabase } from "./db-retrieval-service";
-

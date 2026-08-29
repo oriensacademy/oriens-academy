@@ -17,7 +17,7 @@ interface DatabaseSearchRow {
   title: string;
   subtitle: string | null;
   slug: string;
-  match_layer: 1 | 2 | 3 | 4;
+  match_layer: 1 | 2 | 3 | 4 | 5 | 6;
   score: number | string;
   country_iso2: string | null;
   country_name: string | null;

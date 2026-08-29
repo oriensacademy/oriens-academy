@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, GraduationCap, Route, ShieldCheck } from "lucide-react";
@@ -8,8 +8,8 @@ import { Reveal } from "@/components/motion/Reveal";
 import { ButtonLink } from "@/components/ui/button";
 import { useExamsContent, useLocale } from "@/content/locale-context";
 import { studyDestinations } from "@/data/study-destinations";
-import { getVerifiedOfficialUniversityUrl } from "@/data/official-universities";
 import { examDetailPath, localizedPath } from "@/lib/routes";
+import { loadFeaturedUniversities } from "@/lib/universities/featured-service";
 import { DestinationExamPanel } from "./DestinationExamPanel";
 import { DestinationSelector } from "./DestinationSelector";
 import type { StudyRegion } from "./globe-types";
@@ -41,10 +41,33 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
   const isTr = locale === "tr";
   const [selectedRegion, setSelectedRegion] = useState<StudyRegion | null>(() => studyDestinations[0] ?? null);
   const [hoveredRegionId, setHoveredRegionId] = useState<StudyRegion["id"] | null>(null);
+  const [countryResult, setCountryResult] = useState<{
+    iso3: string;
+    universities: StudyRegion["countries"][number]["universities"];
+  } | null>(null);
+  const universityRequestVersion = useRef(0);
   
-  // Isolate strictly country universities and limit to max 3 verified records
-  const universities = selectedRegion?.countries.flatMap((country) => country.universities) ?? [];
-  const visibleUniversities = universities.slice(0, 3);
+  useEffect(() => {
+    const countryCode = selectedRegion?.countryCode;
+    const requestVersion = ++universityRequestVersion.current;
+    const controller = new AbortController();
+    if (!countryCode) return () => controller.abort();
+
+    loadFeaturedUniversities(countryCode, controller.signal)
+      .then((universities) => {
+        if (requestVersion === universityRequestVersion.current) {
+          setCountryResult({ iso3: countryCode, universities: universities.slice(0, 3) });
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [selectedRegion?.countryCode]);
+
+  // The browser never loads the global catalog; this contains only the DB-ranked
+  // rows for the currently selected ISO3 country.
+  const visibleUniversities = countryResult && countryResult.iso3 === selectedRegion?.countryCode
+    ? countryResult.universities
+    : [];
   const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
 
   return (
@@ -141,7 +164,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
                       <div className="min-w-0 flex-1">
                         <h4 className="text-sm font-semibold leading-5 text-ink">
                           {(() => {
-                            const officialUrl = getVerifiedOfficialUniversityUrl(university.name) || university.officialUrl;
+                            const officialUrl = university.officialUrl;
                             if (officialUrl) {
                               return (
                                 <a

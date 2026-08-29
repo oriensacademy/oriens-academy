@@ -19,7 +19,11 @@
     "local:admin:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-local-admin.ps1",
     "paytr:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-paytr.ps1",
     "local:reset": "npx supabase db reset && npm run local:admin:setup",
-    "email:preview:all": "npx tsx scripts/preview-all-emails.mjs"
+    "email:preview:all": "npx tsx scripts/preview-all-emails.mjs",
+    "universities:sync": "node scripts/import-global-universities.mjs --apply",
+    "universities:prepare": "node scripts/import-global-universities.mjs",
+    "test:universities:global": "node scripts/test-global-university-platform.mjs",
+    "test:testimonials:reconciliation": "node scripts/reconcile-testimonials.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

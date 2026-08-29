@@ -1,0 +1,28 @@
+{
+  "source": "Research Organization Registry (ROR)",
+  "source_version": "v2.12",
+  "source_date": "2026-08-25",
+  "license": "CC0 1.0 Universal",
+  "retrieved_at": "2026-08-29T22:45:57.432Z",
+  "source_url": "https://zenodo.org/api/records/22099990/files/v2.12-2026-08-25-ror-data.zip/content",
+  "raw_record_count": 137398,
+  "eligible_record_count": 26784,
+  "rejected_record_count": 110614,
+  "rejection_counts": {
+    "not_education": 107243,
+    "healthcare_entity": 156,
+    "obvious_non_university_education_entity": 115,
+    "inactive": 3100
+  },
+  "imported_record_count": 26784,
+  "duplicate_merge_count": 0,
+  "openalex_source": "OpenAlex Institutions API",
+  "openalex_license": "CC0",
+  "openalex_match_count": 26779,
+  "wikidata_match_count": 19598,
+  "official_url_count": 26346,
+  "countries_represented": 224,
+  "alias_count": 49863,
+  "filtering_method": "active ROR education records, excluding obvious hospitals/clinics and non-university research entities",
+  "disappeared_records_marked_for_review": 135
+}
