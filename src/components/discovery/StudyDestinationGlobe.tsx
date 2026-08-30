@@ -46,7 +46,8 @@ function regionForFeature(feature: CountryFeature, regions: StudyRegion[]): Stud
   // 2. Dynamic country-level resolution for any other clicked country
   const trName = feature.properties?.NAME_TR || feature.properties?.NAME || feature.properties?.ADMIN;
   const enName = feature.properties?.NAME_EN || feature.properties?.NAME || feature.properties?.ADMIN;
-  return resolveStudyDestination(code, trName, enName);
+  const [lng, lat] = countryCentroids.get(feature) ?? geoCentroid(feature);
+  return resolveStudyDestination(code, trName, enName, { lat, lng });
 }
 
 export function StudyDestinationGlobe({

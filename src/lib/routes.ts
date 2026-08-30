@@ -235,7 +235,6 @@ export function primaryNavigationPath(anchor: string, locale: Locale): string {
   if (anchor === "#university-support") return localizedPath("universitySupport", locale);
   if (anchor === "#pricing") return localizedPath("pricing", locale);
   if (anchor === "#about") return localizedPath("about", locale);
-  if (anchor === "#method") return localizedPath("about", locale);
   return `${localizedPath("home", locale)}${anchor}`;
 }
 

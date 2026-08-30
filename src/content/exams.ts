@@ -1,4 +1,5 @@
 import { examCodes } from "./shared";
+import { canonicalExamByCode } from "./canonical-exams";
 
 export type ExamCode = (typeof examCodes)[number];
 export type ExamVisualVariant = "coordinate" | "vector" | "function" | "geometry" | "route";
@@ -8,7 +9,7 @@ export type ExamVisualVariant = "coordinate" | "vector" | "function" | "geometry
  * ones: IB/AP/IGCSE are secondary qualifications/curricula (only IB and
  * AP also directly gate university admission, so they carry both tags);
  * SAT/ESAT/TMUA/TARA are standalone university admissions tests;
- * UKCAT/IMAT are health-sciences admissions tests; OMPT is a programme-
+ * UCAT/IMAT are health-sciences admissions tests; OMPT is a programme-
  * specific mathematics admissions assessment; GRE/GMAT are graduate-level.
  * An exam may legitimately belong to more than one
  * category — the data model supports it, it is not forced to one.
@@ -161,15 +162,15 @@ export type ExamRecord = {
   order: number;
 };
 
-export const examRecords: ExamRecord[] = examCodes.map((code, index) => ({
+export const examRecords: ExamRecord[] = examCodes.map((code) => ({
   code,
-  slug: code.toLowerCase(),
+  slug: canonicalExamByCode[code].slug,
   categories: examMeta[code].categories,
   primaryCategory: examMeta[code].primaryCategory,
   visualVariant: examMeta[code].visualVariant,
   relatedExams: examMeta[code].relatedExams,
   featured: !!examMeta[code].featured,
-  order: index,
+  order: canonicalExamByCode[code].displayOrder - 1,
 }));
 
 export function examsInCategory(category: ExamCategoryId): ExamRecord[] {

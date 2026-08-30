@@ -5,6 +5,7 @@ import { useLocale } from "@/content/locale-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { CheckCircle2, Loader2, Send, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { canonicalExams } from "@/content/canonical-exams";
 
 export function AssessmentForm() {
   const locale = useLocale();
@@ -153,24 +154,11 @@ Notes / Goals: ${notes || "-"}
             onChange={(e) => setTargetExam(e.target.value)}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           >
-            <option value="IB">IB (International Baccalaureate)</option>
-            <option value="AP">AP (Advanced Placement)</option>
-            <option value="IGCSE">Cambridge IGCSE</option>
-            <option value="A-Level">A-Level (Cambridge / Edexcel)</option>
-            <option value="SAT">Digital SAT</option>
-            <option value="ACT">ACT</option>
-            <option value="ESAT">ESAT (Engineering & Science)</option>
-            <option value="TMUA">TMUA (Mathematics)</option>
-            <option value="TARA">TARA (Architecture / TEST-ARCHED)</option>
-            <option value="UCAT">UCAT (Medical Aptitude)</option>
-            <option value="LNAT">LNAT (Law)</option>
-            <option value="IMAT">IMAT (Italy Medicine)</option>
-            <option value="GAMSAT">GAMSAT (Graduate Medicine)</option>
-            <option value="MCAT">MCAT (Medicine)</option>
-            <option value="LSAT">LSAT (JD Law)</option>
-            <option value="GRE">GRE General Test</option>
-            <option value="GMAT">GMAT Focus Edition</option>
-            <option value="OMPT">OMPT (Mathematics Placement)</option>
+            {canonicalExams.map((exam) => (
+              <option key={exam.code} value={exam.code}>
+                {isTr ? exam.displayNameTr : exam.displayNameEn}
+              </option>
+            ))}
             <option value="Diger">{isTr ? "Diğer / Genel Akademik" : "Other / General Academic"}</option>
           </select>
         </div>

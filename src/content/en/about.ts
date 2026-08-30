@@ -9,7 +9,7 @@ export const about: AboutContent = {
   hero: {
     eyebrow: "About Us",
     title: "Meet our founder.",
-    description: "Mathematics & Physics instructor. For over 10 years, providing one-on-one coaching for students preparing for IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA, and IGCSE; working with students from leading international curriculum schools including Robert College, St. Joseph, Liceo Italiano, Üsküdar American Academy, Galatasaray High School, Saint Benoit, Notre Dame de Sion, Deutsche Schule Istanbul, and St. Georgs-Kolleg. The approach is grounded in mastering the underlying logic of the exam rather than rote memorization.",
+    description: "A Mathematics and Physics instructor with more than 10 years of one-to-one experience supporting students preparing for IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA and IGCSE. His students include learners from international-curriculum schools such as Robert College, St. Joseph, Liceo Italiano, Üsküdar American Academy, Galatasaray High School, Saint Benoit, Notre Dame de Sion, Deutsche Schule Istanbul and St. Georgs-Kolleg. His approach is built on understanding the logic of each exam rather than rote memorisation.",
     primaryCta: "Free Intro Call",
     secondaryCta: "Explore Exams",
     visualLabel: "Tutor Doğuhan — Mathematics & Physics Tutor",
@@ -55,7 +55,7 @@ export const about: AboutContent = {
         id: "doguhan",
         name: "Doğuhan",
         role: "Mathematics & Physics Tutor / Founder",
-        bio: "Mathematics & Physics instructor. For over 10 years, providing one-on-one coaching for students preparing for IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA, and IGCSE; working with students from leading international curriculum schools including Robert College, St. Joseph, Liceo Italiano, Üsküdar American Academy, Galatasaray High School, Saint Benoit, Notre Dame de Sion, Deutsche Schule Istanbul, and St. Georgs-Kolleg. The approach is grounded in mastering the underlying logic of the exam rather than rote memorization.",
+        bio: "A Mathematics and Physics instructor with more than 10 years of one-to-one experience supporting students preparing for IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA and IGCSE. His students include learners from international-curriculum schools such as Robert College, St. Joseph, Liceo Italiano, Üsküdar American Academy, Galatasaray High School, Saint Benoit, Notre Dame de Sion, Deutsche Schule Istanbul and St. Georgs-Kolleg. His approach is built on understanding the logic of each exam rather than rote memorisation.",
         credentials: [
           "Robert College",
           "St. Joseph",
@@ -95,7 +95,7 @@ export const about: AboutContent = {
       { title: "Deutsche Schule Istanbul", description: "Abitur and international STEM entrance test preparation." },
       { title: "St. Georgs-Kolleg", description: "Matura and advanced mathematics-physics coaching." },
     ],
-    disclaimer: "All school names represent institutions attended by our students.",
+    disclaimer: "School names identify institutions attended by our students and do not imply an official partnership or endorsement.",
   },
   trust: {
     eyebrow: "Contact Channels",

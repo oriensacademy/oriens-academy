@@ -104,7 +104,7 @@ export function ExamQuestionReview({
                 aria-current={isActive ? "step" : undefined}
                 aria-label={`${idx + 1}. ${copy.goToQuestion} (${isCorrect ? copy.correct : copy.incorrect})`}
                 onClick={() => handleSelect(idx)}
-                className={`inline-flex min-h-9 min-w-9 items-center justify-center gap-1 rounded-xl border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${pillStyle}`}
+                className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl border px-2.5 py-2 text-xs font-semibold transition-all cursor-pointer ${pillStyle}`}
               >
                 <span>{idx + 1}</span>
                 {isCorrect ? (
@@ -217,7 +217,7 @@ export function ExamQuestionReview({
           disabled={isFirst}
           onClick={handlePrev}
           aria-label={copy.previousQuestion}
-          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface-muted disabled:pointer-events-none disabled:opacity-30 cursor-pointer"
+          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink transition-colors hover:bg-surface-muted disabled:pointer-events-none disabled:opacity-30 cursor-pointer"
         >
           <ChevronLeft className="size-4" />
           <span>{copy.previousQuestion}</span>
@@ -231,7 +231,7 @@ export function ExamQuestionReview({
           type="button"
           onClick={handleNext}
           aria-label={isLast ? copy.completeReview : copy.nextQuestion}
-          className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+          className={`inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
             isLast
               ? "bg-primary text-white hover:bg-forest shadow-xs"
               : "bg-ink text-white hover:bg-forest shadow-xs"

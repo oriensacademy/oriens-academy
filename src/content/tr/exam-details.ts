@@ -100,7 +100,7 @@ export const examDetailText: ExamDetailTextMap = {
     seoTitle: "ACT Hazırlık ve Özel Ders | Oriens Academy",
     seoDescription: "ACT English, Math, Reading ve Science bölümleri için hız, doğruluk ve strateji odaklı birebir hazırlık.",
     overview: [
-      "American College Testing (ACT), ABD ve dünya genelindeki üniversitelere lisans başvurularında kullanılan standart bir kabul sınavıdır.",
+      "ACT, ABD'de ve sınavı kabul eden uluslararası üniversitelerde lisans başvurularında kullanılan standart bir kabul sınavıdır.",
       "Özellikle Fen Okuryazarlığı (Science Reasoning) ve yüksek tempolu soru çözme hızı gerektiren yapısıyla SAT'tan ayrışır.",
     ],
     preparationAreas: [
@@ -153,35 +153,35 @@ export const examDetailText: ExamDetailTextMap = {
     cta: { title: "TMUA matematik rotanızı birlikte çizelim.", body: "Konu temeliniz ve problem çözme yaklaşımınız üzerinden kişiselleştirilmiş bir çalışma sistemi oluşturalım.", primary: "Ücretsiz Görüşme Planla", secondary: "Tüm Sınavları Gör" },
   },
   TARA: {
-    seoTitle: "Mimarlık Kabul Sınavı (TARA / TEST-ARCHED) Hazırlığı | Oriens Academy",
-    seoDescription: "Politecnico di Milano, Torino ve uluslararası mimarlık lisans kabulleri için mekânsal düşünme, teknik çizim ve geometri hazırlığı.",
+    seoTitle: "TARA Akademik Muhakeme Hazırlığı | Oriens Academy",
+    seoDescription: "UAT-UK TARA için özgün Critical Thinking, Problem Solving ve Writing Task hazırlığı.",
     overview: [
-      "Test di Ammissione ad Architettura (TEST-ARCHED / TARA), İtalya'daki tek döngülü Mimarlık fakülteleri ve uluslararası mimarlık okullarının kabulünde uygulanan merkezi sınavdır.",
-      "Sınav; üç boyutlu uzamsal algı, aksonometrik/ortografik izdüşüm, fiziksel statik ilkeleri, genel kültür ve mimarlık tarihi bilgisini ölçer.",
+      "Test of Academic Reasoning for Admissions (TARA), ilk kez Ekim 2025'te sunulan ve konu bilgisine dayanmayan bir UAT-UK kabul sınavıdır.",
+      "Modülleri Critical Thinking, Problem Solving ve Writing Task alanlarını ölçer; kullanım üniversiteye, programa ve başvuru dönemine göre değişir.",
     ],
     preparationAreas: [
-      { title: "Mekânsal Akıl Yürütme ve 3D Algı", description: "Katı cisim açılımları, kesit alma, perspektif ve izdüşüm sorularında hızlı ve doğru görselleştirme çalışırız." },
-      { title: "Fizik ve Yapı Statiği", description: "Kuvvet dengesi, taşıyıcı sistem mantığı ve temel fizik ilkelerinin mimarlık bağlamındaki uygulamalarını kavratırız." },
-      { title: "Mimarlık ve Sanat Tarihi", description: "Antik çağdan modern döneme önemli yapılar, mimarlar, akımlar ve üslup analizleri üzerine odaklanırız." },
+      { title: "Critical Thinking", description: "Varsayımları, kanıtları, sonuçları ve rakip argümanların gücünü değerlendiririz." },
+      { title: "Problem Solving", description: "Nicel ve kısıt temelli muhakemeyi açık, süre odaklı yöntemlerle çalışırız." },
+      { title: "Writing Task", description: "Nitelikli tez, tutarlı argüman yapısı ve karşı görüşlere adil yanıt geliştirmeyi çalışırız." },
     ],
-    oriensSupport: "Görsel ve teknik analizi matematiksel problem çözme disipliniyle harmanlayarak Politecnico di Milano ve Torino kabul barajlarını aşmanızı sağlıyoruz.",
-    featuredFacts: [{ label: "Resmi Sağlayıcı", value: "CISIA / İtalya Üniversite Bakanlığı (MUR)" }, { label: "Temel Alanlar", value: "Mekânsal Akıl Yürütme, Matematik, Fizik, Sanat Tarihi" }],
+    oriensSupport: "Oriens pratik materyallerini resmi sınav içeriği gibi sunmadan kanıta dayalı muhakeme ve yapılandırılmış yazma becerileri geliştiriyoruz.",
+    featuredFacts: [{ label: "Resmi Kurum", value: "UAT-UK; Pearson VUE tarafından uygulanır" }, { label: "Modüller", value: "Critical Thinking, Problem Solving, Writing Task" }],
     faqs: [
-      { question: "Sınav İngilizce mi İtalyanca mı uygulanır?", answer: "İtalya'da İngilizce eğitim veren mimarlık programları için İngilizce (TEST-ARCHED in English), İtalyanca programlar için İtalyanca uygulanır." },
-      { question: "Çizim yeteneği gerekir mi?", answer: "Sınav çoktan seçmeli formatta mekânsal ve teknik anlama becerisini ölçer; serbest el çizim yapılmaz ancak çizim mantığını okumak şarttır." },
+      { question: "TARA hangi becerileri ölçer?", answer: "Güncel UAT-UK TARA; Critical Thinking, Problem Solving ve Writing Task modülleri üzerinden akademik muhakemeyi değerlendirir." },
+      { question: "Hangi üniversiteler TARA istiyor?", answer: "Kullanım program ve başvuru dönemine özgüdür. Adaylar hedef programın güncel resmi kabul sayfasını doğrulamalıdır." },
     ],
-    cta: { title: "Mimarlık fakültesi hedefinizi gerçeğe dönüştürün.", body: "Mekânsal düşünme ve teknik hazırlık sürecinizi uzman eğitmenlerimizle planlayın.", primary: "Ücretsiz Görüşme Planla", secondary: "Tüm Sınavları Gör" },
+    cta: { title: "TARA için disiplinli akademik muhakeme geliştirin.", body: "Özgün pratiklerle eleştirel düşünme, problem çözme ve yazma becerilerinizi güçlendirin.", primary: "Ücretsiz Görüşme Planla", secondary: "Tüm Sınavları Gör" },
   },
   UCAT: {
     seoTitle: "UCAT Hazırlık ve Tıp Kabul Eğitimi | Oriens Academy",
-    seoDescription: "Birleşik Krallık ve Avustralya tıp fakülteleri için UCAT Verbal, Decision Making, Quantitative, Abstract Reasoning ve SJT hazırlığı.",
+    seoDescription: "UCAT Verbal Reasoning, Decision Making, Quantitative Reasoning ve Situational Judgement hazırlığı.",
     overview: [
       "University Clinical Aptitude Test (UCAT - eski adıyla UKCAT), Birleşik Krallık ve Avustralya'daki seçkin tıp ve diş hekimliği fakültelerinin temel kabul sınavıdır.",
       "Yoğun zaman kısıtı altında yüksek bilişsel kapasite, veri yorumlama, örüntü tanıma ve mesleki etik muhakeme yeteneğini değerlendirir.",
     ],
     preparationAreas: [
       { title: "Verbal & Quantitative Reasoning", description: "Uzun metinleri ve sayısal verileri saniyeler içinde analiz edip doğru yargıya varma tekniği kazandırırız." },
-      { title: "Decision Making & Abstract Reasoning", description: "Karmaşık mantıksal önermeleri ve soyut geometrik örüntüleri sistematik yöntemlerle çözeriz." },
+      { title: "Decision Making", description: "Mantıksal önermeleri, Venn çıkarımlarını, olasılığı ve kanıt değerlendirmeyi sistematik yöntemlerle çözeriz." },
       { title: "Situational Judgement (SJT)", description: "GMC (General Medical Council) etik prensiplerine tam uyumlu klinik vaka değerlendirme refleksi oluştururuz." },
     ],
     oriensSupport: "Her bir alt test için özelleştirilmiş stratejiler, klavye kısayolları kullanımı, zaman yönetimi ve Band 1 odaklı durumsal yargı analizi sağlıyoruz.",
@@ -308,9 +308,9 @@ export const examDetailText: ExamDetailTextMap = {
     cta: { title: "GRE hazırlığınızı lisansüstü hedefinize göre planlayalım.", body: "Sözel, nicel ve yazılı becerileriniz için dengeli ve izlenebilir bir çalışma rotası kuralım.", primary: "Ücretsiz Görüşme Planla", secondary: "Tüm Sınavları Gör" },
   },
   GMAT: {
-    seoTitle: "GMAT Focus Hazırlık ve Birebir Destek | Oriens Academy",
-    seoDescription: "GMAT Focus Quantitative Reasoning, Verbal Reasoning ve Data Insights alanları için kişiselleştirilmiş hazırlık desteği.",
-    overview: ["GMAT Focus Edition, lisansüstü işletme eğitimi bağlamında nicel, sözel ve veri odaklı akıl yürütme becerilerini değerlendiren bir kabul sınavıdır.", "Programların sınav politikaları farklılaşabilir; GMAT kararı hedef işletme okullarının güncel kabul sayfalarıyla birlikte değerlendirilmelidir."],
+    seoTitle: "GMAT Exam Hazırlık ve Birebir Destek | Oriens Academy",
+    seoDescription: "GMAT Exam Quantitative Reasoning, Verbal Reasoning ve Data Insights alanları için kişiselleştirilmiş hazırlık desteği.",
+    overview: ["GMAT Exam, lisansüstü işletme eğitimi bağlamında nicel, sözel ve veri odaklı akıl yürütme becerilerini değerlendiren bir kabul sınavıdır.", "Programların sınav politikaları farklılaşabilir; GMAT kararı hedef işletme okullarının güncel kabul sayfalarıyla birlikte değerlendirilmelidir."],
     preparationAreas: [
       { title: "Quantitative Reasoning", description: "Aritmetik ve cebir temelini mantık ve problem çözme kararlarıyla birleştiririz." },
       { title: "Verbal Reasoning", description: "Yazılı materyali anlama, argüman değerlendirme ve çıkarım becerilerini geliştiririz." },

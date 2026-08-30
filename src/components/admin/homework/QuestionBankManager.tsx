@@ -10,8 +10,9 @@ import {
   type QuestionDifficulty,
   type QuestionLanguage,
 } from "@/lib/homework";
+import { canonicalExams } from "@/content/canonical-exams";
 
-const EXAM_PRESETS = ["SAT", "IB", "AP", "ESAT", "TMUA", "IMAT", "UCAT", "OMPT", "GRE", "GMAT", "Genel"];
+const EXAM_PRESETS = [...canonicalExams.map((exam) => exam.code), "Genel"];
 
 const QUESTION_TYPE_LABELS: Record<HomeworkQuestionType, string> = {
   multiple_choice: "Çoktan Seçmeli",

@@ -68,7 +68,7 @@ export const categories: Record<ExamCategoryId, { label: string; description: st
   },
   "admission-specific": {
     label: "Admissions & Programme-Specific Tests",
-    description: "Specialized selection exams for engineering, medicine, law, architecture, business, and graduate entry.",
+    description: "Specialized selection exams for academic reasoning, engineering, medicine, law, business, and graduate entry.",
   },
 };
 
@@ -114,7 +114,7 @@ export const examText: ExamTextMap = {
     ctaLabel: "Explore SAT preparation",
   },
   ACT: {
-    title: "ACT (American College Testing)",
+    title: "ACT",
     shortDescription: "Fast-paced problem solving, scientific reasoning and time-management strategies for top US colleges.",
     purpose: "Standardized admissions test for undergraduate admissions in the US and globally",
     audience: "High school students preparing for US and global admissions",
@@ -138,11 +138,11 @@ export const examText: ExamTextMap = {
     ctaLabel: "Explore TMUA preparation",
   },
   TARA: {
-    title: "Architecture Admissions Test (TEST-ARCHED)",
-    shortDescription: "Spatial reasoning, 3D visualization, technical drawing logic and architectural history preparation.",
-    purpose: "Admission to Italian single-cycle architecture degrees and international architecture programmes",
-    audience: "Applicants to architecture and spatial design degrees",
-    subjects: ["Spatial Reasoning", "Physics & Structures", "History of Architecture", "Mathematics"],
+    title: "Test of Academic Reasoning for Admissions (TARA)",
+    shortDescription: "Critical Thinking, Problem Solving and Writing Task preparation for the UAT-UK admissions test.",
+    purpose: "Programme-specific academic reasoning assessment for participating universities",
+    audience: "Applicants to programmes that use TARA in the relevant admission cycle",
+    subjects: ["Critical Thinking", "Problem Solving", "Writing Task"],
     ctaLabel: "Explore TARA preparation",
   },
   UCAT: {
@@ -150,7 +150,7 @@ export const examText: ExamTextMap = {
     shortDescription: "Preparation for cognitive skills, decision making and timing in the medical admissions test.",
     purpose: "Admission to UK, Australia and international medicine and dentistry programmes",
     audience: "Medicine and dentistry applicants",
-    subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "Abstract Reasoning", "SJT"],
+    subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "Situational Judgement"],
     ctaLabel: "Explore UCAT preparation",
   },
   LNAT: {
@@ -187,7 +187,7 @@ export const examText: ExamTextMap = {
   },
   LSAT: {
     title: "Law School Admission Test (LSAT)",
-    shortDescription: "Analytical reasoning, logical deduction, logic games, and reading comprehension for law schools.",
+    shortDescription: "Logical Reasoning and Reading Comprehension preparation for law schools.",
     purpose: "Admission to JD and global law degree programmes in the US and Canada",
     audience: "Prospective law school and JD applicants",
     subjects: ["Logical Reasoning", "Analytical Reasoning", "Reading Comprehension", "Argumentative Writing"],

@@ -30,6 +30,7 @@ export interface GroupedSearchResults {
     qualifications: SearchResultItem[];
   };
   totalCount: number;
+  sourceStatus?: "database" | "local" | "local-exams";
 }
 
 interface DataItem {
@@ -563,7 +564,7 @@ const SEARCH_DATABASE: DataItem[] = [
   {
     id: "qual-act",
     type: "QUALIFICATION",
-    title: "ACT (American College Testing)",
+    title: "ACT",
     subtitle: "International Curriculum / Diploma",
     slug: "act",
     aliases: ["act", "act test", "american college testing"],
@@ -596,13 +597,13 @@ const SEARCH_DATABASE: DataItem[] = [
   {
     id: "qual-tara",
     type: "QUALIFICATION",
-    title: "Architecture Admissions Test (TARA / TEST-ARCHED)",
+    title: "Test of Academic Reasoning for Admissions (TARA)",
     subtitle: "Admission / Program-Specific",
     slug: "tara",
-    aliases: ["tara", "test arched", "test di ammissione ad architettura", "architecture admission test", "mimarlik kabul sinavi"],
+    aliases: ["tara", "test of academic reasoning for admissions", "academic reasoning admissions test"],
     popularityScore: 88,
-    officialUrl: "https://www.cisiaonline.it",
-    badge: "Architecture",
+    officialUrl: "https://esat-tmua.ac.uk/about-the-tests/tara/",
+    badge: "Academic Reasoning",
   },
   {
     id: "qual-ucat",
@@ -684,18 +685,18 @@ const SEARCH_DATABASE: DataItem[] = [
   {
     id: "qual-gmat",
     type: "QUALIFICATION",
-    title: "Graduate Management Admission Test (GMAT Focus)",
+    title: "GMAT Exam",
     subtitle: "Admission / Program-Specific",
     slug: "gmat",
     aliases: ["gmat", "gmat focus", "graduate management admission test", "gmat focus edition"],
     popularityScore: 95,
-    officialUrl: "https://www.mba.com",
+    officialUrl: "https://www.mba.com/exams/gmat-exam",
     badge: "MBA Test",
   },
   {
     id: "qual-ompt",
     type: "QUALIFICATION",
-    title: "Online Math Placement Test (OMPT)",
+    title: "Online Mathematics Placement Test (OMPT)",
     subtitle: "Admission / Program-Specific",
     slug: "ompt",
     aliases: ["ompt", "ompt-a", "ompt-b", "ompt-c", "ompt-d", "ompt-e", "ompt-f", "online math placement test", "hollanda matematik sinavi"],

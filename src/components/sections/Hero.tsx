@@ -11,6 +11,7 @@ import { TextReveal } from "@/components/text-reveal";
 import { TextRotate } from "@/components/ui/text-rotate";
 import { useLocale } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
+import { canonicalExamCodes } from "@/content/canonical-exams";
 
 const rise = (skip: boolean): Variants => ({
   hidden: { opacity: skip ? 1 : 0, y: skip ? 0 : 18 },
@@ -46,7 +47,7 @@ export function Hero() {
             transition={{ duration: skip ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="flex min-h-7 flex-wrap items-center gap-x-2 text-[12px] font-semibold tracking-[0.18em] text-[#68756C] uppercase font-ui"
           >
-            <span>{hero.eyebrow}</span><span aria-hidden="true">·</span><span className="inline-flex items-center whitespace-nowrap">{locale === "tr" ? "Şimdi sırada" : "Prepare for"} <TextRotate texts={["IB", "SAT", "AP", "ESAT", "TMUA", "IGCSE"]} rotationInterval={2500} splitBy="characters" mainClassName="ml-1 inline-flex min-w-[6.5ch] overflow-hidden text-[#819586]" /></span>
+            <span>{hero.eyebrow}</span><span aria-hidden="true">·</span><span className="inline-flex items-center whitespace-nowrap">{locale === "tr" ? "Şimdi sırada" : "Prepare for"} <TextRotate texts={[...canonicalExamCodes]} rotationInterval={2500} splitBy="characters" mainClassName="ml-1 inline-flex min-w-[6.5ch] overflow-hidden text-[#819586]" /></span>
           </motion.div>
 
           <motion.h1

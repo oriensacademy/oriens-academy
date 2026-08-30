@@ -77,6 +77,7 @@ export function TestimonialModal({
   }, [editingTestimonial, isOpen]);
 
   if (!isOpen) return null;
+  const isImported = Boolean(editingTestimonial?.source_hash || editingTestimonial?.imported_from_source);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,11 +99,13 @@ export function TestimonialModal({
 
     if (editingTestimonial) {
       const { success, error } = await updateAdminTestimonial(editingTestimonial.id, {
-        name: name.trim(),
-        quote: quote.trim(),
-        context: context.trim() || null,
-        exam_code: examCode || null,
-        locale,
+        ...(isImported ? {} : {
+          name: name.trim(),
+          quote: quote.trim(),
+          context: context.trim() || null,
+          exam_code: examCode || null,
+          locale,
+        }),
         active,
         verified,
         featured,
@@ -193,6 +196,11 @@ export function TestimonialModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {isImported && (
+            <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">
+              Bu kayıt kaynak dosyadan içe aktarılmıştır. İsim, bağlam, dil, sınav ve yorum metni değiştirilemez; yalnızca yayın, öne çıkarma, sıralama ve görsel alanları yönetilebilir.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
@@ -201,6 +209,7 @@ export function TestimonialModal({
               <input
                 type="text"
                 required
+                disabled={isImported}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Örn: Elif S."
@@ -215,6 +224,7 @@ export function TestimonialModal({
               <input
                 type="text"
                 value={context}
+                disabled={isImported}
                 onChange={(e) => setContext(e.target.value)}
                 placeholder="Örn: IB Math AA 7, Zurich"
                 className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground placeholder:text-muted-foreground"
@@ -241,6 +251,7 @@ export function TestimonialModal({
             </label>
             <textarea
               required
+              disabled={isImported}
               rows={4}
               value={quote}
               onChange={(e) => setQuote(e.target.value)}
@@ -256,6 +267,7 @@ export function TestimonialModal({
               </label>
               <select
                 value={examCode}
+                disabled={isImported}
                 onChange={(e) => setExamCode(e.target.value)}
                 className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
               >
@@ -274,6 +286,7 @@ export function TestimonialModal({
               </label>
               <select
                 value={locale}
+                disabled={isImported}
                 onChange={(e) => setLocale(e.target.value)}
                 className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
               >

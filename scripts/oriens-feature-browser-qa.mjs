@@ -40,7 +40,7 @@ for (const route of ["/en", "/tr/sinavlar", "/en/exams", "/tr/sinavlar/sat", "/e
 await page.setViewportSize({ width: 390, height: 900 });
 await page.goto(`${base}/tr/kendini-dene`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(1200);
-check((await page.getByRole("radio").count()) === 12, "TR assessment does not list all 12 exams");
+check((await page.getByRole("radio").count()) === 18, "TR assessment does not list all 18 exams");
 await page.getByRole("button", { name: "Testi Başlat" }).click();
 for (let index = 0; index < 6; index += 1) {
   await page.locator("fieldset input[type=radio]").first().check();
@@ -54,7 +54,7 @@ check(trBody.includes("Bu test yapısı örnek içerikle hazırlanmıştır."), 
 
 await page.goto(`${base}/en/test-yourself`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(1200);
-check((await page.getByRole("radio").count()) === 12, "EN assessment does not list all 12 exams");
+check((await page.getByRole("radio").count()) === 18, "EN assessment does not list all 18 exams");
 check((await page.getByText("This assessment currently uses placeholder content.", { exact: false }).count()) > 0, "EN placeholder disclaimer is missing");
 
 await page.setViewportSize({ width: 1440, height: 1000 });

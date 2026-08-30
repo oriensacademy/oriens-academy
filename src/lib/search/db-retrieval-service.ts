@@ -1,6 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { GroupedSearchResults, SearchResultItem, SearchResultType } from "./retrieval-engine";
-import { retrieveSearchResults } from "./retrieval-engine";
+import { emptySearchResults, retrieveCanonicalExamFallback } from "./canonical-exam-fallback";
 import { parseQuery } from "./query-parser";
 import { normalizeQuery } from "./query-normalizer";
 
@@ -37,24 +37,6 @@ const DEFAULT_LIMITS: SearchLimits = {
 // supplies the same canonical exam results.
 const SEARCH_RPC_TIMEOUT_MS = 5_000;
 
-function emptyResults(rawQuery: string): GroupedSearchResults {
-  const parsedQuery = parseQuery(rawQuery, { includePredefinedUniversities: false });
-
-  return {
-    query: rawQuery,
-    intent: parsedQuery.intent,
-    confidence: parsedQuery.confidence,
-    parsedQuery,
-    groups: {
-      universities: [],
-      programs: [],
-      countries: [],
-      qualifications: [],
-    },
-    totalCount: 0,
-  };
-}
-
 function toSearchResult(row: DatabaseSearchRow): SearchResultItem {
   return {
     id: row.entity_id,
@@ -78,7 +60,7 @@ export async function retrieveSearchResultsFromDatabase(
   const cleanQuery = rawQuery.trim();
   const normalized = normalizeQuery(cleanQuery);
 
-  if (!normalized) return emptyResults("");
+  if (!normalized) return emptySearchResults("");
 
   const parsedQuery = parseQuery(cleanQuery, { includePredefinedUniversities: false });
   const perTypeLimit = Math.max(
@@ -96,6 +78,7 @@ export async function retrieveSearchResultsFromDatabase(
     ...parsedQuery.programs.map((entity) => entity.matchedTerm),
   ];
   const normalizedRecognizedTerms = recognizedTerms.map(normalizeQuery).filter(Boolean);
+  const canonicalExamMatches = retrieveCanonicalExamFallback(cleanQuery).groups.qualifications;
   const residualTerm = normalizedRecognizedTerms
     .reduce((remaining, term) => remaining.replace(new RegExp(`(?:^|\\s)${escapeRegExp(term)}(?=\\s|$)`, "g"), " "), normalized)
     .replace(/\s+/g, " ")
@@ -108,31 +91,45 @@ export async function retrieveSearchResultsFromDatabase(
 
   const rowsByEntity = new Map<string, DatabaseSearchRow>();
   const matchedTermsByEntity = new Map<string, Set<string>>();
+  let hadSuccessfulDatabaseResponse = false;
 
   try {
     const supabase = getSupabaseClient();
     const settledResponses = await Promise.allSettled(
       searchTerms.map(async (term) => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), SEARCH_RPC_TIMEOUT_MS);
-
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return await (supabase as any)
-            .rpc("search_autocomplete_entities", {
-              p_query: term,
-              p_limit: perTypeLimit,
-            })
-            .abortSignal(controller.signal);
-        } finally {
-          clearTimeout(timeoutId);
-        }
+        const request = async () => {
+          const controller = new AbortController();
+          let timeoutId: ReturnType<typeof setTimeout>;
+          try {
+            // Supabase's abort signal is advisory; race it as well so a remote
+            // statement timeout can never leave the customer UI loading.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const rpcRequest = (supabase as any)
+              .rpc("search_autocomplete_entities", {
+                p_query: term,
+                p_limit: perTypeLimit,
+              })
+              .abortSignal(controller.signal);
+            const clientTimeout = new Promise<{ data: null; error: { code: string } }>((resolve) => {
+              timeoutId = setTimeout(() => {
+                controller.abort();
+                resolve({ data: null, error: { code: "CLIENT_TIMEOUT" } });
+              }, SEARCH_RPC_TIMEOUT_MS);
+            });
+            return await Promise.race([rpcRequest, clientTimeout]);
+          } finally {
+            clearTimeout(timeoutId!);
+          }
+        };
+        const first = await request();
+        return first.error?.code === "57014" ? request() : first;
       })
     );
 
     for (let responseIndex = 0; responseIndex < settledResponses.length; responseIndex++) {
       const settled = settledResponses[responseIndex];
       if (settled.status === "fulfilled" && !settled.value.error && Array.isArray(settled.value.data)) {
+        hadSuccessfulDatabaseResponse = true;
         for (const row of settled.value.data as DatabaseSearchRow[]) {
           const key = `${row.entity_type}:${row.entity_id}`;
           const matchedTerms = matchedTermsByEntity.get(key) || new Set<string>();
@@ -153,13 +150,21 @@ export async function retrieveSearchResultsFromDatabase(
     // Database connection issue handled below via deterministic fallback
   }
 
-  // If the database returned no items or is unreachable, fall back to the built-in deterministic engine
+  // Preserve a genuine zero-result response as a no-results state. The small
+  // canonical fallback is reserved for an actual database failure/timeout.
   if (rowsByEntity.size === 0) {
-    return retrieveSearchResults(cleanQuery, limits);
+    if (hadSuccessfulDatabaseResponse) {
+      const empty = emptySearchResults(cleanQuery);
+      return {
+        ...empty,
+        sourceStatus: "database",
+        groups: { ...empty.groups, qualifications: canonicalExamMatches.slice(0, limits.qualifications) },
+        totalCount: canonicalExamMatches.slice(0, limits.qualifications).length,
+      };
+    }
+    return retrieveCanonicalExamFallback(cleanQuery);
   }
 
-  const hasStructuredEntity = parsedQuery.countries.length > 0 || parsedQuery.qualifications.length > 0;
-  const hasUniversityEntity = parsedQuery.universities.length > 0;
   const explicitUniversity = residualTerm
     ? [...rowsByEntity.values()]
         .filter((row) => row.entity_type === "UNIVERSITY" && matchedTermsByEntity.get(`UNIVERSITY:${row.entity_id}`)?.has(residualTerm))
@@ -199,6 +204,18 @@ export async function retrieveSearchResultsFromDatabase(
     }
   }
 
+  // The supported 18 are a local canonical contract. Overlay a matching exam
+  // when the global RPC is incomplete, while keeping the worldwide university
+  // catalog database-only and avoiding duplicate qualification entries.
+  const qualificationSlugs = new Set(grouped.qualifications.map((item) => item.slug));
+  for (const exam of canonicalExamMatches) {
+    if (grouped.qualifications.length >= limits.qualifications) break;
+    if (!qualificationSlugs.has(exam.slug)) {
+      grouped.qualifications.push(exam);
+      qualificationSlugs.add(exam.slug);
+    }
+  }
+
   const resolvedIntent = parsedQuery.intent === "MIXED" && grouped.universities.length > 0
     ? "UNIVERSITY_SEARCH"
     : parsedQuery.intent;
@@ -210,6 +227,7 @@ export async function retrieveSearchResultsFromDatabase(
       ? Math.max(parsedQuery.confidence, 0.9)
       : parsedQuery.confidence,
     parsedQuery,
+    sourceStatus: "database",
     groups: grouped,
     totalCount:
       grouped.universities.length +

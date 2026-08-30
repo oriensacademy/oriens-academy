@@ -28,6 +28,7 @@ import {
   type QuestionBankItem,
   type QuestionLanguage,
 } from "@/lib/homework";
+import { canonicalExams } from "@/content/canonical-exams";
 
 interface ContentEditorModalProps {
   isOpen: boolean;
@@ -38,14 +39,7 @@ interface ContentEditorModalProps {
 
 const SUPPORTED_EXAM_OPTIONS = [
   { value: "", label: "Genel / Sınavsız" },
-  { value: "ib", label: "IB (International Baccalaureate)" },
-  { value: "ap", label: "AP (Advanced Placement)" },
-  { value: "sat", label: "Digital SAT" },
-  { value: "act", label: "ACT" },
-  { value: "ielts", label: "IELTS" },
-  { value: "toefl", label: "TOEFL" },
-  { value: "matura", label: "Matura" },
-  { value: "abitur", label: "Abitur" },
+  ...canonicalExams.map((exam) => ({ value: exam.code, label: exam.displayNameTr })),
   { value: "other", label: "Diğer" },
 ];
 

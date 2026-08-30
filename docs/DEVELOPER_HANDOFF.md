@@ -36,7 +36,7 @@ Runtime APIs:
 
 ## Content, Exams and Relationships
 
-Locale dictionaries are in `src/content/tr` and `src/content/en`. Shared exam structure is in `src/content/exams.ts` and the definitive code tuple is in `src/content/shared.ts`: IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT and OMPT. Detail copy is in the locale-specific `exam-details.ts` files.
+Locale dictionaries are in `src/content/tr` and `src/content/en`. The definitive supported catalog is `src/content/canonical-exams.ts`: IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT and OMPT. UKCAT is a legacy alias for UCAT, not a public catalog entry. Detail copy is in the locale-specific `exam-details.ts` files.
 
 University/destination relationships are maintained in `src/data/exam-university-map.ts`; study regions are derived in `src/data/study-destinations.ts`. Admission/search data has a second, database-backed architecture under `src/lib/admission*`, `program-ingestion`, `requirement-extraction`, `qualification-normalization`, `search` and related migrations. Preserve source URLs and verification dates when updating relationship data.
 

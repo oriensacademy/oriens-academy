@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import * as d3 from "d3";
 import { cn } from "@/lib/utils";
-import type { AdmissionRelationship } from "@/data/exam-university-map";
+import type { AdmissionRelationship } from "@/components/discovery/globe-types";
 
 export interface UniversityMarker {
   id: string;

@@ -23,8 +23,8 @@ export function PricingComparison({
   bookingHref: string;
 }) {
   const labels = locale === "tr"
-    ? { package: "Paket", discount: "İndirim Oranı", unit: "Birim Ücret", total: "Toplam", unitLesson: "Birim ders", cta: "Görüşme Planla" }
-    : { package: "Package", discount: "Discount", unit: "Unit Price", total: "Total", unitLesson: "Per lesson", cta: "Book a Consultation" };
+    ? { package: "Paket", discount: "İndirim Oranı", unit: "Birim Ders Ücreti", total: "Toplam", unitLesson: "Birim Ders Ücreti", cta: "Görüşme Planla" }
+    : { package: "Package", discount: "Discount", unit: "Unit Lesson Price", total: "Total", unitLesson: "Unit Lesson Price", cta: "Book a Consultation" };
 
   return <>
     <div className="hidden overflow-hidden rounded-[24px] border border-[#CBD5CC] bg-[#FAF8F2] shadow-[0_20px_55px_rgba(16,39,27,0.08)] md:block">

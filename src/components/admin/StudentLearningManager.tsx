@@ -43,6 +43,7 @@ import { HomeworkSubmissionReview } from "@/components/admin/HomeworkSubmissionR
 import type { Tables } from "@/types/database.types";
 import { listStudentExamAttempts, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
+import { canonicalExams } from "@/content/canonical-exams";
 
 export type LearningSection = "lessons" | "homework" | "packages" | "payments" | "notes" | "exam_history";
 
@@ -376,7 +377,16 @@ function LessonsPanel({
           <div className="grid gap-2 sm:grid-cols-3">
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Sınav Kodu</label>
-              <Input placeholder="SAT, IB, AP, ESAT vb." value={form.examCode} onChange={(v) => setForm({ ...form, examCode: v })} />
+              <select
+                value={form.examCode}
+                onChange={(event) => setForm({ ...form, examCode: event.target.value })}
+                className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <option value="">Genel / Sınavsız</option>
+                {canonicalExams.map((exam) => (
+                  <option key={exam.code} value={exam.code}>{exam.displayNameTr}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Tarih & Saat</label>

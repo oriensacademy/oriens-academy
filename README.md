@@ -91,7 +91,7 @@ The locale prefix is mandatory. Turkish is the default redirect target (`public/
 | Assessment | `/tr/degerlendirme/` | `/en/assessment/` |
 | Privacy / terms | `/tr/privacy/`, `/tr/terms/` | `/en/privacy/`, `/en/terms/` |
 
-Localized content is in `src/content/tr`, `src/content/en`, and shared records in `src/content`. The locale switcher preserves the equivalent page and exam slug. Supported exams are IB, AP, SAT, ESAT, TARA, TMUA, IGCSE, GRE, GMAT, UKCAT, IMAT and OMPT.
+Localized content is in `src/content/tr`, `src/content/en`, and shared records in `src/content`. The locale switcher preserves the equivalent page and exam slug. The supported public catalog is defined by `src/content/canonical-exams.ts`: IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT and OMPT. UKCAT is retained only as a legacy alias for UCAT.
 
 ## UI, Brand and Interactive Components
 

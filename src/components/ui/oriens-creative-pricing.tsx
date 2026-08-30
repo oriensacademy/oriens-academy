@@ -78,7 +78,7 @@ export function CreativePricing({
             </span>
             <span className="text-xs text-[#607065]" aria-hidden="true">·</span>
             <span className="text-xs text-[#526458]">
-              {locale === "tr" ? "Her öğrenci için aynı standart ücretler." : "Standard pricing for every student."}
+              {locale === "tr" ? "Her öğrenci için aynı standart ücretler." : "The same standard rates for every student."}
             </span>
           </div>
         </div>

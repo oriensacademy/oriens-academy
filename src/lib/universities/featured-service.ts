@@ -1,6 +1,6 @@
 import type { ExamCode } from "@/content/exams";
 import { examRecords } from "@/content/exams";
-import type { AdmissionRelationship } from "@/data/exam-university-map";
+import type { AdmissionRelationship } from "@/components/discovery/globe-types";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { StudyUniversity } from "@/components/discovery/globe-types";
 
@@ -9,6 +9,7 @@ type RequirementRow = {
   status: "required" | "accepted" | "recommended" | "alternative" | "not_required" | "unknown";
   scope: "university" | "faculty" | "programme";
   programme_name: string | null;
+  faculty_name: string | null;
   summary_tr: string;
   summary_en: string;
   official_source_url: string;
@@ -55,6 +56,17 @@ export async function loadFeaturedUniversities(
     const requirements = (row.requirements || []).filter(
       (item): item is RequirementRow & { exam: ExamCode } => examCodes.has(item.exam as ExamCode),
     );
+    const chips = requirements.map((item) => {
+      const contextTr = item.programme_name || item.faculty_name || item.summary_tr;
+      const contextEn = item.programme_name || item.faculty_name || item.summary_en;
+      return {
+        exam: item.exam,
+        relationship: relationship(item),
+        labelTr: `${item.exam} · ${contextTr}`,
+        labelEn: `${item.exam} · ${contextEn}`,
+        evidence: `${item.programme_name || item.faculty_name || item.scope} · ${item.admissions_cycle || "current"}`,
+      };
+    });
     return {
       id: row.id,
       name: row.name,
@@ -66,13 +78,7 @@ export async function loadFeaturedUniversities(
       officialUrl: row.official_url || undefined,
       admissionsUrl: row.admissions_url || undefined,
       verifiedAt: row.verified_at?.slice(0, 10),
-      examChips: requirements.map((item) => ({
-        exam: item.exam,
-        relationship: relationship(item),
-        labelTr: item.summary_tr,
-        labelEn: item.summary_en,
-        evidence: `${item.programme_name || item.scope} · ${item.admissions_cycle || "current"}`,
-      })),
+      examChips: chips,
       examRelations: requirements.map((item) => ({
         examId: item.exam,
         relationship: relationship(item),

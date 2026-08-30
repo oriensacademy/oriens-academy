@@ -45,8 +45,9 @@ console.log("\n2. Testing Canonical Exam-Route Resolver...");
 {
   assert.equal(resolveExamSlug("sat"), "sat");
   assert.equal(resolveExamSlug("SAT"), "sat");
-  assert.equal(resolveExamSlug("ucat"), "ukcat");
-  assert.equal(resolveExamSlug("UCAT"), "ukcat");
+  assert.equal(resolveExamSlug("ucat"), "ucat");
+  assert.equal(resolveExamSlug("UCAT"), "ucat");
+  assert.equal(resolveExamSlug("ukcat"), "ucat");
   assert.equal(resolveExamSlug("ib-diploma"), "ib");
   assert.equal(resolveExamSlug("advanced-placement"), "ap");
   assert.equal(resolveExamSlug("unknown-slug"), null);
@@ -54,7 +55,7 @@ console.log("\n2. Testing Canonical Exam-Route Resolver...");
 
   assert.equal(resolveExamRoute("tr", "sat"), "/tr/sinavlar/sat");
   assert.equal(resolveExamRoute("en", "SAT"), "/en/exams/sat");
-  assert.equal(resolveExamRoute("tr", "ucat"), "/tr/sinavlar/ukcat");
+  assert.equal(resolveExamRoute("tr", "ucat"), "/tr/sinavlar/ucat");
   assert.equal(resolveExamRoute("en", "unknown-exam"), "/en/exams");
   assert.equal(resolveExamRoute("tr", null), "/tr/sinavlar");
 

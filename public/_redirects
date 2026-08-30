@@ -1,3 +1,5 @@
 # Cloudflare Pages Redirects for Oriens Academy
 # Root language redirect: clean host-level redirect to Turkish default locale
 /    /tr/    302
+/tr/sinavlar/ukcat/    /tr/sinavlar/ucat/    301
+/en/exams/ukcat/       /en/exams/ucat/       301

@@ -23,11 +23,15 @@ export function AboutPage() {
   const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
   const metrics = content.outcomes.metrics.filter((metric) => metric.active).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const [testimonialRows, setTestimonialRows] = useState<TestimonialRow[]>([]);
+  const [testimonialsUnavailable, setTestimonialsUnavailable] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    getPublicTestimonials(locale).then((rows) => {
-      if (!cancelled) setTestimonialRows(rows);
+    getPublicTestimonials(locale).then(({ data, error }) => {
+      if (!cancelled) {
+        setTestimonialRows(data);
+        setTestimonialsUnavailable(Boolean(error));
+      }
     });
     return () => { cancelled = true; };
   }, [locale]);
@@ -144,6 +148,16 @@ export function AboutPage() {
                 colors={{ name: "#10271B", designation: "#68756C", testimony: "#34483D", arrowBackground: "#10271B", arrowForeground: "#FFFFFF", arrowHoverBackground: "#819586" }}
               />
             </Reveal>
+          </div>
+        </section>
+      )}
+
+      {testimonialsUnavailable && (
+        <section className="py-12" aria-live="polite">
+          <div className="mx-auto max-w-[1280px] px-6 md:px-12">
+            <p className="rounded-2xl border border-border bg-surface-muted p-6 text-center text-sm text-muted-foreground">
+              {locale === "tr" ? "Öğrenci yorumları şu anda yüklenemiyor. Lütfen daha sonra tekrar deneyin." : "Student reviews are temporarily unavailable. Please try again later."}
+            </p>
           </div>
         </section>
       )}

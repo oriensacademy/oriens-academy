@@ -1,0 +1,169 @@
+{
+  "protectedAfter": {
+    "student_profiles": 4,
+    "payment_transactions": 12,
+    "pricing_packages": 6,
+    "student_lessons": 0,
+    "student_package_purchases": 11
+  },
+  "exams": 18,
+  "questions": 108,
+  "universityCounts": {
+    "totalActive": 26785,
+    "eligible": 25618,
+    "needsReview": 824,
+    "ineligible": 343,
+    "countries": 224
+  },
+  "searchResults": {
+    "IB": {
+      "top": "International Baccalaureate (IB)",
+      "top5": [
+        "International Baccalaureate (IB)"
+      ],
+      "ms": 254.2
+    },
+    "International Baccalaureate": {
+      "top": "International Baccalaureate (IB)",
+      "top5": [
+        "International Baccalaureate (IB)"
+      ],
+      "ms": 247.6
+    },
+    "A Level": {
+      "top": "A-Level",
+      "top5": [
+        "A-Level"
+      ],
+      "ms": 256.6
+    },
+    "A-Level": {
+      "top": "A-Level",
+      "top5": [
+        "A-Level"
+      ],
+      "ms": 276.4
+    },
+    "UKCAT": {
+      "top": "UCAT",
+      "top5": [
+        "UCAT"
+      ],
+      "ms": 274.2
+    },
+    "Cambdrige": {
+      "top": "University of Cambridge",
+      "top5": [
+        "University of Cambridge"
+      ],
+      "ms": 264.8
+    },
+    "Oxfrod": {
+      "top": "University of Oxford",
+      "top5": [
+        "University of Oxford"
+      ],
+      "ms": 247
+    },
+    "Standford": {
+      "top": "Stanford University",
+      "top5": [
+        "Stanford University"
+      ],
+      "ms": 245.2
+    },
+    "Harward": {
+      "top": "Harvard University",
+      "top5": [
+        "Harvard University"
+      ],
+      "ms": 284.5
+    },
+    "Bokoni": {
+      "top": "Bocconi University",
+      "top5": [
+        "Bocconi University"
+      ],
+      "ms": 256.5
+    },
+    "Oxford": {
+      "top": "University of Oxford",
+      "top5": [
+        "University of Oxford"
+      ],
+      "ms": 251.7
+    },
+    "Cambridge": {
+      "top": "University of Cambridge",
+      "top5": [
+        "University of Cambridge"
+      ],
+      "ms": 254.7
+    },
+    "MIT": {
+      "top": "Massachusetts Institute of Technology",
+      "top5": [
+        "Massachusetts Institute of Technology",
+        "Manukau Institute of Technology",
+        "University of Southern Mindanao",
+        "Myanmar Institute of Theology",
+        "Melbourne Institute of Technology"
+      ],
+      "ms": 358.8
+    },
+    "Tokyo": {
+      "top": "The University of Tokyo",
+      "top5": [
+        "The University of Tokyo"
+      ],
+      "ms": 285.4
+    },
+    "Cape Town": {
+      "top": "University of Cape Town",
+      "top5": [
+        "University of Cape Town"
+      ],
+      "ms": 255
+    },
+    "São Paulo": {
+      "top": "Universidade de São Paulo",
+      "top5": [
+        "Universidade de São Paulo"
+      ],
+      "ms": 311.8
+    },
+    "Istanbul Technical University": {
+      "top": "Istanbul Technical University",
+      "top5": [
+        "Istanbul Technical University"
+      ],
+      "ms": 261.8
+    },
+    "NUS": {
+      "top": "National University of Singapore",
+      "top5": [
+        "National University of Singapore",
+        "Technical and Vocational University",
+        "Admiral Makarov National University of Shipbuilding",
+        "National University System"
+      ],
+      "ms": 249.2
+    }
+  },
+  "latency": {
+    "p50": 256.5,
+    "p95": 358.8,
+    "p99": 358.8,
+    "timeouts": 0
+  },
+  "featured": {
+    "countryIsolation": "PASS",
+    "max3": "PASS",
+    "overlayCount": 593
+  },
+  "requirements": {
+    "verified": 8,
+    "needsReview": 0
+  },
+  "rls": "PASS"
+}

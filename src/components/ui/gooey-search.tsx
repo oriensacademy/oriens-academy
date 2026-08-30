@@ -8,7 +8,7 @@ import { useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 
 import { retrieveSearchResultsFromDatabase } from "@/lib/search/db-retrieval-service";
-import { retrieveSearchResults } from "@/lib/search/retrieval-engine";
+import { retrieveCanonicalExamFallback } from "@/lib/search/canonical-exam-fallback";
 import { localizedPath, resolveExamRoute } from "@/lib/routes";
 
 export type SearchResultType = "UNIVERSITY" | "PROGRAM" | "COUNTRY" | "QUALIFICATION";
@@ -38,6 +38,7 @@ export interface GroupedSearchResults {
     qualifications: SearchResultItem[];
   };
   totalCount: number;
+  sourceStatus?: "database" | "local" | "local-exams";
 }
 
 const ROTATING_EXAMS_TR = [
@@ -130,14 +131,14 @@ export function GooeySearchBar() {
         if (isSubscribed) {
           setSearchResults(data);
           setIsFetching(false);
-          setIsError(false);
+          setIsError(data.sourceStatus === "local-exams");
         }
       })
       .catch(() => {
         if (isSubscribed) {
-          const fallback = retrieveSearchResults(query);
+          const fallback = retrieveCanonicalExamFallback(query);
           setSearchResults(fallback);
-          setIsError(false);
+          setIsError(true);
           setIsFetching(false);
         }
       });
@@ -274,6 +275,8 @@ export function GooeySearchBar() {
               role="combobox"
               aria-expanded={debouncedSearchText.trim().length > 0}
               aria-controls="academic-search-results"
+              aria-autocomplete="list"
+              aria-activedescendant={allItems[selectedIndex] ? `academic-search-option-${selectedIndex}` : undefined}
               className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden font-sans sm:text-base"
             />
 
@@ -281,7 +284,7 @@ export function GooeySearchBar() {
               <button
                 type="button"
                 onClick={handleClose}
-                className="p-1 text-muted-foreground hover:text-foreground rounded-full transition-colors cursor-pointer"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground cursor-pointer"
                 aria-label={isTr ? "Aramayı temizle" : "Clear search"}
               >
                 <X className="size-3.5" />
@@ -298,15 +301,28 @@ export function GooeySearchBar() {
                 exit={{ opacity: 0, y: 6 }}
                 transition={{ duration: 0.15 }}
                 id="academic-search-results"
+                role="listbox"
                 className="absolute inset-x-0 top-full z-50 mt-2 max-h-96 overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-xl divide-y divide-border/60"
               >
-                {visibleIsError ? (
-                  <div className="p-4 text-center text-xs text-amber-600 flex flex-col items-center gap-1.5 font-sans">
+                {isLoading ? (
+                  <div role="status" className="flex min-h-20 items-center justify-center gap-2 p-4 text-xs text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
+                    <span>{isTr ? "Aranıyor…" : "Searching…"}</span>
+                  </div>
+                ) : visibleIsError && (!visibleSearchResults || visibleSearchResults.totalCount === 0) ? (
+                  <div role="status" className="p-4 text-center text-xs text-amber-700 flex flex-col items-center gap-1.5 font-sans">
                     <Info className="size-4 text-amber-500" />
-                    <span>{isTr ? "Arama geçici olarak kullanılamıyor." : "Search is temporarily unavailable."}</span>
+                    <span>{isTr ? "Üniversite araması şu anda kullanılamıyor. Lütfen yeniden deneyin." : "University search is temporarily unavailable. Please try again."}</span>
                   </div>
                 ) : visibleSearchResults && visibleSearchResults.totalCount > 0 ? (
                   <div className="space-y-3">
+                    {visibleIsError && (
+                      <div role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        {isTr
+                          ? "Üniversite araması şu anda kullanılamıyor; yalnızca desteklenen sınav sonuçları gösteriliyor."
+                          : "University search is temporarily unavailable; only supported exam results are shown."}
+                      </div>
+                    )}
                     {/* UNIVERSITIES */}
                     {visibleSearchResults.groups.universities.length > 0 && (
                       <div className="py-1">
@@ -321,11 +337,12 @@ export function GooeySearchBar() {
                             return (
                               <li
                                 key={item.id}
+                                id={`academic-search-option-${globalIdx}`}
                                 role="option"
                                 aria-selected={isActive}
                                 onClick={() => handleSelectItem(item)}
                                 className={cn(
-                                  "flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors block text-left",
+                                  "flex min-h-11 items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors text-left",
                                   isActive ? "bg-muted border-l-2 border-primary" : "hover:bg-muted/50"
                                 )}
                               >
@@ -353,7 +370,7 @@ export function GooeySearchBar() {
                       <div className="py-1">
                         <div className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold tracking-wider text-amber-700 dark:text-amber-400 uppercase">
                           <Award className="size-3.5" />
-                          {isTr ? "Sınavlar ve Yeterlilikler" : "Qualifications & Exams"}
+                          {isTr ? "Sınavlar" : "Exams"}
                         </div>
                         <ul className="mt-1 space-y-1">
                           {visibleSearchResults.groups.qualifications.map((item) => {
@@ -362,11 +379,12 @@ export function GooeySearchBar() {
                             return (
                               <li
                                 key={item.id}
+                                id={`academic-search-option-${globalIdx}`}
                                 role="option"
                                 aria-selected={isActive}
                                 onClick={() => handleSelectItem(item)}
                                 className={cn(
-                                  "flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors block text-left",
+                                  "flex min-h-11 items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors text-left",
                                   isActive ? "bg-muted border-l-2 border-amber-500" : "hover:bg-muted/50"
                                 )}
                               >
@@ -403,11 +421,12 @@ export function GooeySearchBar() {
                             return (
                               <li
                                 key={item.id}
+                                id={`academic-search-option-${globalIdx}`}
                                 role="option"
                                 aria-selected={isActive}
                                 onClick={() => handleSelectItem(item)}
                                 className={cn(
-                                  "flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors block text-left",
+                                  "flex min-h-11 items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors text-left",
                                   isActive ? "bg-muted border-l-2 border-sky-500" : "hover:bg-muted/50"
                                 )}
                               >
@@ -444,11 +463,12 @@ export function GooeySearchBar() {
                             return (
                               <li
                                 key={item.id}
+                                id={`academic-search-option-${globalIdx}`}
                                 role="option"
                                 aria-selected={isActive}
                                 onClick={() => handleSelectItem(item)}
                                 className={cn(
-                                  "flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors block text-left",
+                                  "flex min-h-11 items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors text-left",
                                   isActive ? "bg-muted border-l-2 border-teal-500" : "hover:bg-muted/50"
                                 )}
                               >

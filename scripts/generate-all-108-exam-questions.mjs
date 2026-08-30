@@ -510,12 +510,12 @@ const ALL_108_QUESTIONS = {
       exp: "Total daily dose = 60 kg × 5 mg/kg = 300 mg. Divided into 2 equal doses = 300 / 2 = 150 mg."
     },
     {
-      topic: "Abstract Reasoning (Pattern Recognition)",
-      cat: "ucat-ar",
-      q: "Set A contains shapes where the total number of straight sides is always an even number. A test box contains a hexagon (6 sides) and a triangle (3 sides). Does this box belong to Set A?",
-      answers: ["No (total sides = 9, which is odd)", "Yes (contains a hexagon)", "Yes (contains a triangle)", "Cannot be determined"],
+      topic: "Decision Making (Probability)",
+      cat: "ucat-dm-probability",
+      q: "A clinic randomly assigns one of five appointment slots to a patient. Two slots are in the morning and three are in the afternoon. What is the probability that the assigned slot is in the morning?",
+      answers: ["2/5", "3/5", "1/2", "2/3"],
       correct: "a",
-      exp: "Total straight sides = 6 + 3 = 9. Since 9 is odd, the box does not fit Set A's rule (even number of sides)."
+      exp: "Two of the five equally likely appointment slots are in the morning, so the probability is 2/5."
     },
     {
       topic: "Situational Judgement (Ethics & Integrity)",

@@ -8,18 +8,15 @@ import { getPublicTestimonials } from "@/lib/admin/content";
 export function ResultsTestimonials() {
   const locale = useLocale();
   const { resultsTestimonials } = useHomeContent();
-  const [items, setItems] = useState<Testimonial[]>(() =>
-    resultsTestimonials.testimonials.map((t) => ({
-      quote: t.quote,
-      name: t.name,
-      role: t.context,
-    }))
-  );
+  const [items, setItems] = useState<Testimonial[]>([]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let active = true;
-    getPublicTestimonials(locale).then((rows) => {
-      if (active && rows && rows.length > 0) {
+    getPublicTestimonials(locale).then(({ data: rows, error }) => {
+      if (!active) return;
+      setLoadError(Boolean(error));
+      if (!error && rows.length > 0) {
         // Show featured items first
         const featuredRows = rows.filter((r) => r.featured);
         const displayRows = featuredRows.length >= 6 ? featuredRows.slice(0, 9) : rows.slice(0, 9);
@@ -32,7 +29,7 @@ export function ResultsTestimonials() {
             dateStr: r.created_at ? new Date(r.created_at).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US", { month: "short", year: "numeric" }) : undefined,
           }))
         );
-      }
+      } else setItems([]);
     });
     return () => {
       active = false;
@@ -42,12 +39,13 @@ export function ResultsTestimonials() {
   return (
     <section id="results" className="section-offset bg-surface-muted py-20 md:py-28 overflow-hidden">
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-        <TestimonialsSection
-          items={items}
-          eyebrow={resultsTestimonials.eyebrow}
-          title={resultsTestimonials.headline}
-          description={resultsTestimonials.functionPlotCaption}
-        />
+        {loadError ? (
+          <div role="status" className="rounded-2xl border border-border bg-white p-8 text-center text-sm text-muted-foreground">
+            {locale === "tr" ? "Öğrenci yorumları şu anda yüklenemiyor. Lütfen daha sonra tekrar deneyin." : "Student reviews are temporarily unavailable. Please try again later."}
+          </div>
+        ) : items.length > 0 ? (
+          <TestimonialsSection items={items} eyebrow={resultsTestimonials.eyebrow} title={resultsTestimonials.headline} description={resultsTestimonials.functionPlotCaption} />
+        ) : null}
       </div>
     </section>
   );

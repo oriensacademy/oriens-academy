@@ -27,11 +27,9 @@ export const examPreparation = {
   categories: [
     {
       label: "Uluslararası Müfredat ve Diplomalar",
-      exams: ["IB", "AP", "IGCSE", "A-Level", "SAT", "ACT"],
     },
     {
       label: "Kabul ve Bölüm Sınavları",
-      exams: ["ESAT", "TMUA", "TARA", "UCAT", "LNAT", "IMAT", "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"],
     },
   ],
 };
@@ -203,7 +201,7 @@ export const pricingPreview = {
     {
       id: "package5",
       name: "5 Derslik Paket",
-      description: "Düzenli akademik destek",
+      description: "Düzenli çalışmaya başlamak ve kısa vadeli konu hedeflerini takip etmek için esnek paket.",
       price: "15.000 TL",
       cadence: "/ paket (%7 indirim)",
       features: ["60 dakikalık 5 birebir ders", "%7 paket indirimi", "Düzenli konu takibi"],
@@ -211,7 +209,7 @@ export const pricingPreview = {
     {
       id: "package10",
       name: "10 Derslik Paket",
-      description: "Düzenli akademik destek",
+      description: "Sınav hazırlığını, konu takibini ve düzenli ilerleme değerlendirmesini birlikte yürüten dengeli paket.",
       price: "27.000 TL",
       cadence: "/ paket (%15 indirim)",
       featured: true,

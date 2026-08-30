@@ -6,7 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { parseTestimonialSource } from "./lib/testimonial-source.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
-const SOURCE = process.env.TESTIMONIAL_SOURCE || "C:\\Users\\merto\\Desktop\\yorumlar.txt";
+const requestedSource = process.env.TESTIMONIAL_SOURCE || "C:\\Users\\merto\\Desktop\\yorumlar.txt";
+const SOURCE = existsSync(requestedSource) ? requestedSource : join(ROOT, "yorumlar.txt");
 const APPLY = process.argv.includes("--apply");
 const WRITE_STATIC = process.argv.includes("--write-static");
 const IMPORT_ID = "yorumlar.txt:2026-08-29";
@@ -31,6 +32,7 @@ function chunks(values, size) {
 loadEnv(join(ROOT, ".env.local"));
 
 async function main() {
+  if (WRITE_STATIC) throw new Error("Static testimonial output is retired; public testimonial truth is database-only.");
   const parsed = parseTestimonialSource(SOURCE);
   const migration = readFileSync(join(ROOT, "supabase", "migrations", "20260830000002_import_all_testimonials.sql"), "utf8");
   const priorIds = new Set([...migration.matchAll(/VALUES \('([0-9a-f-]{36})'/g)].map((match) => match[1]));
@@ -41,10 +43,13 @@ async function main() {
   const { data: dbRows, error } = await supabase.from("testimonials").select("*").order("created_at", { ascending: false });
   if (error) throw error;
 
-  const backupDir = join(ROOT, "local-backups");
-  mkdirSync(backupDir, { recursive: true });
-  const backupFile = join(backupDir, `testimonials-before-reconciliation-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
-  writeFileSync(backupFile, `${JSON.stringify(dbRows, null, 2)}\n`);
+  let backupFile = null;
+  if (APPLY) {
+    const backupDir = join(ROOT, "local-backups");
+    mkdirSync(backupDir, { recursive: true });
+    backupFile = join(backupDir, `testimonials-before-reconciliation-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+    writeFileSync(backupFile, `${JSON.stringify(dbRows, null, 2)}\n`);
+  }
 
   const priorImported = dbRows.filter((row) => priorIds.has(row.id));
   const nonImported = dbRows.filter((row) => !priorIds.has(row.id));
@@ -61,18 +66,6 @@ async function main() {
   }
 
   const provenDuplicateRows = matches.flatMap((match) => match.duplicates).filter((row) => priorIds.has(row.id));
-  if (WRITE_STATIC) {
-    const staticFile = join(ROOT, "src", "data", "imported-testimonials.json");
-    const existingStatic = JSON.parse(readFileSync(staticFile, "utf8"));
-    const reconciledStatic = parsed.uniqueRecords.map((source, index) => {
-      const existing = existingStatic.find((row) =>
-        row.name === source.author && row.quote === source.body && row.dateStr === source.dateText
-      );
-      if (!existing) throw new Error(`Static testimonial match missing for source block ${source.rawBlockIndex}`);
-      return { ...existing, sourceHash: source.sourceHash, displayOrder: index + 1 };
-    });
-    writeFileSync(staticFile, `${JSON.stringify(reconciledStatic, null, 2)}\n`);
-  }
   if (APPLY) {
     for (const batch of chunks(matches, 10)) {
       await Promise.all(batch.map(async ({ source, canonical }) => {
@@ -87,8 +80,11 @@ async function main() {
       }));
     }
     for (const row of provenDuplicateRows) {
-      const { error: deleteError } = await supabase.from("testimonials").delete().eq("id", row.id);
-      if (deleteError) throw deleteError;
+      const { error: archiveError } = await supabase
+        .from("testimonials")
+        .update({ active: false, archived_at: new Date().toISOString() })
+        .eq("id", row.id);
+      if (archiveError) throw archiveError;
     }
   }
 
@@ -104,7 +100,7 @@ async function main() {
     matched_unique_source_records: matches.length,
     unmatched_source_records: unmatched.length,
     proven_duplicate_importer_rows: provenDuplicateRows.length,
-    duplicate_importer_rows_removed: APPLY ? provenDuplicateRows.length : 0,
+    duplicate_importer_rows_archived: APPLY ? provenDuplicateRows.length : 0,
     original_texts_modified: 0,
     backup_file: backupFile,
     applied: APPLY,

@@ -24,17 +24,6 @@ const StudyDestinationGlobe = dynamic(
   }
 );
 
-function relationshipLabel(relationship: string, isTr: boolean) {
-  const labels: Record<string, [string, string]> = {
-    required: ["Zorunlu / İsteniyor", "Required"],
-    accepted: ["Kabul ediliyor", "Accepted"],
-    considered: ["Değerlendiriliyor", "Considered"],
-    program_specific: ["Programa özel", "Programme-specific"],
-    recommended: ["Öneriliyor", "Recommended"],
-  };
-  return labels[relationship]?.[isTr ? 0 : 1] ?? relationship;
-}
-
 export function StudyDestinationSection({ compact = false }: { compact?: boolean }) {
   const locale = useLocale();
   const exams = useExamsContent();
@@ -45,21 +34,43 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
     iso3: string;
     universities: StudyRegion["countries"][number]["universities"];
   } | null>(null);
+  const [universityQueryState, setUniversityQueryState] = useState<{
+    iso3: string;
+    status: "idle" | "loading" | "success-with-data" | "success-empty" | "error";
+  }>({ iso3: "", status: "idle" });
   const universityRequestVersion = useRef(0);
   
   useEffect(() => {
     const countryCode = selectedRegion?.countryCode;
     const requestVersion = ++universityRequestVersion.current;
     const controller = new AbortController();
-    if (!countryCode) return () => controller.abort();
-
-    loadFeaturedUniversities(countryCode, controller.signal)
-      .then((universities) => {
+    if (!countryCode) {
+      return () => controller.abort();
+    }
+    const iso3 = countryCode;
+    async function loadCountryUniversities() {
+      await Promise.resolve();
+      if (requestVersion !== universityRequestVersion.current) return;
+      setUniversityQueryState({ iso3, status: "loading" });
+      try {
+        const universities = await loadFeaturedUniversities(iso3, controller.signal);
         if (requestVersion === universityRequestVersion.current) {
-          setCountryResult({ iso3: countryCode, universities: universities.slice(0, 3) });
+          const isolated = universities.filter((university) => university.countryCode === iso3).slice(0, 3);
+          setCountryResult({ iso3, universities: isolated });
+          setUniversityQueryState({
+            iso3,
+            status: isolated.length > 0 ? "success-with-data" : "success-empty",
+          });
         }
-      })
-      .catch(() => undefined);
+      } catch (error: unknown) {
+        if (requestVersion === universityRequestVersion.current &&
+          !(error instanceof DOMException && error.name === "AbortError")) {
+          setCountryResult({ iso3, universities: [] });
+          setUniversityQueryState({ iso3, status: "error" });
+        }
+      }
+    }
+    void loadCountryUniversities();
     return () => controller.abort();
   }, [selectedRegion?.countryCode]);
 
@@ -136,7 +147,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
         </div>
 
         {selectedRegion && visibleUniversities.length > 0 && (
-          <div className={`${compact ? "mt-10" : "mt-14"} border-t border-border pt-8`}>
+          <div data-university-state="success-with-data" className={`${compact ? "mt-10" : "mt-14"} border-t border-border pt-8`}>
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>
                 <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
@@ -182,32 +193,24 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
                             return <span>{university.name}</span>;
                           })()}
                         </h4>
-                        <p className="mt-1 text-xs text-muted-foreground">{university.city ?? university.country}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {[university.city, university.country].filter(Boolean).join(", ")}
+                        </p>
                       </div>
                     </div>
 
                     {/* Evidence-Aware Exam Chips */}
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {university.examChips && university.examChips.length > 0 ? (
+                      {university.examChips && university.examChips.length > 0 && (
                         university.examChips.map((chip) => (
                           <Link
                             key={`${university.id}-${chip.exam}`}
                             href={examDetailPath(locale, chip.exam.toLowerCase())}
-                            title={chip.evidence ? `${chip.evidence} (Doğrulanmış resmi kaynak)` : undefined}
-                            className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-[#F7FAF7] px-3 py-1 text-[11px] font-semibold text-ink outline-none transition-colors hover:border-primary hover:bg-white focus-visible:ring-2 focus-visible:ring-primary"
+                            title={chip.evidence ? `${chip.evidence} (${isTr ? "Doğrulanmış resmi kaynak" : "Verified official source"})` : undefined}
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-[#F7FAF7] px-3 py-2 text-[11px] font-semibold text-ink outline-none transition-colors hover:border-primary hover:bg-white focus-visible:ring-2 focus-visible:ring-primary"
                           >
                             <ShieldCheck className="size-3 text-primary/70" aria-hidden="true" />
                             <span>{isTr ? chip.labelTr : chip.labelEn}</span>
-                          </Link>
-                        ))
-                      ) : (
-                        university.examRelations.map((relation) => (
-                          <Link
-                            key={`${university.id}-${relation.examId}`}
-                            href={examDetailPath(locale, relation.examId.toLowerCase())}
-                            className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-ink outline-none hover:border-primary focus-visible:ring-2 focus-visible:ring-primary"
-                          >
-                            <span>{relation.examId} · {relationshipLabel(relation.relationship, isTr)}</span>
                           </Link>
                         ))
                       )}
@@ -222,6 +225,26 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+        {selectedRegion && visibleUniversities.length === 0 && (
+          <div
+            data-university-state={universityQueryState.iso3 === selectedRegion.countryCode ? universityQueryState.status : "loading"}
+            className={`${compact ? "mt-10" : "mt-14"} border-t border-border pt-8`}
+            aria-live="polite"
+          >
+            <p className="text-xs font-semibold tracking-[0.16em] text-primary uppercase">
+              {isTr ? "Öne Çıkan Üniversiteler" : "Featured Universities"}
+            </p>
+            <div className="mt-4 rounded-xl border border-border bg-surface p-5 text-sm leading-6 text-muted-foreground">
+              {universityQueryState.iso3 !== selectedRegion.countryCode || universityQueryState.status === "loading"
+                ? (isTr ? "Bu ülke için üniversiteler yükleniyor…" : "Loading universities for this country…")
+                : universityQueryState.status === "error"
+                  ? (isTr ? "Üniversite sonuçları şu anda yüklenemedi. Lütfen yeniden deneyin." : "University results could not be loaded. Please try again.")
+                  : (isTr
+                    ? "Bu ülke için şu anda incelenmiş öne çıkan üniversite bulunmuyor. Üniversite ve program koşulları kuruma ve başvuru dönemine göre değişebilir."
+                    : "No reviewed featured universities are currently available for this country. University and programme requirements may vary by institution and admission cycle.")}
+            </div>
           </div>
         )}
       </div>

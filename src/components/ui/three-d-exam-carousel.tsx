@@ -104,7 +104,7 @@ function ExamDetailSurface({ card, examCode, locale, closeRef, titleId, descript
       data-carousel-detail
       className="relative max-h-[88vh] w-full max-w-[800px] overflow-y-auto overflow-x-hidden rounded-[24px] border border-[#D9E0D8] bg-[#FCFBF7] p-6 text-[#10281E] shadow-[0_28px_90px_rgba(16,40,30,0.24)] sm:max-h-[85vh] sm:p-9"
     >
-      <button ref={closeRef} type="button" onClick={onClose} className="absolute top-4 right-4 flex size-10 items-center justify-center rounded-full border border-[#D9E0D8] bg-white text-[#10281E] outline-none transition-colors hover:bg-[#F1F4EE] focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2" aria-label={locale === "tr" ? "Detayı kapat" : "Close details"}>
+      <button ref={closeRef} type="button" onClick={onClose} className="absolute top-4 right-4 flex size-11 items-center justify-center rounded-full border border-[#D9E0D8] bg-white text-[#10281E] outline-none transition-colors hover:bg-[#F1F4EE] focus-visible:ring-2 focus-visible:ring-[#819586] focus-visible:ring-offset-2" aria-label={locale === "tr" ? "Detayı kapat" : "Close details"}>
         <X className="size-4" />
       </button>
 

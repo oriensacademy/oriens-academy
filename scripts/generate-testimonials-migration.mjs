@@ -117,27 +117,4 @@ reviews.forEach((r, idx) => {
 });
 
 fs.writeFileSync("supabase/migrations/20260830000002_import_all_testimonials.sql", sql, "utf8");
-
-// Also export as a static JSON dataset for deterministic offline & SSG rendering
-const jsonDataset = reviews.map((r, idx) => {
-  const hash = crypto.createHash("md5").update(`${r.name}|${r.dateStr}|${r.quote}`).digest("hex");
-  const uuid = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
-  return {
-    id: uuid,
-    name: r.name,
-    quote: r.quote,
-    context: r.topic || "Özel Ders",
-    sourceTopic: r.topic,
-    dateStr: r.dateStr,
-    examCode: detectExamCode(r.topic, r.quote),
-    locale: detectLocale(r.quote),
-    active: true,
-    verified: true,
-    featured: topFeaturedNames.includes(r.name) || idx < 6,
-    displayOrder: idx + 1,
-    createdAt: parseDate(r.dateStr),
-  };
-});
-
-fs.writeFileSync("src/data/imported-testimonials.json", JSON.stringify(jsonDataset, null, 2), "utf8");
-console.log(`Generated migration and JSON dataset with ${reviews.length} authentic reviews.`);
+console.log(`Generated database migration with ${reviews.length} authentic reviews. No production static fallback was created.`);

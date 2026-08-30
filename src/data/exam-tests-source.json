@@ -641,82 +641,82 @@
   ],
   "tara": [
     {
-      "topic": "Spatial Reasoning & 3D Projections",
-      "cat": "tara-spatial",
-      "q": "When viewing a regular square pyramid from directly above (orthographic plan view), what geometric figure is observed?",
+      "topic": "Critical Thinking: Identifying Assumptions",
+      "cat": "tara-critical-thinking",
+      "q": "A council report argues: 'Installing more public charging points will necessarily increase electric-car ownership because lack of charging points is the main reason residents do not buy electric cars.' Which assumption is required by this argument?",
       "answers": [
-        "A square with diagonals intersecting at the apex",
-        "An equilateral triangle",
-        "Four separate triangles",
-        "A regular pentagon"
+        "A substantial number of residents would buy electric cars if charging access improved",
+        "Every resident already owns a petrol car",
+        "Electric cars will become cheaper next year",
+        "Public charging points are free to use"
       ],
       "correct": "a",
-      "exp": "Top-down orthographic projection shows the square base with the four inclined ridges connecting to the central apex."
+      "exp": "The conclusion depends on charging access changing purchasing behaviour. The other statements may be relevant, but the argument does not require them."
     },
     {
-      "topic": "Geometry & Proportions",
-      "cat": "tara-geometry",
-      "q": "What is the exact mathematical ratio defined as the Golden Ratio (φ)?",
+      "topic": "Critical Thinking: Evaluating Evidence",
+      "cat": "tara-critical-thinking",
+      "q": "A school introduces a voluntary morning study club. At the end of term, attendees have higher average grades than non-attendees. Which additional evidence would most weaken the claim that the club caused the improvement?",
       "answers": [
-        "(1 + √5) / 2 ≈ 1.618",
-        "(1 + √3) / 2 ≈ 1.366",
-        "√2 ≈ 1.414",
-        "π / 2 ≈ 1.571"
+        "Attendees already had substantially higher grades before the club began",
+        "The club met in the school library",
+        "Most attendees said that they enjoyed the club",
+        "Some non-attendees studied at home"
       ],
       "correct": "a",
-      "exp": "The Golden Ratio is the positive solution to x² - x - 1 = 0, given by φ = (1 + √5) / 2 ≈ 1.618."
+      "exp": "A pre-existing achievement difference offers a strong alternative explanation for the later grade gap and therefore weakens the causal claim."
     },
     {
-      "topic": "History of Architecture & Art",
-      "cat": "tara-history",
-      "q": "Which architectural movement is characterized by flying buttresses, ribbed vaults, and pointed arches?",
+      "topic": "Problem Solving: Quantitative Reasoning",
+      "cat": "tara-problem-solving",
+      "q": "A research team must review 240 applications. Four reviewers working at equal rates can complete the task in 15 hours. How many hours would six reviewers need at the same individual rate?",
       "answers": [
-        "Gothic",
-        "Romanesque",
-        "Baroque",
-        "Neoclassical"
+        "10 hours",
+        "12 hours",
+        "18 hours",
+        "22.5 hours"
       ],
       "correct": "a",
-      "exp": "Gothic architecture (12th-16th century) introduced pointed arches, ribbed vaulting, and flying buttresses to maximize height and light."
+      "exp": "The work requires 4 x 15 = 60 reviewer-hours. At the same rate, six reviewers need 60 / 6 = 10 hours."
     },
     {
-      "topic": "Physics: Statics & Equilibrium",
-      "cat": "tara-statics",
-      "q": "In structural design, which primary internal force is a suspended cable subject to under uniform loading?",
+      "topic": "Problem Solving: Constraint Logic",
+      "cat": "tara-problem-solving",
+      "q": "Four talks—J, K, L and M—are scheduled one per hour. J must occur before K; L cannot be first; M must occur immediately after J. Which schedule is possible?",
       "answers": [
-        "Tension",
-        "Compression",
-        "Shear",
-        "Torsion"
+        "J, M, L, K",
+        "L, J, K, M",
+        "K, J, M, L",
+        "J, L, M, K"
       ],
       "correct": "a",
-      "exp": "Cables cannot resist bending or compression; they support loads exclusively in pure axial tension."
+      "exp": "Only J, M, L, K places J before K, keeps L out of first place and puts M immediately after J."
     },
     {
-      "topic": "Graphic Representation & Plans",
-      "cat": "tara-graphics",
-      "q": "On an architectural floor plan drawn at a scale of 1:50, a wall measures 8 cm. What is the actual length of the wall in meters?",
+      "topic": "Writing Task: Argument Structure",
+      "cat": "tara-writing",
+      "q": "For an essay responding to 'Universities should make all lectures optional', which thesis provides the clearest qualified position?",
       "answers": [
-        "4.0 m",
-        "0.4 m",
-        "40.0 m",
-        "8.0 m"
+        "Lectures should generally remain expected because structured contact supports learning, while recorded alternatives should be available for justified absences",
+        "Lectures are interesting and universities are important",
+        "Some students like lectures, whereas others do not",
+        "This essay will discuss several opinions about lectures"
       ],
       "correct": "a",
-      "exp": "Real length = 8 cm × 50 = 400 cm = 4.0 meters."
+      "exp": "The first thesis states a defensible position and a meaningful qualification, giving the essay a clear line of argument."
     },
     {
-      "topic": "Critical Reasoning & Visual Analysis",
-      "cat": "tara-reasoning",
-      "q": "Which optical correction technique was employed in the Parthenon to counteract the illusion of sagging in long horizontal architraves?",
+      "topic": "Writing Task: Counterargument",
+      "cat": "tara-writing",
+      "q": "An essay argues that cities should charge private cars to enter crowded centres. Which sentence most effectively acknowledges and answers a counterargument?",
       "answers": [
-        "Entasis and slight upward curvature of the stylobate",
-        "Inward sloping columns only",
-        "Double-height colonnades",
-        "Polychromatic paint shading"
+        "Although charges can burden lower-income drivers, targeted exemptions and improved public transport can reduce that inequity while preserving congestion benefits",
+        "Congestion is frustrating, and many people dislike traffic",
+        "Anyone who opposes the charge is ignoring the environment",
+        "The charge should be introduced because several cities have roads"
       ],
       "correct": "a",
-      "exp": "Classical Greek architects introduced convex curvature to the stylobate and entablature to ensure lines appeared perfectly straight to the human eye."
+      "exp": "The first sentence fairly identifies a relevant objection and responds with a specific mitigation instead of dismissing the concern."
     }
   ],
   "ucat": [
@@ -760,17 +760,17 @@
       "exp": "Total daily dose = 60 kg × 5 mg/kg = 300 mg. Divided into 2 equal doses = 300 / 2 = 150 mg."
     },
     {
-      "topic": "Abstract Reasoning (Pattern Recognition)",
-      "cat": "ucat-ar",
-      "q": "Set A contains shapes where the total number of straight sides is always an even number. A test box contains a hexagon (6 sides) and a triangle (3 sides). Does this box belong to Set A?",
+      "topic": "Decision Making (Probability)",
+      "cat": "ucat-dm-probability",
+      "q": "A clinic randomly assigns one of five appointment slots to a patient. Two slots are in the morning and three are in the afternoon. What is the probability that the assigned slot is in the morning?",
       "answers": [
-        "No (total sides = 9, which is odd)",
-        "Yes (contains a hexagon)",
-        "Yes (contains a triangle)",
-        "Cannot be determined"
+        "2/5",
+        "3/5",
+        "1/2",
+        "2/3"
       ],
       "correct": "a",
-      "exp": "Total straight sides = 6 + 3 = 9. Since 9 is odd, the box does not fit Set A's rule (even number of sides)."
+      "exp": "Two of the five equally likely appointment slots are in the morning, so the probability is 2/5."
     },
     {
       "topic": "Situational Judgement (Ethics & Integrity)",

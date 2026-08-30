@@ -1020,7 +1020,7 @@ export function renderStudentPackagePurchasedEmail(data: PackagePurchaseEmailDat
   const cardHtml = summaryCard(isTr ? "Paket ve Sipariş Detayları" : "Package & Order Details", [
     { label: isTr ? "Paket Adı" : "Package", value: escapeHtml(data.packageName) },
     { label: isTr ? "Toplam Ders Sayısı" : "Total Lessons", value: `${data.lessonCount} ${isTr ? "Ders" : "Lessons"}` },
-    { label: isTr ? "Ders Başı Ücret" : "Per Lesson", value: formattedPerLesson },
+    { label: isTr ? "Birim Ders Ücreti" : "Unit Lesson Price", value: formattedPerLesson },
     { label: isTr ? "Toplam Tutar" : "Total Amount", value: `<strong style="color:${PALETTE.goldDark};">${formattedTotal}</strong>` },
     { label: isTr ? "Ödeme Yöntemi" : "Payment Method", value: humanizePaymentMethod(data.paymentMethod, data.locale) },
     { label: isTr ? "Referans No" : "Reference No", value: escapeHtml(data.orderReference) },

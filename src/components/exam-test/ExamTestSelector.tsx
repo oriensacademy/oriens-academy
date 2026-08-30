@@ -26,7 +26,7 @@ export function ExamTestSelector({ locale, selected, onSelect }: ExamTestSelecto
     {
       id: "admissions",
       title: locale === "tr" ? "Üniversite Kabul & Programa Özel Sınavlar" : "University Admissions & Specific Programme Tests",
-      description: locale === "tr" ? "Mühendislik, tıp, hukuk, mimarlık, işletme ve lisansüstü seçme testleri" : "Engineering, medicine, law, architecture, business and graduate admissions tests",
+      description: locale === "tr" ? "Akademik muhakeme, mühendislik, tıp, hukuk, işletme ve lisansüstü seçme testleri" : "Academic reasoning, engineering, medicine, law, business and graduate admissions tests",
       exams: admissionSpecific,
     },
   ];

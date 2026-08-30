@@ -4,10 +4,11 @@ import { Reveal } from "@/components/motion/Reveal";
 import { AcademicSubjectMotifs } from "@/components/ui/academic-subject-motifs";
 import { GradientCard } from "@/components/gradient-card";
 import { useHomeContent, useLocale } from "@/content/locale-context";
+import { canonicalExams } from "@/content/canonical-exams";
 import { localizedPath } from "@/lib/routes";
 
 /**
- * Deliberately not twelve identical cards — an editorial index instead,
+ * An editorial index generated from the canonical public catalog,
  * grouped by academic stage, each exam a typographic entry rather than a
  * boxed tile.
  */
@@ -45,7 +46,10 @@ export function ExamPreparation() {
               <GradientCard
                 gradient={categoryIndex === 0 ? "navy" : "gold"}
                 badgeText={category.label}
-                title={category.exams.join(" · ")}
+                title={canonicalExams
+                  .filter((exam) => exam.customerGroup === categoryIndex + 1)
+                  .map((exam) => exam.code)
+                  .join(" · ")}
                 description={examPreparation.body}
                 ctaText={locale === "tr" ? "Sınavları incele" : "Explore exams"}
                 ctaHref={localizedPath("exams", locale)}

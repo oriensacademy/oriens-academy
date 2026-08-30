@@ -1,5 +1,6 @@
 import { SITE_URL } from "@/lib/routes";
 import { CONTACT } from "@/config/contact";
+import { canonicalExams } from "@/content/canonical-exams";
 
 export function JsonLd() {
   const organizationSchema = {
@@ -8,7 +9,8 @@ export function JsonLd() {
     "name": "Oriens Academy",
     "url": SITE_URL,
     "logo": `${SITE_URL}/logo.png`,
-    "description": "International Exam Preparation & Academic Consultancy for IB, SAT, and AP Diplomas.",
+    "description": `International exam preparation and academic consultancy across ${canonicalExams.length} supported programmes, qualifications and admissions tests.`,
+    "knowsAbout": canonicalExams.map((exam) => exam.canonicalName),
     "telephone": CONTACT.landlineDisplay,
     "email": CONTACT.email,
     "contactPoint": [

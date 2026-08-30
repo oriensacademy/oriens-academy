@@ -23,7 +23,14 @@
     "universities:sync": "node scripts/import-global-universities.mjs --apply",
     "universities:prepare": "node scripts/import-global-universities.mjs",
     "test:universities:global": "node scripts/test-global-university-platform.mjs",
-    "test:testimonials:reconciliation": "node scripts/reconcile-testimonials.mjs"
+    "test:testimonials:reconciliation": "node scripts/reconcile-testimonials.mjs",
+    "academic:questions:sync": "node scripts/sync-canonical-practice-questions.mjs",
+    "test:academic:canonical": "npx tsx scripts/validate-canonical-academic-data.ts",
+    "test:academic:database": "node scripts/test-canonical-academic-platform.mjs",
+    "test:customer:acceptance": "npx tsx scripts/test-customer-acceptance.ts",
+    "test:customer:runtime": "node scripts/test-customer-runtime.mjs",
+    "test:customer:browser": "node scripts/customer-acceptance-browser.mjs",
+    "test:customer:content-browser": "node scripts/customer-content-browser.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

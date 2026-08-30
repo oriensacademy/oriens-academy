@@ -60,8 +60,8 @@ export function DestinationExamPanel({
 
             <p className="mt-4 text-sm leading-relaxed text-[#68756C]">
               {isTr
-                ? (region.noMatchMessageTr || "Bu ülke için Oriens’in desteklediği uluslararası sınavlardan doğrudan ülke-geneli bir eşleşme bulunamadı. Üniversite ve program koşulları kuruma göre değişebilir. Hedef kurumunuz için bireysel hazırlık rotası oluşturabiliriz.")
-                : (region.noMatchMessageEn || "No direct country-wide match was found for Oriens-supported international exams for this destination. University and programme requirements vary by institution. We can build an individualized preparation roadmap for your target university.")}
+                ? (region.noMatchMessageTr || "Bu destinasyon için Oriens’in desteklediği uluslararası sınavlar içinde doğrudan ülke-geneli bir eşleşme bulunamadı. Üniversite ve program koşulları kuruma ve başvuru dönemine göre değişebilir.")
+                : (region.noMatchMessageEn || "No direct country-wide match was found among the international exams currently supported by Oriens for this destination. University and programme requirements may vary by institution and admission cycle.")}
             </p>
 
             <div className="mt-5 border-t border-[#F0F4F0] pt-4">

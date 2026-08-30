@@ -14,7 +14,7 @@ const examVisuals: Record<ExamCode, { type: AcademicIconType; tr: string; en: st
   ACT: { type: "target", tr: "Hızlı problem çözme ve fen", en: "Speed reasoning and science" },
   ESAT: { type: "physics", tr: "Mühendislik ve fen değerlendirmesi", en: "Engineering and science assessment" },
   TMUA: { type: "critical-reasoning", tr: "Matematiksel düşünme ve mantık", en: "Mathematical thinking and logic" },
-  TARA: { type: "planning", tr: "Mekânsal algı ve mimarlık", en: "Spatial reasoning and architecture" },
+  TARA: { type: "critical-reasoning", tr: "Eleştirel düşünme, problem çözme ve yazma", en: "Critical thinking, problem solving and writing" },
   UCAT: { type: "biology", tr: "Klinik muhakeme ve hız", en: "Clinical aptitude and speed" },
   LNAT: { type: "writing", tr: "Eleştirel okuma ve hukuk essay", en: "Critical reading and law essay" },
   IMAT: { type: "biology", tr: "Tıp ve bilim hazırlığı", en: "Medicine and science preparation" },

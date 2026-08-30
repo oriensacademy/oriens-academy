@@ -3,9 +3,8 @@
 import { useEffect, useRef, useState, useId } from "react";
 import { Search, Sparkles, X, ChevronRight, GraduationCap, Award, Globe, BookOpen, ArrowUpRight } from "lucide-react";
 import type { GroupedSearchResults, SearchResultItem } from "@/lib/search/retrieval-engine";
-import { retrieveSearchResults } from "@/lib/search/retrieval-engine";
+import { emptySearchResults, retrieveCanonicalExamFallback } from "@/lib/search/canonical-exam-fallback";
 import { retrieveSearchResultsFromDatabase } from "@/lib/search/db-retrieval-service";
-import { getVerifiedOfficialUniversityUrl } from "@/data/official-universities";
 import { useLocale } from "@/content/locale-context";
 
 interface SearchAutocompleteInputProps {
@@ -43,7 +42,7 @@ export function SearchAutocompleteInput({
 
   const [query, setQuery] = useState(initialQuery);
   const [isOpen, setIsOpen] = useState(false);
-  const [results, setResults] = useState<GroupedSearchResults | null>(() => retrieveSearchResults(initialQuery.trim()));
+  const [results, setResults] = useState<GroupedSearchResults | null>(() => emptySearchResults(initialQuery.trim()));
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,7 +57,7 @@ export function SearchAutocompleteInput({
     const timer = setTimeout(async () => {
       if (cleanQuery.length === 0) {
         if (!isCancelled) {
-          setResults(retrieveSearchResults(""));
+          setResults(emptySearchResults(""));
           setIsLoading(false);
         }
         return;
@@ -73,7 +72,7 @@ export function SearchAutocompleteInput({
         }
       } catch {
         if (!isCancelled) {
-          const fallbackRes = retrieveSearchResults(cleanQuery);
+          const fallbackRes = retrieveCanonicalExamFallback(cleanQuery);
           setResults(fallbackRes);
           setIsLoading(false);
         }
@@ -191,7 +190,7 @@ export function SearchAutocompleteInput({
               type="button"
               onClick={() => {
                 setQuery("");
-                setResults(retrieveSearchResults(""));
+                setResults(emptySearchResults(""));
                 inputRef.current?.focus();
               }}
               className="absolute right-20 p-1.5 rounded-full text-muted-foreground hover:text-ink hover:bg-surface-muted transition-colors cursor-pointer"
@@ -239,6 +238,13 @@ export function SearchAutocompleteInput({
           role="listbox"
           className="absolute z-50 mt-2 w-full max-h-[70vh] overflow-y-auto rounded-2xl bg-surface border border-border shadow-xl p-2.5 divide-y divide-border/60 text-left"
         >
+          {results?.sourceStatus === "local-exams" && (
+            <div role="status" className="px-3 py-2 text-xs text-amber-800 bg-amber-50 rounded-xl">
+              {isTr
+                ? "Üniversite araması şu anda kullanılamıyor. Desteklenen sınav sonuçları gösteriliyor; yeniden deneyin."
+                : "University search is temporarily unavailable. Supported exam results are shown; please retry."}
+            </div>
+          )}
           {/* GROUP 1: SINAVLAR / QUALIFICATIONS */}
           {qualificationItems.length > 0 && (
             <div className="py-2 first:pt-1">
@@ -293,7 +299,7 @@ export function SearchAutocompleteInput({
                 {universityItems.map((item) => {
                   const globalIdx = allItems.findIndex((i) => i.id === item.id);
                   const isActive = globalIdx === activeIndex;
-                  const verifiedUrl = item.officialUrl || getVerifiedOfficialUniversityUrl(item.title);
+                  const verifiedUrl = item.officialUrl;
 
                   return (
                     <li

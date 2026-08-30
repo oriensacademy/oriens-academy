@@ -95,7 +95,7 @@ export const about: AboutContent = {
       { title: "İstanbul Alman Lisesi", description: "Abitur ve uluslararası STEM kabul sınavları hazırlığı." },
       { title: "Avusturya Lisesi", description: "Matura ve ileri düzey matematik-fizik özel ders desteği." },
     ],
-    disclaimer: "Tüm okul isimleri öğrencilerimizin eğitim gördüğü kurumları ifade etmektedir.",
+    disclaimer: "Tüm okul isimleri öğrencilerimizin eğitim gördüğü kurumları ifade etmektedir; resmi iş birliği veya kurum onayı anlamına gelmez.",
   },
   trust: {
     eyebrow: "İletişim Kanalları",

@@ -20,6 +20,13 @@ export interface ExamTestQuestion {
   answers: AnswerOption[];
   correctAnswer: AnswerId;
   explanation: LocalizedText;
+  solution: LocalizedText;
+  difficulty: "foundation" | "intermediate" | "advanced";
+  sourceType: "ORIENS_ORIGINAL_PRACTICE";
+  active: true;
+  displayOrder: number;
+  syllabusVersion: string;
+  reviewedAt: string;
   recommendationCategory: string;
 }
 
@@ -107,6 +114,16 @@ function buildQuestionsForExam(exam: ExamCode): ExamTestQuestion[] {
         tr: item.exp,
         en: item.exp,
       },
+      solution: {
+        tr: item.exp,
+        en: item.exp,
+      },
+      difficulty: index < 2 ? "foundation" : index < 5 ? "intermediate" : "advanced",
+      sourceType: "ORIENS_ORIGINAL_PRACTICE",
+      active: true,
+      displayOrder: qNum,
+      syllabusVersion: "reviewed-2026-08-30",
+      reviewedAt: "2026-08-30",
     };
   });
 }

@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 const baseUrl = (process.env.SEARCH_BASE_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
 const examCases = [
   ["sat", "sat"], ["SAT", "sat"], ["ib", "ib"], ["ap", "ap"],
-  ["esat", "esat"], ["tmua", "tmua"], ["imat", "imat"], ["ucat", "ukcat"],
+  ["esat", "esat"], ["tmua", "tmua"], ["imat", "imat"], ["ucat", "ucat"],
   ["ompt", "ompt"], ["gre", "gre"], ["gmat", "gmat"],
 ];
 
@@ -26,8 +26,8 @@ try {
       await page.locator('input[aria-controls="academic-search-results"]').fill(query);
       const group = page.locator("#academic-search-results");
       await group.waitFor({ timeout: 30_000 });
-      const titlePattern = query === "ucat" ? /UCAT|UKCAT/i : new RegExp(`\\b${query}\\b`, "i");
-      const option = group.getByRole("option").filter({ hasText: titlePattern }).first();
+      const titlePattern = query === "ucat" ? /UCAT/i : new RegExp(query, "i");
+      const option = group.locator('[role="option"]').filter({ hasText: titlePattern }).first();
       await option.waitFor({ timeout: 30_000 });
       await option.click();
       const hub = locale === "tr" ? "sinavlar" : "exams";
@@ -49,7 +49,7 @@ try {
       return Boolean(input && Object.keys(input).some((key) => key.startsWith("__reactProps")));
     }, { timeout: 30_000 });
     await page.locator('input[aria-controls="academic-search-results"]').fill(query);
-    const option = page.locator("#academic-search-results").getByRole("option").filter({ hasText: new RegExp(query, "i") }).first();
+    const option = page.locator('#academic-search-results [role="option"]').filter({ hasText: new RegExp(query, "i") }).first();
     await option.waitFor({ timeout: 15_000 });
     const popupPromise = page.waitForEvent("popup");
     await option.click();

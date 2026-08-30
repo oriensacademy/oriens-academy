@@ -27,11 +27,9 @@ export const examPreparation = {
   categories: [
     {
       label: "International Curricula & Diplomas",
-      exams: ["IB", "AP", "IGCSE", "A-Level", "SAT", "ACT"],
     },
     {
       label: "Admissions & Programme-Specific Tests",
-      exams: ["ESAT", "TMUA", "TARA", "UCAT", "LNAT", "IMAT", "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"],
     },
   ],
 };
@@ -203,7 +201,7 @@ export const pricingPreview = {
     {
       id: "package5",
       name: "5-Lesson Package",
-      description: "Regular academic support",
+      description: "A flexible package for starting structured study and tracking short-term topic goals.",
       price: "15,000 TRY",
       cadence: "/ package (7% discount)",
       features: ["5 60-minute 1:1 lessons", "7% package discount", "Regular topic review"],
@@ -211,7 +209,7 @@ export const pricingPreview = {
     {
       id: "package10",
       name: "10-Lesson Package",
-      description: "Regular academic support",
+      description: "A balanced package combining exam preparation, topic tracking and regular progress review.",
       price: "27,000 TRY",
       cadence: "/ package (15% discount)",
       featured: true,

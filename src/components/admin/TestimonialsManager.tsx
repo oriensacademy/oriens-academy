@@ -6,7 +6,7 @@ import type { TestimonialRow } from "@/lib/admin/content";
 import {
   listAdminTestimonials,
   updateAdminTestimonial,
-  deleteAdminTestimonial,
+  archiveAdminTestimonial,
 } from "@/lib/admin/content";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
@@ -15,12 +15,10 @@ import {
   RefreshCw,
   AlertCircle,
   Pencil,
-  Trash2,
-  CheckCircle2,
-  Sparkles,
+  Archive,
+  Pin,
   Inbox,
   Filter,
-  Globe,
   Award,
   Search,
   Eye,
@@ -121,6 +119,20 @@ export function TestimonialsManager() {
     }
   };
 
+  const handleTogglePinned = async (item: TestimonialRow) => {
+    setSavingId(item.id);
+    const nextPinnedAt = item.pinned_at ? null : new Date().toISOString();
+    const { success, error } = await updateAdminTestimonial(item.id, {
+      pinned_at: nextPinnedAt,
+      pin_order: nextPinnedAt ? (item.pin_order ?? 0) : null,
+    });
+    setSavingId(null);
+    if (error) setErrorMsg(error);
+    else if (success) {
+      setTestimonials((previous) => previous.map((row) => row.id === item.id ? { ...row, pinned_at: nextPinnedAt, pin_order: nextPinnedAt ? (row.pin_order ?? 0) : null } : row));
+    }
+  };
+
   // Update Display Order
   const handleUpdateDisplayOrder = async (item: TestimonialRow, newOrder: number) => {
     if (isNaN(newOrder)) return;
@@ -137,17 +149,17 @@ export function TestimonialsManager() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    const confirmDelete = window.confirm(`"${name}" isimli öğrenci yorumunu silmek istediğinize emin misiniz?`);
-    if (!confirmDelete) return;
+  const handleArchive = async (id: string, name: string) => {
+    const confirmed = window.confirm(`"${name}" isimli öğrenci yorumunu arşivlemek istediğinize emin misiniz? Kaynak metin silinmeyecektir.`);
+    if (!confirmed) return;
 
     setDeletingId(id);
-    const { success, error } = await deleteAdminTestimonial(id);
+    const { success, error } = await archiveAdminTestimonial(id);
     setDeletingId(null);
 
     if (error) setErrorMsg(error);
     else if (success) {
-      setTestimonials((prev) => prev.filter((t) => t.id !== id));
+      setTestimonials((prev) => prev.map((item) => item.id === id ? { ...item, active: false, archived_at: new Date().toISOString() } : item));
     }
   };
 
@@ -179,6 +191,7 @@ export function TestimonialsManager() {
 
       // Status filter
       if (statusFilter === "featured" && !item.featured) return false;
+      if (statusFilter === "pinned" && !item.pinned_at) return false;
       if (statusFilter === "active" && !item.active) return false;
       if (statusFilter === "hidden" && item.active) return false;
 
@@ -211,7 +224,7 @@ export function TestimonialsManager() {
         <div className="flex items-center gap-2.5">
           <Lock className="size-4 text-emerald-700 shrink-0" />
           <div>
-            <span className="font-semibold text-emerald-900">Orijinal Kaynak Yorum Bütünlüğü (111 Doğrulanmış Kayıt):</span>{" "}
+            <span className="font-semibold text-emerald-900">Orijinal Kaynak Yorum Bütünlüğü (111 ham / 110 benzersiz kayıt):</span>{" "}
             <span>
               Öğrenci ve veli değerlendirmeleri <code>yorumlar.txt</code> kaynağından birebir aktarılmıştır. Orijinal alıntılar değiştirilmeden korunur.
             </span>
@@ -305,6 +318,7 @@ export function TestimonialsManager() {
           >
             <option value="all">Tüm Durumlar</option>
             <option value="featured">★ Sadece Öne Çıkanlar ({featuredCount})</option>
+            <option value="pinned">Sadece Sabitlenenler</option>
             <option value="active">Aktif Olanlar ({activeCount})</option>
             <option value="hidden">Gizlenenler ({hiddenCount})</option>
           </select>
@@ -411,6 +425,7 @@ export function TestimonialsManager() {
                   <th className="px-4 py-3">Ders / Konu</th>
                   <th className="px-4 py-3">Alıntı Metni</th>
                   <th className="px-3 py-3 text-center">Öne Çıkar</th>
+                  <th className="px-3 py-3 text-center">Sabitle</th>
                   <th className="px-3 py-3 text-center">Görünürlük</th>
                   <th className="px-4 py-3 text-right">İşlemler</th>
                 </tr>
@@ -504,6 +519,19 @@ export function TestimonialsManager() {
                         </button>
                       </td>
 
+                      {/* Optional deterministic pin */}
+                      <td className="px-3 py-3.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePinned(item)}
+                          disabled={savingId === item.id}
+                          className={`inline-flex size-7 items-center justify-center rounded-lg border ${item.pinned_at ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-white text-muted-foreground hover:bg-muted"}`}
+                          title={item.pinned_at ? "Sabitlemeyi kaldır" : "Yorumu sabitle"}
+                        >
+                          <Pin className={`size-3.5 ${item.pinned_at ? "fill-current" : ""}`} />
+                        </button>
+                      </td>
+
                       {/* Active / Hide Toggle */}
                       <td className="px-3 py-3.5 text-center">
                         <button
@@ -549,12 +577,12 @@ export function TestimonialsManager() {
 
                           <button
                             type="button"
-                            onClick={() => handleDelete(item.id, item.name)}
+                            onClick={() => handleArchive(item.id, item.name)}
                             disabled={deletingId === item.id}
                             className="inline-flex items-center justify-center size-7 rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50"
-                            title="Sil"
+                            title="Arşivle (kaynak metin silinmez)"
                           >
-                            <Trash2 className="size-3" />
+                            <Archive className="size-3" />
                           </button>
                         </div>
                       </td>

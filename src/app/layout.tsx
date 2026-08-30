@@ -4,6 +4,7 @@ import "./globals.css";
 import { CompassLoader } from "@/components/brand/CompassLoader";
 import { AccountProvider } from "@/lib/auth/account-context";
 import { CartProvider } from "@/lib/cart/cart-context";
+import { RELEASE_VERSION } from "@/lib/release-version";
 
 const inter = Inter({
   subsets: ["latin", "latin-ext"],
@@ -50,6 +51,7 @@ export default function RootLayout({
       className={`${inter.variable} ${manrope.variable} ${dmSerif.variable}`}
     >
       <head>
+        <meta name="oriens-build-version" content={RELEASE_VERSION} />
         {/* Google tag (gtag.js) */}
         <script
           async

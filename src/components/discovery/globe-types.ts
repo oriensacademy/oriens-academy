@@ -1,5 +1,11 @@
-import type { AdmissionRelationship } from "@/data/exam-university-map";
 import type { ExamCode } from "@/content/exams";
+
+export type AdmissionRelationship =
+  | "required"
+  | "accepted"
+  | "considered"
+  | "program_specific"
+  | "recommended";
 
 export type ExamEvidenceChip = {
   exam: ExamCode;

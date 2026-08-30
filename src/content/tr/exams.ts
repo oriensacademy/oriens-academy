@@ -68,7 +68,7 @@ export const categories: Record<ExamCategoryId, { label: string; description: st
   },
   "admission-specific": {
     label: "Kabul & Programa Özel Sınavlar",
-    description: "Mühendislik, tıp, hukuk, mimarlık, işletme ve lisansüstü kabule yönelik programa özgü seçme sınavları.",
+    description: "Akademik muhakeme, mühendislik, tıp, hukuk, işletme ve lisansüstü kabule yönelik programa özgü seçme sınavları.",
   },
 };
 
@@ -114,7 +114,7 @@ export const examText: ExamTextMap = {
     ctaLabel: "SAT hazırlığını keşfet",
   },
   ACT: {
-    title: "ACT (American College Testing)",
+    title: "ACT",
     shortDescription: "Hızlı problem çözme, fen okuryazarlığı ve zaman yönetimi odaklı kapsamlı ACT hazırlığı.",
     purpose: "ABD ve uluslararası lisans başvurularında akademik yeterlilik",
     audience: "ABD ve global üniversitelere başvuran lise öğrencileri",
@@ -138,11 +138,11 @@ export const examText: ExamTextMap = {
     ctaLabel: "TMUA hazırlığını keşfet",
   },
   TARA: {
-    title: "Mimarlık Kabul Sınavı (TEST-ARCHED)",
-    shortDescription: "Mekânsal düşünme, teknik çizim mantığı, geometri ve mimarlık tarihi odaklı kabul sınavı hazırlığı.",
-    purpose: "İtalya ve uluslararası üniversitelerin mimarlık lisans programlarına kabul",
-    audience: "Mimarlık ve tasarım programlarına başvuran adaylar",
-    subjects: ["Spatial Reasoning", "Physics & Structures", "History of Architecture", "Mathematics"],
+    title: "Test of Academic Reasoning for Admissions (TARA)",
+    shortDescription: "UAT-UK TARA için Critical Thinking, Problem Solving ve Writing Task hazırlığı.",
+    purpose: "TARA kullanan programlara başvurularda akademik muhakeme değerlendirmesi",
+    audience: "İlgili başvuru döneminde TARA kullanan programların adayları",
+    subjects: ["Critical Thinking", "Problem Solving", "Writing Task"],
     ctaLabel: "TARA hazırlığını keşfet",
   },
   UCAT: {
@@ -150,7 +150,7 @@ export const examText: ExamTextMap = {
     shortDescription: "Tıp ve diş hekimliği başvuruları için bilişsel beceri, karar verme ve süre yönetimi hazırlığı.",
     purpose: "Birleşik Krallık, Avustralya ve uluslararası tıp ve diş hekimliği programlarına kabul",
     audience: "Tıp ve diş hekimliği adayları",
-    subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "Abstract Reasoning", "SJT"],
+    subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "Situational Judgement"],
     ctaLabel: "UCAT hazırlığını keşfet",
   },
   LNAT: {

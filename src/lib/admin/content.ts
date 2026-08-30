@@ -1,8 +1,22 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/types/database.types";
-import staticTestimonials from "@/data/imported-testimonials.json";
 
-export type TestimonialRow = Tables<"testimonials">;
+export type TestimonialRow = Tables<"testimonials"> & {
+  source_hash: string | null;
+  source_topic: string | null;
+  source_author: string | null;
+  source_date: string | null;
+  source_import_id: string | null;
+  imported_from_source: boolean;
+  pinned_at: string | null;
+  pin_order: number | null;
+  archived_at: string | null;
+};
+
+export type PublicTestimonialsResult = {
+  data: TestimonialRow[];
+  error: string | null;
+};
 
 export interface CreateTestimonialInput {
   name: string;
@@ -15,6 +29,8 @@ export interface CreateTestimonialInput {
   featured?: boolean;
   display_order?: number;
   profile_image_url?: string | null;
+  pinned_at?: string | null;
+  pin_order?: number | null;
 }
 
 export interface UpdateTestimonialInput {
@@ -28,16 +44,24 @@ export interface UpdateTestimonialInput {
   featured?: boolean;
   display_order?: number;
   profile_image_url?: string | null;
+  pinned_at?: string | null;
+  pin_order?: number | null;
 }
 
-export async function getPublicTestimonials(locale?: string): Promise<TestimonialRow[]> {
+export async function getPublicTestimonials(locale?: string): Promise<PublicTestimonialsResult> {
   try {
     const supabase = getSupabaseClient();
-    let query = supabase
+    // Generated database types intentionally lag additive rollout migrations.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase as any)
       .from("testimonials")
       .select("*")
       .eq("active", true)
       .eq("verified", true)
+      .is("archived_at", null)
+      .order("pin_order", { ascending: true, nullsFirst: false })
+      .order("pinned_at", { ascending: false, nullsFirst: false })
+      .order("featured", { ascending: false })
       .order("display_order", { ascending: true });
 
     if (locale) {
@@ -45,20 +69,14 @@ export async function getPublicTestimonials(locale?: string): Promise<Testimonia
     }
 
     const { data, error } = await query;
-    if (!error && data && data.length > 0) {
-      return data as TestimonialRow[];
-    }
-  } catch {
-    // Fallback to static verified imported testimonials
+    if (error) return { data: [], error: error.message };
+    return { data: (data || []) as TestimonialRow[], error: null };
+  } catch (error) {
+    return {
+      data: [],
+      error: error instanceof Error ? error.message : "Testimonials are temporarily unavailable.",
+    };
   }
-
-  // Graceful deterministic fallback from static dataset
-  const fallback = (staticTestimonials as unknown as TestimonialRow[])
-    .filter((item) => item.active && item.verified)
-    .filter((item) => (locale ? item.locale === locale : true))
-    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
-
-  return fallback;
 }
 
 /**
@@ -70,9 +88,12 @@ export async function listAdminTestimonials(params: {
 } = {}): Promise<{ data: TestimonialRow[]; error: string | null }> {
   try {
     const supabase = getSupabaseClient();
-    let query = supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase as any)
       .from("testimonials")
       .select("*")
+      .order("pin_order", { ascending: true, nullsFirst: false })
+      .order("pinned_at", { ascending: false, nullsFirst: false })
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: false });
 
@@ -86,22 +107,11 @@ export async function listAdminTestimonials(params: {
 
     const { data, error } = await query;
 
-    if (!error && data && data.length > 0) {
-      return { data: (data as TestimonialRow[]), error: null };
-    }
-  } catch {
-    // Fallback below
+    if (error) return { data: [], error: error.message };
+    return { data: (data || []) as TestimonialRow[], error: null };
+  } catch (error) {
+    return { data: [], error: error instanceof Error ? error.message : "Yorumlar yüklenemedi." };
   }
-
-  // Fallback to static dataset for offline administration preview
-  let fallback = [...(staticTestimonials as unknown as TestimonialRow[])];
-  if (params.locale && params.locale !== "all") {
-    fallback = fallback.filter((item) => item.locale === params.locale);
-  }
-  if (params.activeOnly) {
-    fallback = fallback.filter((item) => item.active);
-  }
-  return { data: fallback, error: null };
 }
 
 /**
@@ -194,6 +204,8 @@ export async function updateAdminTestimonial(
     if (input.featured !== undefined) updatePayload.featured = input.featured;
     if (input.display_order !== undefined) updatePayload.display_order = input.display_order;
     if (input.profile_image_url !== undefined) updatePayload.profile_image_url = input.profile_image_url?.trim() || null;
+    if (input.pinned_at !== undefined) (updatePayload as Record<string, unknown>).pinned_at = input.pinned_at;
+    if (input.pin_order !== undefined) (updatePayload as Record<string, unknown>).pin_order = input.pin_order;
 
     const { error } = await supabase
       .from("testimonials")
@@ -222,9 +234,9 @@ export async function updateAdminTestimonial(
 }
 
 /**
- * Deletes a testimonial record permanently.
+ * Archives a testimonial. Source records are never hard-deleted.
  */
-export async function deleteAdminTestimonial(
+export async function archiveAdminTestimonial(
   id: string
 ): Promise<{ success: boolean; error: string | null }> {
   const supabase = getSupabaseClient();
@@ -232,27 +244,28 @@ export async function deleteAdminTestimonial(
   try {
     const { data: userData } = await supabase.auth.getUser();
 
-    const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
       .from("testimonials")
-      .delete()
+      .update({ active: false, archived_at: new Date().toISOString(), updated_by: userData.user?.id || null })
       .eq("id", id);
 
     if (error) {
-      console.error("[Admin Content] Error deleting testimonial:", error);
+      console.error("[Admin Content] Error archiving testimonial:", error);
       return { success: false, error: error.message };
     }
 
     // Write audit log
     await (supabase.from("audit_logs") as unknown as { insert: (row: Record<string, unknown>) => Promise<unknown> }).insert({
       actor_user_id: userData.user?.id || null,
-      action: "admin.content.testimonial_deleted",
+      action: "admin.content.testimonial_archived",
       entity_type: "testimonial",
       entity_id: id,
     });
 
     return { success: true, error: null };
   } catch (err) {
-    console.error("[Admin Content] Unexpected error deleting testimonial:", err);
-    return { success: false, error: "Öğrenci yorumu silinirken bir hata oluştu." };
+    console.error("[Admin Content] Unexpected error archiving testimonial:", err);
+    return { success: false, error: "Öğrenci yorumu arşivlenirken bir hata oluştu." };
   }
 }
