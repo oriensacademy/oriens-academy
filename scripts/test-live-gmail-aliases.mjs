@@ -69,14 +69,14 @@ async function runLiveTest() {
   const testMatrix = [
     {
       channel: "contact",
-      from: "Oriens Academy <contact@oriens-academy.com>",
-      replyTo: "contact@oriens-academy.com",
+      from: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       subject: "Oriens Academy İletişim Kanalı Doğrulama Testi",
     },
     {
       channel: "support",
-      from: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      from: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       subject: "Oriens Academy Destek Kanalı Doğrulama Testi",
     },
     {

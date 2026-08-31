@@ -30,21 +30,27 @@ const MAIL_IDENTITIES = {
   },
   contact: {
     fromName: "Oriens Academy",
-    fromEmail: "contact@oriens-academy.com",
-    replyTo: "contact@oriens-academy.com",
-    internalRecipient: "contact@oriens-academy.com",
+    fromEmail: "info@oriens-academy.com",
+    replyTo: "info@oriens-academy.com",
+    internalRecipient: "info@oriens-academy.com",
   },
   support: {
     fromName: "Oriens Academy Öğrenci Destek",
-    fromEmail: "support@oriens-academy.com",
-    replyTo: "support@oriens-academy.com",
-    internalRecipient: "support@oriens-academy.com",
+    fromEmail: "info@oriens-academy.com",
+    replyTo: "info@oriens-academy.com",
+    internalRecipient: "info@oriens-academy.com",
   },
   payments: {
     fromName: "Oriens Academy Ödemeler",
     fromEmail: "payments@oriens-academy.com",
     replyTo: "payments@oriens-academy.com",
     internalRecipient: "payments@oriens-academy.com",
+  },
+  zoom: {
+    fromName: "Oriens Academy Ders",
+    fromEmail: "zoom@oriens-academy.com",
+    replyTo: "zoom@oriens-academy.com",
+    internalRecipient: "zoom@oriens-academy.com",
   },
   admin: {
     fromName: "Oriens Academy",

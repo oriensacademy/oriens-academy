@@ -111,7 +111,7 @@ export const about: AboutContent = {
   },
   testimonials: {
     eyebrow: "Öğrenciler Ne Diyor",
-    title: "Yüzlerce öğrenci ve veli değerlendirmesinden birkaçı.",
+    title: "Öğrencilerimiz Ne Diyor?",
     items: [
       {
         id: "1",

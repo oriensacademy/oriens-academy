@@ -290,7 +290,7 @@ ${isEn ? "Request a free consultation:" : "Ücretsiz ön görüşme talep edin:"
   const delivery = await sendTransactionalEmail({
     supabaseAdmin: admin,
     to: email,
-    replyTo: "contact@oriens-academy.com",
+    replyTo: "info@oriens-academy.com",
     channel: "general",
     sender: { name: "Oriens Academy", email: "info@oriens-academy.com" },
     subject,

@@ -22,6 +22,7 @@ import {
   type AdminPaymentRow,
 } from "@/lib/admin/payments";
 import { formatCurrency } from "@/lib/format/currency";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 const statusLabels: Record<string, { label: string; bg: string; text: string }> = {
   pending: { label: "Bekliyor", bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
@@ -34,6 +35,7 @@ const statusLabels: Record<string, { label: string; bg: string; text: string }> 
 };
 
 export default function AdminPaymentsPage() {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -121,47 +123,49 @@ export default function AdminPaymentsPage() {
     search || status !== "all" || paymentMethod !== "all" || provider !== "all" || packageId !== "all" || period !== "all"
   );
 
-  async function review(row: AdminPaymentRow, decision: "approved" | "rejected") {
-    const prompt =
+  function review(row: AdminPaymentRow, decision: "approved" | "rejected") {
+    const description =
       decision === "approved"
         ? `"${row.payer_name || row.payer_email}" adlı öğrencinin "${row.public_reference}" numaralı havale tahsilatını onaylıyor musunuz? Bu işlem paketi otomatik olarak etkinleştirecektir.`
         : `"${row.public_reference}" numaralı havale talebini reddetmek istediğinize emin misiniz?`;
-    if (!window.confirm(prompt)) return;
-    setReviewing(row.id);
-    setMessage("");
-    const r = await reviewManualBankTransfer(row.id, decision);
-    setReviewing("");
-    if (r.error) {
-      setError(r.error);
-    } else {
-      setMessage(
-        `"${row.public_reference}" işlemi başarıyla ${decision === "approved" ? "onaylandı ve paket aktif edildi" : "reddedildi"}.`
-      );
-      refresh();
-    }
+    requestConfirmation({
+      title: decision === "approved" ? "Havale ödemesini onayla" : "Havale talebini reddet",
+      description,
+      confirmLabel: decision === "approved" ? "Onayla" : "Reddet",
+      destructive: decision === "rejected",
+      action: async () => {
+        setReviewing(row.id);
+        setMessage("");
+        const r = await reviewManualBankTransfer(row.id, decision);
+        setReviewing("");
+        if (r.error) setError(r.error);
+        else {
+          setMessage(`"${row.public_reference}" işlemi başarıyla ${decision === "approved" ? "onaylandı ve paket aktif edildi" : "reddedildi"}.`);
+          refresh();
+        }
+      },
+    });
   }
 
-  async function handleSendReminder(row: AdminPaymentRow) {
-    if (
-      !window.confirm(
-        `"${row.payer_email || row.payer_name}" adresine "${row.public_reference}" numaralı işlem için banka havalesi ödeme hatırlatma e-postası gönderilsin mi?`
-      )
-    ) {
-      return;
-    }
-    setReminding(row.id);
-    setMessage("");
-    setError("");
-    const r = await sendPaymentReminder(row.id);
-    setReminding("");
-    if (r.error) {
-      setError(r.error);
-    } else {
-      setMessage(
-        `"${row.public_reference}" işlemi için ödeme hatırlatma e-postası başarıyla gönderildi (Toplam ${r.reminderCount}. hatırlatma).`
-      );
-      refresh();
-    }
+  function handleSendReminder(row: AdminPaymentRow) {
+    requestConfirmation({
+      title: "Ödeme hatırlatması gönder",
+      description: `"${row.payer_email || row.payer_name}" adresine "${row.public_reference}" numaralı işlem için banka havalesi hatırlatması gönderilecek.`,
+      confirmLabel: "Gönder",
+      destructive: false,
+      action: async () => {
+        setReminding(row.id);
+        setMessage("");
+        setError("");
+        const r = await sendPaymentReminder(row.id);
+        setReminding("");
+        if (r.error) setError(r.error);
+        else {
+          setMessage(`"${row.public_reference}" işlemi için ödeme hatırlatma e-postası başarıyla gönderildi (Toplam ${r.reminderCount}. hatırlatma).`);
+          refresh();
+        }
+      },
+    });
   }
 
   function money(amount: number, currency = "TRY") {
@@ -173,6 +177,7 @@ export default function AdminPaymentsPage() {
 
   return (
     <div className="space-y-6">
+      {confirmationDialog}
       {/* Header */}
       <header className="flex flex-col gap-4 border-b border-[#DDE4DC] pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>

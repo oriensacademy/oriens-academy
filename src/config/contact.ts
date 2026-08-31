@@ -1,9 +1,12 @@
+import { INFO_EMAIL, PAYMENTS_EMAIL, ZOOM_EMAIL } from "@/config/email";
+
 export const CONTACT = {
-  email: "info@oriens-academy.com",
-  emailHref: "mailto:info@oriens-academy.com",
-  contactEmail: "contact@oriens-academy.com",
-  supportEmail: "support@oriens-academy.com",
-  paymentsEmail: "payments@oriens-academy.com",
+  email: INFO_EMAIL,
+  emailHref: `mailto:${INFO_EMAIL}`,
+  contactEmail: INFO_EMAIL,
+  supportEmail: INFO_EMAIL,
+  paymentsEmail: PAYMENTS_EMAIL,
+  zoomEmail: ZOOM_EMAIL,
   // WhatsApp
   whatsappDisplay: "+90 544 293 90 40",
   whatsappHref: "https://wa.me/905442939040",

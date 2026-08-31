@@ -72,8 +72,8 @@ async function main() {
       id: "booking.created.admin",
       category: "Web Talepleri",
       channel: "contact",
-      sender: "Oriens Academy <contact@oriens-academy.com>",
-      replyTo: "contact@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderAdminBookingEmail({
           studentName: "Mert Ömeroğlu",
@@ -92,8 +92,8 @@ async function main() {
       id: "booking.confirmed.student",
       category: "Web Talepleri",
       channel: "contact",
-      sender: "Oriens Academy <contact@oriens-academy.com>",
-      replyTo: "contact@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentBookingEmail({
           studentName: "Mert Ömeroğlu",
@@ -111,8 +111,8 @@ async function main() {
       id: "contact.created.admin",
       category: "Web Talepleri",
       channel: "contact",
-      sender: "Oriens Academy <contact@oriens-academy.com>",
-      replyTo: "contact@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderAdminContactEmail({
           name: "Selin Kara",
@@ -127,8 +127,8 @@ async function main() {
       id: "contact.confirmed.student",
       category: "Web Talepleri",
       channel: "contact",
-      sender: "Oriens Academy <contact@oriens-academy.com>",
-      replyTo: "contact@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentContactEmail({
           name: "Selin Kara",
@@ -144,8 +144,8 @@ async function main() {
       id: "support.ticket_created.student",
       category: "Öğrenci Destek",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentSupportConfirmationEmail({
           studentName: "Ali Can",
@@ -161,8 +161,8 @@ async function main() {
       id: "appointment.confirmed.student",
       category: "Randevu & Dersler",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentAppointmentConfirmedEmail({
           studentName: "Can Yılmaz",
@@ -179,8 +179,8 @@ async function main() {
       id: "appointment.created.admin",
       category: "Randevu & Dersler",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderAdminAppointmentCreatedEmail({
           studentName: "Can Yılmaz",
@@ -196,8 +196,8 @@ async function main() {
       id: "appointment.updated.student",
       category: "Randevu & Dersler",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentAppointmentUpdatedEmail({
           studentName: "Can Yılmaz",
@@ -215,8 +215,8 @@ async function main() {
       id: "appointment.cancelled.student",
       category: "Randevu & Dersler",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentAppointmentCancelledEmail({
           studentName: "Can Yılmaz",
@@ -231,8 +231,8 @@ async function main() {
       id: "appointment.reminder.student",
       category: "Randevu & Dersler",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentAppointmentReminderEmail({
           studentName: "Can Yılmaz",
@@ -247,9 +247,9 @@ async function main() {
     {
       id: "lesson.link_ready.student",
       category: "Randevu & Dersler",
-      channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      channel: "zoom",
+      sender: "Oriens Academy Ders <zoom@oriens-academy.com>",
+      replyTo: "zoom@oriens-academy.com",
       render: () =>
         renderStudentLiveLessonLinkEmail({
           lessonId: "lsn-101",
@@ -270,8 +270,8 @@ async function main() {
       id: "lesson.completed.student",
       category: "Randevu & Dersler",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentLessonCompletedEmail({
           lessonId: "lsn-101",
@@ -293,8 +293,8 @@ async function main() {
       id: "homework.assigned.student",
       category: "Ödev & Materyaller",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentHomeworkAssignedEmail({
           homeworkId: "hw-1",
@@ -312,8 +312,8 @@ async function main() {
       id: "lesson_note.assigned.student",
       category: "Ödev & Materyaller",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentHomeworkAssignedEmail({
           homeworkId: "hw-note-1",
@@ -331,8 +331,8 @@ async function main() {
       id: "homework.due_reminder.student",
       category: "Ödev & Materyaller",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentHomeworkDueReminderEmail({
           homeworkId: "hw-1",
@@ -348,8 +348,8 @@ async function main() {
       id: "homework.submitted.teacher",
       category: "Ödev & Materyaller",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderTeacherHomeworkSubmittedEmail(
           {
@@ -368,8 +368,8 @@ async function main() {
       id: "homework.reviewed.student",
       category: "Ödev & Materyaller",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentHomeworkReviewedEmail({
           homeworkId: "hw-1",
@@ -388,8 +388,8 @@ async function main() {
       id: "homework.revision_requested.student",
       category: "Ödev & Materyaller",
       channel: "support",
-      sender: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      sender: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentHomeworkRevisionRequestedEmail({
           homeworkId: "hw-1",
@@ -597,7 +597,7 @@ async function main() {
       category: "Hesap & Güvenlik",
       channel: "general",
       sender: "Oriens Academy <info@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentWelcomeEmail({
           studentName: "Ece Yıldız",
@@ -611,7 +611,7 @@ async function main() {
       category: "Hesap & Güvenlik",
       channel: "general",
       sender: "Oriens Academy <info@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderAccountPasswordRecoveryEmail(TARGET_RECIPIENT, "TEMP-PASS-2026-XYZ", "tr"),
     },

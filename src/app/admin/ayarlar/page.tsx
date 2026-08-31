@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useAdminAuth } from "@/lib/admin/auth-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { SiteSettingRow } from "@/lib/admin/settings";
@@ -8,6 +9,7 @@ import type { Json } from "@/types/database.types";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
 import { Switch } from "@/components/ui/switch";
+import { ADMIN_EMAIL, INFO_EMAIL, PAYMENTS_EMAIL, ZOOM_EMAIL } from "@/config/email";
 import {
   listAdminSiteSettings,
   updateAdminSiteSetting,
@@ -24,6 +26,7 @@ import {
   Lock,
   Navigation,
   Landmark,
+  ScrollText,
 } from "lucide-react";
 
 export default function AdminSettingsPage() {
@@ -146,15 +149,16 @@ function SettingsContent() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={fetchSettings}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted"
-        >
-          {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
-          <span>Yenile</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/denetim" className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted">
+            <ScrollText className="size-3.5" />
+            <span>Denetim Loglarını Görüntüle</span>
+          </Link>
+          <button type="button" onClick={fetchSettings} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted">
+            {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
+            <span>Yenile</span>
+          </button>
+        </div>
       </div>
 
       {/* Feedback Alerts */}
@@ -330,69 +334,29 @@ function SettingsContent() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* General / Primary Mailbox */}
-              <div className="rounded-xl border border-border bg-background-soft/40 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">Genel Bilgilendirmeler</span>
-                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Birincil</span>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: "Operasyon Merkezi", email: ADMIN_EMAIL, detail: "Transactional kopyalar ve yönetim bildirimleri.", primary: true },
+                { label: "Genel İletişim", email: INFO_EMAIL, detail: "İletişim, danışmanlık ve öğrenci destek talepleri." },
+                { label: "Ödeme / Muhasebe", email: PAYMENTS_EMAIL, detail: "Ödeme, havale, makbuz ve paket konuları." },
+                { label: "Zoom / Ders", email: ZOOM_EMAIL, detail: "Canlı ders ve toplantı bağlantısı konuları." },
+              ].map((mailbox) => (
+                <div key={mailbox.email} className="space-y-2 rounded-xl border border-border bg-background-soft/40 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-foreground">{mailbox.label}</span>
+                    {mailbox.primary ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">Merkez</span> : null}
+                  </div>
+                  <div className="break-all font-mono text-xs font-semibold text-primary">{mailbox.email}</div>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">{mailbox.detail}</p>
                 </div>
-                <div className="font-mono text-xs font-semibold text-primary">
-                  info@oriens-academy.com
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Google Workspace OAuth ana kimliği, hoş geldiniz ve genel bilgilendirmeler.
-                </p>
-              </div>
-
-              {/* Contact & Consultation */}
-              <div className="rounded-xl border border-border bg-background-soft/40 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">İletişim / Danışmanlık</span>
-                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Alias</span>
-                </div>
-                <div className="font-mono text-xs font-semibold text-primary">
-                  contact@oriens-academy.com
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  İletişim formu, hızlı danışmanlık ve ön görüşme talepleri.
-                </p>
-              </div>
-
-              {/* Student Support */}
-              <div className="rounded-xl border border-border bg-background-soft/40 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">Destek & Seanslar</span>
-                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Alias</span>
-                </div>
-                <div className="font-mono text-xs font-semibold text-primary">
-                  support@oriens-academy.com
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Ders randevuları, saat güncellemeleri, ödevler ve öğrenci yardım talepleri.
-                </p>
-              </div>
-
-              {/* Payments & Accounting */}
-              <div className="rounded-xl border border-border bg-background-soft/40 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">Ödeme / Muhasebe</span>
-                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">Alias</span>
-                </div>
-                <div className="font-mono text-xs font-semibold text-primary">
-                  payments@oriens-academy.com
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Ödeme makbuzları, banka havalesi onayları ve paket aktivasyonları.
-                </p>
-              </div>
+              ))}
             </div>
 
             {/* Global Archive Notice */}
             <div className="flex items-center gap-2.5 rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs text-foreground">
               <ShieldCheck className="size-4 text-primary shrink-0" />
               <span>
-                <strong>Güvenlik & Arşivleme:</strong> Tüm kullanıcı e-postalarının gizli kopyası (BCC) otomatik olarak <strong>info@oriens-academy.com</strong> adresine iletilir.
+                <strong>Operasyonel Kopya:</strong> Transactional e-postaların tekrarsız gizli kopyası <strong>{ADMIN_EMAIL}</strong> adresine iletilir. Incoming Workspace routing ayrıca yönetici tarafından doğrulanmalıdır.
               </span>
             </div>
           </div>

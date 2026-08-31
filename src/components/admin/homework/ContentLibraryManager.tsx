@@ -23,6 +23,7 @@ import {
   type HomeworkContentType,
   type HomeworkTemplate,
 } from "@/lib/homework";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 interface ContentLibraryManagerProps {
   onAssignContent: (item: HomeworkTemplate) => void;
@@ -35,6 +36,7 @@ export function ContentLibraryManager({
   onEditContent,
   onCreateNew,
 }: ContentLibraryManagerProps) {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [items, setItems] = useState<HomeworkTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -76,16 +78,18 @@ export function ContentLibraryManager({
     }
   };
 
-  const handleArchive = async (id: string) => {
-    if (!confirm("Bu içeriği arşivlemek istediğinize emin misiniz?")) return;
-    setActionBusy(id);
-    const res = await archiveHomeworkTemplate(id);
-    setActionBusy("");
-    if (res.error) {
-      setError(res.error);
-    } else {
-      void loadData();
-    }
+  const handleArchive = (id: string) => {
+    requestConfirmation({
+      title: "İçeriği arşivle",
+      description: "Bu içerik aktif kütüphaneden kaldırılacak ve arşivde korunacaktır.",
+      confirmLabel: "Arşivle",
+      action: async () => {
+        setActionBusy(id);
+        const res = await archiveHomeworkTemplate(id);
+        setActionBusy("");
+        if (res.error) setError(res.error); else void loadData();
+      },
+    });
   };
 
   const filteredItems = useMemo(() => {
@@ -126,6 +130,7 @@ export function ContentLibraryManager({
 
   return (
     <div className="space-y-4">
+      {confirmationDialog}
       {/* Top Filter and Actions Bar */}
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-1 flex-wrap items-center gap-2.5">

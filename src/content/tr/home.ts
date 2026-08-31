@@ -155,8 +155,8 @@ export const instructorAbout = {
 
 export const resultsTestimonials = {
   eyebrow: "Öğrenci Deneyimi",
-  headline: "Yüzlerce öğrenci ve veli değerlendirmesinden birkaçı.",
-  functionPlotCaption: "Gerçek veli ve öğrenci yorumları.",
+  headline: "Öğrencilerimiz Ne Diyor?",
+  functionPlotCaption: "Gerçek öğrenci ve veli deneyimleri.",
   testimonials: [
     {
       quote: "Oğlumun IB Fizik notu belirgin şekilde yükseldi, derse artık severek katılıyor.",

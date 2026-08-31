@@ -26,8 +26,10 @@ import type {
   UpdateCouponInput,
 } from "@/lib/coupons/types";
 import { listAdminPricingPackages, type PricingPackageRow } from "@/lib/admin/pricing";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 export default function AdminCouponsPage() {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [coupons, setCoupons] = useState<DiscountCoupon[]>([]);
   const [packages, setPackages] = useState<PricingPackageRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,14 +215,16 @@ export default function AdminCouponsPage() {
     }
   }
 
-  async function handleDelete(coupon: DiscountCoupon) {
-    if (!window.confirm(`"${coupon.code}" kodlu kuponu silmek istediğinize emin misiniz?`)) return;
-    const res = await deleteAdminCoupon(coupon.id);
-    if (!res.error) {
-      setCoupons((current) => current.filter((c) => c.id !== coupon.id));
-    } else {
-      alert(res.error);
-    }
+  function handleDelete(coupon: DiscountCoupon) {
+    requestConfirmation({
+      title: "Kuponu sil",
+      description: `"${coupon.code}" kodlu kupon kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
+      action: async () => {
+        const res = await deleteAdminCoupon(coupon.id);
+        if (!res.error) setCoupons((current) => current.filter((c) => c.id !== coupon.id));
+        else setError(res.error);
+      },
+    });
   }
 
   const filteredCoupons = useMemo(() => {
@@ -252,6 +256,7 @@ export default function AdminCouponsPage() {
 
   return (
     <div className="space-y-6">
+      {confirmationDialog}
       {/* Header */}
       <header className="flex flex-col gap-4 border-b border-[#DDE4DC] pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>

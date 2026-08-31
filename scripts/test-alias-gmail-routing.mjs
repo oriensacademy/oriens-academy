@@ -23,15 +23,15 @@ async function runAliasRoutingTest() {
     {
       channel: "contact",
       name: "Contact / Enquiry",
-      from: "Oriens Academy <contact@oriens-academy.com>",
-      replyTo: "contact@oriens-academy.com",
+      from: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       subject: "İletişim & Danışmanlık Talebi | Oriens Academy",
     },
     {
       channel: "support",
       name: "Student Support / Appointment / Live Lesson",
-      from: "Oriens Academy Öğrenci Destek <support@oriens-academy.com>",
-      replyTo: "support@oriens-academy.com",
+      from: "Oriens Academy Öğrenci Destek <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       subject: "Ders Randevunuz Onaylandı | Oriens Academy",
     },
     {

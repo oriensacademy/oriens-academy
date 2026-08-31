@@ -26,12 +26,14 @@ import {
   type MockExam,
   type QuestionBankItem,
 } from "@/lib/homework";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 export function MockExamManager({
   onAssignMockExam,
 }: {
   onAssignMockExam?: (mock: MockExam) => void;
 }) {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [mocks, setMocks] = useState<MockExam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -81,14 +83,11 @@ export function MockExamManager({
     setEditorOpen(true);
   };
 
-  const handleArchive = async (id: string) => {
-    if (!confirm("Bu denemeyi arşivlemek istediğinize emin misiniz?")) return;
-    const res = await archiveMockExam(id);
-    if (res.error) setError(res.error);
-    else {
-      setMessage("Deneme arşivlendi.");
-      refreshData();
-    }
+  const handleArchive = (id: string) => {
+    requestConfirmation({ title: "Denemeyi arşivle", description: "Bu deneme aktif listeden kaldırılacak ve arşivde korunacaktır.", confirmLabel: "Arşivle", action: async () => {
+      const res = await archiveMockExam(id);
+      if (res.error) setError(res.error); else { setMessage("Deneme arşivlendi."); refreshData(); }
+    }});
   };
 
   const filtered = mocks.filter((m) => {
@@ -103,6 +102,7 @@ export function MockExamManager({
 
   return (
     <div className="space-y-5">
+      {confirmationDialog}
       {/* Header */}
       <div className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-5 sm:flex-row sm:items-center sm:justify-between shadow-xs">
         <div>

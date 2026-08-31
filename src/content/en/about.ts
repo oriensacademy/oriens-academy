@@ -111,7 +111,7 @@ export const about: AboutContent = {
   },
   testimonials: {
     eyebrow: "What Students Say",
-    title: "A few of hundreds of student and parent reviews.",
+    title: "What Do Our Students Say?",
     items: [
       {
         id: "1",

@@ -34,7 +34,7 @@ async function verifyUniversities() {
     const { data, error } = await supabase
       .from("universities")
       .select("id, name, website, admissions_url")
-      .ilike("name", `%${item.name}%`)
+      .eq("name", item.name)
       .limit(1);
 
     if (error) {

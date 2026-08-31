@@ -638,7 +638,7 @@ export function renderAdminBookingEmail(data: BookingEmailData, adminLocale: "tr
     title: subject,
     bodyHtml,
     footerNote: `${isTr ? "Rezervasyon Kayıt Kodu" : "Booking ID"}: ${data.bookingId}`,
-    footerEmail: "contact@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -690,7 +690,7 @@ export function renderStudentBookingEmail(data: BookingEmailData) {
     eyebrow: isTr ? "Görüşme Talebi" : "Consultation Request",
     title: isTr ? "Talebiniz Alındı" : "Request Received",
     bodyHtml,
-    footerEmail: "contact@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -746,7 +746,7 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
     title: isTr ? "Yeni İletişim Talebi" : "New Contact Request",
     bodyHtml,
     footerNote: isTr ? `Kayıt ID: ${data.contactId}` : `Contact ID: ${data.contactId}`,
-    footerEmail: "contact@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -789,7 +789,7 @@ export function renderStudentContactEmail(data: ContactEmailData) {
     eyebrow: isTr ? "İletişim" : "Contact",
     title: isTr ? "Mesajınız Alındı" : "Message Received",
     bodyHtml,
-    footerEmail: "contact@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -835,7 +835,7 @@ export function renderStudentAppointmentConfirmedEmail(data: AppointmentEmailDat
     title: isTr ? "Randevunuz Onaylandı" : "Appointment Confirmed",
     bodyHtml,
     footerNote: isTr ? "Ders saatinizden 5 dakika önce hazır bulunmanızı rica ederiz." : "Please be ready 5 minutes prior to the scheduled lesson time.",
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -877,7 +877,7 @@ export function renderAdminAppointmentCreatedEmail(data: AppointmentEmailData, a
     eyebrow: "ORIENS ACADEMY",
     title: subject,
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${data.studentName} - ${data.lessonTitle} - ${formattedTime}`]);
@@ -915,7 +915,7 @@ export function renderStudentAppointmentUpdatedEmail(data: AppointmentEmailData)
     eyebrow: isTr ? "Randevu Güncellemesi" : "Schedule Update",
     title: isTr ? "Ders / Görüşme Bilgileriniz Güncellendi" : "Your Lesson / Meeting Has Been Updated",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -956,7 +956,7 @@ export function renderStudentAppointmentCancelledEmail(data: AppointmentEmailDat
     eyebrow: isTr ? "Randevu İptali" : "Cancellation",
     title: isTr ? "Ders İptal Edildi" : "Lesson Cancelled",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${isTr ? "İptal Edilen Ders" : "Cancelled Lesson"}: ${data.lessonTitle} - ${formattedTime}`]);
@@ -992,7 +992,7 @@ export function renderStudentAppointmentReminderEmail(data: AppointmentEmailData
     title: isTr ? "Yaklaşan Dersiniz" : "Upcoming Lesson",
     bodyHtml,
     footerNote: isTr ? "Ders materyallerinizi ve çalışma notlarınızı hazır bulundurmanızı öneririz." : "We recommend having your study materials and notebook ready prior to the session.",
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${data.lessonTitle} - ${formattedTime}`]);
@@ -1446,7 +1446,7 @@ export function renderStudentHomeworkAssignedEmail(data: HomeworkEmailData) {
     title: headerTitle,
     bodyHtml,
     footerNote: isTr ? "İçeriğe dilediğiniz zaman öğrenci portalı üzerinden erişebilirsiniz." : "You can access your materials anytime via the student portal.",
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${data.assignmentTitle}`]);
@@ -1480,7 +1480,7 @@ export function renderStudentHomeworkDueReminderEmail(data: HomeworkEmailData) {
     eyebrow: isTr ? "Ödev Hatırlatması" : "Due Date Reminder",
     title: isTr ? "Teslim Tarihi Yaklaşıyor" : "Assignment Due Soon",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${data.assignmentTitle} - ${formattedDueDate}`]);
@@ -1516,7 +1516,7 @@ export function renderTeacherHomeworkSubmittedEmail(data: HomeworkEmailData, adm
     eyebrow: "ORIENS ACADEMY",
     title: subject,
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", `${data.studentName} - ${data.assignmentTitle}`]);
@@ -1555,7 +1555,7 @@ export function renderStudentHomeworkReviewedEmail(data: HomeworkEmailData) {
     eyebrow: isTr ? "Akademik Değerlendirme" : "Feedback Ready",
     title: isTr ? "Ödeviniz İncelendi" : "Feedback Ready",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", data.teacherFeedback || ""]);
@@ -1594,7 +1594,7 @@ export function renderStudentHomeworkRevisionRequestedEmail(data: HomeworkEmailD
     eyebrow: isTr ? "Akademik Takip" : "Revision Request",
     title: isTr ? "Düzenleme Talebi" : "Revision Requested",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([`ORIENS ACADEMY - ${subject}`, "", data.teacherFeedback || ""]);
@@ -1655,9 +1655,7 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
       ${actionButton(ctaLabel, portalAccountUrl)}
     </div>`;
 
-  const footerNote = isTr
-    ? "Oriens Academy &middot; info@oriens-academy.com &middot; support@oriens-academy.com"
-    : "Oriens Academy &middot; info@oriens-academy.com &middot; support@oriens-academy.com";
+  const footerNote = "Oriens Academy &middot; info@oriens-academy.com";
 
   const html = renderEmailShell({
     locale: data.locale,
@@ -1665,7 +1663,7 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
     title: isTr ? "Oriens Academy’ye Hoş Geldiniz" : "Welcome to Oriens Academy",
     bodyHtml,
     footerNote,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = isTr
@@ -1688,7 +1686,6 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
         "",
         "Oriens Academy",
         "info@oriens-academy.com",
-        "support@oriens-academy.com",
       ])
     : joinText([
         `ORIENS ACADEMY - ${subject}`,
@@ -1709,7 +1706,6 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
         "",
         "Oriens Academy",
         "info@oriens-academy.com",
-        "support@oriens-academy.com",
       ]);
 
   return { subject, html, text };
@@ -1758,7 +1754,7 @@ export function renderAccountPasswordRecoveryEmail(
     eyebrow: isTr ? "Hesap Güvenliği" : "Account Security",
     title: isTr ? "Yeni Geçici Şifreniz" : "Temporary Password",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -1841,8 +1837,8 @@ export function renderStudentLiveLessonLinkEmail(data: LiveLessonLinkEmailData) 
     eyebrow: isTr ? "Canlı Ders" : "Live Lesson",
     title: isTr ? "Canlı Ders Bağlantınız" : "Your Live Lesson Link",
     bodyHtml,
-    footerNote: isTr ? "Ders saati veya bağlantıyla ilgili sorularınız için support@oriens-academy.com üzerinden bize ulaşabilirsiniz." : "For questions regarding your lesson link or schedule, contact support@oriens-academy.com.",
-    footerEmail: "support@oriens-academy.com",
+    footerNote: isTr ? "Ders saati veya bağlantıyla ilgili sorularınız için zoom@oriens-academy.com üzerinden bize ulaşabilirsiniz." : "For questions regarding your lesson link or schedule, contact zoom@oriens-academy.com.",
+    footerEmail: "zoom@oriens-academy.com",
   });
 
   const text = joinText([
@@ -1897,7 +1893,7 @@ export function renderStudentLessonCompletedEmail(data: LessonCompletedEmailData
     eyebrow: isTr ? "Ders Takibi" : "Lesson Tracking",
     title: isTr ? "Dersiniz Tamamlandı" : "Lesson Completed",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([
@@ -1950,7 +1946,7 @@ export function renderStudentSupportConfirmationEmail(
     eyebrow: isTr ? "Öğrenci Destek" : "Student Support",
     title: isTr ? "Destek Talebiniz Alındı" : "Support Request Received",
     bodyHtml,
-    footerEmail: "support@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
   });
 
   const text = joinText([

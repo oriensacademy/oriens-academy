@@ -155,8 +155,8 @@ export const instructorAbout = {
 
 export const resultsTestimonials = {
   eyebrow: "Student Experience",
-  headline: "A few of hundreds of student and parent reviews.",
-  functionPlotCaption: "Real student and parent reviews.",
+  headline: "What Do Our Students Say?",
+  functionPlotCaption: "Real experiences shared by students and parents.",
   testimonials: [
     {
       quote: "My son's IB Physics grade improved noticeably, and he now enjoys the subject.",

@@ -85,11 +85,11 @@ async function runBccArchiveTestSuite() {
     assert.strictEqual(alreadyTargeted, false, "Customer address must NOT be considered already targeted");
 
     const finalBccList = [...new Set([...explicitBccEmails, archiveAddress])];
-    assert.deepStrictEqual(finalBccList, ["info@oriens-academy.com"]);
+    assert.deepStrictEqual(finalBccList, ["admin@oriens-academy.com"]);
   });
 
-  await runTest("Deduplication: TO info@oriens-academy.com skips duplicate BCC", () => {
-    const to = "info@oriens-academy.com";
+  await runTest("Deduplication: TO admin@oriens-academy.com skips duplicate BCC", () => {
+    const to = "admin@oriens-academy.com";
     const archiveAddress = getArchiveBccAddress();
     const toEmails = extractEmails(to);
     const ccEmails = extractEmails(undefined);
@@ -100,14 +100,14 @@ async function runBccArchiveTestSuite() {
       ccEmails.includes(archiveAddress) ||
       explicitBccEmails.includes(archiveAddress);
 
-    assert.strictEqual(alreadyTargeted, true, "info@ recipient must be recognized as already targeted");
+    assert.strictEqual(alreadyTargeted, true, "admin@ recipient must be recognized as already targeted");
 
     const finalBccList = [...new Set(explicitBccEmails)];
-    assert.deepStrictEqual(finalBccList, [], "BCC list must be empty to avoid duplicate in info inbox");
+    assert.deepStrictEqual(finalBccList, [], "BCC list must be empty to avoid duplicate in admin inbox");
   });
 
-  await runTest("Deduplication: Uppercase INFO@ORIENS-ACADEMY.COM is deduplicated", () => {
-    const to = "INFO@ORIENS-ACADEMY.COM";
+  await runTest("Deduplication: Uppercase ADMIN@ORIENS-ACADEMY.COM is deduplicated", () => {
+    const to = "ADMIN@ORIENS-ACADEMY.COM";
     const archiveAddress = getArchiveBccAddress();
     const toEmails = extractEmails(to);
 
@@ -115,8 +115,8 @@ async function runBccArchiveTestSuite() {
     assert.strictEqual(alreadyTargeted, true, "Uppercase address must match canonical lowercase");
   });
 
-  await runTest("Deduplication: Formatted 'Oriens Info <info@oriens-academy.com>' is deduplicated", () => {
-    const to = "Oriens Academy Info <info@oriens-academy.com>";
+  await runTest("Deduplication: formatted admin address is deduplicated", () => {
+    const to = "Oriens Academy Admin <admin@oriens-academy.com>";
     const archiveAddress = getArchiveBccAddress();
     const toEmails = extractEmails(to);
 
@@ -127,19 +127,19 @@ async function runBccArchiveTestSuite() {
   // 3. MIME STRUCTURAL INTEGRITY
   await runTest("RFC 822 MIME builder formats Bcc header correctly without leaking to To header", () => {
     const mime = buildRfc822Message({
-      from: "Oriens Academy Destek <support@oriens-academy.com>",
+      from: "Oriens Academy Destek <info@oriens-academy.com>",
       to: "student@example.com",
-      bcc: "info@oriens-academy.com",
-      replyTo: "support@oriens-academy.com",
+      bcc: "admin@oriens-academy.com",
+      replyTo: "info@oriens-academy.com",
       subject: "Yeni Dersiniz Planlandı",
       html: "<html><body><p>Dersiniz onaylandı.</p></body></html>",
       text: "Dersiniz onaylandı.",
     });
 
-    assert(mime.includes("From: Oriens Academy Destek <support@oriens-academy.com>"), "From header missing");
+    assert(mime.includes("From: Oriens Academy Destek <info@oriens-academy.com>"), "From header missing");
     assert(mime.includes("To: student@example.com"), "To header missing");
-    assert(mime.includes("Bcc: info@oriens-academy.com"), "Bcc header missing");
-    assert(mime.includes("Reply-To: support@oriens-academy.com"), "Reply-To header missing");
+    assert(mime.includes("Bcc: admin@oriens-academy.com"), "Bcc header missing");
+    assert(mime.includes("Reply-To: info@oriens-academy.com"), "Reply-To header missing");
     assert(mime.includes("Content-Type: multipart/alternative"), "Multipart boundary missing");
 
     // Ensure NO visible "BCC archived" or "internal copy" marker was injected into body
@@ -150,16 +150,20 @@ async function runBccArchiveTestSuite() {
   // 4. CHANNEL ALIASES & SENDER IDENTITIES
   await runTest("All sender channels (contact, support, payments, general, admin) retain correct aliases", () => {
     const contact = resolveMailIdentity("contact");
-    assert.strictEqual(contact.fromEmail, "contact@oriens-academy.com");
-    assert.strictEqual(contact.replyTo, "contact@oriens-academy.com");
+    assert.strictEqual(contact.fromEmail, "info@oriens-academy.com");
+    assert.strictEqual(contact.replyTo, "info@oriens-academy.com");
 
     const support = resolveMailIdentity("support");
-    assert.strictEqual(support.fromEmail, "support@oriens-academy.com");
-    assert.strictEqual(support.replyTo, "support@oriens-academy.com");
+    assert.strictEqual(support.fromEmail, "info@oriens-academy.com");
+    assert.strictEqual(support.replyTo, "info@oriens-academy.com");
 
     const payments = resolveMailIdentity("payments");
     assert.strictEqual(payments.fromEmail, "payments@oriens-academy.com");
     assert.strictEqual(payments.replyTo, "payments@oriens-academy.com");
+
+    const zoom = resolveMailIdentity("zoom");
+    assert.strictEqual(zoom.fromEmail, "zoom@oriens-academy.com");
+    assert.strictEqual(zoom.replyTo, "zoom@oriens-academy.com");
 
     const general = resolveMailIdentity("general");
     assert.strictEqual(general.fromEmail, "info@oriens-academy.com");
@@ -198,7 +202,7 @@ async function runBccArchiveTestSuite() {
 
     assert.strictEqual(result.status, "sent");
     assert.strictEqual(result.archiveBccApplied, true);
-    assert.strictEqual(result.archiveRecipient, "info@oriens-academy.com");
+    assert.strictEqual(result.archiveRecipient, "admin@oriens-academy.com");
   });
 
   await runTest("TEST B: Payments channel email to student applies archive BCC", async () => {
@@ -216,14 +220,14 @@ async function runBccArchiveTestSuite() {
 
     assert.strictEqual(result.status, "sent");
     assert.strictEqual(result.archiveBccApplied, true);
-    assert.strictEqual(result.archiveRecipient, "info@oriens-academy.com");
+    assert.strictEqual(result.archiveRecipient, "admin@oriens-academy.com");
   });
 
-  await runTest("TEST C: Direct info@oriens-academy.com recipient does NOT duplicate BCC", async () => {
+  await runTest("TEST C: Direct admin@oriens-academy.com recipient does NOT duplicate BCC", async () => {
     const result = await sendTransactionalEmail({
       supabaseAdmin: mockSupabase,
-      to: "info@oriens-academy.com",
-      channel: "general",
+      to: "admin@oriens-academy.com",
+      channel: "admin",
       subject: "Yeni İletişim Formu Talebi",
       html: "<p>Yeni talep geldi.</p>",
       text: "Yeni talep geldi.",
@@ -252,7 +256,7 @@ async function runBccArchiveTestSuite() {
 
     assert.strictEqual(result.status, "sent");
     assert.strictEqual(result.archiveBccApplied, true);
-    assert.strictEqual(result.archiveRecipient, "info@oriens-academy.com");
+    assert.strictEqual(result.archiveRecipient, "admin@oriens-academy.com");
   });
 
   console.log(`\n==================================================`);
@@ -280,8 +284,9 @@ async function runBccArchiveTestSuite() {
     const jsonPreview = await resPreview.json();
     console.log("Live Preview Delivery (To info@) response:", jsonPreview);
     assert(jsonPreview.success === true, "Live preview delivery failed");
-    assert.strictEqual(jsonPreview.delivery.archiveBccApplied, false, "To info@ must have archiveBccApplied = false");
-    console.log("✓ [PASS] Live Remote Edge Function Deduplication verified successfully (0 duplicate BCC)!");
+    assert.strictEqual(jsonPreview.delivery.archiveBccApplied, true, "To info@ must receive an admin@ operational copy");
+    assert.strictEqual(jsonPreview.delivery.archiveRecipient, "admin@oriens-academy.com");
+    console.log("✓ [PASS] Live Remote operational admin copy verified successfully!");
 
     console.log("\nRunning Live Remote Verification 2: External Student Delivery (BCC Archive Check)...");
     const resExternal = await fetch(`${projectUrl}/functions/v1/send-exam-result-email`, {
@@ -315,8 +320,8 @@ async function runBccArchiveTestSuite() {
     console.log("Live External Delivery response:", jsonExternal);
     assert(jsonExternal.success === true, "Live external delivery failed");
     assert.strictEqual(jsonExternal.delivery.archiveBccApplied, true, "External recipient must have archiveBccApplied = true");
-    assert.strictEqual(jsonExternal.delivery.archiveRecipient, "info@oriens-academy.com", "Archive recipient must be info@oriens-academy.com");
-    console.log("✓ [PASS] Live Remote Edge Function BCC Archive verified successfully (BCC applied to info@oriens-academy.com)!");
+    assert.strictEqual(jsonExternal.delivery.archiveRecipient, "admin@oriens-academy.com", "Archive recipient must be admin@oriens-academy.com");
+    console.log("✓ [PASS] Live Remote Edge Function operational copy verified successfully (BCC applied to admin@)!");
   } else {
     console.log("Remote service key unavailable; local verification complete.");
   }

@@ -10,7 +10,7 @@ import { examRecords } from "@/content/exams";
 import { useAboutContent, useLocale } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
 import { CONTACT } from "@/config/contact";
-import { CircularTestimonials, type CircularTestimonial } from "@/components/ui/circular-testimonials";
+import { TestimonialsColumns, type TestimonialItem } from "@/components/ui/testimonials-columns-1";
 import { getPublicTestimonials, type TestimonialRow } from "@/lib/admin/content";
 import About from "@/components/about";
 import { OriensLottie } from "@/components/ui/OriensLottie";
@@ -36,11 +36,12 @@ export function AboutPage() {
     return () => { cancelled = true; };
   }, [locale]);
 
-  const testimonials: CircularTestimonial[] = testimonialRows.map((item) => ({
-    quote: item.quote,
+  const testimonials: TestimonialItem[] = testimonialRows.map((item) => ({
+    id: item.id,
+    text: item.quote,
     name: item.name,
-    designation: item.context || item.exam_code?.toUpperCase() || (locale === "tr" ? "Oriens Academy öğrencisi" : "Oriens Academy student"),
-    src: item.profile_image_url,
+    metadata: item.context || item.exam_code?.toUpperCase() || undefined,
+    image: item.profile_image_url || undefined,
   }));
 
   return (
@@ -136,17 +137,12 @@ export function AboutPage() {
         <section className="py-20 md:py-28">
           <div className="mx-auto max-w-[1280px] px-6 md:px-12">
             <Reveal className="max-w-3xl">
-              <p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{locale === "tr" ? "ÖĞRENCİ DENEYİMLERİ" : "STUDENT EXPERIENCES"}</p>
-              <h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{locale === "tr" ? "Öğrencilerimiz süreci nasıl anlatıyor?" : "How do our students describe the process?"}</h2>
-              <p className="mt-5 text-base leading-[1.75] text-ink/70">{locale === "tr" ? "Her öğrencinin hedefi ve hazırlık süreci farklı. Gerçek öğrenci deneyimlerinden Oriens Academy ile çalışmanın nasıl ilerlediğini keşfedin." : "Every student's goals and preparation journey are different. Explore verified experiences from students who have worked with Oriens Academy."}</p>
+              <p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.testimonials.eyebrow}</p>
+              <h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.testimonials.title}</h2>
+              <p className="mt-5 text-base leading-[1.75] text-ink/70">{locale === "tr" ? "Gerçek öğrenci ve veli deneyimleri." : "Real experiences shared by students and parents."}</p>
             </Reveal>
             <Reveal className="mx-auto mt-12 max-w-5xl" delay={0.08}>
-              <CircularTestimonials
-                testimonials={testimonials}
-                locale={locale}
-                autoplay
-                colors={{ name: "#10271B", designation: "#68756C", testimony: "#34483D", arrowBackground: "#10271B", arrowForeground: "#FFFFFF", arrowHoverBackground: "#819586" }}
-              />
+              <TestimonialsColumns testimonials={testimonials} locale={locale} />
             </Reveal>
           </div>
         </section>

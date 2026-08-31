@@ -220,8 +220,8 @@ ${isEn ? "View your package:" : "Paketinizi görüntüleyin:"} ${portalUrl}
     const delivery = await sendTransactionalEmail({
       supabaseAdmin: admin,
       to: profile.email,
-      replyTo: "payments@oriens-academy.com",
-      channel: "payments",
+      replyTo: "zoom@oriens-academy.com",
+      channel: "zoom",
       subject,
       html,
       text,
@@ -308,8 +308,8 @@ ${isEn ? "View your package:" : "Paketinizi görüntüleyin:"} ${portalUrl}
     const delivery = await sendTransactionalEmail({
       supabaseAdmin: admin,
       to: profile.email,
-      replyTo: "payments@oriens-academy.com",
-      channel: "payments",
+      replyTo: "zoom@oriens-academy.com",
+      channel: "zoom",
       subject,
       html,
       text,

@@ -8,7 +8,8 @@ const env = Object.fromEntries(fs.readFileSync(".env.local","utf8").split(/\r?\n
 const service=createClient(env.NEXT_PUBLIC_SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const anon=createClient(env.NEXT_PUBLIC_SUPABASE_URL,env.NEXT_PUBLIC_SUPABASE_ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const count=async(table,filter=(q)=>q)=>{const {count,error}=await filter(service.from(table).select("*",{count:"exact",head:true}));if(error)throw error;return count??0;};
-const protectedBefore={student_profiles:4,payment_transactions:12,pricing_packages:6,student_lessons:0,student_package_purchases:11};
+// Baseline after the approved exact paymentv6 test-account cleanup migration.
+const protectedBefore={student_profiles:3,payment_transactions:10,pricing_packages:6,student_lessons:0,student_package_purchases:9};
 const protectedAfter=Object.fromEntries(await Promise.all(Object.keys(protectedBefore).map(async(table)=>[table,await count(table)])));
 assert.deepEqual(protectedAfter,protectedBefore,"protected business row counts changed");
 

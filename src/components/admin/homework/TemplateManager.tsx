@@ -29,6 +29,7 @@ import {
   type HomeworkTemplate,
   type QuestionBankItem,
 } from "@/lib/homework";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 export function TemplateManager({
   initialPreloadedQuestions,
@@ -37,6 +38,7 @@ export function TemplateManager({
   initialPreloadedQuestions?: QuestionBankItem[] | null;
   onAssignTemplate?: (template: HomeworkTemplate) => void;
 }) {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [templates, setTemplates] = useState<HomeworkTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -117,14 +119,11 @@ export function TemplateManager({
     }
   };
 
-  const handleArchive = async (id: string) => {
-    if (!confirm("Bu ödev şablonunu arşivlemek istediğinize emin misiniz?")) return;
-    const res = await archiveHomeworkTemplate(id);
-    if (res.error) setError(res.error);
-    else {
-      setMessage("Şablon arşivlendi.");
-      refreshData();
-    }
+  const handleArchive = (id: string) => {
+    requestConfirmation({ title: "Ödev şablonunu arşivle", description: "Bu şablon aktif listeden kaldırılacak ve arşivde korunacaktır.", confirmLabel: "Arşivle", action: async () => {
+      const res = await archiveHomeworkTemplate(id);
+      if (res.error) setError(res.error); else { setMessage("Şablon arşivlendi."); refreshData(); }
+    }});
   };
 
   const filtered = templates.filter((t) => {
@@ -139,6 +138,7 @@ export function TemplateManager({
 
   return (
     <div className="space-y-5">
+      {confirmationDialog}
       {/* Header */}
       <div className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-5 sm:flex-row sm:items-center sm:justify-between shadow-xs">
         <div>

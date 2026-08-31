@@ -107,7 +107,7 @@ console.log("✓ Payment status humanization passed.");
 
 // 5. Central BCC Deduplication Logic
 function buildBccList(toEmail, explicitBcc = []) {
-  const PRIMARY_ARCHIVE_EMAIL = "info@oriens-academy.com";
+  const PRIMARY_ARCHIVE_EMAIL = "admin@oriens-academy.com";
   const bccSet = new Set(explicitBcc.map((e) => e.toLowerCase().trim()).filter(Boolean));
   if (toEmail.toLowerCase().trim() !== PRIMARY_ARCHIVE_EMAIL) {
     bccSet.add(PRIMARY_ARCHIVE_EMAIL);
@@ -117,13 +117,13 @@ function buildBccList(toEmail, explicitBcc = []) {
 
 console.log("\n[TEST 5] Central Outbound BCC & Deduplication");
 const bcc1 = buildBccList("student@example.com");
-assert.deepEqual(bcc1, ["info@oriens-academy.com"]);
+assert.deepEqual(bcc1, ["admin@oriens-academy.com"]);
 
-const bcc2 = buildBccList("info@oriens-academy.com");
+const bcc2 = buildBccList("admin@oriens-academy.com");
 assert.deepEqual(bcc2, []);
 
-const bcc3 = buildBccList("student@example.com", ["info@oriens-academy.com", "mentor@example.com"]);
-assert.deepEqual(bcc3.sort(), ["info@oriens-academy.com", "mentor@example.com"].sort());
+const bcc3 = buildBccList("student@example.com", ["admin@oriens-academy.com", "mentor@example.com"]);
+assert.deepEqual(bcc3.sort(), ["admin@oriens-academy.com", "mentor@example.com"].sort());
 console.log("✓ Central BCC archiving and deduplication passed.");
 
 // 6. Preferred Language Validation

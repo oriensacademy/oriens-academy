@@ -96,8 +96,7 @@ check("TR Welcome Email CTA URL is 'https://oriens-academy.com/tr/hesabim/'",
   trWelcome.html.includes("https://oriens-academy.com/tr/hesabim/")
 );
 check("TR Welcome Email contains official footer contacts",
-  trWelcome.html.includes("info@oriens-academy.com") &&
-  trWelcome.html.includes("support@oriens-academy.com")
+  trWelcome.html.includes("info@oriens-academy.com")
 );
 check("TR Welcome Email contains updated canonical address",
   trWelcome.html.includes("Emaar Square, The Heights E Blok")

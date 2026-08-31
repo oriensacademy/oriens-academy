@@ -11,6 +11,7 @@ import {
   type QuestionLanguage,
 } from "@/lib/homework";
 import { canonicalExams } from "@/content/canonical-exams";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 const EXAM_PRESETS = [...canonicalExams.map((exam) => exam.code), "Genel"];
 
@@ -47,6 +48,7 @@ function compactId(item: QuestionBankItem) {
 }
 
 export function QuestionBankManager() {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [items, setItems] = useState<QuestionBankItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -132,14 +134,11 @@ export function QuestionBankManager() {
     }
   };
 
-  const archive = async (id: string) => {
-    if (!window.confirm("Bu soruyu arşivlemek istediğinize emin misiniz?")) return;
-    const result = await archiveQuestionBankItem(id);
-    if (result.error) setError(result.error);
-    else {
-      setMessage("Soru arşivlendi.");
-      refreshData();
-    }
+  const archive = (id: string) => {
+    requestConfirmation({ title: "Soruyu arşivle", description: "Bu soru aktif soru kütüphanesinden kaldırılacak ve arşivde korunacaktır.", confirmLabel: "Arşivle", action: async () => {
+      const result = await archiveQuestionBankItem(id);
+      if (result.error) setError(result.error); else { setMessage("Soru arşivlendi."); refreshData(); }
+    }});
   };
 
   const createMenuRef = useRef<HTMLDivElement>(null);
@@ -161,6 +160,7 @@ export function QuestionBankManager() {
 
   return (
     <div className="space-y-5">
+      {confirmationDialog}
       <section className="flex flex-col gap-4 rounded-3xl border border-border bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">

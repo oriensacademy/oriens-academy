@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
   const delivery = await sendTransactionalEmail({
     supabaseAdmin: admin,
     to: ALLOWED_PREVIEW_RECIPIENT,
-    replyTo: replyTo || "support@oriens-academy.com",
+    replyTo: replyTo || "info@oriens-academy.com",
     channel,
     sender: from
       ? {

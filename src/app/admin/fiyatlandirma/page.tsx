@@ -23,12 +23,14 @@ import {
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format/currency";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 export default function AdminPricingPage() {
   return <PricingContent />;
 }
 
 function PricingContent() {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [packages, setPackages] = useState<PricingPackageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -77,20 +79,23 @@ function PricingContent() {
     else if (success) fetchPackages();
   };
 
-  const handleDelete = async (id: string) => {
-    const confirmDelete = window.confirm(`"${id}" fiyat paketini silmek istediğinize emin misiniz?`);
-    if (!confirmDelete) return;
-
-    setDeletingId(id);
-    const { success, error } = await deleteAdminPricingPackage(id);
-    setDeletingId(null);
-
-    if (error) setErrorMsg(error);
-    else if (success) fetchPackages();
+  const handleDelete = (id: string) => {
+    requestConfirmation({
+      title: "Fiyat paketini sil",
+      description: `"${id}" fiyat paketi kalıcı olarak silinecek. İlişkili satışlar varsa veritabanı işlemi güvenli biçimde reddedecektir.`,
+      action: async () => {
+        setDeletingId(id);
+        const { success, error } = await deleteAdminPricingPackage(id);
+        setDeletingId(null);
+        if (error) setErrorMsg(error);
+        else if (success) await fetchPackages();
+      },
+    });
   };
 
   return (
     <div className="space-y-6">
+      {confirmationDialog}
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
         <div>

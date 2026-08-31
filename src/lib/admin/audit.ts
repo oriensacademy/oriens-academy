@@ -7,6 +7,8 @@ export interface ListAuditLogsParams {
   action?: string;
   entityType?: string;
   search?: string;
+  dateFrom?: string;
+  dateTo?: string;
   limit?: number;
   offset?: number;
 }
@@ -47,6 +49,8 @@ export async function listAdminAuditLogs(
       const s = `%${params.search.trim()}%`;
       query = query.or(`action.ilike.${s},entity_type.ilike.${s},entity_id.ilike.${s}`);
     }
+    if (params.dateFrom) query = query.gte("created_at", `${params.dateFrom}T00:00:00.000Z`);
+    if (params.dateTo) query = query.lte("created_at", `${params.dateTo}T23:59:59.999Z`);
 
     const { data, count, error } = await query;
 

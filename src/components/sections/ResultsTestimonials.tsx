@@ -17,14 +17,12 @@ export function ResultsTestimonials() {
       if (!active) return;
       setLoadError(Boolean(error));
       if (!error && rows.length > 0) {
-        // Show featured items first
-        const featuredRows = rows.filter((r) => r.featured);
-        const displayRows = featuredRows.length >= 6 ? featuredRows.slice(0, 9) : rows.slice(0, 9);
         setItems(
-          displayRows.map((r) => ({
+          rows.map((r) => ({
+            id: r.id,
             quote: r.quote,
             name: r.name,
-            role: r.context || r.exam_code?.toUpperCase() || (locale === "tr" ? "Öğrenci Değerlendirmesi" : "Student Review"),
+            role: r.context || r.exam_code?.toUpperCase() || undefined,
             image: r.profile_image_url || undefined,
             dateStr: r.created_at ? new Date(r.created_at).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US", { month: "short", year: "numeric" }) : undefined,
           }))

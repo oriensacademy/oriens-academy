@@ -22,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 import {
   addStudentPrivateNote,
   updateStudentPrivateNote,
@@ -217,6 +218,7 @@ function LessonsPanel({
   changed: () => void;
   onPlan?: () => void;
 }) {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [isCreating, setIsCreating] = useState(false);
   const [completeTarget, setCompleteTarget] = useState<Tables<"student_lessons"> | null>(null);
   const [completionNote, setCompletionNote] = useState("");
@@ -316,17 +318,13 @@ function LessonsPanel({
     }
   }
 
-  async function handleCancelLesson(lessonId: string) {
-    if (!confirm("Bu dersi iptal etmek istediğinizden emin misiniz?")) return;
-    setBusy(true);
-    setError("");
-    const res = await cancelStudentLesson(lessonId, "Yönetici tarafından iptal edildi.");
-    setBusy(false);
-    if (!res.success) setError(res.error || "İptal edilemedi.");
-    else {
-      setActionSuccess("Ders iptal edildi.");
-      changed();
-    }
+  function handleCancelLesson(lessonId: string) {
+    requestConfirmation({ title: "Dersi iptal et", description: "Planlanan ders iptal edilecek ve öğrenci programındaki durum güncellenecektir.", confirmLabel: "İptal Et", action: async () => {
+      setBusy(true); setError("");
+      const res = await cancelStudentLesson(lessonId, "Yönetici tarafından iptal edildi.");
+      setBusy(false);
+      if (!res.success) setError(res.error || "İptal edilemedi."); else { setActionSuccess("Ders iptal edildi."); changed(); }
+    }});
   }
 
   function copyUrl(id: string, url: string) {
@@ -337,6 +335,7 @@ function LessonsPanel({
 
   return (
     <div className="space-y-4">
+      {confirmationDialog}
       {actionSuccess && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center justify-between">
           <span>{actionSuccess}</span>

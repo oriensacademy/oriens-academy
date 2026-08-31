@@ -43,6 +43,9 @@ function AuditContent() {
 
   // Filters & Pagination State
   const [entityFilter, setEntityFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -55,6 +58,9 @@ function AuditContent() {
     setErrorMsg(null);
     const { data, totalCount: count, error } = await listAdminAuditLogs({
       entityType: entityFilter !== "all" ? entityFilter : undefined,
+      action: actionFilter,
+      dateFrom,
+      dateTo,
       search: searchTerm,
       limit: pageSize,
       offset: (page - 1) * pageSize,
@@ -66,7 +72,7 @@ function AuditContent() {
       setLogs(data);
       setTotalCount(count);
     }
-  }, [entityFilter, searchTerm, page]);
+  }, [actionFilter, dateFrom, dateTo, entityFilter, searchTerm, page]);
 
   useEffect(() => {
     let mounted = true;
@@ -75,6 +81,9 @@ function AuditContent() {
       setErrorMsg(null);
       listAdminAuditLogs({
         entityType: entityFilter !== "all" ? entityFilter : undefined,
+        action: actionFilter,
+        dateFrom,
+        dateTo,
         search: searchTerm,
         limit: pageSize,
         offset: (page - 1) * pageSize,
@@ -95,7 +104,7 @@ function AuditContent() {
       mounted = false;
       clearTimeout(timer);
     };
-  }, [entityFilter, searchTerm, page]);
+  }, [actionFilter, dateFrom, dateTo, entityFilter, searchTerm, page]);
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
@@ -133,7 +142,7 @@ function AuditContent() {
           <span>Filtreleme & Arama</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {/* Search Input */}
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
@@ -165,6 +174,11 @@ function AuditContent() {
                 </option>
               ))}
             </select>
+          </div>
+          <input type="text" value={actionFilter} onChange={(event) => { setActionFilter(event.target.value); setPage(1); }} placeholder="Action filtresi…" className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#10271B] focus:outline-hidden" />
+          <div className="grid grid-cols-2 gap-2">
+            <input type="date" aria-label="Başlangıç tarihi" value={dateFrom} onChange={(event) => { setDateFrom(event.target.value); setPage(1); }} className="min-w-0 rounded-lg border border-input bg-white px-2 py-2 text-xs text-foreground" />
+            <input type="date" aria-label="Bitiş tarihi" value={dateTo} onChange={(event) => { setDateTo(event.target.value); setPage(1); }} className="min-w-0 rounded-lg border border-input bg-white px-2 py-2 text-xs text-foreground" />
           </div>
         </div>
       </div>

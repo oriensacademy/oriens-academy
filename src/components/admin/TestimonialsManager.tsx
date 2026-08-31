@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin/content";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 import {
   Plus,
   RefreshCw,
@@ -28,11 +29,11 @@ import {
   Copy,
   Check,
   X,
-  Lock,
   Calendar,
 } from "lucide-react";
 
 export function TestimonialsManager() {
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [testimonials, setTestimonials] = useState<TestimonialRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -149,18 +150,19 @@ export function TestimonialsManager() {
     }
   };
 
-  const handleArchive = async (id: string, name: string) => {
-    const confirmed = window.confirm(`"${name}" isimli öğrenci yorumunu arşivlemek istediğinize emin misiniz? Kaynak metin silinmeyecektir.`);
-    if (!confirmed) return;
-
-    setDeletingId(id);
-    const { success, error } = await archiveAdminTestimonial(id);
-    setDeletingId(null);
-
-    if (error) setErrorMsg(error);
-    else if (success) {
-      setTestimonials((prev) => prev.map((item) => item.id === id ? { ...item, active: false, archived_at: new Date().toISOString() } : item));
-    }
+  const handleArchive = (id: string, name: string) => {
+    requestConfirmation({
+      title: "Yorumu arşivle",
+      description: `"${name}" isimli yorum public görünümden kaldırılacak; korunan kaynak metni silinmeyecektir.`,
+      confirmLabel: "Arşivle",
+      action: async () => {
+        setDeletingId(id);
+        const { success, error } = await archiveAdminTestimonial(id);
+        setDeletingId(null);
+        if (error) setErrorMsg(error);
+        else if (success) setTestimonials((prev) => prev.map((item) => item.id === id ? { ...item, active: false, archived_at: new Date().toISOString() } : item));
+      },
+    });
   };
 
   const copyToClipboard = (text: string) => {
@@ -219,30 +221,7 @@ export function TestimonialsManager() {
 
   return (
     <div className="space-y-4">
-      {/* Top Banner / Integrity Notice */}
-      <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs text-emerald-950 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2.5">
-          <Lock className="size-4 text-emerald-700 shrink-0" />
-          <div>
-            <span className="font-semibold text-emerald-900">Orijinal Kaynak Yorum Bütünlüğü (111 ham / 110 benzersiz kayıt):</span>{" "}
-            <span>
-              Öğrenci ve veli değerlendirmeleri <code>yorumlar.txt</code> kaynağından birebir aktarılmıştır. Orijinal alıntılar değiştirilmeden korunur.
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="rounded-md bg-white px-2.5 py-1 font-semibold text-emerald-800 shadow-xs">
-            Toplam: {totalCount}
-          </span>
-          <span className="rounded-md bg-white px-2.5 py-1 font-semibold text-emerald-800 shadow-xs">
-            Aktif: {activeCount}
-          </span>
-          <span className="rounded-md bg-amber-100 px-2.5 py-1 font-semibold text-amber-900 shadow-xs">
-            Öne Çıkan: {featuredCount}
-          </span>
-        </div>
-      </div>
-
+      {confirmationDialog}
       {/* Action, Search and Filter Bar */}
       <div className="space-y-3 rounded-xl border border-border bg-white p-4 shadow-xs">
         {/* Search Row */}
