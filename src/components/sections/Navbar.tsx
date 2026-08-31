@@ -19,6 +19,8 @@ import { useCart } from "@/lib/cart/cart-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { unifiedLoginPath } from "@/lib/routes";
 import { Wave } from "@/components/ui/wave";
+import { publicNavigation } from "@/lib/public-navigation";
+import { AccountMenu } from "@/components/auth/AccountMenu";
 
 const focusableSelector = [
   "a[href]",
@@ -45,29 +47,15 @@ export function Navbar() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const wasOpenRef = useRef(false);
   const headerTabs = useMemo(
-    () => [
-      { id: localizedPath("home", locale), label: locale === "tr" ? "Ana Sayfa" : "Home" },
-      { id: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
-      {
-        id: localizedPath("universitySupport", locale),
-        label: locale === "tr" ? "Üniversite Desteği" : "University Support",
-      },
-      { id: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
-      ...(showPricing ? [{ id: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
-    ],
+    () => publicNavigation(locale, showPricing).filter((item) => item.id !== "contact").map((item) => ({ id: item.href, label: item.label })),
     [locale, showPricing],
   );
   const accountHref = accountType === "admin" ? "/admin" : accountType === "student" ? localizedPath("studentAccount", locale) : unifiedLoginPath(locale);
-  const accountLabel = accountType === "student" ? (locale === "tr" ? "Hesabım" : "My Account") : accountType === "admin" ? (locale === "tr" ? "Hesap" : "Account") : (locale === "tr" ? "Oturum Aç" : "Sign In");
+  const accountLabel = accountType === "student" ? (locale === "tr" ? "Veli Hesabı" : "Parent Account") : accountType === "admin" ? (locale === "tr" ? "Hesap" : "Account") : (locale === "tr" ? "Oturum Aç" : "Sign In");
   const mobileItems = useMemo(() => [
-    { href: localizedPath("home", locale), label: locale === "tr" ? "Ana Sayfa" : "Home" },
-    { href: localizedPath("exams", locale), label: locale === "tr" ? "Sınavlar" : "Exams" },
-    { href: localizedPath("universitySupport", locale), label: locale === "tr" ? "Üniversite Desteği" : "University Support" },
-    { href: localizedPath("about", locale), label: locale === "tr" ? "Hakkımızda" : "About" },
-    ...(showPricing ? [{ href: localizedPath("pricing", locale), label: locale === "tr" ? "Ücretler" : "Pricing" }] : []),
+    ...publicNavigation(locale, showPricing),
     ...(showPricing && (cartCount > 0 || isStudent) ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
-    { href: localizedPath("contact", locale), label: locale === "tr" ? "İletişim" : "Contact" },
-    { href: accountHref, label: accountLabel },
+    ...(!isStudent ? [{ href: accountHref, label: accountLabel }] : []),
   ], [accountHref, accountLabel, cartCount, isStudent, locale, showPricing]);
   const activeTab = headerTabs.find((tab) =>
     isPrimaryNavigationActive(tab.id, pathname, locale),
@@ -210,6 +198,8 @@ export function Navbar() {
                 <span className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border" aria-label="Oriens Academy">
                   <Wave className="h-4 w-8 text-primary" aria-label="Oriens Academy" />
                 </span>
+              ) : isStudent ? (
+                <AccountMenu locale={locale} active={isAccountActive} />
               ) : (
                 <Link
                   href={accountHref}
@@ -311,6 +301,7 @@ export function Navbar() {
                     </Link>
                   </li>
                 })}
+                {isStudent && <AccountMenu locale={locale} mobile onNavigate={() => setOpen(false)} />}
               </ul>
             </nav>
 

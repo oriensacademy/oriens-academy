@@ -1,14 +1,15 @@
 import fs from "node:fs";
 
-// 18 canonical exam codes
+// 15 currently supported public exam codes. Removed-exam database rows remain
+// historical; this generator owns only the current public practice bank.
 const EXAM_CODES = [
   "ib", "ap", "igcse", "a-level", "sat", "act",
-  "esat", "tmua", "tara", "ucat", "lnat", "imat",
-  "gamsat", "mcat", "lsat", "gre", "gmat", "ompt"
+  "esat", "tmua", "tara", "ucat", "imat", "mcat",
+  "gre", "gmat", "ompt"
 ];
 
-// Curated 108 original diagnostic sample questions tailored to each exam's official syllabus domain
-const ALL_108_QUESTIONS = {
+// Historical source pool; only the reviewed 15-exam/90-question public subset is emitted below.
+const HISTORICAL_QUESTION_POOL = {
   ib: [
     {
       topic: "Functions & Transformations",
@@ -1026,13 +1027,23 @@ const ALL_108_QUESTIONS = {
   ]
 };
 
-console.log("Total exams in question dataset:", Object.keys(ALL_108_QUESTIONS).length);
+const reviewedSourcePath = "src/data/exam-tests-source.json";
+const reviewedSource = fs.existsSync(reviewedSourcePath)
+  ? JSON.parse(fs.readFileSync(reviewedSourcePath, "utf8"))
+  : {};
+const PUBLIC_90_QUESTIONS = Object.fromEntries(EXAM_CODES.map((code) => [
+  code,
+  Array.isArray(reviewedSource[code]) && reviewedSource[code].length === 6
+    ? reviewedSource[code]
+    : HISTORICAL_QUESTION_POOL[code],
+]));
+console.log("Total exams in public question dataset:", Object.keys(PUBLIC_90_QUESTIONS).length);
 let totalQ = 0;
-for (const [exam, qList] of Object.entries(ALL_108_QUESTIONS)) {
+for (const [exam, qList] of Object.entries(PUBLIC_90_QUESTIONS)) {
   totalQ += qList.length;
   console.log(`  - ${exam.toUpperCase()}: ${qList.length} questions`);
 }
 console.log("Total active questions:", totalQ);
 
-fs.writeFileSync("src/data/exam-tests-source.json", JSON.stringify(ALL_108_QUESTIONS, null, 2), "utf8");
-console.log("Exported raw 108 questions dataset successfully.");
+fs.writeFileSync(reviewedSourcePath, JSON.stringify(PUBLIC_90_QUESTIONS, null, 2), "utf8");
+console.log("Exported 90 current public questions successfully.");

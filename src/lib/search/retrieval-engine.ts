@@ -505,7 +505,7 @@ const SEARCH_DATABASE: DataItem[] = [
     countryName: "France",
   },
 
-  // 18 CANONICAL QUALIFICATIONS
+  // CURRENT PUBLIC QUALIFICATIONS
   {
     id: "qual-ib",
     type: "QUALIFICATION",
@@ -617,17 +617,6 @@ const SEARCH_DATABASE: DataItem[] = [
     badge: "Medical Aptitude",
   },
   {
-    id: "qual-lnat",
-    type: "QUALIFICATION",
-    title: "National Admissions Test for Law (LNAT)",
-    subtitle: "Admission / Program-Specific",
-    slug: "lnat",
-    aliases: ["lnat", "national admissions test for law", "law national aptitude test", "hukuk kabul sinavi"],
-    popularityScore: 91,
-    officialUrl: "https://lnat.ac.uk",
-    badge: "Law Test",
-  },
-  {
     id: "qual-imat",
     type: "QUALIFICATION",
     title: "International Medical Admissions Test (IMAT)",
@@ -639,17 +628,6 @@ const SEARCH_DATABASE: DataItem[] = [
     badge: "Italy Medicine",
   },
   {
-    id: "qual-gamsat",
-    type: "QUALIFICATION",
-    title: "Graduate Medical School Admissions Test (GAMSAT)",
-    subtitle: "Admission / Program-Specific",
-    slug: "gamsat",
-    aliases: ["gamsat", "graduate medical school admissions test"],
-    popularityScore: 89,
-    officialUrl: "https://gamsat.acer.org",
-    badge: "Graduate Medicine",
-  },
-  {
     id: "qual-mcat",
     type: "QUALIFICATION",
     title: "Medical College Admission Test (MCAT)",
@@ -659,17 +637,6 @@ const SEARCH_DATABASE: DataItem[] = [
     popularityScore: 95,
     officialUrl: "https://students-residents.aamc.org/mcat",
     badge: "US / CA Medicine",
-  },
-  {
-    id: "qual-lsat",
-    type: "QUALIFICATION",
-    title: "Law School Admission Test (LSAT)",
-    subtitle: "Admission / Program-Specific",
-    slug: "lsat",
-    aliases: ["lsat", "law school admission test", "lsat exam"],
-    popularityScore: 94,
-    officialUrl: "https://www.lsac.org/lsat",
-    badge: "JD Law",
   },
   {
     id: "qual-gre",

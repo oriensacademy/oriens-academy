@@ -1,6 +1,6 @@
 "use client";
 
-import { TestimonialsColumns } from "@/components/ui/testimonials-columns-1";
+import { Marquee01 } from "@/components/ui/marquee-01";
 
 export type Testimonial = { id: string; name: string; role?: string; image?: string; company?: string; quote: string; dateStr?: string };
 
@@ -12,7 +12,7 @@ export function TestimonialsSection({ items, eyebrow, title, description }: { it
         <h2 className="mt-4 font-heading text-3xl text-ink md:text-4xl lg:text-5xl">{title}</h2>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">{description}</p>
       </div>
-      <TestimonialsColumns className="mt-10" testimonials={items.map((item) => ({ id: item.id, text: item.quote, name: item.name, image: item.image, metadata: [item.role, item.company, item.dateStr].filter(Boolean).join(" · ") || undefined }))} />
+      <Marquee01 className="mt-10" testimonials={items.map((item) => ({ id: item.id, text: item.quote, name: item.name, image: item.image, metadata: [item.role, item.company, item.dateStr].filter(Boolean).join(" · ") || undefined }))} />
     </section>
   );
 }

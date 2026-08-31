@@ -54,8 +54,8 @@ async function runQA() {
       if (r.url === "http://localhost:3000/tr" || r.url === "http://localhost:3000/en") {
         const hasSeparateSecurityHeading = text.includes("Adres ve Güvenlik");
         assert(!hasSeparateSecurityHeading, "Footer 'Adres ve Güvenlik' separate column heading is removed");
-        const hasPaymentMethodsImage = text.includes("payment-methods.png");
-        assert(hasPaymentMethodsImage, "Footer preserves compact Visa/Mastercard image asset");
+        const hasPaymentMethodsImage = text.includes("odeme_altyapi.png");
+        assert(hasPaymentMethodsImage, "Footer uses the current payment infrastructure artwork");
       }
 
       if (r.url.includes("/tr/giris") || r.url.includes("/en/login")) {

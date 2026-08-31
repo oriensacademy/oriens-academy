@@ -10,7 +10,7 @@ export function ExamTestQuestion({ question, locale, selected, onAnswer }: { que
   return (
     <fieldset>
       <legend className="text-xl leading-snug text-ink md:text-2xl">{questionTitle}</legend>
-      <p className="mt-2 text-xs font-semibold tracking-[0.12em] text-primary uppercase">{topicTitle}</p>
+      <p lang="en" className="mt-2 text-xs font-semibold tracking-[0.12em] text-primary uppercase">{topicTitle}</p>
       <div className="mt-7 grid gap-3">
         {answers.map((answer) => {
           const active = selected === answer.id;

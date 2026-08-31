@@ -39,6 +39,18 @@ export type Database = {
         }
         Relationships: []
       }
+      guardian_accounts: {
+        Row: { user_id: string; full_name: string; email: string; phone: string | null; contact_address: string | null; preferred_language: string; email_verified_at: string | null; active: boolean; migration_source: string; created_at: string; updated_at: string }
+        Insert: { user_id: string; full_name: string; email: string; phone?: string | null; contact_address?: string | null; preferred_language?: string; email_verified_at?: string | null; active?: boolean; migration_source?: string; created_at?: string; updated_at?: string }
+        Update: { full_name?: string; phone?: string | null; contact_address?: string | null; preferred_language?: string; active?: boolean; updated_at?: string }
+        Relationships: []
+      }
+      guardian_students: {
+        Row: { guardian_user_id: string; student_id: string; relationship_role: string; is_primary: boolean; active: boolean; source: string; created_at: string; updated_at: string }
+        Insert: { guardian_user_id: string; student_id: string; relationship_role?: string; is_primary?: boolean; active?: boolean; source?: string; created_at?: string; updated_at?: string }
+        Update: { relationship_role?: string; is_primary?: boolean; active?: boolean; updated_at?: string }
+        Relationships: []
+      }
       countries: {
         Row: {
           active: boolean
@@ -1626,6 +1638,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      update_guardian_profile: {
+        Args: { p_full_name: string; p_phone: string; p_contact_address: string; p_preferred_language?: string }
+        Returns: Json
+      }
+      admin_retry_email_notification: { Args: { p_delivery_id: string }; Returns: Json }
       admin_create_booking: {
         Args: {
           p_email: string

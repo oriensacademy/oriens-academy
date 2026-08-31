@@ -13,44 +13,44 @@ import { retrieveSearchResults } from "../src/lib/search/retrieval-engine.ts";
 
 console.log("=== RUNNING PROMPT 02 VERIFICATION SUITE ===");
 
-// TEST 1: Exactly 18 Canonical Exams
-console.log("\n[TEST 1] Exactly 18 Canonical Exams");
-assert.equal(examCodes.length, 18, `Expected 18 exam codes, got ${examCodes.length}`);
-assert.equal(examRecords.length, 18, `Expected 18 exam records, got ${examRecords.length}`);
-const expected18 = [
+// TEST 1: Exactly 15 Canonical Exams
+console.log("\n[TEST 1] Exactly 15 Canonical Exams");
+assert.equal(examCodes.length, 15, `Expected 15 exam codes, got ${examCodes.length}`);
+assert.equal(examRecords.length, 15, `Expected 15 exam records, got ${examRecords.length}`);
+const expected15 = [
   "IB", "AP", "IGCSE", "A-Level", "SAT", "ACT",
-  "ESAT", "TMUA", "TARA", "UCAT", "LNAT", "IMAT",
-  "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"
+  "ESAT", "TMUA", "TARA", "UCAT", "IMAT", "MCAT",
+  "GRE", "GMAT", "OMPT"
 ];
-for (const code of expected18) {
+for (const code of expected15) {
   assert.ok(examCodes.includes(code), `Missing canonical exam code: ${code}`);
   assert.ok(examRecords.some(r => r.code === code), `Missing exam record for: ${code}`);
 }
-console.log("✔ PASS: Exactly 18 canonical exams verified.");
+console.log("✔ PASS: Exactly 15 canonical exams verified.");
 
-// TEST 2: Categorization (6 Curriculum + 12 Admission-Specific)
-console.log("\n[TEST 2] 6 Curriculum + 12 Admission-Specific Categorization");
+// TEST 2: Categorization (6 Curriculum + 9 Admission-Specific)
+console.log("\n[TEST 2] 6 Curriculum + 9 Admission-Specific Categorization");
 const curriculumExams = examRecords.filter(r => r.primaryCategory === "international-curriculum");
 const admissionExams = examRecords.filter(r => r.primaryCategory === "admission-specific");
 assert.equal(curriculumExams.length, 6, `Expected 6 curriculum exams, got ${curriculumExams.length}`);
-assert.equal(admissionExams.length, 12, `Expected 12 admission exams, got ${admissionExams.length}`);
+assert.equal(admissionExams.length, 9, `Expected 9 admission exams, got ${admissionExams.length}`);
 const expectedCurriculum = ["IB", "AP", "IGCSE", "A-Level", "SAT", "ACT"];
-const expectedAdmission = ["ESAT", "TMUA", "TARA", "UCAT", "LNAT", "IMAT", "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"];
+const expectedAdmission = ["ESAT", "TMUA", "TARA", "UCAT", "IMAT", "MCAT", "GRE", "GMAT", "OMPT"];
 for (const c of expectedCurriculum) {
   assert.ok(curriculumExams.some(e => e.code === c), `Expected ${c} in curriculum`);
 }
 for (const a of expectedAdmission) {
   assert.ok(admissionExams.some(e => e.code === a), `Expected ${a} in admission-specific`);
 }
-console.log("✔ PASS: 6 + 12 categorization verified.");
+console.log("✔ PASS: 6 + 9 categorization verified.");
 
 // TEST 3: No duplicate active exams or slugs
 console.log("\n[TEST 3] No Duplicate Codes or Slugs");
 const uniqueCodes = new Set(examRecords.map(e => e.code));
 const uniqueSlugs = new Set(examRecords.map(e => e.slug));
-assert.equal(uniqueCodes.size, 18, "Duplicate exam code detected");
-assert.equal(uniqueSlugs.size, 18, "Duplicate exam slug detected");
-console.log("✔ PASS: All 18 codes and slugs are unique.");
+assert.equal(uniqueCodes.size, 15, "Duplicate exam code detected");
+assert.equal(uniqueSlugs.size, 15, "Duplicate exam slug detected");
+console.log("✔ PASS: All 15 codes and slugs are unique.");
 
 // TEST 4: Legacy UKCAT -> UCAT Normalization
 console.log("\n[TEST 4] Legacy UKCAT Normalization");
@@ -65,9 +65,9 @@ assert.equal(resolveExamRoute("tr", "ukcat"), "/tr/sinavlar/ucat", "Route for UK
 assert.equal(resolveExamRoute("en", "ukcat"), "/en/exams/ucat", "Route for UKCAT must redirect to /en/exams/ucat");
 console.log("✔ PASS: UKCAT and alias normalization verified.");
 
-// TEST 5: Translation Completeness for all 18 exams in TR and EN
+// TEST 5: Translation Completeness for all 15 exams in TR and EN
 console.log("\n[TEST 5] TR and EN Content Integrity");
-for (const code of expected18) {
+for (const code of expected15) {
   assert.ok(examTextTr[code], `Missing TR examText for ${code}`);
   assert.ok(examTextEn[code], `Missing EN examText for ${code}`);
   assert.ok(examDetailTextTr[code], `Missing TR examDetailText for ${code}`);
@@ -77,7 +77,7 @@ for (const code of expected18) {
   assert.ok(examDetailTextTr[code].faqs.length >= 1, `TR faqs missing for ${code}`);
   assert.ok(examDetailTextEn[code].faqs.length >= 1, `EN faqs missing for ${code}`);
 }
-console.log("✔ PASS: All 18 exams have full TR and EN text and detail entries.");
+console.log("✔ PASS: All 15 exams have full TR and EN text and detail entries.");
 
 // TEST 6: Search Retrieval (Exact, Alias, Prefix, Typo/Fuzzy)
 console.log("\n[TEST 6] Search Retrieval Engine Verification");
@@ -88,10 +88,7 @@ const testSearches = [
   { q: "A Level", expectedType: "QUALIFICATION", matchSlug: "a-level" },
   { q: "UKCAT", expectedType: "QUALIFICATION", matchSlug: "ucat" },
   { q: "UCAT", expectedType: "QUALIFICATION", matchSlug: "ucat" },
-  { q: "LNAT", expectedType: "QUALIFICATION", matchSlug: "lnat" },
-  { q: "GAMSAT", expectedType: "QUALIFICATION", matchSlug: "gamsat" },
   { q: "MCAT", expectedType: "QUALIFICATION", matchSlug: "mcat" },
-  { q: "LSAT", expectedType: "QUALIFICATION", matchSlug: "lsat" },
   { q: "TARA", expectedType: "QUALIFICATION", matchSlug: "tara" },
   { q: "Cambridge", expectedType: "UNIVERSITY", matchSlug: "university-of-cambridge" },
   { q: "Cambdrige", expectedType: "UNIVERSITY", matchSlug: "university-of-cambridge" }, // typo

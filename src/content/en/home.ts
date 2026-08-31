@@ -5,7 +5,7 @@ import { Fingerprint, Globe2, Target, Users, type LucideIcon } from "lucide-reac
 export const hero = {
   eyebrow: "International Exam Preparation & Academic Consultancy",
   headline: "Let's chart your course to the world's leading universities.",
-  body: "We prepare students for IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, and OMPT through a focused, measurable process built around how each exam actually works.",
+  body: "We prepare students for IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT, and OMPT through a focused, measurable process built around how each exam actually works.",
   ctaPrimary: "Free Intro Call",
   ctaSecondary: "Explore Exams",
 };
@@ -124,7 +124,7 @@ export const whyOriens = {
     {
       icon: Globe2 as LucideIcon,
       title: "International Exams",
-      copy: "Specialist expertise in IB, AP, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, OMPT, and IGCSE.",
+      copy: "Specialist expertise in IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT, and OMPT.",
     },
     {
       icon: Users as LucideIcon,
@@ -268,7 +268,7 @@ export const faq = {
     {
       id: "faq-1",
       q: "Which exam systems does Oriens Academy cover?",
-      a: "We cover IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, and OMPT exams.",
+      a: "We cover IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT, and OMPT exams.",
     },
     {
       id: "faq-2",

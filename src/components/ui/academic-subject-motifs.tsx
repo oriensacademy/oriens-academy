@@ -40,7 +40,7 @@ export function AcademicSubjectMotifs() {
           >
             <IconComponent className="size-5 text-primary stroke-[1.8] transition-transform duration-300 group-hover:-translate-y-0.5" />
           </span>
-          <p className="mt-3 truncate text-[10px] font-bold tracking-[0.12em] text-foreground/85 uppercase sm:text-[11px]">
+          <p lang={locale === "tr" ? undefined : "en"} className="mt-3 truncate text-[10px] font-bold tracking-[0.12em] text-foreground/85 uppercase sm:text-[11px]">
             {locale === "tr" ? tr : en}
           </p>
         </motion.div>

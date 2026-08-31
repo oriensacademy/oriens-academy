@@ -12,15 +12,14 @@ export interface FeaturedCountrySeed {
 
 /** Country guidance only. University and requirement truth is runtime DB-only. */
 export const FEATURED_COUNTRY_SEEDS: FeaturedCountrySeed[] = [
-  { id: "uk", iso3: "GBR", labelTr: "Birleşik Krallık", labelEn: "United Kingdom", focus: { lat: 53.5, lng: -2, altitude: 1.25 }, examCodes: ["A-Level", "IB", "ESAT", "TMUA", "TARA", "UCAT", "LNAT", "GAMSAT", "IGCSE", "GRE", "GMAT"] },
-  { id: "us", iso3: "USA", labelTr: "Amerika Birleşik Devletleri", labelEn: "United States", focus: { lat: 39, lng: -98, altitude: 1.15 }, examCodes: ["SAT", "ACT", "AP", "IB", "MCAT", "LSAT", "GRE", "GMAT"] },
-  { id: "canada", iso3: "CAN", labelTr: "Kanada", labelEn: "Canada", focus: { lat: 56, lng: -106, altitude: 1.15 }, examCodes: ["IB", "AP", "SAT", "ACT", "MCAT", "LSAT", "GRE"] },
+  { id: "uk", iso3: "GBR", labelTr: "Birleşik Krallık", labelEn: "United Kingdom", focus: { lat: 53.5, lng: -2, altitude: 1.25 }, examCodes: ["A-Level", "IB", "ESAT", "TMUA", "TARA", "UCAT", "IGCSE", "GRE", "GMAT"] },
+  { id: "us", iso3: "USA", labelTr: "Amerika Birleşik Devletleri", labelEn: "United States", focus: { lat: 39, lng: -98, altitude: 1.15 }, examCodes: ["SAT", "ACT", "AP", "IB", "MCAT", "GRE", "GMAT"] },
+  { id: "canada", iso3: "CAN", labelTr: "Kanada", labelEn: "Canada", focus: { lat: 56, lng: -106, altitude: 1.15 }, examCodes: ["IB", "AP", "SAT", "ACT", "MCAT", "GRE"] },
   { id: "italy", iso3: "ITA", labelTr: "İtalya", labelEn: "Italy", focus: { lat: 42.5, lng: 12.5, altitude: 1.25 }, examCodes: ["IMAT", "SAT", "IB", "ACT", "GMAT", "GRE"] },
   { id: "netherlands", iso3: "NLD", labelTr: "Hollanda", labelEn: "Netherlands", focus: { lat: 52.3, lng: 5.3, altitude: 1.25 }, examCodes: ["OMPT", "IB", "AP", "A-Level", "GMAT", "GRE"] },
   { id: "germany", iso3: "DEU", labelTr: "Almanya", labelEn: "Germany", focus: { lat: 51.1, lng: 10.4, altitude: 1.25 }, examCodes: ["IB", "A-Level", "AP", "GRE", "GMAT"] },
   { id: "switzerland", iso3: "CHE", labelTr: "İsviçre", labelEn: "Switzerland", focus: { lat: 46.8, lng: 8.2, altitude: 1.25 }, examCodes: ["IB", "AP", "A-Level", "GRE", "GMAT"] },
   { id: "france", iso3: "FRA", labelTr: "Fransa", labelEn: "France", focus: { lat: 46.5, lng: 2.5, altitude: 1.25 }, examCodes: ["GMAT", "GRE", "IB", "A-Level", "AP", "SAT"] },
-  { id: "egypt", iso3: "EGY", labelTr: "Mısır", labelEn: "Egypt", focus: { lat: 26.8, lng: 30.8, altitude: 1.25 }, examCodes: ["SAT", "IB", "ACT", "IGCSE"] },
 ];
 
 const supportedExamCodes = new Set<ExamCode>(examRecords.map((exam) => exam.code));

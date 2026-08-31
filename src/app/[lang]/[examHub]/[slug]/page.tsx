@@ -29,6 +29,11 @@ type Params = { lang: string; examHub: string; slug: string };
 
 const ALL_EXAM_STATIC_SLUGS = Array.from(new Set([
   ...examRecords.map((e) => e.slug),
+  // Historical public URLs remain generated so they can intentionally
+  // redirect to the current catalog instead of becoming static-export 404s.
+  "lnat",
+  "lsat",
+  "gamsat",
   // Never emit case-only aliases (for example `sat` and `SAT`). On
   // case-insensitive build filesystems they target the same output file and
   // the alias redirect can overwrite the canonical static HTML.

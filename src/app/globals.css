@@ -451,3 +451,31 @@ html[data-theme="theme-5"] {
     scroll-behavior: auto !important;
   }
 }
+@keyframes oriens-marquee-forward {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes oriens-marquee-reverse {
+  from { transform: translate3d(-50%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+.oriens-marquee-track {
+  animation: oriens-marquee-forward 42s linear infinite;
+  will-change: transform;
+}
+
+.oriens-marquee-track-reverse { animation-name: oriens-marquee-reverse; }
+.oriens-marquee:hover .oriens-marquee-track,
+.oriens-marquee:focus-within .oriens-marquee-track { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .oriens-marquee-track {
+    animation: none;
+    transform: none;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .oriens-marquee-track > [aria-hidden="true"] { display: none; }
+}

@@ -113,7 +113,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
           />
         </div>
 
-        <div className={`mt-8 grid items-center gap-8 lg:grid-cols-12 ${compact ? "lg:gap-8" : "lg:gap-12"}`}>
+        <div className={`mt-8 grid items-start gap-8 lg:grid-cols-12 ${compact ? "lg:gap-8" : "lg:gap-12"}`}>
           <Reveal className="order-1 min-w-0 lg:col-span-7" y={8}>
             <div className="relative rounded-[2rem] border border-border bg-surface/45 p-2 sm:p-4">
               <StudyDestinationGlobe

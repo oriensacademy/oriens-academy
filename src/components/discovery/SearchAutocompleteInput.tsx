@@ -18,7 +18,7 @@ const EXAMPLE_QUERIES_TR = [
   "Cambridge",
   "Digital SAT",
   "İtalya Tıp (IMAT)",
-  "Oxford LNAT",
+  "Cambridge TMUA",
   "IB Diploma",
 ];
 
@@ -26,7 +26,7 @@ const EXAMPLE_QUERIES_EN = [
   "Cambridge",
   "Digital SAT",
   "Italy Medicine (IMAT)",
-  "Oxford LNAT",
+  "Cambridge TMUA",
   "IB Diploma",
 ];
 
@@ -324,19 +324,30 @@ export function SearchAutocompleteInput({
                           )}
                         </div>
                         {item.subtitle && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.subtitle}</p>}
+                        {!verifiedUrl && (
+                          <p className="text-[11px] text-amber-700 mt-1" role="status">
+                            {isTr ? "Resmî bağlantı doğrulanıyor" : "Official link is being verified"}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {verifiedUrl && (
-                          <span
+                        {verifiedUrl ? (
+                          <a
+                            href={verifiedUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             title={isTr ? "Doğrulanmış Resmi Üniversite Sayfası" : "Verified Official University Website"}
                             className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
                             onClick={(e) => {
                               e.stopPropagation();
-                              window.open(verifiedUrl, "_blank", "noopener,noreferrer");
                             }}
                           >
                             <span>{isTr ? "Resmi Site" : "Official Site"}</span>
                             <ArrowUpRight className="size-3" aria-hidden="true" />
+                          </a>
+                        ) : (
+                          <span className="hidden sm:inline-flex text-muted-foreground/50" title={isTr ? "Resmî bağlantı doğrulanıyor" : "Official link is being verified"} aria-disabled="true">
+                            <ArrowUpRight className="size-3.5" aria-hidden="true" />
                           </span>
                         )}
                         <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import Image from "next/image";
-import { AlertCircle, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
 import { createPaytrToken, type CreatePaytrTokenResult } from "@/lib/payments/client";
@@ -16,8 +16,9 @@ export function HostedCardPanel({
   locale,
   packageId,
   couponCode,
-  payerName,
-  payerPhone,
+  learnerId,
+  guardianUserId,
+  contextReady = false,
   termsAccepted = false,
   refundPolicyAccepted = false,
   onTokenReady,
@@ -25,20 +26,22 @@ export function HostedCardPanel({
   locale: Locale;
   packageId: string;
   couponCode?: string;
-  payerName?: string;
-  payerPhone?: string;
+  learnerId: string;
+  guardianUserId?: string;
+  contextReady?: boolean;
   termsAccepted?: boolean;
   refundPolicyAccepted?: boolean;
   onTokenReady?: (tokenResult: CreatePaytrTokenResult) => void;
 }) {
   const copy = getPaymentCopy(locale);
   const isTr = locale === "tr";
-  const isGated = !termsAccepted || !refundPolicyAccepted;
+  const isGated = !termsAccepted || !refundPolicyAccepted || !contextReady;
 
   const [loading, setLoading] = useState(false);
   const [iframeToken, setIframeToken] = useState<string | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [startRequested, setStartRequested] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Cache last fetched token to prevent redundant network delays
@@ -54,11 +57,11 @@ export function HostedCardPanel({
   }, []);
 
   useEffect(() => {
-    if (!packageId || !termsAccepted || !refundPolicyAccepted) {
+    if (!packageId || !learnerId || !termsAccepted || !refundPolicyAccepted || !contextReady || !startRequested) {
       return;
     }
 
-    const currentKey = `${packageId}:${couponCode || ""}:${payerName || ""}:${payerPhone || ""}:${locale}:${attempt}`;
+    const currentKey = `${packageId}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${locale}:${attempt}`;
     if (cachedKeyRef.current === currentKey && cachedTokenRef.current) {
       setIframeToken(cachedTokenRef.current);
       setLoading(false);
@@ -73,8 +76,8 @@ export function HostedCardPanel({
       createPaytrToken({
         packageId,
         couponCode,
-        payerName,
-        payerPhone,
+        learnerId,
+        guardianUserId,
         locale,
         termsAccepted,
         refundPolicyAccepted,
@@ -118,8 +121,10 @@ export function HostedCardPanel({
   }, [
     packageId,
     couponCode,
-    payerName,
-    payerPhone,
+    learnerId,
+    guardianUserId,
+    contextReady,
+    startRequested,
     locale,
     termsAccepted,
     refundPolicyAccepted,
@@ -185,6 +190,16 @@ export function HostedCardPanel({
             </span>
           </div>
         </div>
+      ) : !startRequested ? (
+        <button
+          type="button"
+          onClick={() => setStartRequested(true)}
+          className="group inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink px-6 text-base font-bold text-white shadow-lg shadow-ink/15 transition-all hover:-translate-y-0.5 hover:bg-forest hover:shadow-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          <ShieldCheck className="size-5" />
+          {isTr ? "Ödemeye Geç" : "Proceed to Payment"}
+          <ArrowRight className="size-5 transition-transform group-hover:translate-x-0.5" />
+        </button>
       ) : loading ? (
         /* 2. Loading State */
         <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-[#F6F8F3] p-12 text-center">

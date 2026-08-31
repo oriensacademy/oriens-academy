@@ -7,6 +7,15 @@ import { pipeline } from "node:stream/promises";
 import { spawnSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 import isoCountries from "i18n-iso-countries";
+import {
+  normalizeUniversitySearchText as normalize,
+  UNIVERSITY_NORMALIZATION_VERSION,
+} from "../src/lib/search/university-normalization.mjs";
+import {
+  aliasMetadata,
+  classifyUniversityEntity,
+  UNIVERSITY_ELIGIBILITY_MODEL_VERSION,
+} from "./lib/university-classifier.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const CACHE_DIR = join(ROOT, ".cache", "universities");
@@ -17,6 +26,7 @@ const args = new Set(process.argv.slice(2));
 const APPLY = args.has("--apply");
 const SKIP_OPENALEX = args.has("--skip-openalex");
 const FINALIZE_ONLY = args.has("--finalize-only");
+const SYNC_ADMISSIONS = args.has("--sync-admissions");
 
 mkdirSync(CACHE_DIR, { recursive: true });
 mkdirSync(DATA_DIR, { recursive: true });
@@ -36,17 +46,6 @@ function loadEnv(file) {
     }
     if (!process.env[key]) process.env[key] = value;
   }
-}
-
-function normalize(value) {
-  return String(value ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
 }
 
 function slugify(value) {
@@ -110,23 +109,7 @@ function externalId(record, type) {
   return entry?.preferred || entry?.all?.[0] || null;
 }
 
-function classify(record) {
-  const display = nameEntry(record, "ror_display")?.value || "";
-  const lower = display.toLowerCase();
-  const isEducation = record.status === "active" && record.types.includes("education");
-  if (!isEducation) return { eligible: false, reason: record.status !== "active" ? "inactive" : "not_education" };
-
-  const obviousHealthcare = /\b(hospital|clinic|health system|medical cent(?:er|re))\b/i;
-  if (obviousHealthcare.test(lower)) return { eligible: false, reason: "healthcare_entity" };
-  const obviousNonUniversity = /\b(academy of sciences|national laboratory|research cent(?:er|re)|research institute|observatory|museum)\b/i;
-  const higherEducationEvidence = /\b(university|college|polytechnic|business school|graduate school|faculty|hochschule|universit[a-zà-ſ]*|universidad|universidade|universiteit|universitet|universitas|institute of technology|institut.*technolog|ecole|école|conservator)/i;
-  if (obviousNonUniversity.test(lower) && !higherEducationEvidence.test(lower.replace(/university hospital/g, "hospital"))) {
-    return { eligible: false, reason: "obvious_non_university_education_entity" };
-  }
-  return { eligible: true, reason: "ror_active_education" };
-}
-
-function transformRor(record, openalex) {
+function transformRor(record, openalex, classification) {
   const displayEntry = nameEntry(record, "ror_display");
   const canonicalName = displayEntry?.value?.trim();
   const location = record.locations[0]?.geonames_details || {};
@@ -160,16 +143,24 @@ function transformRor(record, openalex) {
     longitude: location.lng ?? openalex?.geo?.longitude ?? null,
     website,
     institution_type: "OTHER",
+    institution_class: classification.institutionClass,
+    institution_source: classification.institutionSource,
+    university_confidence: classification.confidence,
+    degree_granting: classification.degreeGranting,
+    eligibility_status: classification.status,
+    eligibility_reason: classification.reason,
+    eligibility_evidence: classification.evidence,
+    eligibility_model_version: UNIVERSITY_ELIGIBILITY_MODEL_VERSION,
     research_works_count: openalex?.works_count ?? null,
     research_cited_by_count: openalex?.cited_by_count ?? null,
-    verified_url: Boolean(website),
+    verified_url: false,
     search_priority: Math.min(100, Math.round(Math.log1p(openalex?.works_count || 0) * 6)),
     source_metadata: {
       canonical_source: "ROR",
       source_version: null,
       ror_types: record.types,
       ror_status: record.status,
-      classification: { eligible: true, evidence: ["ROR type: education", openalex ? `OpenAlex type: ${openalex.type}` : "OpenAlex: unmatched"] },
+      classification,
       ror_last_modified: record.admin?.last_modified?.date || null,
       official_domain_evidence: record.domains || [],
       source_links: record.links,
@@ -259,7 +250,7 @@ async function applyCatalog(universities, manifest) {
   if (!FINALIZE_ONLY) await upsertBatches(supabase, "countries", countryRows, { onConflict: "iso2", ignoreDuplicates: false }, 200);
   const countries = await fetchAll(supabase, "countries", "id,iso2,iso3,name");
   const countryByIso2 = new Map(countries.map((country) => [country.iso2, country]));
-  const existing = await fetchAll(supabase, "universities", "id,ror_id,normalized_name,country_id,slug,website,admissions_url,verified_url,verified_at,search_priority,country_display_rank_override,featured_override_verified");
+  const existing = await fetchAll(supabase, "universities", "id,ror_id,normalized_name,country_id,slug,website,admissions_url,verified_url,verified_at,search_priority,country_display_rank_override,featured_override_verified,source_metadata,source_review_required,active,eligibility_status,eligibility_reason,eligibility_review_source,eligibility_reviewed_at,manual_eligibility_override,university_confidence,eligibility_evidence,eligibility_model_version,degree_granting,institution_class,institution_source,reviewed_at,reviewed_by,url_verification_status,url_verification_source,url_checked_at,url_verified_by");
   const existingByRor = new Map(existing.filter((row) => row.ror_id).map((row) => [row.ror_id, row]));
   const existingByNameCountry = new Map(existing.map((row) => [`${row.country_id}:${row.normalized_name}`, row]));
   let duplicateMerges = 0;
@@ -270,6 +261,10 @@ async function applyCatalog(universities, manifest) {
     const existingRow = existingByRor.get(university.ror_id) || existingByNameCountry.get(`${country.id}:${university.normalized_name}`);
     if (existingRow && !existingRow.ror_id) duplicateMerges += 1;
     const urlConflict = Boolean(existingRow?.website && university.website && existingRow.website !== university.website);
+    const protectedEligibility = existingRow?.manual_eligibility_override
+      || (/manual|admin/i.test(existingRow?.eligibility_review_source || "") && existingRow?.eligibility_reviewed_at
+        ? existingRow.eligibility_status
+        : null);
     return {
       id: existingRow?.id || university.id,
       ror_id: university.ror_id,
@@ -288,17 +283,36 @@ async function applyCatalog(universities, manifest) {
       website: existingRow?.website || university.website,
       admissions_url: existingRow?.admissions_url || null,
       institution_type: "OTHER",
+      institution_class: university.institution_class,
+      institution_source: university.institution_source,
+      university_confidence: protectedEligibility
+        ? (existingRow?.university_confidence ?? (protectedEligibility === "eligible" ? 0.95 : protectedEligibility === "needs_review" ? 0.5 : 0.1))
+        : university.university_confidence,
+      degree_granting: university.degree_granting,
+      eligibility_status: protectedEligibility || university.eligibility_status,
+      eligibility_reason: protectedEligibility ? existingRow.eligibility_reason : university.eligibility_reason,
+      eligibility_evidence: protectedEligibility ? existingRow.eligibility_evidence : university.eligibility_evidence,
+      eligibility_model_version: protectedEligibility ? existingRow.eligibility_model_version : university.eligibility_model_version,
+      eligibility_review_source: existingRow?.eligibility_review_source || `importer:${UNIVERSITY_ELIGIBILITY_MODEL_VERSION}`,
+      eligibility_reviewed_at: existingRow?.eligibility_reviewed_at || null,
+      manual_eligibility_override: existingRow?.manual_eligibility_override || null,
+      reviewed_at: existingRow?.reviewed_at || null,
+      reviewed_by: existingRow?.reviewed_by || null,
       research_works_count: university.research_works_count,
       research_cited_by_count: university.research_cited_by_count,
-      verified_url: Boolean(existingRow?.verified_url || existingRow?.website || university.verified_url),
-      verified_at: existingRow?.verified_at || (university.verified_url ? manifest.source_date : null),
+      verified_url: Boolean(existingRow?.verified_url),
+      verified_at: existingRow?.verified_at || null,
+      url_verification_status: existingRow?.url_verification_status || (university.website ? "source_provided" : "unverified"),
+      url_verification_source: existingRow?.url_verification_source || null,
+      url_checked_at: existingRow?.url_checked_at || null,
+      url_verified_by: existingRow?.url_verified_by || null,
       search_priority: Math.max(existingRow?.search_priority || 0, university.search_priority),
       country_display_rank_override: existingRow?.country_display_rank_override || null,
       featured_override_verified: existingRow?.featured_override_verified || false,
-      source_metadata: { ...university.source_metadata, source_version: manifest.source_version, url_conflict: urlConflict },
+      source_metadata: { ...(existingRow?.source_metadata || {}), ...university.source_metadata, source_version: manifest.source_version, url_conflict: urlConflict },
       source_last_seen_at: manifest.retrieved_at,
-      source_review_required: urlConflict,
-      active: true,
+      source_review_required: Boolean(existingRow?.source_review_required || urlConflict),
+      active: existingRow?.reviewed_at ? existingRow.active : true,
     };
   }).filter(Boolean);
   if (!FINALIZE_ONLY) await upsertBatches(supabase, "universities", dbRows, { onConflict: "id", ignoreDuplicates: false }, 250);
@@ -312,14 +326,19 @@ async function applyCatalog(universities, manifest) {
     for (const alias of university.aliases) {
       const normalizedAlias = normalize(alias);
       if (!normalizedAlias || normalizedAlias === university.normalized_name) continue;
+      const metadata = aliasMetadata(alias);
       aliases.push({
         entity_type: "UNIVERSITY",
         entity_id: dbUniversity.id,
         alias,
         normalized_alias: normalizedAlias,
         language: "und",
-        priority: alias.length <= 12 && alias === alias.toUpperCase() ? 90 : 70,
+        priority: metadata.priority,
         source: `ROR_${manifest.source_version.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase()}`,
+        alias_type: metadata.aliasType,
+        trust_score: metadata.trust,
+        country_scope: university.iso2,
+        normalization_version: UNIVERSITY_NORMALIZATION_VERSION,
       });
     }
   }
@@ -327,13 +346,17 @@ async function applyCatalog(universities, manifest) {
   if (!FINALIZE_ONLY) await upsertBatches(supabase, "search_aliases", uniqueAliases, { onConflict: "entity_type,entity_id,normalized_alias", ignoreDuplicates: false }, 500);
 
   const currentRorIds = new Set(universities.map((university) => university.ror_id));
-  const disappeared = existing.filter((row) => row.ror_id && !currentRorIds.has(row.ror_id)).map((row) => ({ id: row.id, source_review_required: true, active: false }));
+  const disappeared = existing
+    .filter((row) => row.ror_id && !currentRorIds.has(row.ror_id) && !row.manual_eligibility_override && !row.reviewed_at)
+    .map((row) => ({ id: row.id, source_review_required: true, active: false }));
   if (disappeared.length) await markDisappearedForReview(supabase, disappeared);
 
   const { error: rankError } = await supabase.rpc("refresh_university_featured_ranks");
   if (rankError) throw rankError;
   const requirementsFile = join(DATA_DIR, "verified-admission-requirements.json");
-  if (existsSync(requirementsFile)) await applyRequirements(supabase, imported, JSON.parse(readFileSync(requirementsFile, "utf8")));
+  if (SYNC_ADMISSIONS && existsSync(requirementsFile)) {
+    await applyRequirements(supabase, imported, JSON.parse(readFileSync(requirementsFile, "utf8")));
+  }
 
   manifest.imported_record_count = dbRows.length;
   manifest.duplicate_merge_count = duplicateMerges;
@@ -357,11 +380,20 @@ async function applyCatalog(universities, manifest) {
 
 async function applyRequirements(supabase, universities, requirements) {
   const byIdentity = new Map(universities.map((university) => [university.ror_id, university]));
+  const { data: existingRequirements, error: requirementsError } = await supabase
+    .from("university_admission_requirements")
+    .select("id,verification_status,verified_at");
+  if (requirementsError) throw requirementsError;
+  const protectedIds = new Set((existingRequirements || [])
+    .filter((row) => row.verification_status === "verified" || row.verified_at)
+    .map((row) => row.id));
   const rows = requirements.map((requirement) => {
     const university = byIdentity.get(requirement.ror_id);
     if (!university) return null;
+    const id = deterministicUuid(`requirement:${requirement.ror_id}:${requirement.exam_code}:${requirement.scope}:${requirement.programme_name || ""}:${requirement.admissions_cycle || ""}`);
+    if (protectedIds.has(id)) return null;
     return {
-      id: deterministicUuid(`requirement:${requirement.ror_id}:${requirement.exam_code}:${requirement.scope}:${requirement.programme_name || ""}:${requirement.admissions_cycle || ""}`),
+      id,
       university_id: university.id,
       exam_code: requirement.exam_code,
       status: requirement.status,
@@ -398,16 +430,22 @@ async function main() {
   }
 
   const raw = JSON.parse(readFileSync(jsonPath, "utf8"));
-  const eligibleRor = [];
+  const candidateRor = [];
   const rejectionCounts = {};
   for (const record of raw) {
-    const classification = classify(record);
-    if (classification.eligible) eligibleRor.push(record);
-    else rejectionCounts[classification.reason] = (rejectionCounts[classification.reason] || 0) + 1;
+    const candidate = record.status === "active" && record.types.includes("education");
+    if (candidate) candidateRor.push(record);
+    else {
+      const reason = record.status !== "active" ? "inactive" : "not_ror_education";
+      rejectionCounts[reason] = (rejectionCounts[reason] || 0) + 1;
+    }
   }
-  const openalexByRor = SKIP_OPENALEX ? {} : await enrichOpenAlex(eligibleRor);
-  const transformed = eligibleRor.map((record) => transformRor(record, openalexByRor[record.id])).filter((record) => record.name && record.iso2 && record.iso3);
-  const missingCountry = eligibleRor.length - transformed.length;
+  const openalexByRor = SKIP_OPENALEX ? {} : await enrichOpenAlex(candidateRor);
+  const transformed = candidateRor.map((record) => {
+    const classification = classifyUniversityEntity(record, openalexByRor[record.id]);
+    return transformRor(record, openalexByRor[record.id], classification);
+  }).filter((record) => record.name && record.iso2 && record.iso3);
+  const missingCountry = candidateRor.length - transformed.length;
   if (missingCountry) rejectionCounts.missing_iso_country = missingCountry;
   const retrievedAt = new Date().toISOString();
   const manifest = {
@@ -418,7 +456,9 @@ async function main() {
     retrieved_at: retrievedAt,
     source_url: archive.links.self,
     raw_record_count: raw.length,
-    eligible_record_count: transformed.length,
+    eligible_record_count: transformed.filter((record) => record.eligibility_status === "eligible").length,
+    needs_review_record_count: transformed.filter((record) => record.eligibility_status === "needs_review").length,
+    ineligible_record_count: transformed.filter((record) => record.eligibility_status === "ineligible").length,
     rejected_record_count: raw.length - transformed.length,
     rejection_counts: rejectionCounts,
     imported_record_count: APPLY ? 0 : null,
@@ -430,7 +470,8 @@ async function main() {
     official_url_count: transformed.filter((record) => record.website).length,
     countries_represented: new Set(transformed.map((record) => record.iso2)).size,
     alias_count: transformed.reduce((sum, record) => sum + record.aliases.length, 0),
-    filtering_method: "active ROR education records, excluding obvious hospitals/clinics and non-university research entities",
+    filtering_method: UNIVERSITY_ELIGIBILITY_MODEL_VERSION,
+    normalization_version: UNIVERSITY_NORMALIZATION_VERSION,
   };
 
   if (APPLY) await applyCatalog(transformed, manifest);

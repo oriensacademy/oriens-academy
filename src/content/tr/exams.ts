@@ -4,7 +4,7 @@ export { examDetailText } from "./exam-details";
 export const metadata = {
   title: "Sınav Hazırlığı | Oriens Academy",
   description:
-    "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT için hedefe yönelik sınav hazırlığı ve akademik rehberlik.",
+    "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT ve OMPT için hedefe yönelik sınav hazırlığı ve akademik rehberlik.",
 };
 
 export const page = {
@@ -153,14 +153,6 @@ export const examText: ExamTextMap = {
     subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "Situational Judgement"],
     ctaLabel: "UCAT hazırlığını keşfet",
   },
-  LNAT: {
-    title: "National Admissions Test for Law (LNAT)",
-    shortDescription: "Hukuk başvuruları için eleştirel metin analizi, mantıksal çıkarım ve argüman yazma hazırlığı.",
-    purpose: "Oxford, Cambridge, UCL, LSE, KCL ve seçili hukuk fakültelerine kabul",
-    audience: "Hukuk lisans programı adayları",
-    subjects: ["Critical Reading", "Argument Analysis", "Deductive Logic", "Essay Writing"],
-    ctaLabel: "LNAT hazırlığını keşfet",
-  },
   IMAT: {
     title: "International Medical Admissions Test",
     shortDescription: "İtalya'daki İngilizce tıp programları için bilimsel bilgi ve akıl yürütme hazırlığı.",
@@ -169,14 +161,6 @@ export const examText: ExamTextMap = {
     subjects: ["Biology", "Chemistry", "Physics", "Mathematics", "Logical Reasoning"],
     ctaLabel: "IMAT hazırlığını keşfet",
   },
-  GAMSAT: {
-    title: "Graduate Medical School Admissions Test",
-    shortDescription: "Lisansüstü tıp başvuruları için beşeri bilimler, yazılı iletişim ve biyolojik/fiziksel bilimler hazırlığı.",
-    purpose: "Birleşik Krallık, İrlanda ve Avustralya lisansüstü tıp (Graduate Entry Medicine) programlarına kabul",
-    audience: "Lisansüstü tıp programlarına başvuran üniversite mezunları",
-    subjects: ["Humanities Reasoning", "Written Communication", "Biological & Physical Sciences"],
-    ctaLabel: "GAMSAT hazırlığını keşfet",
-  },
   MCAT: {
     title: "Medical College Admission Test (MCAT)",
     shortDescription: "ABD ve Kanada tıp fakülteleri için biyokimya, fizik, psikoloji ve eleştirel analiz hazırlığı.",
@@ -184,14 +168,6 @@ export const examText: ExamTextMap = {
     audience: "Kuzey Amerika tıp fakültesi adayları",
     subjects: ["Biological Systems", "Chemical Foundations", "CARS", "Psychological Foundations"],
     ctaLabel: "MCAT hazırlığını keşfet",
-  },
-  LSAT: {
-    title: "Law School Admission Test (LSAT)",
-    shortDescription: "Hukuk yüksek lisans ve JD programları için analitik akıl yürütme, mantık oyunları ve okuma hazırlığı.",
-    purpose: "ABD, Kanada ve global JD / LLM hukuk programlarına kabul",
-    audience: "Hukuk fakültesi ve JD adayları",
-    subjects: ["Logical Reasoning", "Analytical Reasoning", "Reading Comprehension", "Argumentative Writing"],
-    ctaLabel: "LSAT hazırlığını keşfet",
   },
   GRE: {
     title: "Graduate Record Examination",

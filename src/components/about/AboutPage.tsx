@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Mail } from "lucide-react";
 import { CompassMark } from "@/components/brand/CompassMark";
@@ -10,8 +9,6 @@ import { examRecords } from "@/content/exams";
 import { useAboutContent, useLocale } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
 import { CONTACT } from "@/config/contact";
-import { TestimonialsColumns, type TestimonialItem } from "@/components/ui/testimonials-columns-1";
-import { getPublicTestimonials, type TestimonialRow } from "@/lib/admin/content";
 import About from "@/components/about";
 import { OriensLottie } from "@/components/ui/OriensLottie";
 
@@ -22,28 +19,6 @@ export function AboutPage() {
   const content = useAboutContent();
   const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
   const metrics = content.outcomes.metrics.filter((metric) => metric.active).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const [testimonialRows, setTestimonialRows] = useState<TestimonialRow[]>([]);
-  const [testimonialsUnavailable, setTestimonialsUnavailable] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    getPublicTestimonials(locale).then(({ data, error }) => {
-      if (!cancelled) {
-        setTestimonialRows(data);
-        setTestimonialsUnavailable(Boolean(error));
-      }
-    });
-    return () => { cancelled = true; };
-  }, [locale]);
-
-  const testimonials: TestimonialItem[] = testimonialRows.map((item) => ({
-    id: item.id,
-    text: item.quote,
-    name: item.name,
-    metadata: item.context || item.exam_code?.toUpperCase() || undefined,
-    image: item.profile_image_url || undefined,
-  }));
-
   return (
     <div className="overflow-x-clip">
       <section className="relative overflow-hidden border-b border-border pt-24 pb-16 md:pt-30 md:pb-24">
@@ -81,7 +56,7 @@ export function AboutPage() {
         description={content.story.paragraphs[0]}
         items={[
           ...content.principles.items.map((item) => ({ title: item.title, description: item.description })),
-          { title: content.team.title, description: content.team.members[0]?.bio ?? content.team.fallbackBody },
+          { title: content.team.eyebrow, description: `${content.team.title}. ${content.team.members[0]?.bio ?? content.team.fallbackBody}` },
         ]}
       />
 
@@ -132,31 +107,6 @@ export function AboutPage() {
           </div>
         </div>
       </section>
-
-      {testimonials.length > 0 && (
-        <section className="py-20 md:py-28">
-          <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-            <Reveal className="max-w-3xl">
-              <p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.testimonials.eyebrow}</p>
-              <h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.testimonials.title}</h2>
-              <p className="mt-5 text-base leading-[1.75] text-ink/70">{locale === "tr" ? "Gerçek öğrenci ve veli deneyimleri." : "Real experiences shared by students and parents."}</p>
-            </Reveal>
-            <Reveal className="mx-auto mt-12 max-w-5xl" delay={0.08}>
-              <TestimonialsColumns testimonials={testimonials} locale={locale} />
-            </Reveal>
-          </div>
-        </section>
-      )}
-
-      {testimonialsUnavailable && (
-        <section className="py-12" aria-live="polite">
-          <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-            <p className="rounded-2xl border border-border bg-surface-muted p-6 text-center text-sm text-muted-foreground">
-              {locale === "tr" ? "Öğrenci yorumları şu anda yüklenemiyor. Lütfen daha sonra tekrar deneyin." : "Student reviews are temporarily unavailable. Please try again later."}
-            </p>
-          </div>
-        </section>
-      )}
 
       <section className="relative overflow-hidden py-20 md:py-28">
         <div className="absolute top-0 right-[14%] h-full border-l border-dashed border-border" aria-hidden="true" />

@@ -5,7 +5,7 @@ import { Fingerprint, Globe2, Target, Users, type LucideIcon } from "lucide-reac
 export const hero = {
   eyebrow: "Uluslararası Sınav Hazırlık & Üniversite Ders Desteği",
   headline: "Dünyanın en iyi üniversitelerine giden rotanı birlikte çizelim.",
-  body: "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT sınavlarına; sınavın mantığını çözen, hedef odaklı ve ölçülebilir bir hazırlık süreci sunuyoruz.",
+  body: "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT ve OMPT sınavlarına; sınavın mantığını çözen, hedef odaklı ve ölçülebilir bir hazırlık süreci sunuyoruz.",
   ctaPrimary: "Ücretsiz Tanışma Görüşmesi",
   ctaSecondary: "Sınavları İncele",
 };
@@ -124,7 +124,7 @@ export const whyOriens = {
     {
       icon: Globe2 as LucideIcon,
       title: "Uluslararası Sınavlar",
-      copy: "IB, AP, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, OMPT, IGCSE uzmanlığı.",
+      copy: "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT ve OMPT uzmanlığı.",
     },
     {
       icon: Users as LucideIcon,
@@ -268,7 +268,7 @@ export const faq = {
     {
       id: "faq-1",
       q: "Oriens Academy hangi sınav sistemlerini kapsıyor?",
-      a: "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT sınavlarını kapsıyoruz.",
+      a: "IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT ve OMPT sınavlarını kapsıyoruz.",
     },
     {
       id: "faq-2",

@@ -146,19 +146,13 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "7. Ödeme Yöntemleri",
           paragraphs: [
-            "Ödemeler, internet sitesi üzerinden kredi kartı / banka kartı veya doğrudan banka havalesi / EFT yoluyla gerçekleştirilebilir.",
+            "Ödemeler, internet sitesi üzerinden PayTR güvenli ödeme altyapısı aracılığıyla kredi kartı veya banka kartı ile gerçekleştirilebilir.",
           ],
         },
         {
           heading: "8. PayTR ile Güvenli Kart Ödemesi",
           paragraphs: [
             "Kredi kartı ve banka kartı işlemleri, TCMB ve BDDK lisanslı PayTR Ödeme ve Elektronik Para Kuruluşu A.Ş. güvenli ödeme altyapısı üzerinden 256-bit SSL şifreleme ve 3D Secure doğrulaması ile gerçekleştirilir. Kart bilgileri hiçbir surette Oriens Academy sunucularında tutulmaz ve işlenmez.",
-          ],
-        },
-        {
-          heading: "9. Banka Havalesi / EFT",
-          paragraphs: [
-            "Havale / EFT ile yapılan ödemelerde, sipariş tamamlandıktan sonra verilen sipariş referans numarasının banka dekontunun açıklama alanına yazılması zorunludur. Tutar Hizmet Sağlayıcı'nın banka hesabına intikal ettiğinde ve eşleştiğinde paket aktif hale getirilir.",
           ],
         },
         {
@@ -238,7 +232,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "3. Ödeme ve İfa Esasları",
           paragraphs: [
-            "Ödeme; kredi kartı, banka kartı veya banka havalesi/EFT yöntemiyle yapılabilir. Kart ödemeleri PayTR 256-bit SSL şifreli güvenli altyapısıyla gerçekleştirilir. Ödeme onaylandığında ders hakları öğrenci hesabına aktarılır.",
+            "Ödeme, kredi kartı veya banka kartı ile PayTR 256-bit SSL şifreli güvenli altyapısı üzerinden gerçekleştirilir. Ödeme onaylandığında ders hakları seçilen öğrenci hesabına aktarılır.",
           ],
         },
         {
@@ -514,19 +508,13 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "7. Payment Methods",
           paragraphs: [
-            "Payments can be made via credit card, debit card, or direct bank transfer (EFT/wire transfer) through the official platform.",
+            "Payments can be made by credit or debit card through PayTR's secure payment infrastructure on the official platform.",
           ],
         },
         {
           heading: "8. Secure Card Payment via PayTR",
           paragraphs: [
             "Card payments are processed securely through PayTR Payment and Electronic Money Institution infrastructure with 256-bit SSL encryption and mandatory 3D Secure verification. Card credentials are never stored on Oriens Academy servers.",
-          ],
-        },
-        {
-          heading: "9. Bank Transfer / Wire",
-          paragraphs: [
-            "For bank transfers, the unique payment reference code must be included in the bank transaction description. The package is credited once the transfer is confirmed in the Service Provider's bank account.",
           ],
         },
         {
@@ -606,7 +594,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "3. Payment and Performance",
           paragraphs: [
-            "Payments are accepted via credit/debit cards (via PayTR 256-bit SSL) or bank transfer. Lesson credits are allocated to the student account upon payment confirmation.",
+            "Payments are accepted by credit or debit card through PayTR's 256-bit SSL infrastructure. Lesson credits are allocated to the selected learner account upon payment confirmation.",
           ],
         },
         {

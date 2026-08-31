@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Search, Loader2, Info, X, GraduationCap, BookOpen, Award, Globe, ChevronRight } from "lucide-react";
+import { Search, Loader2, Info, X, GraduationCap, BookOpen, Award, Globe, ChevronRight, ArrowUpRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
@@ -91,6 +91,7 @@ export function GooeySearchBar() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
   const [searchResults, setSearchResults] = useState<GroupedSearchResults | null>(null);
+  const [selectedUniversity, setSelectedUniversity] = useState<SearchResultItem | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isError, setIsError] = useState(false);
 
@@ -170,6 +171,7 @@ export function GooeySearchBar() {
     setSearchText("");
     setSearchResults(null);
     setSelectedIndex(0);
+    setSelectedUniversity(null);
     setIsFocused(false);
   };
 
@@ -192,10 +194,7 @@ export function GooeySearchBar() {
 
   const handleSelectItem = (item: SearchResultItem) => {
     if (item.type === "UNIVERSITY") {
-      if (item.officialUrl && typeof window !== "undefined") {
-        window.open(item.officialUrl, "_blank", "noopener,noreferrer");
-      }
-      handleClose();
+      setSelectedUniversity(item);
       return;
     }
 
@@ -323,6 +322,27 @@ export function GooeySearchBar() {
                           : "University search is temporarily unavailable; only supported exam results are shown."}
                       </div>
                     )}
+                    {selectedUniversity && (
+                      <div className="rounded-xl border border-primary/20 bg-sage-soft/50 p-3" role="status" aria-live="polite">
+                        <p className="text-sm font-semibold text-foreground">{selectedUniversity.title}</p>
+                        {selectedUniversity.subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{selectedUniversity.subtitle}</p>}
+                        {selectedUniversity.officialUrl ? (
+                          <a
+                            href={selectedUniversity.officialUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                          >
+                            {isTr ? "Doğrulanmış resmî siteyi aç" : "Open verified official site"}
+                            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                          </a>
+                        ) : (
+                          <p className="mt-2 text-xs font-medium text-amber-700">
+                            {isTr ? "Resmî bağlantı doğrulanıyor" : "Official link is being verified"}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {/* UNIVERSITIES */}
                     {visibleSearchResults.groups.universities.length > 0 && (
                       <div className="py-1">
@@ -346,7 +366,7 @@ export function GooeySearchBar() {
                                   isActive ? "bg-muted border-l-2 border-primary" : "hover:bg-muted/50"
                                 )}
                               >
-                                <div>
+                                <div className="min-w-0 pr-2">
                                   <div className="text-xs font-semibold text-foreground flex items-center gap-2">
                                     {item.title}
                                     {item.badge && (
@@ -357,7 +377,22 @@ export function GooeySearchBar() {
                                   </div>
                                   {item.subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{item.subtitle}</p>}
                                 </div>
-                                <ChevronRight className="size-4 text-muted-foreground" />
+                                {item.officialUrl ? (
+                                  <a
+                                    href={item.officialUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(event) => event.stopPropagation()}
+                                    className="flex size-11 shrink-0 items-center justify-center rounded-full text-primary hover:bg-primary/10"
+                                    aria-label={isTr ? `${item.title} doğrulanmış resmî sitesi` : `${item.title} verified official site`}
+                                  >
+                                    <ArrowUpRight className="size-4" aria-hidden="true" />
+                                  </a>
+                                ) : (
+                                  <span className="flex size-11 shrink-0 items-center justify-center text-muted-foreground/40" aria-label={isTr ? "Resmî bağlantı doğrulanıyor" : "Official link is being verified"} aria-disabled="true">
+                                    <ArrowUpRight className="size-4" aria-hidden="true" />
+                                  </span>
+                                )}
                               </li>
                             );
                           })}

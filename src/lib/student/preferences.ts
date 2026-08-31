@@ -11,8 +11,8 @@ export interface PreferenceOption {
 const examBadges: Partial<Record<CanonicalExamCode, string>> = {
   IB: "Diploma", AP: "Curriculum", IGCSE: "Secondary", "A-Level": "UK / Global",
   SAT: "US / Global", ACT: "US / Global", ESAT: "UK STEM", TMUA: "UK Math",
-  TARA: "Academic Reasoning", UCAT: "Medicine / Dentistry", LNAT: "UK Law",
-  IMAT: "Italy", GAMSAT: "Graduate Medicine", MCAT: "US / Canada", LSAT: "Law",
+  TARA: "Academic Reasoning", UCAT: "Medicine / Dentistry",
+  IMAT: "Italy", MCAT: "US / Canada",
   GRE: "Graduate", GMAT: "Business / MBA", OMPT: "Mathematics",
 };
 

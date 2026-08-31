@@ -161,8 +161,8 @@ export async function requestPaytrIframeToken(
     no_installment: noInstallment,
     max_installment: maxInstallment,
     user_name: params.userName,
-    user_address: params.userAddress || "Türkiye",
-    user_phone: params.userPhone || "05000000000",
+    user_address: params.userAddress,
+    user_phone: params.userPhone,
     merchant_ok_url: params.merchantOkUrl,
     merchant_fail_url: params.merchantFailUrl,
     timeout_limit: timeoutLimit,
@@ -357,4 +357,3 @@ export function generatePaytrMerchantOid(): string {
 
   return oid;
 }
-

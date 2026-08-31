@@ -47,10 +47,10 @@ const en10 = enPricing.packages.items.package10.description;
 assert.notEqual(tr5, tr10, "TR 5-lesson and 10-lesson copy must not be identical");
 assert.notEqual(en5, en10, "EN 5-lesson and 10-lesson copy must not be identical");
 
-assert.equal(tr5, "Düzenli çalışma için esnek başlangıç paketi.");
-assert.equal(tr10, "Sınav hazırlığı ve konu takibi için dengeli çalışma paketi.");
-assert.equal(en5, "Flexible starter package for structured study.");
-assert.equal(en10, "Balanced study package for exam preparation and topic mastery.");
+assert.equal(tr5, "Düzenli çalışmaya başlamak ve kısa vadeli konu hedeflerini takip etmek için esnek paket.");
+assert.equal(tr10, "Sınav hazırlığını, konu takibini ve düzenli ilerleme değerlendirmesini birlikte yürüten dengeli paket.");
+assert.equal(en5, "A flexible package for starting structured study and tracking short-term topic goals.");
+assert.equal(en10, "A balanced package combining exam preparation, topic tracking and regular progress review.");
 
 console.log(`  ✓ TR 5-Lesson:  "${tr5}"`);
 console.log(`  ✓ TR 10-Lesson: "${tr10}"`);
@@ -62,7 +62,7 @@ console.log("\n[TEST 4] Subtle Premium Trust Marker Verification");
 assert.ok(creativePricingContent.includes(`Şeffaf Fiyatlandırma`), "Trust marker must include 'Şeffaf Fiyatlandırma' for TR");
 assert.ok(creativePricingContent.includes(`Her öğrenci için aynı standart ücretler.`), "Trust marker must include 'Her öğrenci için aynı standart ücretler.' for TR");
 assert.ok(creativePricingContent.includes(`Transparent Pricing`), "Trust marker must include 'Transparent Pricing' for EN");
-assert.ok(creativePricingContent.includes(`Standard pricing for every student.`), "Trust marker must include 'Standard pricing for every student.' for EN");
+assert.ok(creativePricingContent.includes(`The same standard rates for every student.`), "Trust marker must include the current EN transparency copy");
 assert.ok(creativePricingContent.includes(`ShieldCheck`), "Trust marker must render ShieldCheck icon");
 console.log("  ✓ Subtle trust marker present with shield icon and clean pill styling.");
 
@@ -72,14 +72,14 @@ assert.ok(creativePricingContent.includes(`{locale === "tr" ? "İndirimsiz" : "S
 assert.equal(CANONICAL_DEFAULT_PACKAGES.find(p => p.id === "single")?.discount_percentage, null, "Single lesson must have discount null");
 console.log("  ✓ Single lesson renders 'İndirimsiz' / 'Standard Price' without artificial 0% badge.");
 
-// TEST 6: Global 18-Exam Count Consistency
-console.log("\n[TEST 6] Global 18-Exam Copy Consistency");
-assert.ok(trHero.body.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT"), "TR homepage hero must list all 18 exams");
-assert.ok(enHero.body.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, and OMPT"), "EN homepage hero must list all 18 exams");
+// TEST 6: Global 15-Exam Count Consistency
+console.log("\n[TEST 6] Global 15-Exam Copy Consistency");
+assert.ok(trHero.body.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT ve OMPT"), "TR homepage hero must list all 15 exams");
+assert.ok(enHero.body.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT, and OMPT"), "EN homepage hero must list all 15 exams");
 
-assert.ok(trFaq.items[0].a.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT ve OMPT"), "TR FAQ 1 must list all 18 exams");
-assert.ok(enFaq.items[0].a.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT, and OMPT"), "EN FAQ 1 must list all 18 exams");
-console.log("  ✓ All 18 exams listed consistently across marketing copy and FAQs.");
+assert.ok(trFaq.items[0].a.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT ve OMPT"), "TR FAQ 1 must list all 15 exams");
+assert.ok(enFaq.items[0].a.includes("IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT, and OMPT"), "EN FAQ 1 must list all 15 exams");
+console.log("  ✓ All 15 exams listed consistently across marketing copy and FAQs.");
 
 console.log("\n==========================================");
 console.log("ALL PROMPT 06 SUITE VERIFICATIONS PASSED!");

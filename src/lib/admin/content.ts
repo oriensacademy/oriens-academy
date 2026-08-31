@@ -59,10 +59,13 @@ export async function getPublicTestimonials(locale?: string): Promise<PublicTest
       .eq("active", true)
       .eq("verified", true)
       .is("archived_at", null)
+      .eq("featured", true)
       .order("pin_order", { ascending: true, nullsFirst: false })
       .order("pinned_at", { ascending: false, nullsFirst: false })
-      .order("featured", { ascending: false })
-      .order("display_order", { ascending: true });
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(20);
 
     if (locale) {
       query = query.eq("locale", locale);
@@ -230,6 +233,32 @@ export async function updateAdminTestimonial(
   } catch (err) {
     console.error("[Admin Content] Unexpected error updating testimonial:", err);
     return { success: false, error: "Öğrenci yorumu güncellenirken bir hata oluştu." };
+  }
+}
+
+export async function setAdminTestimonialFeatured(
+  id: string,
+  featured: boolean,
+): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const supabase = getSupabaseClient();
+    // Additive RPC is deployed by the forward migration in this change.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("set_testimonial_featured", {
+      p_testimonial_id: id,
+      p_featured: featured,
+    });
+    if (error) {
+      return {
+        success: false,
+        error: error.message.includes("PUBLIC_TESTIMONIAL_FEATURED_LIMIT_20")
+          ? "En fazla 20 aktif ve doğrulanmış yorum öne çıkarılabilir."
+          : error.message,
+      };
+    }
+    return { success: true, error: null };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Yıldız durumu güncellenemedi." };
   }
 }
 

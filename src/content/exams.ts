@@ -97,13 +97,7 @@ const examMeta: Record<ExamCode, ExamMeta> = {
     categories: ["admission-specific"],
     primaryCategory: "admission-specific",
     visualVariant: "route",
-    relatedExams: ["IMAT", "GAMSAT"],
-  },
-  LNAT: {
-    categories: ["admission-specific"],
-    primaryCategory: "admission-specific",
-    visualVariant: "vector",
-    relatedExams: ["LSAT"],
+    relatedExams: ["IMAT", "MCAT"],
   },
   IMAT: {
     categories: ["admission-specific"],
@@ -111,23 +105,11 @@ const examMeta: Record<ExamCode, ExamMeta> = {
     visualVariant: "geometry",
     relatedExams: ["UCAT", "MCAT"],
   },
-  GAMSAT: {
-    categories: ["admission-specific"],
-    primaryCategory: "admission-specific",
-    visualVariant: "route",
-    relatedExams: ["UCAT", "MCAT"],
-  },
   MCAT: {
     categories: ["admission-specific"],
     primaryCategory: "admission-specific",
     visualVariant: "geometry",
-    relatedExams: ["IMAT", "GAMSAT"],
-  },
-  LSAT: {
-    categories: ["admission-specific"],
-    primaryCategory: "admission-specific",
-    visualVariant: "route",
-    relatedExams: ["LNAT", "GRE"],
+    relatedExams: ["IMAT", "UCAT"],
   },
   GRE: {
     categories: ["admission-specific"],
@@ -209,7 +191,7 @@ export type ExamDetailLocaleEntry = {
   };
 };
 
-export type ExamDetailTextMap = Record<ExamCode, ExamDetailLocaleEntry>;
+export type ExamDetailTextMap = Record<string, ExamDetailLocaleEntry>;
 
 export function examBySlug(slug: string): ExamRecord | undefined {
   return examRecords.find((exam) => exam.slug === slug);

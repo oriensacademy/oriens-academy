@@ -1,33 +1,15 @@
 /**
  * Query Normalizer & String Utilities for English Admission Search
  */
+import { normalizeUniversitySearchText } from "./university-normalization.mjs";
 
 export function normalizeQuery(input: string): string {
   if (!input) return "";
 
-  return (
-    input
-      // Normalize unicode to NFKD (decomposes accents)
-      .normalize("NFKD")
-      // Remove diacritical marks
-      .replace(/[\u0300-\u036f]/g, "")
-      // Convert to lower case
-      .toLowerCase()
-      // Fold Turkish dotless i (has no NFKD decomposition, unlike the other
-      // Turkish letters above which are already stripped to their ASCII base)
-      .replace(/ı/g, "i")
-      // Replace smart quotes/apostrophes with standard apostrophe
-      .replace(/[\u2018\u2019`’]/g, "'")
-      // Replace hyphen-like characters with standard hyphen
-      .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-")
-      // Remove extraneous punctuation except hyphens, apostrophes, and numbers/decimals
-      .replace(/[^\w\s.'\-]/g, " ")
-      // Standardize A-Level / A Level variations (e.g. a level -> a-level)
-      .replace(/\ba\s+levels?\b/gi, "a-level")
-      // Collapse whitespace
-      .replace(/\s+/g, " ")
-      .trim()
-  );
+  return normalizeUniversitySearchText(input)
+    .replace(/\ba\s+levels?\b/g, "a level")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**

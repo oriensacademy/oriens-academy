@@ -131,7 +131,7 @@ export function LegalModal({
                   </strong>
                 </div>
                 <div>
-                  <span className="text-[#68756C] block">{isTr ? "Öğrenci / Alıcı:" : "Student / Buyer:"}</span>
+                  <span className="text-[#68756C] block">{isTr ? "Veli / Ödeyen:" : "Guardian / Payer:"}</span>
                   <strong className="text-[#10271B]">{orderSnapshot.payerName || "—"} ({orderSnapshot.payerEmail || "—"})</strong>
                 </div>
                 <div>

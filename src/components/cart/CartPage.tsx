@@ -112,7 +112,7 @@ export function CartPage() {
         <div className="mx-auto max-w-5xl">
           <header className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-              {isTr ? "Öğrenci Paneli" : "Student Portal"}
+              {isTr ? "Veli Hesabı" : "Parent Account"}
             </p>
             <h1 className="mt-3 font-heading text-[clamp(2.4rem,5vw,4rem)] leading-[1.05] text-ink">
               {isTr ? "Sepetim" : "My Cart"}
@@ -264,7 +264,7 @@ export function CartPage() {
 
                 <Link
                   href={checkoutHref}
-                  className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-forest"
+                  className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink px-5 text-base font-bold text-white shadow-lg shadow-ink/15 transition-all hover:-translate-y-0.5 hover:bg-forest focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99]"
                 >
                   <span>{isTr ? "Ödemeye Geç" : "Proceed to Checkout"}</span>
                   <ArrowRight className="size-4" />

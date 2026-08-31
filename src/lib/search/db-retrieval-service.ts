@@ -26,7 +26,7 @@ interface DatabaseSearchRow {
 }
 
 const DEFAULT_LIMITS: SearchLimits = {
-  universities: 5,
+  universities: 8,
   programs: 4,
   qualifications: 3,
   countries: 3,
@@ -35,7 +35,8 @@ const DEFAULT_LIMITS: SearchLimits = {
 // The public search must stay usable when the remote autocomplete RPC is slow
 // or unavailable. After this bounded wait the deterministic local index below
 // supplies the same canonical exam results.
-const SEARCH_RPC_TIMEOUT_MS = 5_000;
+const SEARCH_RPC_TIMEOUT_MS = 2_500;
+const SEARCH_RPC_FETCH_LIMIT = 10;
 
 function toSearchResult(row: DatabaseSearchRow): SearchResultItem {
   return {
@@ -63,13 +64,6 @@ export async function retrieveSearchResultsFromDatabase(
   if (!normalized) return emptySearchResults("");
 
   const parsedQuery = parseQuery(cleanQuery, { includePredefinedUniversities: false });
-  const perTypeLimit = Math.max(
-    limits.universities,
-    limits.programs,
-    limits.qualifications,
-    limits.countries,
-  );
-
   const recognizedTerms = [
     ...parsedQuery.universities.map((entity) => entity.matchedTerm),
     ...parsedQuery.countries.flatMap((entity) => [entity.matchedTerm, entity.name]),
@@ -105,9 +99,10 @@ export async function retrieveSearchResultsFromDatabase(
             // statement timeout can never leave the customer UI loading.
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const rpcRequest = (supabase as any)
-              .rpc("search_autocomplete_entities", {
+              .rpc("search_autocomplete_entities_v2", {
                 p_query: term,
-                p_limit: perTypeLimit,
+                p_limit: SEARCH_RPC_FETCH_LIMIT,
+                p_country_iso2: parsedQuery.countries[0]?.iso2 || null,
               })
               .abortSignal(controller.signal);
             const clientTimeout = new Promise<{ data: null; error: { code: string } }>((resolve) => {
@@ -121,8 +116,7 @@ export async function retrieveSearchResultsFromDatabase(
             clearTimeout(timeoutId!);
           }
         };
-        const first = await request();
-        return first.error?.code === "57014" ? request() : first;
+        return request();
       })
     );
 

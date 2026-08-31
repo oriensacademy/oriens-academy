@@ -190,13 +190,6 @@ export function CreativePricing({
                     </span>
                   </div>
 
-                  <div data-pricing-total className={cn(
-                    "mt-1 text-xs font-medium",
-                    isInverted ? "text-primary-foreground/80" : "text-[#68756C]"
-                  )}>
-                    {locale === "tr" ? "toplam" : "total"}
-                  </div>
-
                   {tier.unitPrice ? (
                     <div data-pricing-unit-price className={cn(
                       "mt-3 min-h-5 text-xs",

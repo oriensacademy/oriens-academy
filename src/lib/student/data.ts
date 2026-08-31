@@ -1,5 +1,4 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { getPublicBankTransferDetails } from "@/lib/payments/client";
 import type { Tables } from "@/types/database.types";
 
 export type StudentProfileRow = Tables<"student_profiles">;
@@ -65,7 +64,6 @@ export interface StudentPortalData {
   purchases: StudentPurchase[];
   payments: StudentPayment[];
   adjustments: StudentAdjustment[];
-  bankDetails: Awaited<ReturnType<typeof getPublicBankTransferDetails>>;
   currentPackage: StudentPurchase | null;
   entitlement: StudentEntitlementSummary;
 }
@@ -156,7 +154,7 @@ export async function getStudentPortalData(
   userId: string
 ): Promise<{ data: StudentPortalData | null; error: string | null }> {
   const supabase = getSupabaseClient();
-  const [profile, bookings, lessons, homework, purchases, payments, adjustments, bankDetails] =
+  const [profile, bookings, lessons, homework, purchases, payments, adjustments] =
     await Promise.all([
       supabase.from("student_profiles").select("*").eq("id", userId).maybeSingle(),
       supabase
@@ -193,7 +191,6 @@ export async function getStudentPortalData(
         .select("*")
         .eq("student_user_id", userId)
         .order("created_at", { ascending: false }),
-      getPublicBankTransferDetails(),
     ]);
 
   const firstError =
@@ -246,7 +243,6 @@ export async function getStudentPortalData(
       purchases: purchaseList,
       payments: visiblePayments,
       adjustments: (adjustments.data || []) as unknown as StudentAdjustment[],
-      bankDetails,
       currentPackage,
       entitlement,
     },

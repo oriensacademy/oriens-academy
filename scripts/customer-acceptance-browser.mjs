@@ -65,13 +65,13 @@ try {
   await page.goto(`${base}/tr/sinavlar/`, { waitUntil: "domcontentloaded" });
   const carousel = page.locator('[data-exam-carousel][data-exam-code="EXAMS"]');
   await carousel.waitFor();
-  assert.match(await carousel.innerText(), /01 \/ 18/);
+  assert.match(await carousel.innerText(), /01 \/ 15/);
   const next = carousel.getByRole("button", { name: "Next exam" });
   const nextBox = await next.boundingBox();
   assert.ok(nextBox && nextBox.width >= 44 && nextBox.height >= 44);
   await next.click();
   await page.waitForFunction(() => document.querySelector('[data-exam-carousel][data-exam-code="EXAMS"]')?.getAttribute("data-active-card") === "2");
-  assert.match(await carousel.innerText(), /02 \/ 18/);
+  assert.match(await carousel.innerText(), /02 \/ 15/);
   await carousel.getByRole("region").focus();
   await page.keyboard.press("ArrowRight");
   await page.waitForFunction(() => document.querySelector('[data-exam-carousel][data-exam-code="EXAMS"]')?.getAttribute("data-active-card") === "3");
@@ -123,7 +123,7 @@ try {
     await stateContext.close();
   }
 
-  console.log(JSON.stringify({ status: "PASS", viewports: [375, 768, 1440], checkedRoutes: checked.length, search: ["IB", "UKCAT", "Tokyo", "Cape Town"], mapStates: ["success", "empty", "error"], carousel: "keyboard/buttons/18", assessment: "18/6/review" }, null, 2));
+  console.log(JSON.stringify({ status: "PASS", viewports: [375, 768, 1440], checkedRoutes: checked.length, search: ["IB", "UKCAT", "Tokyo", "Cape Town"], mapStates: ["success", "empty", "error"], carousel: "keyboard/buttons/15", assessment: "15/6/review" }, null, 2));
 } finally {
   await browser.close();
 }

@@ -8,18 +8,18 @@ import { getExamTestCopy } from "../src/content/exam-test.ts";
 
 console.log("=== RUNNING PROMPT 05 VERIFICATION SUITE ===");
 
-// TEST 1: Exactly 18 Selector Exams
-console.log("\n[TEST 1] Canonical 18 Exam Catalog Verification");
-assert.equal(examCodes.length, 18, `Expected 18 exam codes, got ${examCodes.length}`);
-assert.equal(examRecords.length, 18, `Expected 18 exam records, got ${examRecords.length}`);
+// TEST 1: Exactly 15 Selector Exams
+console.log("\n[TEST 1] Canonical 15 Exam Catalog Verification");
+assert.equal(examCodes.length, 15, `Expected 15 exam codes, got ${examCodes.length}`);
+assert.equal(examRecords.length, 15, `Expected 15 exam records, got ${examRecords.length}`);
 
 for (const code of examCodes) {
   assert.ok(examTests[code], `examTests must contain entry for ${code}`);
 }
-console.log(`  ✓ All 18 exams present in canonical catalog: ${examCodes.join(", ")}`);
+console.log(`  ✓ All 15 exams present in canonical catalog: ${examCodes.join(", ")}`);
 
-// TEST 2: Exactly 6 Questions Per Exam = 108 Active Questions
-console.log("\n[TEST 2] Active Question Count Verification (18 × 6 = 108)");
+// TEST 2: Exactly 6 Questions Per Exam = 90 Active Public Questions
+console.log("\n[TEST 2] Active Question Count Verification (15 × 6 = 90)");
 let totalQuestions = 0;
 const questionIds = new Set();
 
@@ -43,9 +43,9 @@ for (const code of examCodes) {
   }
 }
 
-assert.equal(totalQuestions, 108, `Expected exactly 108 active questions, got ${totalQuestions}`);
-assert.equal(questionIds.size, 108, `Expected exactly 108 unique question IDs, got ${questionIds.size}`);
-console.log(`  ✓ Exactly 108 unique questions verified across all 18 exams.`);
+assert.equal(totalQuestions, 90, `Expected exactly 90 active questions, got ${totalQuestions}`);
+assert.equal(questionIds.size, 90, `Expected exactly 90 unique question IDs, got ${questionIds.size}`);
+console.log(`  ✓ Exactly 90 unique questions verified across all 15 exams.`);
 
 // TEST 3: English Topic Labels (Even in TR UI)
 console.log("\n[TEST 3] Topic Labels Language & Standard Syllabus Terminology");
@@ -90,16 +90,16 @@ assert.equal(enCopy.explanation, "Explanation & Solution", "EN explanation copy 
 console.log("  ✓ TR copy explanation: " + trCopy.explanation);
 console.log("  ✓ EN copy explanation: " + enCopy.explanation);
 
-// TEST 5: Exam Card Carousel /18 Counter & Discovery
-console.log("\n[TEST 5] Exam Card Carousel /18 Counter & Groups");
+// TEST 5: Exam Card Carousel /15 Counter & Discovery
+console.log("\n[TEST 5] Exam Card Carousel /15 Counter & Groups");
 const examHubContent = fs.readFileSync("src/components/exams/ExamHub.tsx", "utf8");
 assert.ok(examHubContent.includes("ThreeDExamCarousel"), "ExamHub must render ThreeDExamCarousel");
-assert.ok(examHubContent.includes("examRecords.map"), "ExamHub must map over all 18 examRecords");
+assert.ok(examHubContent.includes("examRecords.map"), "ExamHub must map over all 15 examRecords");
 
 const carouselContent = fs.readFileSync("src/components/ui/three-d-exam-carousel.tsx", "utf8");
 assert.ok(carouselContent.includes("cards.length"), "Carousel must dynamically derive max count from cards.length");
 assert.ok(!carouselContent.includes("/ 12"), "Carousel must never hardcode / 12");
-console.log("  ✓ Carousel verified with 18 cards and dynamic / 18 counter.");
+console.log("  ✓ Carousel verified with 15 cards and dynamic / 15 counter.");
 
 // TEST 6: Test Result & Calculation Logic Regression
 console.log("\n[TEST 6] Test Result Calculation & Breakdown Integrity");

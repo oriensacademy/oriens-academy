@@ -16,8 +16,8 @@ export const nav = {
   items: [
     { label: "Sınav Hazırlığı", href: "#exam-preparation" },
     { label: "Üniversite Ders Desteği", href: "#university-support" },
-    { label: "Hakkımızda", href: "#about" },
     { label: "Ücretler", href: "#pricing" },
+    { label: "Hakkımızda", href: "#about" },
   ],
   wordmark: "ORIENS",
   wordmarkSub: "Academy",

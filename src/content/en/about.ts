@@ -3,13 +3,13 @@ import type { AboutContent } from "../about";
 export const about: AboutContent = {
   metadata: {
     title: "About Us | Oriens Academy",
-    description: "Meet founder Tutor Doğuhan. A focused, measurable process for IB, AP, A-Level, SAT, ESAT, TMUA, TARA, IGCSE built around how each exam actually works.",
+    description: "Meet Oriens Academy and its one-to-one preparation, academic assessment and university course support across 15 international exams.",
   },
   breadcrumb: { ariaLabel: "Breadcrumb", home: "Home", current: "About Us" },
   hero: {
     eyebrow: "About Us",
-    title: "Meet our founder.",
-    description: "A Mathematics and Physics instructor with more than 10 years of one-to-one experience supporting students preparing for IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA and IGCSE. His students include learners from international-curriculum schools such as Robert College, St. Joseph, Liceo Italiano, Üsküdar American Academy, Galatasaray High School, Saint Benoit, Notre Dame de Sion, Deutsche Schule Istanbul and St. Georgs-Kolleg. His approach is built on understanding the logic of each exam rather than rote memorisation.",
+    title: "Meet Oriens Academy.",
+    description: "Oriens Academy provides one-to-one preparation for 15 international exams alongside mathematics and physics-focused university course support. Our institutional approach is built on measurable progress, understanding how each exam works and creating the right route for each student's goals.",
     primaryCta: "Free Intro Call",
     secondaryCta: "Explore Exams",
     visualLabel: "Tutor Doğuhan — Mathematics & Physics Tutor",
@@ -47,8 +47,8 @@ export const about: AboutContent = {
     ],
   },
   team: {
-    eyebrow: "Tutor",
-    title: "Founding Tutor",
+    eyebrow: "Leadership",
+    title: "Our founding tutor",
     intro: "Mathematics & Physics tutor with 10+ years of experience.",
     members: [
       {
@@ -82,7 +82,7 @@ export const about: AboutContent = {
   outcomes: {
     eyebrow: "Our Schools",
     title: "Student communities we work with.",
-    intro: "We regularly work with students from Turkey's leading international-curriculum high schools.",
+    intro: "Our founder's 10+ years of teaching experience includes one-to-one work with students who attended these schools.",
     metrics: [],
     items: [
       { title: "Robert College", description: "Targeted coaching across IB and AP curricula." },

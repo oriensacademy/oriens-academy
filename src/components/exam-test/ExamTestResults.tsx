@@ -386,7 +386,7 @@ export function ExamTestResults({
                   className={`flex flex-col justify-between rounded-xl border p-4 shadow-2xs ${tone}`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-bold">{t.label}</span>
+                    <span lang="en" className="text-sm font-bold">{t.label}</span>
                     <span
                       className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${badgeColor}`}
                     >

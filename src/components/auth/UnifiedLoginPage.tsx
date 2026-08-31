@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User as UserIcon } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, MapPin, Phone, User as UserIcon } from "lucide-react";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { AuthSwitch } from "@/components/ui/auth-switch";
 import { StudentOnboardingPersonalization } from "@/components/student/StudentOnboardingPersonalization";
@@ -11,7 +11,7 @@ import { useLocale } from "@/content/locale-context";
 import { useAccount } from "@/lib/auth/account-context";
 import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routing";
 import { changePasswordPath, forgotPasswordPath, localizedPath } from "@/lib/routes";
-import { registerStudent, validateStudentPhone } from "@/lib/student/auth";
+import { registerStudent, resendGuardianConfirmation, validateStudentPhone } from "@/lib/student/auth";
 import { claimAnonymousExamResult } from "@/lib/student/exam-history";
 
 export function UnifiedLoginPage() {
@@ -46,6 +46,7 @@ export function UnifiedLoginPage() {
   // Register fields
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [contactAddress, setContactAddress] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -53,6 +54,8 @@ export function UnifiedLoginPage() {
   const [error, setError] = useState("");
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const navigatedRef = useRef(false);
   const requested = safeReturnPath(searchParams.get("next"));
@@ -63,6 +66,12 @@ export function UnifiedLoginPage() {
       queueMicrotask(() => setMode("register"));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = window.setInterval(() => setResendCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [resendCooldown]);
 
   const tryClaimPendingResult = async () => {
     try {
@@ -139,6 +148,10 @@ export function UnifiedLoginPage() {
       setError(isTr ? "Şifreniz en az 6 karakter olmalıdır." : "Password must be at least 6 characters.");
       return;
     }
+    if (contactAddress.trim().length < 10 || contactAddress.trim().length > 300) {
+      setError(isTr ? "Lütfen geçerli iletişim adresinizi girin." : "Enter your valid contact address.");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -147,6 +160,7 @@ export function UnifiedLoginPage() {
         fullName,
         email,
         phone,
+        contactAddress,
         password,
         locale,
       });
@@ -163,35 +177,21 @@ export function UnifiedLoginPage() {
         return;
       }
 
-      await tryClaimPendingResult();
-
-      // If signUp returned an active session directly
-      if (regResult.data?.session && regResult.data?.user) {
+      // A usable session is accepted only when Supabase reports a confirmed email.
+      if (regResult.data?.session && regResult.data?.user?.email_confirmed_at) {
+        await tryClaimPendingResult();
         setSubmitting(false);
         setRegisteredUserId(regResult.data.user.id);
         setShowOnboarding(true);
         return;
       }
-
-      // Attempt immediate sign-in with credentials
-      const loginResult = await signIn(email, password);
       setSubmitting(false);
-
-      if (loginResult.user) {
-        setRegisteredUserId(loginResult.user.id);
-        setShowOnboarding(true);
-      } else if (regResult.data?.user && !regResult.data.session) {
-        // If email confirmation is enabled on Supabase project and blocking immediate session
+      if (regResult.data?.user && !regResult.data.session) {
         setRegisteredUserId(regResult.data.user.id);
-        setError(
-          isTr
-            ? "Hesabınız başarıyla oluşturuldu! Lütfen e-postanıza gönderilen onay bağlantısını tıklayarak giriş yapınız."
-            : "Account created successfully! Please check your email to confirm your account and sign in."
-        );
+        setPendingConfirmation(true);
+        setResendCooldown(60);
       } else {
-        // Fallback for dev mode
-        setRegisteredUserId("new-student-id");
-        setShowOnboarding(true);
+        setError(isTr ? "Doğrulama bekleyen hesap oluşturulamadı." : "A pending verification account could not be created.");
       }
     } catch (err: unknown) {
       setSubmitting(false);
@@ -218,6 +218,36 @@ export function UnifiedLoginPage() {
           onComplete={handleOnboardingComplete}
           onSkip={handleOnboardingComplete}
         />
+      </section>
+    );
+  }
+
+  if (pendingConfirmation) {
+    return (
+      <section className="min-h-screen bg-background px-4 pt-28 pb-16 sm:pt-36">
+        <div className="mx-auto max-w-md rounded-3xl border border-border bg-surface p-7 text-center shadow-editorial">
+          <Mail className="mx-auto size-10 text-primary" />
+          <h1 className="mt-4 font-heading text-2xl text-ink">{isTr ? "E-postanızı doğrulayın" : "Verify your email"}</h1>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {isTr ? `${email.trim()} adresine gönderilen bağlantıyı açın. Doğrulama tamamlanmadan Veli Hesabı ve ödeme kullanılamaz.` : `Open the link sent to ${email.trim()}. Your Parent Account and checkout remain unavailable until verification.`}
+          </p>
+          <button
+            type="button"
+            disabled={resendCooldown > 0 || submitting}
+            onClick={async () => {
+              setSubmitting(true);
+              setError("");
+              const result = await resendGuardianConfirmation(email, locale);
+              setSubmitting(false);
+              if (result.error) setError(isTr ? "Doğrulama e-postası gönderilemedi veya bağlantı süresi doldu." : "The verification email could not be resent or the request expired.");
+              else setResendCooldown(60);
+            }}
+            className="mt-6 min-h-11 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
+          >
+            {resendCooldown > 0 ? (isTr ? `${resendCooldown} sn sonra yeniden gönder` : `Resend in ${resendCooldown}s`) : (isTr ? "Doğrulama e-postasını yeniden gönder" : "Resend verification email")}
+          </button>
+          {error ? <p role="alert" className="mt-4 text-xs text-red-700">{error}</p> : null}
+        </div>
       </section>
     );
   }
@@ -257,8 +287,8 @@ export function UnifiedLoginPage() {
                   ? "Oturum Aç"
                   : "Sign In"
                 : isTr
-                ? "Öğrenci Hesabı Oluştur"
-                : "Create Student Account"}
+                ? "Veli Hesabı Oluştur"
+                : "Create Parent Account"}
             </h1>
             <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
               {mode === "login"
@@ -422,6 +452,24 @@ export function UnifiedLoginPage() {
                 </span>
               </label>
 
+              <label className="block text-xs font-semibold text-ink" htmlFor="register-address">
+                {isTr ? "İletişim Adresi" : "Contact Address"}
+                <span className="relative mt-1 block">
+                  <MapPin className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground" />
+                  <textarea
+                    id="register-address"
+                    required
+                    minLength={10}
+                    maxLength={300}
+                    autoComplete="street-address"
+                    value={contactAddress}
+                    onChange={(event) => setContactAddress(event.target.value)}
+                    placeholder={isTr ? "Gerçek iletişim adresiniz" : "Your real contact address"}
+                    className="min-h-20 w-full resize-y rounded-xl border border-input bg-background py-3 pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                </span>
+              </label>
+
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block text-xs font-semibold text-ink" htmlFor="register-password">
                   {isTr ? "Şifre" : "Password"}
@@ -486,7 +534,7 @@ export function UnifiedLoginPage() {
 
               <button
                 type="submit"
-                disabled={!fullName.trim() || !email.trim() || !password || !confirmPassword || !termsAccepted || submitting}
+                disabled={!fullName.trim() || !email.trim() || !phone.trim() || !contactAddress.trim() || !password || !confirmPassword || !termsAccepted || submitting}
                 className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
               >
                 {submitting ? (

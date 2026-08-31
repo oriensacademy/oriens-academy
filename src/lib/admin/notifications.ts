@@ -4,9 +4,18 @@ import type { Tables } from "@/types/database.types";
 export type NotificationDeliveryRow = Tables<"notification_deliveries"> & {
   subject?: string | null;
   payload?: Record<string, unknown> | null;
+  template?: string | null;
+  next_attempt_at?: string | null;
+  last_error?: string | null;
 };
 
-export type DeliveryStatus = "sent" | "failed" | "pending" | "delivered";
+export type DeliveryStatus = "sent" | "failed" | "pending" | "processing" | "delivered";
+
+export async function retryAdminNotification(deliveryId: string) {
+  const { data, error } = await getSupabaseClient().rpc("admin_retry_email_notification", { p_delivery_id: deliveryId });
+  const result = data as { success?: boolean; error_code?: string } | null;
+  return { success: !error && result?.success === true, error: error?.message || result?.error_code || null };
+}
 
 export interface ListNotificationsParams {
   status?: DeliveryStatus | "all";
@@ -53,7 +62,7 @@ export function humanizeNotificationSubject(row: NotificationDeliveryRow, locale
   if (type.includes("appointment_updated") || type.includes("reschedule")) {
     return isTr ? "Ders / Görüşme Bilgileriniz Güncellendi" : "Lesson / Meeting Rescheduled";
   }
-  if (type.includes("payment_success") || type.includes("paid")) {
+  if (type.includes("payment.success") || type.includes("payment_success") || type.includes("paid")) {
     return isTr ? "Ödeme Başarılı & Paket Onayı" : "Payment Received & Package Active";
   }
   if (type.includes("bank_transfer_pending")) {
@@ -99,10 +108,10 @@ export function humanizeEventType(eventType: string, locale: "tr" | "en" = "tr")
   if (type.includes("lesson.completed")) {
     return isTr ? "Ders Tamamlandı" : "Lesson Completed";
   }
-  if (type.includes("payment.paid") || type.includes("payment_success")) {
+  if (type.includes("payment.success") || type.includes("payment.paid") || type.includes("payment_success")) {
     return isTr ? "Ödeme Alındı" : "Payment Received";
   }
-  if (type.includes("package.assigned") || type.includes("package_assigned")) {
+  if (type.includes("package.activated") || type.includes("package.assigned") || type.includes("package_assigned")) {
     return isTr ? "Paket Tanımlandı" : "Package Assigned";
   }
   if (type.includes("welcome")) {

@@ -18,7 +18,7 @@ if(examError)throw examError;assert.equal(exams.length,18);assert.equal(exams.fi
 assert.equal(exams.find(e=>e.code==="UCAT").canonical_name,"University Clinical Aptitude Test");
 const {data:legacyAlias,error:aliasError}=await service.from("exam_aliases").select("exam_id,exams!inner(code),alias_type").eq("normalized_alias","ukcat").eq("active",true);
 if(aliasError)throw aliasError;assert.equal(legacyAlias.length,1);assert.equal(legacyAlias[0].exams.code,"UCAT");assert.equal(legacyAlias[0].alias_type,"legacy");
-assert.equal(await count("exam_practice_questions",q=>q.eq("active",true)),108);
+assert.equal(await count("exam_practice_questions",q=>q.eq("active",true)),90);
 const {data:questionCounts,error:questionError}=await service.from("exam_practice_questions").select("exam_id,topic,question,source_type,exams!inner(code)").eq("active",true);
 if(questionError)throw questionError;const perExam=Object.groupBy(questionCounts,q=>q.exams.code);for(const exam of exams)assert.equal(perExam[exam.code]?.length,6,`${exam.code} question count`);
 assert.ok(!JSON.stringify(perExam.TARA).toLowerCase().includes("architecture"));assert.ok(!JSON.stringify(perExam.UCAT).toLowerCase().includes("abstract reasoning"));

@@ -8,45 +8,22 @@ console.log("=== RUNNING PROMPT 03 VERIFICATION SUITE ===");
 
 // TEST 1: Country Isolation
 console.log("\n[TEST 1] Country Isolation Verification");
-const targetCountries = ["uk", "us", "canada", "italy", "netherlands", "germany", "switzerland", "france", "egypt"];
+const targetCountries = ["uk", "us", "canada", "italy", "netherlands", "germany", "switzerland", "france"];
 for (const countryId of targetCountries) {
   const dest = studyDestinations.find((d) => d.id === countryId);
   assert.ok(dest, `Destination seed missing for country: ${countryId}`);
   assert.equal(dest.countries.length, 1, `Country ${countryId} must contain exactly 1 isolated country entity`);
   
-  const unis = dest.countries[0].universities;
-  assert.ok(unis.length > 0 && unis.length <= 3, `Country ${countryId} must have between 1 and 3 universities, got ${unis.length}`);
-  
-  console.log(`  ✓ Country "${dest.labelTr}" (${dest.countryCode}): ${unis.map(u => u.name).join(", ")}`);
+  assert.ok(dest.examIds.length > 0, `Country ${countryId} must retain curated exam guidance`);
+  console.log(`  ✓ Country "${dest.labelTr}" (${dest.countryCode})`);
 }
-console.log("✔ PASS: All target countries have isolated university lists.");
+assert.ok(!FEATURED_COUNTRY_SEEDS.some((seed) => seed.iso3 === "EGY"), "Egypt must be absent from curated shortcuts");
+console.log("✔ PASS: Curated destinations exclude Egypt and retain isolated country guidance.");
 
-// TEST 2: UK, US, France, Italy, Germany, Egypt Specific Universities
-console.log("\n[TEST 2] Specific Country Top 3 Universities");
-const ukUnis = studyDestinations.find(d => d.id === "uk").countries[0].universities.map(u => u.name);
-assert.deepEqual(ukUnis, ["University of Oxford", "University of Cambridge", "Imperial College London"]);
-
-const usUnis = studyDestinations.find(d => d.id === "us").countries[0].universities.map(u => u.name);
-assert.deepEqual(usUnis, ["Massachusetts Institute of Technology (MIT)", "Harvard University", "Stanford University"]);
-
-const canadaUnis = studyDestinations.find(d => d.id === "canada").countries[0].universities.map(u => u.name);
-assert.deepEqual(canadaUnis, ["University of Toronto", "University of British Columbia (UBC)", "McGill University"]);
-
-const italyUnis = studyDestinations.find(d => d.id === "italy").countries[0].universities.map(u => u.name);
-assert.deepEqual(italyUnis, ["Bocconi University", "University of Milan (UniMi)", "Politecnico di Milano"]);
-
-const nldUnis = studyDestinations.find(d => d.id === "netherlands").countries[0].universities.map(u => u.name);
-assert.deepEqual(nldUnis, ["Delft University of Technology (TU Delft)", "University of Amsterdam (UvA)", "Erasmus University Rotterdam"]);
-
-const deuUnis = studyDestinations.find(d => d.id === "germany").countries[0].universities.map(u => u.name);
-assert.deepEqual(deuUnis, ["Technical University of Munich (TUM)", "LMU Munich", "Heidelberg University"]);
-
-const fraUnis = studyDestinations.find(d => d.id === "france").countries[0].universities.map(u => u.name);
-assert.deepEqual(fraUnis, ["INSEAD", "Sorbonne University", "École Polytechnique"]);
-
-const egyUnis = studyDestinations.find(d => d.id === "egypt").countries[0].universities.map(u => u.name);
-assert.deepEqual(egyUnis, ["The American University in Cairo (AUC)", "Cairo University", "Ain Shams University"]);
-console.log("✔ PASS: Exact country top 3 universities verified.");
+// TEST 2: Static seeds never duplicate the runtime global university catalog.
+console.log("\n[TEST 2] Runtime University Boundary");
+assert.ok(studyDestinations.every((destination) => destination.countries[0].universities.length === 0));
+console.log("✔ PASS: Curated seeds contain no copied global university rows.");
 
 // TEST 3: Strict Official URL Safety on All University Cards
 console.log("\n[TEST 3] Official URL Safety");

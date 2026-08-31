@@ -21,7 +21,7 @@ Account holder, bank name and IBAN use the existing `site_settings` architecture
 
 ## Card network artwork
 
-The owner-supplied Visa/Mastercard artwork is preserved at `public/payments/supported-card-networks.png`. It is intentionally not rendered while the provider's supported card networks are unconfirmed.
+The owner-supplied payment infrastructure artwork is stored at `public/images/payment/odeme_altyapi.png` and rendered responsively in the footer without stretching.
 
 ## HTTPS audit
 

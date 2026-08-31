@@ -21,6 +21,7 @@ import {
 import { CONTACT } from "@/config/contact";
 import { FooterSection } from "@/components/ui/footer-section";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
+import { publicNavigation } from "@/lib/public-navigation";
 
 function LegalGroup({
   label,
@@ -83,19 +84,8 @@ export function Footer() {
   const isTr = locale === "tr";
   const { showPricing } = usePublicSettings();
 
-  const navigationItems = isTr
-    ? [
-        { label: "Sınav Hazırlığı", href: "/tr/sinavlar/" },
-        { label: "Üniversite Desteği", href: "/tr/universite-destegi/" },
-        { label: "Hakkımızda", href: "/tr/hakkimizda/" },
-        ...(showPricing ? [{ label: "Ücretler", href: "/tr/ucretler/" }] : []),
-      ]
-    : [
-        { label: "Exam Preparation", href: "/en/exams/" },
-        { label: "University Support", href: "/en/university-support/" },
-        { label: "About Us", href: "/en/about/" },
-        ...(showPricing ? [{ label: "Pricing", href: "/en/pricing/" }] : []),
-      ];
+  const navigationItems = publicNavigation(locale, showPricing)
+    .filter((item) => !["home", "contact"].includes(item.id));
 
   const legalGroups = isTr
     ? [
@@ -202,11 +192,11 @@ export function Footer() {
             </span>
             <div className="mt-1 flex items-center">
               <Image
-                src="/images/payment-methods.png"
-                alt="Visa & Mastercard"
-                width={1224}
-                height={307}
-                className="h-5 w-auto max-w-[115px] object-contain opacity-85 hover:opacity-100 transition-opacity"
+                src="/images/payment/odeme_altyapi.png"
+                alt={isTr ? "PayTR destekli güvenli kart ödeme altyapısı" : "Secure card payment infrastructure powered by PayTR"}
+                width={1996}
+                height={191}
+                className="h-auto w-full max-w-[270px] object-contain opacity-90 transition-opacity hover:opacity-100 sm:max-w-[320px]"
               />
             </div>
           </div>

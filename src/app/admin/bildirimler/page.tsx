@@ -184,6 +184,7 @@ function NotificationsContent() {
               <option value="sent">Gönderildi (Sent)</option>
               <option value="failed">Başarısız (Failed)</option>
               <option value="pending">Bekliyor (Pending)</option>
+              <option value="processing">İşleniyor (Processing)</option>
             </select>
           </div>
 
@@ -465,4 +466,3 @@ function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
       );
   }
 }
-

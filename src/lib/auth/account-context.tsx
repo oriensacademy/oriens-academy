@@ -160,6 +160,10 @@ async function resolveAccount(session: Session): Promise<AccountResolution> {
       }
     }
 
+    if (!user.email_confirmed_at) {
+      return { accountType: "unknown", adminProfile: null, studentProfile: null };
+    }
+
     // Student profile lookup
     const { data: studentProfile } = await supabase
       .from("student_profiles")
@@ -170,50 +174,7 @@ async function resolveAccount(session: Session): Promise<AccountResolution> {
       return { accountType: "student", adminProfile: null, studentProfile };
     }
 
-    // If profile is not found yet (e.g. freshly registered student before trigger), ensure student profile is created
-    if (user.id && user.email) {
-      const fallbackName = (user.user_metadata?.full_name as string) || user.email.split("@")[0] || "Öğrenci";
-      const { data: createdProfile } = await supabase
-        .from("student_profiles")
-        .upsert({
-          id: user.id,
-          full_name: fallbackName,
-          email: user.email.toLowerCase(),
-          preferred_language: (user.user_metadata?.preferred_language as string) === "en" ? "en" : "tr",
-          phone: (user.user_metadata?.phone as string) || null,
-          school: (user.user_metadata?.school as string) || null,
-          target_exam: (user.user_metadata?.target_exam as string) || null,
-          target_country: (user.user_metadata?.target_country as string) || null,
-          active: true,
-        })
-        .select()
-        .maybeSingle();
-
-      if (createdProfile) {
-        return { accountType: "student", adminProfile: null, studentProfile: createdProfile };
-      }
-
-      // Return synthetic student resolution so the new student isn't kicked out
-      return {
-        accountType: "student",
-        adminProfile: null,
-        studentProfile: {
-          id: user.id,
-          full_name: fallbackName,
-          email: user.email.toLowerCase(),
-          phone: (user.user_metadata?.phone as string) || null,
-          date_of_birth: null,
-          school: (user.user_metadata?.school as string) || null,
-          target_exam: (user.user_metadata?.target_exam as string) || null,
-          target_university: null,
-          target_country: (user.user_metadata?.target_country as string) || null,
-          preferred_language: (user.user_metadata?.preferred_language as string) === "en" ? "en" : "tr",
-          active: true,
-          created_at: user.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as StudentAccountProfile,
-      };
-    }
+    // Profile creation is database-triggered. Never synthesize an active membership client-side.
   } catch {
     /* database offline */
   }

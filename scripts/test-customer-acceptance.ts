@@ -24,18 +24,18 @@ function sourceTree(directory: string): string {
 }
 
 const expectedGroup1 = ["IB", "AP", "IGCSE", "A-Level", "SAT", "ACT"];
-const expectedGroup2 = ["ESAT", "TMUA", "TARA", "UCAT", "LNAT", "IMAT", "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"];
-assert.equal(canonicalExams.length, 18);
+const expectedGroup2 = ["ESAT", "TMUA", "TARA", "UCAT", "IMAT", "MCAT", "GRE", "GMAT", "OMPT"];
+assert.equal(canonicalExams.length, 15);
 assert.deepEqual(canonicalExams.filter((exam) => exam.customerGroup === 1).map((exam) => exam.code), expectedGroup1);
 assert.deepEqual(canonicalExams.filter((exam) => exam.customerGroup === 2).map((exam) => exam.code), expectedGroup2);
-assert.equal(new Set(canonicalExams.map((exam) => exam.slug)).size, 18);
+assert.equal(new Set(canonicalExams.map((exam) => exam.slug)).size, 15);
 assert.ok(!canonicalExamCodes.includes("UKCAT" as never));
 assert.equal(resolveExamSlug("UKCAT"), "ucat");
 assert.equal(resolveExamRoute("tr", "UKCAT"), "/tr/sinavlar/ucat");
 assert.equal(resolveExamRoute("en", "UKCAT"), "/en/exams/ucat");
 
 const allQuestions = canonicalExamCodes.flatMap((code) => examTests[code].questions);
-assert.equal(allQuestions.length, 108);
+assert.equal(allQuestions.length, 90);
 for (const code of canonicalExamCodes) assert.equal(examTests[code].questions.length, EXAM_TEST_QUESTION_COUNT);
 assert.ok(allQuestions.every((question) => question.questionLanguage === "en" && question.topic.tr === question.topic.en));
 assert.doesNotMatch(JSON.stringify(examTests.TARA), /architecture|mimarlık|spatial reasoning/i);
@@ -50,6 +50,7 @@ for (const [query, expected] of [["IB", "IB"], ["International Baccalaureate", "
 
 assert.ok(FEATURED_COUNTRY_SEEDS.every((seed) => /^[A-Z]{3}$/.test(seed.iso3)));
 assert.ok(!FEATURED_COUNTRY_SEEDS.some((seed) => /europe/i.test(`${seed.id} ${seed.labelEn}`)));
+assert.ok(!FEATURED_COUNTRY_SEEDS.some((seed) => seed.iso3 === "EGY"), "Egypt must not be a curated shortcut");
 const japan = resolveStudyDestination("JPN", "Japonya", "Japan", { lat: 36.2, lng: 138.2 });
 assert.equal(japan.countryCode, "JPN");
 assert.equal(japan.countries[0].iso3, "JPN");
@@ -64,8 +65,9 @@ assert.equal(trPricing.packages.items.package10.description, "Sınav hazırlığ
 assert.equal(enPricing.packages.items.package5.description, "A flexible package for starting structured study and tracking short-term topic goals.");
 assert.equal(enPricing.packages.items.package10.description, "A balanced package combining exam preparation, topic tracking and regular progress review.");
 
-const exactFounderTr = "Matematik-Fizik eğitmeni. 10 yılı aşkın süredir IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA ve IGCSE öğrencileriyle birebir çalışıyor; aralarında Robert Kolej, St. Joseph, Liceo Italiano, Üsküdar Amerikan, Galatasaray Lisesi, Saint Benoit Fransız Lisesi, Notre Dame de Sion, İstanbul Alman Lisesi ve Avusturya Lisesi gibi yabancı müfredat okullarının öğrencileri de var. Yaklaşım; ezber değil, sınavın mantığını çözmek üzerine kurulu.";
-assert.equal(trAbout.hero.description, exactFounderTr);
+assert.equal(trAbout.hero.title, "Oriens Academy ile tanışın.");
+assert.equal(enAbout.hero.title, "Meet Oriens Academy.");
+assert.match(trAbout.hero.description, /15 uluslararası sınava hazırlık/);
 assert.equal(trAbout.outcomes.items.length, 9);
 assert.equal(enAbout.outcomes.items.length, 9);
 assert.match(trAbout.outcomes.disclaimer, /resmi iş birliği veya kurum onayı anlamına gelmez/);
@@ -77,9 +79,9 @@ assert.doesNotMatch(productionSource, /(?:Doğrulanmış Örnekler|Doğrulanmı�
 assert.doesNotMatch(productionSource, /Açıklama\s*&\s*Soru Çözümü/);
 assert.doesNotMatch(productionSource, /this country has no international exam system/i);
 
-const navbar = read("src/components/sections/Navbar.tsx");
-for (const labels of [["Ana Sayfa", "Sınavlar", "Üniversite Desteği", "Hakkımızda", "Ücretler"], ["Home", "Exams", "University Support", "About", "Pricing"]]) {
-  const positions = labels.map((label) => navbar.indexOf(`"${label}"`));
+const navbar = read("src/lib/public-navigation.ts");
+for (const labels of [["Ana Sayfa", "Sınavlar", "Üniversite Desteği", "Ücretler", "Hakkımızda"], ["Home", "Exams", "University Support", "Pricing", "About"]]) {
+  const positions = labels.map((label) => navbar.indexOf(label));
   assert.ok(positions.every((position) => position >= 0));
   assert.ok(positions.every((position, index) => index === 0 || position > positions[index - 1]));
 }
@@ -117,4 +119,4 @@ assert.match(testimonials, /archiveAdminTestimonial/);
 assert.match(read("supabase/migrations/20260830011300_testimonial_editorial_controls.sql"), /before delete on public\.testimonials/);
 assert.match(read("src/app/layout.tsx"), /RELEASE_VERSION/);
 
-console.log(JSON.stringify({ status: "PASS", canonicalExams: 18, questions: 108, mapStates: 5, prices: "unchanged", acceptanceChecks: "behavior + contracts + production wiring" }, null, 2));
+console.log(JSON.stringify({ status: "PASS", canonicalExams: 15, questions: 90, mapStates: 5, prices: "unchanged", acceptanceChecks: "behavior + contracts + production wiring" }, null, 2));

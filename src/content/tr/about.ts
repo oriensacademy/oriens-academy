@@ -3,13 +3,13 @@ import type { AboutContent } from "../about";
 export const about: AboutContent = {
   metadata: {
     title: "Hakkımızda | Oriens Academy",
-    description: "Matematik-Fizik eğitmeni Doğuhan rehberliğinde IB, AP, A-Level, SAT, ESAT, TMUA, TARA, IGCSE sınavlarında ezber değil, sınavın mantığını çözen birebir hazırlık.",
+    description: "Oriens Academy'nin 15 uluslararası sınava yönelik birebir hazırlık, akademik ölçüm ve üniversite ders desteği yaklaşımını tanıyın.",
   },
   breadcrumb: { ariaLabel: "Sayfa yolu", home: "Ana Sayfa", current: "Hakkımızda" },
   hero: {
     eyebrow: "Hakkımızda",
-    title: "Kurucumuzla tanışın.",
-    description: "Matematik-Fizik eğitmeni. 10 yılı aşkın süredir IB, AP, A-Level, SAT, ESAT, TMUA, MAT, STEP, PAT, TARA ve IGCSE öğrencileriyle birebir çalışıyor; aralarında Robert Kolej, St. Joseph, Liceo Italiano, Üsküdar Amerikan, Galatasaray Lisesi, Saint Benoit Fransız Lisesi, Notre Dame de Sion, İstanbul Alman Lisesi ve Avusturya Lisesi gibi yabancı müfredat okullarının öğrencileri de var. Yaklaşım; ezber değil, sınavın mantığını çözmek üzerine kurulu.",
+    title: "Oriens Academy ile tanışın.",
+    description: "Oriens Academy; 15 uluslararası sınava hazırlık ile matematik ve fizik odaklı üniversite ders desteğini, birebir ve ölçülebilir bir çalışma sistemi içinde sunar. Kurumun yaklaşımı ezbere değil, sınavın mantığını anlamaya ve öğrencinin hedefi için doğru rotayı kurmaya dayanır.",
     primaryCta: "Ücretsiz Tanışma Görüşmesi",
     secondaryCta: "Sınavları İncele",
     visualLabel: "Tutor Doğuhan — Matematik-Fizik Eğitmeni",
@@ -47,8 +47,8 @@ export const about: AboutContent = {
     ],
   },
   team: {
-    eyebrow: "Eğitmen",
-    title: "Kurucu Eğitmen",
+    eyebrow: "Liderlik",
+    title: "Kurucu eğitmenimiz",
     intro: "10+ yıl deneyimli Matematik-Fizik eğitmeni.",
     members: [
       {
@@ -82,7 +82,7 @@ export const about: AboutContent = {
   outcomes: {
     eyebrow: "Okullarımız",
     title: "Birlikte çalıştığımız öğrenci grupları.",
-    intro: "Türkiye'nin önde gelen uluslararası müfredat okullarından öğrencilerle düzenli olarak çalışıyoruz.",
+    intro: "Kurucumuzun 10 yılı aşkın eğitmenlik geçmişinde bu okullarda öğrenim gören öğrencilerle birebir çalışmalar yer almaktadır.",
     metrics: [],
     items: [
       { title: "Robert Kolej", description: "IB ve AP sınavlarında hedefli ders desteği." },

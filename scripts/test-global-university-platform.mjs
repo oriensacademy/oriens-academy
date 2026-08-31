@@ -119,7 +119,7 @@ async function main() {
     return { ...testCase, top1: universityRows[0]?.entity_id === testCase.target, top5: universityRows.some((row) => row.entity_id === testCase.target) };
   });
 
-  const examQueries = ["IB", "International Baccalaureate", "AP", "IGCSE", "A Level", "SAT", "ACT", "ESAT", "TMUA", "TARA", "UCAT", "UKCAT", "LNAT", "IMAT", "GAMSAT", "MCAT", "LSAT", "GRE", "GMAT", "OMPT"];
+  const examQueries = ["IB", "International Baccalaureate", "AP", "IGCSE", "A Level", "SAT", "ACT", "ESAT", "TMUA", "TARA", "UCAT", "UKCAT", "IMAT", "MCAT", "GRE", "GMAT", "OMPT"];
   const examResults = await concurrentMap(examQueries, 8, async (query) => {
     const { data, error } = await client.rpc("search_autocomplete_entities", { p_query: query, p_limit: 5 });
     if (error) throw error;

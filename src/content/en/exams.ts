@@ -4,7 +4,7 @@ export { examDetailText } from "./exam-details";
 export const metadata = {
   title: "Exam Preparation | Oriens Academy",
   description:
-    "Focused exam preparation and academic guidance for IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, LNAT, IMAT, GAMSAT, MCAT, LSAT, GRE, GMAT and OMPT.",
+    "Focused exam preparation and academic guidance for IB, AP, IGCSE, A-Level, SAT, ACT, ESAT, TMUA, TARA, UCAT, IMAT, MCAT, GRE, GMAT and OMPT.",
 };
 
 export const page = {
@@ -153,14 +153,6 @@ export const examText: ExamTextMap = {
     subjects: ["Verbal Reasoning", "Decision Making", "Quantitative Reasoning", "Situational Judgement"],
     ctaLabel: "Explore UCAT preparation",
   },
-  LNAT: {
-    title: "National Admissions Test for Law (LNAT)",
-    shortDescription: "Critical reading, argument analysis, logical deduction and essay writing for leading law faculties.",
-    purpose: "Admission to Oxford, Cambridge, UCL, LSE, KCL, and select undergraduate law programmes",
-    audience: "Undergraduate law applicants",
-    subjects: ["Critical Reading", "Argument Analysis", "Deductive Logic", "Essay Writing"],
-    ctaLabel: "Explore LNAT preparation",
-  },
   IMAT: {
     title: "International Medical Admissions Test",
     shortDescription: "Scientific-knowledge and reasoning preparation for English-taught medical programmes in Italy.",
@@ -169,14 +161,6 @@ export const examText: ExamTextMap = {
     subjects: ["Biology", "Chemistry", "Physics", "Mathematics", "Logical Reasoning"],
     ctaLabel: "Explore IMAT preparation",
   },
-  GAMSAT: {
-    title: "Graduate Medical School Admissions Test",
-    shortDescription: "Humanities analysis, written communication and biological/physical sciences preparation.",
-    purpose: "Admission to graduate-entry medicine (GEM) in the UK, Ireland, and Australia",
-    audience: "University graduates applying to graduate-entry medicine and dentistry",
-    subjects: ["Humanities Reasoning", "Written Communication", "Biological & Physical Sciences"],
-    ctaLabel: "Explore GAMSAT preparation",
-  },
   MCAT: {
     title: "Medical College Admission Test (MCAT)",
     shortDescription: "Comprehensive preparation covering biochemistry, physics, psychology, and critical analysis.",
@@ -184,14 +168,6 @@ export const examText: ExamTextMap = {
     audience: "Pre-med students targeting North American medical schools",
     subjects: ["Biological Systems", "Chemical Foundations", "CARS", "Psychological Foundations"],
     ctaLabel: "Explore MCAT preparation",
-  },
-  LSAT: {
-    title: "Law School Admission Test (LSAT)",
-    shortDescription: "Logical Reasoning and Reading Comprehension preparation for law schools.",
-    purpose: "Admission to JD and global law degree programmes in the US and Canada",
-    audience: "Prospective law school and JD applicants",
-    subjects: ["Logical Reasoning", "Analytical Reasoning", "Reading Comprehension", "Argumentative Writing"],
-    ctaLabel: "Explore LSAT preparation",
   },
   GRE: {
     title: "Graduate Record Examination",

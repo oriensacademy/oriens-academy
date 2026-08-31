@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { NotificationDeliveryRow } from "@/lib/admin/notifications";
-import { humanizeNotificationSubject, humanizeEventType } from "@/lib/admin/notifications";
+import { humanizeNotificationSubject, humanizeEventType, retryAdminNotification } from "@/lib/admin/notifications";
 import {
   X,
   Mail,
@@ -17,6 +17,7 @@ import {
   User,
   Tag,
   Radio,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -30,6 +31,8 @@ export function NotificationDetailSheet({
   onClose,
 }: NotificationDetailSheetProps) {
   const [copied, setCopied] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMessage, setRetryMessage] = useState("");
 
   if (!delivery) return null;
 
@@ -203,7 +206,24 @@ export function NotificationDetailSheet({
                 <Mail className="size-3.5" />
                 <span>E-posta Gönder</span>
               </a>
+              {(delivery.status === "failed" || delivery.status === "pending") && delivery.template ? (
+                <button
+                  type="button"
+                  disabled={retrying}
+                  onClick={async () => {
+                    setRetrying(true); setRetryMessage("");
+                    const result = await retryAdminNotification(delivery.id);
+                    setRetrying(false);
+                    setRetryMessage(result.success ? "Yalnızca e-posta teslimatı yeniden kuyruğa alındı." : `Yeniden deneme başarısız: ${result.error}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  <RefreshCw className={`size-3.5 ${retrying ? "animate-spin" : ""}`} />
+                  <span>{retrying ? "Kuyruğa alınıyor…" : "Teslimatı Yeniden Dene"}</span>
+                </button>
+              ) : null}
             </div>
+            {retryMessage ? <p role="status" className="text-xs font-medium text-amber-900">{retryMessage}</p> : null}
           </div>
 
           {/* Notification Type & Date Card */}

@@ -29,11 +29,8 @@ const examIconTypes: Record<ExamCode, AcademicIconType> = {
   TMUA: "critical-reasoning",
   TARA: "planning",
   UCAT: "biology",
-  LNAT: "writing",
   IMAT: "biology",
-  GAMSAT: "chemistry",
   MCAT: "biology",
-  LSAT: "critical-reasoning",
   GRE: "analysis",
   GMAT: "planning",
   OMPT: "analysis",
@@ -112,7 +109,7 @@ export function ExamHub() {
             <h2 className="font-sans text-sm font-semibold tracking-[0.12em] text-ink uppercase">{page.indexLabel}</h2>
             <p className="text-sm text-muted-foreground">{page.indexHint}</p>
           </div>
-          <ol className="mt-6 grid grid-cols-3 border-t border-l border-border sm:grid-cols-4 lg:grid-cols-6">
+          <ol className="mt-6 grid grid-cols-2 border-t border-l border-border sm:grid-cols-3 lg:grid-cols-5">
             {examRecords.map((exam, index) => (
               <li key={exam.code}>
                 <Link

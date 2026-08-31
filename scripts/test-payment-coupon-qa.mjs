@@ -25,8 +25,8 @@ async function runQA() {
     assert(res.status === 200, "Public TR homepage responds with 200 OK");
     const html = await res.text();
     
-    // Check Visa/Mastercard branding
-    assert(html.includes("payment-methods.png"), "Footer contains Visa/Mastercard branding asset (/images/payment-methods.png)");
+    // Check current payment infrastructure artwork
+    assert(html.includes("odeme_altyapi.png"), "Footer contains the current payment infrastructure artwork");
     assert(
       !html.includes("Tüm ödemeler 256-bit SSL güvenlik sertifikası") &&
       !html.includes("Güvenli Ödeme"),
@@ -44,7 +44,7 @@ async function runQA() {
     const res = await fetch(`${BASE_URL}/en`);
     assert(res.status === 200, "Public EN homepage responds with 200 OK");
     const html = await res.text();
-    assert(html.includes("payment-methods.png"), "EN Footer contains Visa/Mastercard branding asset");
+    assert(html.includes("odeme_altyapi.png"), "EN Footer contains the current payment infrastructure artwork");
     assert(!html.includes('href="/en/pricing"'), "Public EN navbar does not render /en/pricing for logged-out visitors");
   } catch (err) {
     assert(false, `Public EN homepage fetch failed: ${err.message}`);

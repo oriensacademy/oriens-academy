@@ -42,7 +42,7 @@ const rows = Object.entries(questions).flatMap(([keyName, items]) => {
     reviewed_at: "2026-08-30T00:00:00Z",
   }));
 });
-if (rows.length !== 108) throw new Error(`Expected 108 questions, found ${rows.length}`);
+if (rows.length !== 90) throw new Error(`Expected 90 public questions, found ${rows.length}`);
 const { error } = await supabase.from("exam_practice_questions").upsert(rows, { onConflict: "id" });
 if (error) throw error;
 console.log(JSON.stringify({ synced: rows.length, exams: examIds.size }));

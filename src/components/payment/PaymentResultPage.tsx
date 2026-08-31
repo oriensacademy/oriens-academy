@@ -19,12 +19,14 @@ import { getPaymentStatus } from "@/lib/payments/client";
 import type { VerifiedPaymentStatus } from "@/lib/payments/types";
 import { localizedPath } from "@/lib/routes";
 import { useCart } from "@/lib/cart/cart-context";
+import { useAccount } from "@/lib/auth/account-context";
 
 export function PaymentResultPage() {
   const locale = useLocale();
   const pathname = usePathname();
   const copy = getPaymentCopy(locale);
   const { clearCart } = useCart();
+  const { accountType } = useAccount();
   const isTr = locale === "tr";
 
   const isSuccessUrl = pathname.includes("/basarili") || pathname.includes("/success");
@@ -154,11 +156,11 @@ export function PaymentResultPage() {
 
               <div className="mt-8 flex justify-center">
                 <Link
-                  href={localizedPath("studentAccount", locale)}
+                  href={accountType === "admin" ? "/admin" : localizedPath("studentAccount", locale)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
                 >
                   <User className="size-4" />
-                  {isTr ? "Öğrenci Hesabıma Git" : "Go to My Account"}
+                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Veli Hesabıma Git" : "Go to Parent Account")}
                   <ArrowRight className="size-4" />
                 </Link>
               </div>
@@ -211,11 +213,11 @@ export function PaymentResultPage() {
               </dl>
               <div className="mt-8 flex justify-center">
                 <Link
-                  href={localizedPath("studentAccount", locale)}
+                  href={accountType === "admin" ? "/admin" : localizedPath("studentAccount", locale)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
                 >
                   <User className="size-4" />
-                  {isTr ? "Öğrenci Hesabıma Git" : "Go to My Account"}
+                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Veli Hesabıma Git" : "Go to Parent Account")}
                 </Link>
               </div>
             </div>

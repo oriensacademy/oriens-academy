@@ -1,70 +1,12 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
-import type { BankTransferDetails, CreatePaymentInput, CreatePaymentResult, VerifiedPaymentStatus } from "./types";
+import type { VerifiedPaymentStatus } from "./types";
 import { LEGAL_VERSIONS } from "@/config/legal";
-
-const bankSettingKeys = ["payment.bank_account_holder", "payment.bank_name", "payment.iban"] as const;
-
-export async function getPublicBankTransferDetails(): Promise<BankTransferDetails | null> {
-  try {
-    const { data, error } = await getSupabaseClient().from("site_settings").select("key,value").in("key", [...bankSettingKeys]).eq("is_public", true);
-    if (error || !data) return null;
-    const values = new Map(data.map((row) => [row.key, typeof row.value === "object" && row.value !== null && "value" in row.value ? String((row.value as { value: unknown }).value).trim() : ""]));
-    const details = { accountHolder: values.get(bankSettingKeys[0]) ?? "", bankName: values.get(bankSettingKeys[1]) ?? "", iban: values.get(bankSettingKeys[2]) ?? "" };
-    return details.accountHolder && details.bankName && details.iban ? details : null;
-  } catch { return null; }
-}
-
-function localizedError(code: string, locale: "tr" | "en") {
-  const tr = locale === "tr";
-  if (code === "LEGAL_ACCEPTANCE_REQUIRED" || code === "TERMS_REQUIRED") {
-    return tr
-      ? "Ödeme işlemine devam edebilmek için Ön Bilgilendirme Formu, Mesafeli Satış Sözleşmesi ve İptal/İade Koşullarını kabul etmeniz gerekmektedir."
-      : "You must accept the Pre-Information Form, Distance Sales Agreement, and Cancellation & Refund Policy to proceed.";
-  }
-  if (code === "PHONE_REQUIRED") {
-    return tr
-      ? "Ödeme güvenliği ve fatura süreçleri için geçerli bir telefon numarası gereklidir."
-      : "A valid telephone number is required for payment processing.";
-  }
-  if (code === "PENDING_BANK_CREDENTIALS" || code === "PAYTR_NOT_CONFIGURED") return tr ? "Kartlı ödeme altyapısı şu anda kullanılamıyor." : "Card payments are currently unavailable.";
-  if (code === "PACKAGE_NOT_PURCHASABLE") return tr ? "Bu paket çevrim içi satın almaya açık değil." : "This package is not enabled for online purchase.";
-  if (code.includes("TURNSTILE") || code.includes("BOT_")) return tr ? "Güvenlik doğrulaması tamamlanamadı." : "Security verification could not be completed.";
-  return tr ? "Ödeme talebi oluşturulamadı. Lütfen yeniden deneyin." : "The payment request could not be created. Please try again.";
-}
-
-export async function createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
-  try {
-    const { data, error } = await getSupabaseClient().functions.invoke("create-payment", {
-      body: {
-        ...input,
-        legalVersions: {
-          salesAgreement: LEGAL_VERSIONS.salesAgreement,
-          preInformation: LEGAL_VERSIONS.preInformation,
-          refundPolicy: LEGAL_VERSIONS.refundPolicy,
-        },
-      },
-    });
-    if (error) {
-      let errorCode = "NETWORK_ERROR";
-      const context = (error as { context?: unknown }).context;
-      if (context instanceof Response) {
-        try { errorCode = String((await context.clone().json() as { error_code?: string }).error_code ?? errorCode); } catch { /* response unavailable */ }
-      }
-      return { success: false, errorCode, message: localizedError(errorCode, input.locale) };
-    }
-    if (!data?.success) {
-      const errorCode = String(data?.error_code ?? "PAYMENT_CREATE_FAILED");
-      return { success: false, errorCode, message: localizedError(errorCode, input.locale) };
-    }
-    return data as CreatePaymentResult;
-  } catch { return { success: false, errorCode: "NETWORK_ERROR", message: localizedError("NETWORK_ERROR", input.locale) }; }
-}
 
 export interface CreatePaytrTokenInput {
   packageId: string;
   couponCode?: string;
-  payerName?: string;
-  payerPhone?: string;
+  learnerId: string;
+  guardianUserId?: string;
   locale: "tr" | "en";
   termsAccepted?: boolean;
   refundPolicyAccepted?: boolean;

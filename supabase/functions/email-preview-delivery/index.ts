@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
 
-const ALLOWED_PREVIEW_RECIPIENT = "info@oriens-academy.com";
+const ALLOWED_PREVIEW_RECIPIENTS = ["admin@oriens-academy.com", "info@oriens-academy.com"];
+const DEFAULT_PREVIEW_RECIPIENT = "admin@oriens-academy.com";
 
 function verifyServiceRole(token: string): boolean {
   try {
@@ -65,10 +66,15 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Strict enforcement: Preview delivery is ONLY sent to info@oriens-academy.com
+  // Strict enforcement: Preview delivery is ONLY sent to authorized admin/test recipient
+  const requestedRecipient = body.to ? String(body.to).trim().toLowerCase() : DEFAULT_PREVIEW_RECIPIENT;
+  const targetRecipient = ALLOWED_PREVIEW_RECIPIENTS.includes(requestedRecipient)
+    ? requestedRecipient
+    : DEFAULT_PREVIEW_RECIPIENT;
+
   const delivery = await sendTransactionalEmail({
     supabaseAdmin: admin,
-    to: ALLOWED_PREVIEW_RECIPIENT,
+    to: targetRecipient,
     replyTo: replyTo || "info@oriens-academy.com",
     channel,
     sender: from

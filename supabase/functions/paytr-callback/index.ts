@@ -153,55 +153,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 8. Successful payment handling: dispatch notifications
+    // 8. Notification rows are inserted atomically by the payment status trigger.
+    // The callback must never send mail directly or replay payment finalization for mail retries.
     if (status === "success") {
       console.log(
         `[paytr-callback] Payment successful for merchant_oid: ${merchantOid}, transaction: ${rpcResult.transaction_id}`
       );
-
-      if (rpcResult.payer_email) {
-        try {
-          const { dispatchPaymentSuccessEmail, dispatchAdminPaymentAlert } =
-            await import("../_shared/email/service.ts");
-
-          Promise.allSettled([
-            dispatchPaymentSuccessEmail(admin, {
-              paymentReference: rpcResult.public_reference,
-              studentName: rpcResult.payer_name || "Öğrenci",
-              studentEmail: rpcResult.payer_email,
-              packageName: rpcResult.package_id,
-              amountPaid: Number(rpcResult.amount),
-              currency: rpcResult.currency,
-              paymentMethod: "card",
-              paidAt: new Date().toISOString(),
-              locale: rpcResult.locale === "en" ? "en" : "tr",
-            }),
-            dispatchAdminPaymentAlert(admin, {
-              paymentReference: rpcResult.public_reference,
-              payerName: rpcResult.payer_name || "Öğrenci",
-              payerEmail: rpcResult.payer_email,
-              payerPhone: rpcResult.payer_phone,
-              packageName: rpcResult.package_id,
-              amount: Number(rpcResult.amount),
-              currency: rpcResult.currency,
-              paymentMethod: "card",
-              status: "paid",
-              createdAt: new Date().toISOString(),
-              locale: rpcResult.locale === "en" ? "en" : "tr",
-            }),
-          ]).catch((err) =>
-            console.error(
-              "[paytr-callback] Background email dispatch error:",
-              err
-            )
-          );
-        } catch (emailErr) {
-          console.error(
-            "[paytr-callback] Failed to initialize email dispatch:",
-            emailErr
-          );
-        }
-      }
     } else {
       console.log(
         `[paytr-callback] Payment failed notification received for merchant_oid: ${merchantOid}, reason: ${payload.failed_reason_msg || "N/A"}`

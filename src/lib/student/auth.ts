@@ -5,6 +5,7 @@ export interface StudentRegistrationInput {
   fullName: string;
   email: string;
   phone: string;
+  contactAddress: string;
   password: string;
   locale: Locale;
   school?: string;
@@ -125,6 +126,7 @@ export async function registerStudent(input: StudentRegistrationInput) {
       data: {
         full_name: input.fullName.trim(),
         phone: normalizedPhone,
+        contact_address: input.contactAddress.trim(),
         preferred_language: input.locale,
         school: input.school?.trim() || null,
         target_exam: input.targetExam?.trim() || null,
@@ -133,17 +135,15 @@ export async function registerStudent(input: StudentRegistrationInput) {
     },
   });
 
-  if (result.data?.user && !result.error) {
-    sendStudentWelcomeEmail({
-      studentUserId: result.data.user.id,
-      email: input.email.trim().toLowerCase(),
-      fullName: input.fullName.trim(),
-      locale: input.locale,
-      sessionToken: result.data.session?.access_token,
-    }).catch(() => {});
-  }
-
   return result;
+}
+
+export async function resendGuardianConfirmation(email: string, locale: Locale) {
+  return getSupabaseClient().auth.resend({
+    type: "signup",
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: `${window.location.origin}/${locale}/${locale === "tr" ? "hesabim" : "account"}` },
+  });
 }
 
 export async function updateStudentEmail(email: string) {
@@ -152,4 +152,15 @@ export async function updateStudentEmail(email: string) {
 
 export async function updateStudentPassword(password: string) {
   return getSupabaseClient().auth.updateUser({ password });
+}
+
+export async function updateGuardianProfile(input: { fullName: string; phone: string; contactAddress: string; preferredLanguage: Locale }) {
+  const phone = validateStudentPhone(input.phone, input.preferredLanguage === "tr");
+  if (!phone.valid) return { data: null, error: new Error(phone.error || "Invalid phone") };
+  return getSupabaseClient().rpc("update_guardian_profile", {
+    p_full_name: input.fullName.trim().replace(/\s+/g, " "),
+    p_phone: phone.normalized,
+    p_contact_address: input.contactAddress.trim().replace(/\s+/g, " "),
+    p_preferred_language: input.preferredLanguage,
+  });
 }

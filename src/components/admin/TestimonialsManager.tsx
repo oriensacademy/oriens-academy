@@ -6,6 +6,7 @@ import type { TestimonialRow } from "@/lib/admin/content";
 import {
   listAdminTestimonials,
   updateAdminTestimonial,
+  setAdminTestimonialFeatured,
   archiveAdminTestimonial,
 } from "@/lib/admin/content";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
@@ -108,9 +109,7 @@ export function TestimonialsManager() {
   // Fast Toggle Featured Status (Pin / Feature)
   const handleToggleFeatured = async (item: TestimonialRow) => {
     setSavingId(item.id);
-    const { success, error } = await updateAdminTestimonial(item.id, {
-      featured: !item.featured,
-    });
+    const { success, error } = await setAdminTestimonialFeatured(item.id, !item.featured);
     setSavingId(null);
     if (error) setErrorMsg(error);
     else if (success) {
@@ -222,6 +221,9 @@ export function TestimonialsManager() {
   return (
     <div className="space-y-4">
       {confirmationDialog}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900" data-testid="featured-testimonial-count">
+        Public ana sayfa seçimi: {featuredCount}/20
+      </div>
       {/* Action, Search and Filter Bar */}
       <div className="space-y-3 rounded-xl border border-border bg-white p-4 shadow-xs">
         {/* Search Row */}

@@ -122,7 +122,7 @@ export function ExamQuestionReview({
       <div className="min-h-[280px] space-y-4 pt-1 transition-opacity duration-200">
         {/* Topic & Correctness Badge */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center rounded-lg bg-[#F4F6F1] px-2.5 py-1 text-xs font-semibold text-ink/80 border border-[#E0E6DA]">
+          <span lang="en" className="inline-flex items-center rounded-lg bg-[#F4F6F1] px-2.5 py-1 text-xs font-semibold text-ink/80 border border-[#E0E6DA]">
             {currentItem.topic}
           </span>
 
@@ -148,7 +148,7 @@ export function ExamQuestionReview({
         </div>
 
         {/* Question Prompt */}
-        <p className="text-sm font-semibold text-ink sm:text-base leading-relaxed">
+        <p lang="en" className="text-sm font-semibold text-ink sm:text-base leading-relaxed">
           {currentItem.prompt}
         </p>
 
@@ -172,7 +172,7 @@ export function ExamQuestionReview({
                   className={`flex items-start gap-2.5 rounded-xl border p-3 text-xs sm:text-sm leading-snug transition-colors ${optionStyle}`}
                 >
                   <span className="font-bold uppercase shrink-0 mt-0.5">{opt.id.toUpperCase()})</span>
-                  <span className="flex-1">{opt.label}</span>
+                  <span lang="en" className="flex-1">{opt.label}</span>
                   {isCorrectOpt && <CheckCircle2 className="size-4 text-emerald-600 shrink-0 ml-1 mt-0.5" />}
                   {isSelected && !isCorrectOpt && <XCircle className="size-4 text-rose-600 shrink-0 ml-1 mt-0.5" />}
                 </div>

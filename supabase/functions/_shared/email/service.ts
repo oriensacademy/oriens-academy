@@ -209,6 +209,28 @@ function base64UrlEncode(str: string): string {
     .replace(/=+$/, "");
 }
 
+function utf8Base64(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+/** RFC 2047 encoding for non-ASCII mailbox display names and subjects. */
+export function encodeHeaderWord(value: string): string {
+  const clean = value.replace(/[\r\n]+/g, " ").trim();
+  if (/^=\?UTF-8\?[BQ]\?.+\?=$/i.test(clean) || /^[\x20-\x7E]*$/.test(clean)) return clean;
+  return `=?UTF-8?B?${utf8Base64(clean)}?=`;
+}
+
+function encodeMailboxHeader(value: string): string {
+  const clean = value.replace(/[\r\n]+/g, " ").trim();
+  const match = clean.match(/^(.*?)\s*<([^<>\s]+@[^<>\s]+)>$/);
+  if (!match) return clean;
+  const displayName = match[1].replace(/^"|"$/g, "").trim();
+  return displayName ? `${encodeHeaderWord(displayName)} <${match[2]}>` : `<${match[2]}>`;
+}
+
 /**
  * Builds RFC 2822 / RFC 5322 MIME multipart/alternative message for transactional delivery
  */
@@ -223,14 +245,14 @@ export function buildRfc822Message(params: {
   text: string;
 }): string {
   const boundary = `====_Oriens_${crypto.randomUUID().replace(/-/g, "")}_====`;
-  const utf8Subject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(params.subject)))}?=`;
+  const utf8Subject = encodeHeaderWord(params.subject);
 
   const headers = [
-    `From: ${params.from}`,
+    `From: ${encodeMailboxHeader(params.from)}`,
     `To: ${params.to}`,
     params.cc ? `Cc: ${params.cc}` : null,
     params.bcc ? `Bcc: ${params.bcc}` : null,
-    params.replyTo ? `Reply-To: ${params.replyTo}` : null,
+    params.replyTo ? `Reply-To: ${encodeMailboxHeader(params.replyTo)}` : null,
     `Subject: ${utf8Subject}`,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
@@ -320,8 +342,22 @@ export async function logNotificationDelivery(params: {
   status: "sent" | "failed";
   providerMessageId?: string;
   lastErrorCode?: string;
+  deliveryId?: string;
 }) {
   try {
+    if (params.deliveryId) {
+      await params.supabaseAdmin.from("notification_deliveries").update({
+        provider: "google_workspace",
+        provider_message_id: params.providerMessageId || null,
+        status: params.status,
+        last_error_code: params.lastErrorCode || null,
+        last_error: params.lastErrorCode || null,
+        sent_at: params.status === "sent" ? new Date().toISOString() : null,
+        next_attempt_at: params.status === "failed" ? new Date(Date.now() + 5 * 60_000).toISOString() : new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("id", params.deliveryId);
+      return;
+    }
     await params.supabaseAdmin.from("notification_deliveries").insert({
       channel: "email",
       event_type: params.eventType,
@@ -360,6 +396,7 @@ export async function sendTransactionalEmail(params: {
   channel?: EmailChannel;
   sender?: { name?: string; email?: string };
   skipArchiveBcc?: boolean;
+  deliveryId?: string;
 }): Promise<EmailDeliveryResult> {
   const {
     supabaseAdmin,
@@ -376,6 +413,7 @@ export async function sendTransactionalEmail(params: {
     channel = "general",
     sender,
     skipArchiveBcc = false,
+    deliveryId,
   } = params;
 
   if (!to || !to.includes("@")) {
@@ -388,6 +426,7 @@ export async function sendTransactionalEmail(params: {
       recipient: to || "not_configured",
       status: "failed",
       lastErrorCode: "RECIPIENT_NOT_CONFIGURED",
+      deliveryId,
     });
     return { status: "failed", errorCode: "RECIPIENT_NOT_CONFIGURED", channel };
   }
@@ -446,6 +485,7 @@ export async function sendTransactionalEmail(params: {
         recipient: to,
         status: "sent",
         providerMessageId: mockId,
+        deliveryId,
       });
       return {
         status: "sent",
@@ -465,6 +505,7 @@ export async function sendTransactionalEmail(params: {
       recipient: to,
       status: "failed",
       lastErrorCode: tokenError || "GOOGLE_AUTH_ERROR",
+      deliveryId,
     });
     return {
       status: "failed",
@@ -527,6 +568,7 @@ export async function sendTransactionalEmail(params: {
         recipient: to,
         status: "sent",
         providerMessageId: json.id,
+        deliveryId,
       });
       return {
         status: "sent",
@@ -547,6 +589,7 @@ export async function sendTransactionalEmail(params: {
         recipient: to,
         status: "failed",
         lastErrorCode: errorCode,
+        deliveryId,
       });
       return {
         status: "failed",
@@ -567,6 +610,7 @@ export async function sendTransactionalEmail(params: {
       recipient: to,
       status: "failed",
       lastErrorCode: "NETWORK_ERROR",
+      deliveryId,
     });
     return {
       status: "failed",
