@@ -97,9 +97,8 @@ export function CartPage() {
   };
 
   const isAuthenticated = accountType === "student" || accountType === "admin";
-  const firstPackageId = cartPackages[0]?.id;
-  const directPaymentHref = firstPackageId
-    ? `${localizedPath("payment", locale)}?package=${encodeURIComponent(firstPackageId)}`
+  const directPaymentHref = cartPackages.length > 0
+    ? `${localizedPath("payment", locale)}?source=cart`
     : localizedPath("pricing", locale);
 
   const checkoutHref = isAuthenticated

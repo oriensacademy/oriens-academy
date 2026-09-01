@@ -16,18 +16,17 @@ const outbox = read("supabase/functions/process-notification-outbox/index.ts");
 const refundCopy = read("src/content/payment-refund.ts");
 const paymentCopy = read("src/content/payment.ts");
 
-// Registration and checkout address contract.
+// Registration and public checkout do not collect an address; PayTR receives the canonical company address.
 assert.doesNotMatch(registration, /register-address|İletişim Adresi|Contact Address|contactAddress/);
 assert.doesNotMatch(auth.split("export async function registerStudent")[1].split("export async function resendGuardianConfirmation")[0], /contact_address|contactAddress/);
-assert.match(paymentPage, /Fatura \/ Ödeme Adresi|billingAddress/);
-assert.match(paymentCopy, /Billing Address/);
+assert.doesNotMatch(paymentPage, /Fatura \/ Ödeme Adresi|billingAddress|payerAddress/);
+assert.doesNotMatch(paymentCopy, /Billing Address|Fatura \/ Ödeme Adresi/);
 assert.match(refundCopy, /Partially Refunded|Kısmen İade Edildi/);
-assert.match(hosted, /payerAddress/);
-assert.match(client, /payerAddress: string/);
-assert.match(token, /payload\.payerAddress/);
-assert.match(token, /contact_address: payerAddress/);
-assert.match(token, /user_address: payerAddress/);
-assert.doesNotMatch(token, /user_address:\s*["']Türkiye["']|Emaar|company address|payerAddress\s*\|\|/i);
+assert.doesNotMatch(hosted, /payerAddress/);
+assert.doesNotMatch(client, /payerAddress: string/);
+assert.doesNotMatch(token, /payload\.payerAddress|contact_address: payerAddress|user_address: payerAddress/);
+assert.match(token, /PAYTR_COMPANY_ADDRESS = "Emaar Square, The Heights E Blok\\nÜnalan Mah\., Libadiye Cd\. No:82\\nÜsküdar \/ İstanbul"/);
+assert.match(token, /user_address: PAYTR_COMPANY_ADDRESS/);
 assert.match(token, /payer_name: payerName/);
 assert.match(token, /payer_email: verifiedEmail/);
 assert.match(token, /payer_phone: payerPhone/);

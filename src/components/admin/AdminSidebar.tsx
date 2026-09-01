@@ -12,11 +12,9 @@ import {
   FileText,
   Bell,
   Settings,
-  Lock,
-  FileCheck,
   WalletCards,
   TrendingUp,
-  ClipboardList,
+  ListChecks,
 } from "lucide-react";
 import { useAdminNotifications } from "@/lib/admin/admin-notifications-context";
 
@@ -29,6 +27,14 @@ export interface NavItem {
   badge?: string;
   group: "GENEL" | "ÖĞRENCİ YÖNETİMİ" | "FİNANS" | "İÇERİK" | "SİSTEM";
 }
+
+const GROUP_LABELS: Record<NavItem["group"], string> = {
+  GENEL: "GENEL / GENERAL",
+  "ÖĞRENCİ YÖNETİMİ": "ÖĞRENCİ / STUDENTS",
+  FİNANS: "FİNANS / FINANCE",
+  İÇERİK: "BİLDİRİMLER / NOTIFICATIONS",
+  SİSTEM: "SİSTEM / SYSTEM",
+};
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   {
@@ -56,10 +62,10 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     group: "ÖĞRENCİ YÖNETİMİ",
   },
   {
-    label: "Ödev İşlemleri",
-    labelEn: "Homework & Assessments",
-    href: "/admin/odevler",
-    icon: ClipboardList,
+    label: "Değerlendirmeler",
+    labelEn: "Evaluations",
+    href: "/admin/degerlendirmeler",
+    icon: ListChecks,
     enabled: true,
     group: "ÖĞRENCİ YÖNETİMİ",
   },
@@ -104,28 +110,12 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     group: "FİNANS",
   },
   {
-    label: "İçerik",
-    labelEn: "Content",
-    href: "/admin/icerik",
-    icon: FileText,
-    enabled: true,
-    group: "İÇERİK",
-  },
-  {
     label: "Bildirimler",
     labelEn: "Notifications",
     href: "/admin/bildirimler",
     icon: Bell,
     enabled: true,
     group: "İÇERİK",
-  },
-  {
-    label: "Denetim Logları",
-    labelEn: "Audit Logs",
-    href: "/admin/denetim",
-    icon: FileCheck,
-    enabled: true,
-    group: "SİSTEM",
   },
   {
     label: "Ayarlar",
@@ -158,9 +148,6 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
     if (href === "/admin/bildirimler" && counts.notifications > 0) {
       return counts.notifications;
     }
-    if (href === "/admin/odevler" && counts.homework > 0) {
-      return counts.homework;
-    }
     return 0;
   };
 
@@ -183,7 +170,7 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {(["GENEL", "ÖĞRENCİ YÖNETİMİ", "FİNANS", "İÇERİK", "SİSTEM"] as const).map((group) => (
           <div key={group} className="mb-3 last:mb-0">
-            <p className="mb-1 px-3 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">{group}</p>
+            <p className="mb-1 px-3 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">{GROUP_LABELS[group]}</p>
             <div className="space-y-0.5">
         {ADMIN_NAV_ITEMS.filter((item) => item.group === group).map((item) => {
           const Icon = item.icon;
@@ -192,29 +179,6 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
             (item.href !== "/admin" &&
               normalizedPathname.startsWith(`${item.href}/`));
           const dynamicBadge = getItemBadge(item.href);
-
-          if (!item.enabled) {
-            return (
-              <div
-                key={item.href}
-                className="group flex items-center justify-between rounded-lg px-3 py-2.5 text-xs font-medium text-muted-foreground cursor-not-allowed opacity-60 transition-colors"
-                title={`${item.label} (${item.badge || "Yakında"})`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="size-4 text-muted-foreground" />
-                  <span>{item.label}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Lock className="size-3 text-muted-foreground" />
-                  {item.badge && (
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          }
 
           return (
             <Link
@@ -235,7 +199,7 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
                     isActive ? "text-ink" : "text-muted-foreground"
                   }`}
                 />
-                <span>{item.label}</span>
+                <span>{item.label} / {item.labelEn}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 {dynamicBadge > 0 && (

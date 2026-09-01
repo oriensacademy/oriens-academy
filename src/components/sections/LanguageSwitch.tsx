@@ -20,7 +20,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
       role="group"
       aria-label={nav.languageAriaLabel}
       className={cn(
-        "relative inline-flex h-9 w-[86px] shrink-0 items-center justify-between rounded-full border border-[#DDE5DC] bg-white p-0.5 text-xs font-semibold font-ui shadow-[0_2px_8px_rgba(16,39,27,0.04)] select-none",
+        "relative inline-flex h-9 shrink-0 items-center justify-between rounded-full border border-[#DDE5DC] bg-white p-0.5 text-xs font-semibold font-ui shadow-[0_2px_8px_rgba(16,39,27,0.04)] select-none",
         className
       )}
     >
@@ -43,14 +43,14 @@ export function LanguageSwitch({ className }: { className?: string }) {
               beginLanguageTransition(href);
             }}
             className={cn(
-              "relative z-10 flex h-7.5 w-[39px] items-center justify-center rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819586]",
+              "relative z-10 flex h-7.5 items-center justify-center rounded-full px-3 text-[11px] font-bold transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#819586]",
               active
                 ? "bg-[#EEF2EC] text-[#10281E] shadow-[0_1px_3px_rgba(16,39,27,0.08)]"
                 : "text-[#667085] hover:text-[#10281E] hover:bg-[#F7F9F6]"
             )}
           >
             <span className={cn("transition-opacity duration-150", transitionActive && "opacity-0")}>
-              {target.toUpperCase()}
+              {target === "tr" ? "Türkçe" : "English"}
             </span>
           </Link>
         );

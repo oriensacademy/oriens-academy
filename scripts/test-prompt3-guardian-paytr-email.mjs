@@ -30,12 +30,12 @@ assert.match(migration, /after update on public\.student_lessons deferrable init
 
 assert.doesNotMatch(tokenFunction, /payerName\s*=\s*String\(payload/);
 assert.doesNotMatch(tokenFunction, /payerPhone\s*=\s*String\(payload/);
-assert.doesNotMatch(tokenFunction, /Emaar Square|05000000000|user_address:\s*["']Türkiye/);
+assert.doesNotMatch(tokenFunction, /05000000000|user_address:\s*["']Türkiye/);
 assert.doesNotMatch(tokenFunction, /\|\|\s*["']1\.1\.1\.1/);
 assert.doesNotMatch(paytrShared, /05000000000|userAddress\s*\|\||userPhone\s*\|\|/);
 assert.match(tokenFunction, /email_confirmed_at/);
 assert.match(tokenFunction, /guardian_students/);
-assert.match(tokenFunction, /user_address: payerAddress/);
+assert.match(tokenFunction, /user_address: PAYTR_COMPANY_ADDRESS/);
 assert.match(tokenFunction, /payer_email: verifiedEmail/);
 assert.doesNotMatch(callback, /dispatchPaymentSuccessEmail|Promise\.allSettled/);
 assert.match(legacyCallback, /LEGACY_PAYMENT_CALLBACK_DISABLED/);

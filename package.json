@@ -31,6 +31,11 @@
     "test:customer:runtime": "node scripts/test-customer-runtime.mjs",
     "test:customer:browser": "node scripts/customer-acceptance-browser.mjs",
     "test:customer:content-browser": "node scripts/customer-content-browser.mjs",
+    "test:checkout:multipackage": "node scripts/test-public-checkout-multipackage.mjs",
+    "test:checkout:browser": "node scripts/test-public-checkout-browser.mjs",
+    "test:admin:final": "node scripts/test-admin-contact-final.mjs",
+    "test:admin:browser": "node scripts/test-admin-contact-browser.mjs",
+    "test:contact:live": "node scripts/test-contact-reply-live.mjs",
     "test:prompt1:public-catalog": "npx tsx scripts/test-prompt1-public-catalog.ts",
     "test:universities:v2": "node scripts/test-university-discovery-v2.mjs",
     "universities:verify-urls": "node scripts/verify-university-urls.mjs"

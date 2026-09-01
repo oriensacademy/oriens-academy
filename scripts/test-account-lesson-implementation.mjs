@@ -18,7 +18,7 @@ const files = {
   liveLesson: read("supabase/functions/send-live-lesson-email/index.ts"),
 };
 
-assert.match(files.navbar, /Hesabıma Giriş Yap/);
+assert.match(files.navbar, /Giriş Yap/);
 assert.match(files.navbar, /Hesabım/);
 assert.match(files.login, /Hesabınıza Giriş Yapın/);
 assert.match(files.login, /Hesap Oluştur/);

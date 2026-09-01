@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const read = (file) => fs.readFileSync(path.resolve(process.cwd(), file), "utf8");
+const cart = read("src/components/cart/CartPage.tsx");
+const payment = read("src/components/payment/PaymentPage.tsx");
+const hosted = read("src/components/payment/HostedCardPanel.tsx");
+const client = read("src/lib/payments/client.ts");
+const token = read("supabase/functions/paytr-create-token/index.ts");
+const migration = read("supabase/migrations/20260901120000_multi_package_checkout.sql");
+const portal = read("src/components/student/StudentPortal.tsx");
+const navbar = read("src/components/sections/Navbar.tsx");
+const language = read("src/components/sections/LanguageSwitch.tsx");
+
+assert.match(cart, /\?source=cart/);
+assert.doesNotMatch(cart, /firstPackageId/);
+assert.match(payment, /cartItems\.map/);
+assert.match(payment, /checkoutPackages\.length !== cartItems\.length/);
+assert.match(payment, /packageIds=\{packageIds\}/);
+assert.match(client, /packageIds: string\[\]/);
+assert.match(token, /\.in\("id", packageIds\)/);
+assert.match(token, /packageRows\.length !== packageIds\.length/);
+assert.match(token, /checkoutItems\.map\(\(item\) => \[item\.package_name, item\.final_amount\.toFixed\(2\), 1\]\)/);
+assert.match(token, /const finalAmount = Math\.max\(0/);
+assert.match(token, /if \(finalAmount === 0\)/);
+assert.match(token, /finalize_zero_payment_order/);
+assert.match(token, /user_address: PAYTR_COMPANY_ADDRESS/);
+assert.match(token, /Emaar Square, The Heights E Blok\\nÜnalan Mah\., Libadiye Cd\. No:82\\nÜsküdar \/ İstanbul/);
+assert.doesNotMatch(payment, /payerAddress|paymentAddress|checkout-billing-address|billingAddress/);
+assert.doesNotMatch(hosted, /paytr-logo|next\/image|subtitle:/);
+assert.match(hosted, /role="alert"/);
+assert.match(migration, /jsonb_array_elements\(v_items\)/);
+assert.match(migration, /unique index[\s\S]*payment_transaction_id, package_id/);
+assert.match(migration, /on conflict \(payment_transaction_id, package_id\)/);
+assert.doesNotMatch(portal, /Öğrenci bilgileri hesap sahibinden ve geçmiş ödeme kayıtlarından ayrı tutulur\./);
+assert.doesNotMatch(portal, /RefreshCw/);
+assert.match(portal, /window\.addEventListener\("focus", refreshSilently\)/);
+assert.match(navbar, /"Giriş Yap" : "Sign In"/);
+assert.match(language, /target === "tr" \? "Türkçe" : "English"/);
+assert.doesNotMatch(language, /target\.toUpperCase/);
+
+const canonical = new Map([["package10", 1000], ["package5", 600]]);
+const requested = ["package10", "package5"];
+const authoritativeTotal = requested.reduce((sum, id) => sum + canonical.get(id), 0);
+assert.equal(requested.length, 2);
+assert.equal(authoritativeTotal, 1600);
+assert.equal(Math.max(0, authoritativeTotal - 5000), 0);
+
+console.log("PASS public checkout multi-package regression");

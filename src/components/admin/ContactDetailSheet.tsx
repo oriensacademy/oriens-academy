@@ -1,35 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type {
-  ContactRequestRow,
-  ContactStatus,
-  NotificationDeliveryRow,
-} from "@/lib/admin/contacts";
-import {
-  updateAdminContactStatus,
-  getContactNotificationDeliveries,
-} from "@/lib/admin/contacts";
-import {
-  X,
-  User,
-  Mail,
-  Phone,
-  Calendar,
-  Globe,
-  FileText,
-  Copy,
-  Check,
-  Send,
-  CheckCircle2,
-  AlertCircle,
-  Inbox,
-  ShieldCheck,
-  Tag,
-} from "lucide-react";
-import { Wave } from "@/components/ui/wave";
+import { useCallback, useEffect, useState } from "react";
+import type { ContactReplyRow, ContactRequestRow, ContactStatus } from "@/lib/admin/contacts";
+import { listContactReplies, sendAdminContactReply, updateAdminContactStatus } from "@/lib/admin/contacts";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
+import { Wave } from "@/components/ui/wave";
 import { formatPackagePrice, getContactPackageContext } from "@/lib/contact/package-context";
+import { AlertCircle, Calendar, CheckCircle2, Inbox, Mail, Phone, Send, Tag, User, X } from "lucide-react";
 
 interface ContactDetailSheetProps {
   contact: ContactRequestRow | null;
@@ -37,406 +14,196 @@ interface ContactDetailSheetProps {
   onStatusUpdated: () => void;
 }
 
-const STATUS_CONFIG: Record<
-  ContactStatus,
-  { label: string; bgClass: string; textClass: string }
-> = {
-  new: {
-    label: "Yeni / New",
-    bgClass: "bg-[#819586]/10 border-amber-300",
-    textClass: "text-[#819586] font-bold",
-  },
-  in_progress: {
-    label: "İşlemde / In Progress",
-    bgClass: "bg-blue-100 border-blue-300",
-    textClass: "text-blue-800 font-semibold",
-  },
-  resolved: {
-    label: "Çözüldü / Resolved",
-    bgClass: "bg-emerald-100 border-emerald-300",
-    textClass: "text-emerald-800 font-semibold",
-  },
-  spam: {
-    label: "Spam / Önemsiz",
-    bgClass: "bg-sage-soft border-input",
-    textClass: "text-muted-foreground font-medium",
-  },
+const STATUS_CONFIG: Record<ContactStatus, { label: string; className: string }> = {
+  new: { label: "Yeni / New", className: "border-amber-300 bg-amber-50 text-amber-800" },
+  in_progress: { label: "İşlemde / In Progress", className: "border-blue-300 bg-blue-50 text-blue-800" },
+  resolved: { label: "Çözüldü / Resolved", className: "border-emerald-300 bg-emerald-50 text-emerald-800" },
+  spam: { label: "Spam / Önemsiz", className: "border-input bg-muted text-muted-foreground" },
 };
 
-export function ContactDetailSheet({
-  contact,
-  onClose,
-  onStatusUpdated,
-}: ContactDetailSheetProps) {
+function newIdempotencyKey(): string {
+  return globalThis.crypto?.randomUUID?.() || `reply-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function deliveryLabel(status: string): string {
+  if (status === "sent") return "Gönderildi / Sent";
+  if (status === "failed") return "Başarısız / Failed";
+  return "Gönderiliyor / Pending";
+}
+
+export function ContactDetailSheet({ contact, onClose, onStatusUpdated }: ContactDetailSheetProps) {
+  if (!contact) return null;
+  return <ContactDetailContent key={contact.id} contact={contact} onClose={onClose} onStatusUpdated={onStatusUpdated} />;
+}
+
+function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: ContactRequestRow; onClose: () => void; onStatusUpdated: () => void }) {
+  const [replies, setReplies] = useState<ContactReplyRow[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(true);
+  const [replyText, setReplyText] = useState("");
+  const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
+  const [sending, setSending] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [copiedEmail, setCopiedEmail] = useState(false);
-  const [copiedPhone, setCopiedPhone] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Deliveries State
-  const [deliveries, setDeliveries] = useState<NotificationDeliveryRow[]>([]);
-  const [loadingDeliveries, setLoadingDeliveries] = useState(false);
+  const refreshReplies = useCallback(async (contactId: string) => {
+    setLoadingReplies(true);
+    const { data, error } = await listContactReplies(contactId);
+    setReplies(data);
+    setLoadingReplies(false);
+    if (error) setErrorMsg("Yanıt geçmişi yüklenemedi.");
+  }, []);
 
   useEffect(() => {
-    if (!contact) return;
+    let active = true;
+    listContactReplies(contact.id).then(({ data, error }) => {
+      if (!active) return;
+      setReplies(data);
+      setLoadingReplies(false);
+      if (error) setErrorMsg("Yanıt geçmişi yüklenemedi.");
+    });
+    return () => { active = false; };
+  }, [contact.id]);
 
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoadingDeliveries(true);
-
-      getContactNotificationDeliveries(contact.id).then(({ data }) => {
-        if (mounted) {
-          setDeliveries(data);
-          setLoadingDeliveries(false);
-        }
-      });
-    }, 0);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [contact]);
-
-  if (!contact) return null;
+  const statusInfo = STATUS_CONFIG[contact.status as ContactStatus] || STATUS_CONFIG.new;
   const packageContext = getContactPackageContext(contact.metadata);
-
-  const currentStatusInfo = STATUS_CONFIG[contact.status as ContactStatus] || {
-    label: contact.status,
-    bgClass: "bg-muted border-border",
-    textClass: "text-foreground",
-  };
+  const locale = contact.locale === "en" ? "en-GB" : "tr-TR";
 
   const handleStatusChange = async (targetStatus: ContactStatus) => {
     setUpdating(true);
     setErrorMsg(null);
-
-    const { success, error } = await updateAdminContactStatus(
-      contact.id,
-      targetStatus
-    );
-
+    const { success, error } = await updateAdminContactStatus(contact.id, targetStatus);
     setUpdating(false);
-
-    if (error) {
-      setErrorMsg(error);
-    } else if (success) {
-      onStatusUpdated();
-    }
+    if (error) setErrorMsg(error);
+    if (success) onStatusUpdated();
   };
 
-  const copyToClipboard = (text: string, type: "email" | "phone") => {
-    navigator.clipboard.writeText(text);
-    if (type === "email") {
-      setCopiedEmail(true);
-      setTimeout(() => setCopiedEmail(false), 2000);
-    } else {
-      setCopiedPhone(true);
-      setTimeout(() => setCopiedPhone(false), 2000);
+  const handleReplySubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const messageText = replyText.trim();
+    if (!messageText || sending) return;
+
+    setSending(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    const result = await sendAdminContactReply({ contactRequestId: contact.id, messageText, idempotencyKey });
+    setSending(false);
+
+    if (result.error) {
+      setErrorMsg(result.error);
+      if (result.error.includes("sağlayıcısı")) setIdempotencyKey(newIdempotencyKey());
+      await refreshReplies(contact.id);
+      return;
     }
+
+    if (result.reply) {
+      setReplies((current) => {
+        const withoutReply = current.filter((item) => item.id !== result.reply?.id);
+        return [...withoutReply, result.reply as ContactReplyRow].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      });
+    }
+    setReplyText("");
+    setIdempotencyKey(newIdempotencyKey());
+    setSuccessMsg(result.duplicate ? "Bu yanıt daha önce gönderildi; mevcut kayıt gösteriliyor." : "Yanıt e-posta ile gönderildi ve konuşmaya kaydedildi.");
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-forest/35 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="contact-detail-title">
+      <button type="button" className="fixed inset-0 bg-forest/35 backdrop-blur-xs" onClick={onClose} aria-label="Kapat / Close" />
 
-      {/* Drawer Panel */}
-      <div className="relative flex h-full w-full max-w-xl flex-col bg-white shadow-2xl z-10 border-l border-border">
-        {/* Header */}
-        <div className="flex h-16 items-center justify-between border-b border-border px-6 bg-card text-foreground">
+      <div className="relative z-10 flex h-full w-full max-w-2xl flex-col border-l border-border bg-white shadow-2xl">
+        <header className="flex min-h-16 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
             <Mail className="size-5 text-[#819586]" />
-            <h2 className="text-sm font-semibold tracking-wide">
-              İletişim Talebi Detayı / Contact Request Details
-            </h2>
+            <h2 id="contact-detail-title" className="text-sm font-semibold tracking-wide">İletişim Talebi Detayı / Contact Request Details</h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sage-soft hover:text-foreground"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
+          <button type="button" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sage-soft hover:text-foreground" aria-label="Kapat / Close"><X className="size-5" /></button>
+        </header>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {errorMsg && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-              {errorMsg}
-            </div>
-          )}
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+          {errorMsg && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">{errorMsg}</div>}
+          {successMsg && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">{successMsg}</div>}
 
-          {/* Status Banner */}
-          <div className="flex items-center justify-between rounded-xl border p-4 shadow-xs">
-            <div>
-              <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                Mevcut Durum / Current Status
-              </div>
-              <div className="mt-1 flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs ${currentStatusInfo.bgClass} ${currentStatusInfo.textClass}`}
-                >
-                  {currentStatusInfo.label}
-                </span>
-              </div>
-            </div>
-            <div className="text-right text-[11px] text-muted-foreground">
-              ID: <span className="font-mono text-[10px]">{contact.id.slice(0, 8)}…</span>
-            </div>
-          </div>
-
-          {/* Sender & Contact Actions */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
-              <User className="size-4 text-[#10271B]" />
-              <span>Gönderen Bilgileri / Contact Info</span>
-            </h3>
-
-            <div className="rounded-xl border border-border bg-background-soft/50 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-[11px] text-muted-foreground">Ad Soyad</div>
-                  <div className="text-sm font-bold text-foreground">
-                    {contact.full_name}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Calendar className="size-3.5 text-muted-foreground" />
-                  <span>{new Date(contact.created_at).toLocaleString("tr-TR")}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 pt-2 border-t border-border">
-                {/* Email Action */}
-                <div className="flex items-center justify-between rounded-lg border border-border bg-white p-2.5">
-                  <div className="flex min-w-0 items-center gap-2 pr-2">
-                    <Mail className="size-4 text-[#10271B] shrink-0" />
-                    <a
-                      href={`mailto:${contact.email}`}
-                      className="min-w-0 break-all text-xs font-semibold text-[#10271B] hover:underline"
-                    >
-                      {contact.email}
-                    </a>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(contact.email, "email")}
-                    className="flex size-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted"
-                    title="E-postayı Kopyala"
-                  >
-                    {copiedEmail ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-                  </button>
-                </div>
-
-                {/* Phone Action */}
-                <div className="flex items-center justify-between rounded-lg border border-border bg-white p-2.5">
-                  <div className="flex items-center gap-2 truncate pr-2">
-                    <Phone className="size-4 text-emerald-600 shrink-0" />
-                    {contact.phone ? (
-                      <a
-                        href={`tel:${contact.phone}`}
-                        className="text-xs font-semibold text-foreground hover:underline truncate"
-                      >
-                        {contact.phone}
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground italic">Telefon Yok</span>
-                    )}
-                  </div>
-                  {contact.phone && (
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(contact.phone || "", "phone")}
-                      className="flex size-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted"
-                      title="Telefonu Kopyala"
-                    >
-                      {copiedPhone ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-                    </button>
-                  )}
+          <section className="flex flex-col gap-3 rounded-xl border border-border bg-background-soft/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-white text-primary"><User className="size-4" /></span>
+              <div>
+                <div className="text-sm font-bold text-foreground">{contact.full_name}</div>
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><Mail className="size-3" />{contact.email}</span>
+                  {contact.phone && <span className="inline-flex items-center gap-1"><Phone className="size-3" />{contact.phone}</span>}
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Subject & Message Content */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
-              <FileText className="size-4 text-[#819586]" />
-              <span>Mesaj İçeriği / Message Body</span>
-            </h3>
-
-            {contact.subject && (
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-background-soft px-3 py-2 text-xs font-semibold text-foreground">
-                <Tag className="size-3.5 text-muted-foreground shrink-0" />
-                <span>Konu: {contact.subject}</span>
-              </div>
-            )}
-
-            <div className="whitespace-pre-wrap rounded-xl border border-border bg-white p-4 text-xs leading-relaxed text-foreground shadow-2xs font-sans">
-              {contact.message}
-            </div>
-          </div>
+            <span className={`inline-flex w-fit rounded-md border px-2.5 py-1 text-xs font-semibold ${statusInfo.className}`}>{statusInfo.label}</span>
+          </section>
 
           {packageContext && (
-            <div className="rounded-xl border border-[#DDE4DC] bg-[#F6F8F3] p-4">
-              <div className="text-[11px] font-bold uppercase tracking-[.12em] text-[#819586]">İlgilenilen Paket</div>
-              <div className="mt-1 text-sm font-bold text-[#10271B]">{packageContext.name}</div>
-              <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+            <section className="rounded-xl border border-[#DDE4DC] bg-[#F6F8F3] p-4 text-xs">
+              <div className="font-bold text-[#10271B]">{packageContext.name}</div>
+              <div className="mt-1 flex flex-wrap gap-x-3 text-muted-foreground">
                 {packageContext.lessons !== null && <span>{packageContext.lessons} ders</span>}
                 {formatPackagePrice(packageContext) && <span>{formatPackagePrice(packageContext)}</span>}
               </div>
-            </div>
+            </section>
           )}
 
-          {/* Submission Context & Metadata */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-white p-3">
-              <Globe className="size-4 text-muted-foreground shrink-0" />
-              <div>
-                <div className="text-[11px] text-muted-foreground">Dil / Locale</div>
-                <div className="font-semibold uppercase text-foreground">
-                  {contact.locale}
+          <section className="space-y-3" aria-labelledby="conversation-title">
+            <div>
+              <h3 id="conversation-title" className="text-xs font-bold text-foreground">Konuşma / Conversation</h3>
+              {contact.subject && <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Tag className="size-3" />{contact.subject}</div>}
+            </div>
+
+            <article className="mr-4 rounded-xl border border-border bg-white p-4 shadow-2xs sm:mr-12">
+              <div className="flex flex-col gap-1 border-b border-border pb-2 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <span><strong className="text-foreground">{contact.full_name}</strong> · {contact.email} → info@oriens-academy.com</span>
+                <time dateTime={contact.created_at} className="inline-flex items-center gap-1"><Calendar className="size-3" />{new Date(contact.created_at).toLocaleString(locale)}</time>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-foreground">{contact.message}</p>
+              <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Alındı / Received</div>
+            </article>
+
+            {loadingReplies ? (
+              <div className="py-4"><AdminWaveStatus label="Konuşma yükleniyor…" className="text-xs text-muted-foreground" /></div>
+            ) : replies.map((reply) => (
+              <article key={reply.id} className="ml-4 rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-2xs sm:ml-12">
+                <div className="flex flex-col gap-1 border-b border-primary/10 pb-2 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                  <span><strong className="text-foreground">{reply.sender_name}</strong> · {reply.sender_email} → {reply.recipient_email}</span>
+                  <time dateTime={reply.sent_at || reply.created_at} className="inline-flex items-center gap-1"><Calendar className="size-3" />{new Date(reply.sent_at || reply.created_at).toLocaleString(locale)}</time>
                 </div>
-              </div>
+                <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-foreground">{reply.message_text}</p>
+                <div className={`mt-3 text-[10px] font-semibold uppercase tracking-wide ${reply.delivery_status === "failed" ? "text-red-700" : reply.delivery_status === "sent" ? "text-emerald-700" : "text-amber-700"}`}>{deliveryLabel(reply.delivery_status)}</div>
+              </article>
+            ))}
+          </section>
+
+          <form onSubmit={handleReplySubmit} className="space-y-3 rounded-xl border border-border bg-background-soft/50 p-4">
+            <label htmlFor="contact-reply" className="text-xs font-bold text-foreground">Yanıt / Reply</label>
+            <textarea id="contact-reply" required maxLength={10000} rows={6} value={replyText} onChange={(event) => setReplyText(event.target.value)} placeholder="Yanıtınızı yazın… / Type your reply…" className="w-full resize-y rounded-xl border border-input bg-white p-3 text-xs leading-relaxed text-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-primary" />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[11px] text-muted-foreground">info@oriens-academy.com → {contact.email}</p>
+              <button type="submit" disabled={sending || !replyText.trim()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40">
+                {sending ? <Wave className="h-3.5 w-7 text-white" aria-label="Gönderiliyor" /> : <Send className="size-4" />}
+                <span>{sending ? "Gönderiliyor… / Sending…" : "Gönder / Send"}</span>
+              </button>
             </div>
+          </form>
 
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-white p-3">
-              <ShieldCheck className="size-4 text-emerald-600 shrink-0" />
-              <div>
-                <div className="text-[11px] text-muted-foreground">Gizlilik Onayı</div>
-                <div className="font-semibold text-foreground">
-                  {contact.privacy_consent ? "Kabul Edildi" : "—"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Related Notification Deliveries */}
-          <div className="space-y-3 border-t border-border pt-4">
-            <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
-              <Send className="size-4 text-[#10271B]" />
-              <span>E-Posta Bildirim Teslimatı / Resend Deliveries</span>
-            </h3>
-
-            {loadingDeliveries ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-3">
-                <AdminWaveStatus label="Bildirim teslimatları sorgulanıyor…" />
-              </div>
-            ) : deliveries.length === 0 ? (
-              <div className="text-xs text-muted-foreground italic p-3 rounded-lg border border-border bg-background-soft">
-                Bu talep için henüz kaydolmuş bildirim teslimat kaydı yok.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {deliveries.map((del) => {
-                  const isAdminEvent = del.event_type.includes("admin_notification");
-                  return (
-                    <div
-                      key={del.id}
-                      className="rounded-lg border border-border bg-background-soft/80 p-3 text-xs space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="font-semibold text-foreground flex items-center gap-1.5">
-                          <span>
-                            {isAdminEvent
-                              ? "Yönetici Bildirim E-postası (Admin)"
-                              : "Öğrenci Onay E-postası (Student)"}
-                          </span>
-                        </div>
-                        <span
-                          className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold ${
-                            del.status === "sent"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {del.status === "sent" ? "Gönderildi (Sent)" : del.status}
-                        </span>
-                      </div>
-
-                      <div className="text-[11px] text-muted-foreground">
-                        Alıcı: <span className="font-medium text-foreground">{del.recipient}</span>
-                      </div>
-
-                      {del.provider_message_id && (
-                        <div className="text-[10px] font-mono text-muted-foreground truncate">
-                          Resend ID: {del.provider_message_id}
-                        </div>
-                      )}
-
-                      {del.sent_at && (
-                        <div className="text-[10px] text-muted-foreground">
-                          Tarih: {new Date(del.sent_at).toLocaleString("tr-TR")}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Workflow Status Change Controls */}
-          <div className="border-t border-border pt-4 space-y-3">
-            <div className="text-xs font-bold text-foreground">
-              Talep Durumunu Güncelle / Change Status
-            </div>
-
+          <section className="space-y-3 border-t border-border pt-4">
+            <div className="text-xs font-bold text-foreground">Talep Durumu / Request Status</div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <button
-                type="button"
-                disabled={updating || contact.status === "new"}
-                onClick={() => handleStatusChange("new")}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-40"
-              >
-                <Inbox className="size-3.5" />
-                <span>Yeni</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={updating || contact.status === "in_progress"}
-                onClick={() => handleStatusChange("in_progress")}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 disabled:opacity-40"
-              >
-                <Wave className="h-3.5 w-7" aria-label="İşlemde" />
-                <span>İşlemde</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={updating || contact.status === "resolved"}
-                onClick={() => handleStatusChange("resolved")}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-40"
-              >
-                <CheckCircle2 className="size-3.5" />
-                <span>Çözüldü</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={updating || contact.status === "spam"}
-                onClick={() => handleStatusChange("spam")}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-input bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-sage-soft disabled:opacity-40"
-              >
-                <AlertCircle className="size-3.5" />
-                <span>Spam</span>
-              </button>
+              <StatusButton label="Yeni / New" disabled={updating || contact.status === "new"} onClick={() => handleStatusChange("new")} icon={<Inbox className="size-3.5" />} />
+              <StatusButton label="İşlemde / In Progress" disabled={updating || contact.status === "in_progress"} onClick={() => handleStatusChange("in_progress")} icon={<Wave className="h-3.5 w-7" aria-label="İşlemde" />} />
+              <StatusButton label="Çözüldü / Resolved" disabled={updating || contact.status === "resolved"} onClick={() => handleStatusChange("resolved")} icon={<CheckCircle2 className="size-3.5" />} />
+              <StatusButton label="Spam" disabled={updating || contact.status === "spam"} onClick={() => handleStatusChange("spam")} icon={<AlertCircle className="size-3.5" />} />
             </div>
-
-            {updating && (
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
-                <AdminWaveStatus label="Durum güncelleniyor…" />
-              </div>
-            )}
-          </div>
+          </section>
         </div>
       </div>
     </div>
   );
+}
+
+function StatusButton({ label, disabled, onClick, icon }: { label: string; disabled: boolean; onClick: () => void; icon: React.ReactNode }) {
+  return <button type="button" disabled={disabled} onClick={onClick} className="flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-2 text-[11px] font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40">{icon}<span>{label}</span></button>;
 }

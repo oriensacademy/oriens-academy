@@ -4,8 +4,60 @@ import type { Tables } from "@/types/database.types";
 export type ContactStatus = "new" | "in_progress" | "resolved" | "spam";
 
 export type ContactRequestRow = Tables<"contact_requests">;
+export type ContactReplyRow = Tables<"contact_replies">;
 
 export type NotificationDeliveryRow = Tables<"notification_deliveries">;
+
+export async function listContactReplies(
+  contactId: string
+): Promise<{ data: ContactReplyRow[]; error: string | null }> {
+  const { data, error } = await getSupabaseClient()
+    .from("contact_replies")
+    .select("*")
+    .eq("contact_request_id", contactId)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (error) return { data: [], error: error.message };
+  return { data: data || [], error: null };
+}
+
+export async function sendAdminContactReply(input: {
+  contactRequestId: string;
+  messageText: string;
+  idempotencyKey: string;
+}): Promise<{ reply: ContactReplyRow | null; duplicate: boolean; error: string | null }> {
+  const { data, error } = await getSupabaseClient().functions.invoke("send-contact-reply", {
+    body: input,
+  });
+
+  if (error) {
+    return { reply: null, duplicate: false, error: "Yanıt gönderilemedi. Lütfen tekrar deneyin." };
+  }
+
+  const payload = data as {
+    success?: boolean;
+    duplicate?: boolean;
+    reply?: ContactReplyRow;
+    error_code?: string;
+  } | null;
+
+  if (!payload?.success || !payload.reply) {
+    return {
+      reply: null,
+      duplicate: Boolean(payload?.duplicate),
+      error: payload?.error_code === "DELIVERY_FAILED"
+        ? "E-posta sağlayıcısı yanıtı gönderemedi. Yeni bir deneme yapabilirsiniz."
+        : "Yanıt gönderilemedi. Lütfen tekrar deneyin.",
+    };
+  }
+
+  return {
+    reply: payload.reply,
+    duplicate: Boolean(payload.duplicate),
+    error: null,
+  };
+}
 
 export interface ListContactsParams {
   status?: ContactStatus | "all";

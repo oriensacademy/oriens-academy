@@ -406,6 +406,9 @@ verify_jwt = false
 [functions.paytr-refund]
   verify_jwt = true
 
+[functions.send-contact-reply]
+  verify_jwt = true
+
 [functions.process-notification-outbox]
 verify_jwt = false
 

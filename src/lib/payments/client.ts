@@ -3,11 +3,10 @@ import type { VerifiedPaymentStatus } from "./types";
 import { LEGAL_VERSIONS } from "@/config/legal";
 
 export interface CreatePaytrTokenInput {
-  packageId: string;
+  packageIds: string[];
   couponCode?: string;
   learnerId: string;
   guardianUserId?: string;
-  payerAddress: string;
   locale: "tr" | "en";
   termsAccepted?: boolean;
   refundPolicyAccepted?: boolean;
@@ -21,6 +20,7 @@ export interface CreatePaytrTokenInput {
 export interface CreatePaytrTokenResult {
   success: boolean;
   iframe_token?: string;
+  zero_payment?: boolean;
   merchant_oid?: string;
   reference?: string;
   statusToken?: string;
@@ -66,7 +66,7 @@ export async function createPaytrToken(input: CreatePaytrTokenInput): Promise<Cr
       return { success: false, errorCode, message };
     }
 
-    if (!data?.success || !data?.iframe_token) {
+    if (!data?.success || (!data?.iframe_token && !data?.zero_payment)) {
       return {
         success: false,
         errorCode: data?.error_code || "TOKEN_ERROR",
@@ -77,6 +77,7 @@ export async function createPaytrToken(input: CreatePaytrTokenInput): Promise<Cr
     return {
       success: true,
       iframe_token: data.iframe_token,
+      zero_payment: Boolean(data.zero_payment),
       merchant_oid: data.merchant_oid,
       reference: data.reference,
       statusToken: data.statusToken,

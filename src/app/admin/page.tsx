@@ -5,11 +5,8 @@ import Link from "next/link";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { CountingNumber } from "@/components/ui/counting-number";
 import { useAdminAuth } from "@/lib/admin/auth-context";
-import type { DashboardMetrics, RecentAuditRow } from "@/lib/admin/dashboard";
-import {
-  getAdminDashboardMetrics,
-  getRecentAuditActivity,
-} from "@/lib/admin/dashboard";
+import type { DashboardMetrics } from "@/lib/admin/dashboard";
+import { getAdminDashboardMetrics } from "@/lib/admin/dashboard";
 import {
   ShieldCheck,
   CalendarCheck,
@@ -17,13 +14,11 @@ import {
   Users,
   WalletCards,
   CreditCard,
-  FileText,
   Bell,
-  FileCheck,
   Settings,
   AlertTriangle,
   ChevronRight,
-  Calendar,
+  ListChecks,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -33,20 +28,15 @@ export default function AdminDashboardPage() {
 function DashboardContent() {
   const { user, profile } = useAdminAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentAuditRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     const timer = setTimeout(() => {
       setLoading(true);
-      Promise.all([
-        getAdminDashboardMetrics(),
-        getRecentAuditActivity(6),
-      ]).then(([{ metrics: mData }, { data: aData }]) => {
+      getAdminDashboardMetrics().then(({ metrics: mData }) => {
         if (mounted) {
           setMetrics(mData);
-          setRecentActivity(aData);
           setLoading(false);
         }
       });
@@ -126,7 +116,7 @@ function DashboardContent() {
             <AdminWaveStatus label="Metrikler sorgulanıyor…" className="text-xs text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <MetricCard
               label="Aktif Öğrenci"
               count={metrics?.activeStudents || 0}
@@ -144,13 +134,6 @@ function DashboardContent() {
               count={metrics?.weekAppointments || 0}
               subtext="Planlanan Seans"
               href="/admin/randevular"
-            />
-            <MetricCard
-              label="Bekleyen Ödev"
-              count={metrics?.pendingHomework || 0}
-              subtext="Atandı / Teslim"
-              href="/admin/ogrenciler"
-              highlight={Boolean(metrics?.pendingHomework)}
             />
             <MetricCard
               label="Açık Destek Talebi"
@@ -188,7 +171,7 @@ function DashboardContent() {
             title="Öğrenci Yönetimi"
             href="/admin/ogrenciler"
             icon={Users}
-            description="Öğrenci profillerini, derslerini ve ödevlerini yönetin."
+            description="Öğrenci profillerini ve ders geçmişlerini yönetin."
           />
           <ModuleLinkCard
             title="Ders & Randevular"
@@ -215,10 +198,10 @@ function DashboardContent() {
             description="Ödeme işlemlerini ve banka havalelerini inceleyin."
           />
           <ModuleLinkCard
-            title="İçerik Yönetimi"
-            href="/admin/icerik"
-            icon={FileText}
-            description="Öğrenci yorumları ve site içeriklerini düzenleyin."
+            title="Değerlendirmeler / Evaluations"
+            href="/admin/degerlendirmeler"
+            icon={ListChecks}
+            description="Gönderilmiş öğrenci çalışmalarını inceleyip değerlendirin."
           />
           <ModuleLinkCard
             title="E-Posta Bildirimleri"
@@ -235,51 +218,6 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* Recent Admin Activity Section */}
-      <div className="rounded-xl border border-border bg-white p-6 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div>
-            <h2 className="text-xs font-bold text-foreground flex items-center gap-2">
-              <FileCheck className="size-4 text-[#819586]" />
-              <span>Son Yönetici İşlemleri / Recent Audit Feed</span>
-            </h2>
-            <p className="text-[11px] text-muted-foreground">
-              Veritabanına kaydedilen en son 6 işlem logu.
-            </p>
-          </div>
-          <Link
-            href="/admin/denetim"
-            className="text-xs font-semibold text-[#10271B] hover:underline"
-          >
-            Tüm Logları Gör &rarr;
-          </Link>
-        </div>
-
-        {recentActivity.length === 0 ? (
-          <div className="text-xs text-muted-foreground italic py-4 text-center">
-            Henüz kaydedilmiş denetim işlemi bulunmuyor.
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {recentActivity.map((log) => (
-              <div key={log.id} className="py-2.5 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5">
-                  <span className="font-mono text-xs font-semibold text-[#10271B]">
-                    {log.action}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground capitalize">
-                    ({log.entity_type})
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <Calendar className="size-3" />
-                  <span>{new Date(log.created_at).toLocaleString("tr-TR")}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

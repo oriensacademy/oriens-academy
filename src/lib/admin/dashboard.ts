@@ -5,7 +5,6 @@ export interface DashboardMetrics {
   activeStudents: number;
   todayLessons: number;
   weekAppointments: number;
-  pendingHomework: number;
   openSupportTickets: number;
   awaitingPayments: number;
   failedDeliveries: number;
@@ -27,7 +26,6 @@ export async function getAdminDashboardMetrics(): Promise<{
       activeStudentsRes,
       weekAppointmentsRes,
       todayLessonsRes,
-      pendingHomeworkRes,
       supportRes,
       awaitingPaymentsRes,
       failedDeliveriesRes,
@@ -45,8 +43,6 @@ export async function getAdminDashboardMetrics(): Promise<{
         .gte("lesson_date", startOfToday())
         .lt("lesson_date", endOfToday()),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from as any)("student_homework").select("id", { count: "exact", head: true }).in("status", ["assigned", "in_progress", "submitted", "overdue"]),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from as any)("support_threads").select("id", { count: "exact", head: true }).in("status", ["open", "waiting_support"]),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from as any)("payment_transactions").select("id", { count: "exact", head: true }).in("status", ["pending", "requires_action", "processing"]),
@@ -60,7 +56,6 @@ export async function getAdminDashboardMetrics(): Promise<{
       activeStudents: activeStudentsRes.count || 0,
       weekAppointments: weekAppointmentsRes.count || 0,
       todayLessons: todayLessonsRes.count || 0,
-      pendingHomework: pendingHomeworkRes.count || 0,
       openSupportTickets: supportRes.count || 0,
       awaitingPayments: awaitingPaymentsRes.count || 0,
       failedDeliveries: failedDeliveriesRes.count || 0,
@@ -73,7 +68,6 @@ export async function getAdminDashboardMetrics(): Promise<{
         activeStudents: 0,
         weekAppointments: 0,
         todayLessons: 0,
-        pendingHomework: 0,
         openSupportTickets: 0,
         awaitingPayments: 0,
         failedDeliveries: 0,

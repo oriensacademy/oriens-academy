@@ -1174,6 +1174,49 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_replies: {
+        Row: {
+          id: string
+          contact_request_id: string
+          direction: string
+          sender_email: string
+          recipient_email: string
+          sender_name: string
+          message_text: string
+          message_html: string | null
+          external_message_id: string | null
+          delivery_status: string
+          sent_by_admin_user_id: string | null
+          idempotency_key: string
+          error_metadata: Json | null
+          created_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          contact_request_id: string
+          direction: string
+          sender_email: string
+          recipient_email: string
+          sender_name: string
+          message_text: string
+          message_html?: string | null
+          external_message_id?: string | null
+          delivery_status?: string
+          sent_by_admin_user_id?: string | null
+          idempotency_key: string
+          error_metadata?: Json | null
+          created_at?: string
+          sent_at?: string | null
+        }
+        Update: {
+          external_message_id?: string | null
+          delivery_status?: string
+          error_metadata?: Json | null
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
       notification_deliveries: {
         Row: {
           attempt_count: number
