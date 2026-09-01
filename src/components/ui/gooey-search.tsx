@@ -120,6 +120,7 @@ export function GooeySearchBar() {
     if (!query) return;
 
     let isSubscribed = true;
+    const controller = new AbortController();
     queueMicrotask(() => {
       if (isSubscribed) {
         setIsFetching(true);
@@ -127,7 +128,7 @@ export function GooeySearchBar() {
       }
     });
 
-    retrieveSearchResultsFromDatabase(query)
+    retrieveSearchResultsFromDatabase(query, undefined, controller.signal)
       .then((data) => {
         if (isSubscribed) {
           setSearchResults(data);
@@ -135,7 +136,8 @@ export function GooeySearchBar() {
           setIsError(data.sourceStatus === "local-exams");
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
         if (isSubscribed) {
           const fallback = retrieveCanonicalExamFallback(query);
           setSearchResults(fallback);
@@ -146,6 +148,7 @@ export function GooeySearchBar() {
 
     return () => {
       isSubscribed = false;
+      controller.abort();
     };
   }, [debouncedSearchText]);
 

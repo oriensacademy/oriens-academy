@@ -3,6 +3,7 @@ import type { GroupedSearchResults, SearchResultItem, SearchResultType } from ".
 import { emptySearchResults, retrieveCanonicalExamFallback } from "./canonical-exam-fallback";
 import { parseQuery } from "./query-parser";
 import { normalizeQuery } from "./query-normalizer";
+import { searchCache } from "./search-cache";
 
 type SearchLimits = {
   universities: number;
@@ -35,8 +36,9 @@ const DEFAULT_LIMITS: SearchLimits = {
 // The public search must stay usable when the remote autocomplete RPC is slow
 // or unavailable. After this bounded wait the deterministic local index below
 // supplies the same canonical exam results.
-const SEARCH_RPC_TIMEOUT_MS = 2_500;
+export const SEARCH_RPC_TIMEOUT_MS = 4_000;
 const SEARCH_RPC_FETCH_LIMIT = 10;
+const SEARCH_RESULT_CACHE_TTL_MS = 60_000;
 
 function toSearchResult(row: DatabaseSearchRow): SearchResultItem {
   return {
@@ -57,6 +59,7 @@ function toSearchResult(row: DatabaseSearchRow): SearchResultItem {
 export async function retrieveSearchResultsFromDatabase(
   rawQuery: string,
   limits: SearchLimits = DEFAULT_LIMITS,
+  signal?: AbortSignal,
 ): Promise<GroupedSearchResults> {
   const cleanQuery = rawQuery.trim();
   const normalized = normalizeQuery(cleanQuery);
@@ -64,173 +67,95 @@ export async function retrieveSearchResultsFromDatabase(
   if (!normalized) return emptySearchResults("");
 
   const parsedQuery = parseQuery(cleanQuery, { includePredefinedUniversities: false });
-  const recognizedTerms = [
-    ...parsedQuery.universities.map((entity) => entity.matchedTerm),
-    ...parsedQuery.countries.flatMap((entity) => [entity.matchedTerm, entity.name]),
-    ...parsedQuery.qualifications.map((entity) => entity.code || entity.matchedTerm),
-    ...parsedQuery.fieldsOfStudy.map((entity) => entity.matchedTerm),
-    ...parsedQuery.programs.map((entity) => entity.matchedTerm),
-  ];
-  const normalizedRecognizedTerms = recognizedTerms.map(normalizeQuery).filter(Boolean);
   const canonicalExamMatches = retrieveCanonicalExamFallback(cleanQuery).groups.qualifications;
-  const residualTerm = normalizedRecognizedTerms
-    .reduce((remaining, term) => remaining.replace(new RegExp(`(?:^|\\s)${escapeRegExp(term)}(?=\\s|$)`, "g"), " "), normalized)
-    .replace(/\s+/g, " ")
-    .trim();
-  const searchTerms = [...new Set([
-    normalized,
-    ...normalizedRecognizedTerms,
-    residualTerm,
-  ].filter(Boolean))];
+  const countryIso2 = parsedQuery.countries[0]?.iso2 || null;
+  const cacheKey = `university-search-v2:${countryIso2 || "ALL"}:${normalized}`;
+  const cached = searchCache.get<GroupedSearchResults>(cacheKey);
+  if (cached) return cached;
 
-  const rowsByEntity = new Map<string, DatabaseSearchRow>();
-  const matchedTermsByEntity = new Map<string, Set<string>>();
-  let hadSuccessfulDatabaseResponse = false;
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(signal?.reason);
+  if (signal?.aborted) throw new DOMException("Search request aborted", "AbortError");
+  signal?.addEventListener("abort", abortFromCaller, { once: true });
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   try {
     const supabase = getSupabaseClient();
-    const settledResponses = await Promise.allSettled(
-      searchTerms.map(async (term) => {
-        const request = async () => {
-          const controller = new AbortController();
-          let timeoutId: ReturnType<typeof setTimeout>;
-          try {
-            // Supabase's abort signal is advisory; race it as well so a remote
-            // statement timeout can never leave the customer UI loading.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const rpcRequest = (supabase as any)
-              .rpc("search_autocomplete_entities_v2", {
-                p_query: term,
-                p_limit: SEARCH_RPC_FETCH_LIMIT,
-                p_country_iso2: parsedQuery.countries[0]?.iso2 || null,
-              })
-              .abortSignal(controller.signal);
-            const clientTimeout = new Promise<{ data: null; error: { code: string } }>((resolve) => {
-              timeoutId = setTimeout(() => {
-                controller.abort();
-                resolve({ data: null, error: { code: "CLIENT_TIMEOUT" } });
-              }, SEARCH_RPC_TIMEOUT_MS);
-            });
-            return await Promise.race([rpcRequest, clientTimeout]);
-          } finally {
-            clearTimeout(timeoutId!);
-          }
-        };
-        return request();
+    // Supabase's abort signal is advisory, so the race also bounds the wait.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rpcRequest = (supabase as any)
+      .rpc("search_autocomplete_entities_v2", {
+        p_query: normalized,
+        p_limit: SEARCH_RPC_FETCH_LIMIT,
+        p_country_iso2: countryIso2,
       })
-    );
+      .abortSignal(controller.signal);
+    const clientTimeout = new Promise<{ data: null; error: { code: string } }>((resolve) => {
+      timeoutId = setTimeout(() => {
+        controller.abort("CLIENT_TIMEOUT");
+        resolve({ data: null, error: { code: "CLIENT_TIMEOUT" } });
+      }, SEARCH_RPC_TIMEOUT_MS);
+    });
+    const response = await Promise.race([rpcRequest, clientTimeout]);
+    if (signal?.aborted) throw new DOMException("Search request aborted", "AbortError");
+    if (response.error || !Array.isArray(response.data)) throw response.error || new Error("Invalid search response");
 
-    for (let responseIndex = 0; responseIndex < settledResponses.length; responseIndex++) {
-      const settled = settledResponses[responseIndex];
-      if (settled.status === "fulfilled" && !settled.value.error && Array.isArray(settled.value.data)) {
-        hadSuccessfulDatabaseResponse = true;
-        for (const row of settled.value.data as DatabaseSearchRow[]) {
-          const key = `${row.entity_type}:${row.entity_id}`;
-          const matchedTerms = matchedTermsByEntity.get(key) || new Set<string>();
-          matchedTerms.add(searchTerms[responseIndex]);
-          matchedTermsByEntity.set(key, matchedTerms);
-          const previous = rowsByEntity.get(key);
-          if (
-            !previous ||
-            row.match_layer < previous.match_layer ||
-            (row.match_layer === previous.match_layer && Number(row.score) > Number(previous.score))
-          ) {
-            rowsByEntity.set(key, row);
-          }
-        }
+    const rows = (response.data as DatabaseSearchRow[])
+      .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score));
+
+    const grouped = {
+      universities: [] as SearchResultItem[],
+      programs: [] as SearchResultItem[],
+      countries: [] as SearchResultItem[],
+      qualifications: [] as SearchResultItem[],
+    };
+
+    for (const row of rows) {
+      const result = toSearchResult(row);
+      if (result.type === "UNIVERSITY" && grouped.universities.length < limits.universities) {
+        grouped.universities.push(result);
+      } else if (result.type === "PROGRAM" && grouped.programs.length < limits.programs) {
+        grouped.programs.push(result);
+      } else if (result.type === "COUNTRY" && grouped.countries.length < limits.countries) {
+        grouped.countries.push(result);
+      } else if (result.type === "QUALIFICATION" && grouped.qualifications.length < limits.qualifications) {
+        grouped.qualifications.push(result);
       }
     }
-  } catch {
-    // Database connection issue handled below via deterministic fallback
-  }
 
-  // Preserve a genuine zero-result response as a no-results state. The small
-  // canonical fallback is reserved for an actual database failure/timeout.
-  if (rowsByEntity.size === 0) {
-    if (hadSuccessfulDatabaseResponse) {
-      const empty = emptySearchResults(cleanQuery);
-      return {
-        ...empty,
-        sourceStatus: "database",
-        groups: { ...empty.groups, qualifications: canonicalExamMatches.slice(0, limits.qualifications) },
-        totalCount: canonicalExamMatches.slice(0, limits.qualifications).length,
-      };
+    const qualificationSlugs = new Set(grouped.qualifications.map((item) => item.slug));
+    for (const exam of canonicalExamMatches) {
+      if (grouped.qualifications.length >= limits.qualifications) break;
+      if (!qualificationSlugs.has(exam.slug)) {
+        grouped.qualifications.push(exam);
+        qualificationSlugs.add(exam.slug);
+      }
     }
+
+    const resolvedIntent = parsedQuery.intent === "MIXED" && grouped.universities.length > 0
+      ? "UNIVERSITY_SEARCH"
+      : parsedQuery.intent;
+
+    const result: GroupedSearchResults = {
+      query: cleanQuery,
+      intent: resolvedIntent,
+      confidence: resolvedIntent === "UNIVERSITY_SEARCH"
+        ? Math.max(parsedQuery.confidence, 0.9)
+        : parsedQuery.confidence,
+      parsedQuery,
+      sourceStatus: "database",
+      groups: grouped,
+      totalCount:
+        grouped.universities.length + grouped.programs.length +
+        grouped.countries.length + grouped.qualifications.length,
+    };
+    searchCache.set(cacheKey, result, SEARCH_RESULT_CACHE_TTL_MS);
+    return result;
+  } catch (error) {
+    if (signal?.aborted) throw new DOMException("Search request aborted", "AbortError");
     return retrieveCanonicalExamFallback(cleanQuery);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", abortFromCaller);
   }
-
-  const explicitUniversity = residualTerm
-    ? [...rowsByEntity.values()]
-        .filter((row) => row.entity_type === "UNIVERSITY" && matchedTermsByEntity.get(`UNIVERSITY:${row.entity_id}`)?.has(residualTerm))
-        .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score))[0]
-    : undefined;
-  const countryIso2 = parsedQuery.countries[0]?.iso2;
-  const fieldTerms = new Set(parsedQuery.fieldsOfStudy.map((entity) => normalizeQuery(entity.matchedTerm)));
-  const rows = [...rowsByEntity.values()]
-    .filter((row) => {
-      if (row.entity_type === "PROGRAM") {
-        const rowTerms = matchedTermsByEntity.get(`PROGRAM:${row.entity_id}`);
-        if (fieldTerms.size > 0 && ![...fieldTerms].some((term) => rowTerms?.has(term))) return false;
-        if (explicitUniversity && !row.subtitle?.toLowerCase().startsWith(explicitUniversity.title.toLowerCase())) return false;
-        if (countryIso2 && row.country_iso2 !== countryIso2) return false;
-      }
-      return true;
-    })
-    .sort((left, right) => left.match_layer - right.match_layer || Number(right.score) - Number(left.score));
-
-  const grouped = {
-    universities: [] as SearchResultItem[],
-    programs: [] as SearchResultItem[],
-    countries: [] as SearchResultItem[],
-    qualifications: [] as SearchResultItem[],
-  };
-
-  for (const row of rows) {
-    const result = toSearchResult(row);
-    if (result.type === "UNIVERSITY" && grouped.universities.length < limits.universities) {
-      grouped.universities.push(result);
-    } else if (result.type === "PROGRAM" && grouped.programs.length < limits.programs) {
-      grouped.programs.push(result);
-    } else if (result.type === "COUNTRY" && grouped.countries.length < limits.countries) {
-      grouped.countries.push(result);
-    } else if (result.type === "QUALIFICATION" && grouped.qualifications.length < limits.qualifications) {
-      grouped.qualifications.push(result);
-    }
-  }
-
-  // The supported 18 are a local canonical contract. Overlay a matching exam
-  // when the global RPC is incomplete, while keeping the worldwide university
-  // catalog database-only and avoiding duplicate qualification entries.
-  const qualificationSlugs = new Set(grouped.qualifications.map((item) => item.slug));
-  for (const exam of canonicalExamMatches) {
-    if (grouped.qualifications.length >= limits.qualifications) break;
-    if (!qualificationSlugs.has(exam.slug)) {
-      grouped.qualifications.push(exam);
-      qualificationSlugs.add(exam.slug);
-    }
-  }
-
-  const resolvedIntent = parsedQuery.intent === "MIXED" && grouped.universities.length > 0
-    ? "UNIVERSITY_SEARCH"
-    : parsedQuery.intent;
-
-  return {
-    query: cleanQuery,
-    intent: resolvedIntent,
-    confidence: resolvedIntent === "UNIVERSITY_SEARCH"
-      ? Math.max(parsedQuery.confidence, 0.9)
-      : parsedQuery.confidence,
-    parsedQuery,
-    sourceStatus: "database",
-    groups: grouped,
-    totalCount:
-      grouped.universities.length +
-      grouped.programs.length +
-      grouped.countries.length +
-      grouped.qualifications.length,
-  };
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

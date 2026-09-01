@@ -52,6 +52,7 @@ export function SearchAutocompleteInput({
   // Debounced search retrieval with runtime DB RPC + deterministic local fallback
   useEffect(() => {
     let isCancelled = false;
+    const controller = new AbortController();
     const cleanQuery = query.trim();
 
     const timer = setTimeout(async () => {
@@ -65,12 +66,13 @@ export function SearchAutocompleteInput({
 
       setIsLoading(true);
       try {
-        const dbRes = await retrieveSearchResultsFromDatabase(cleanQuery);
+        const dbRes = await retrieveSearchResultsFromDatabase(cleanQuery, undefined, controller.signal);
         if (!isCancelled) {
           setResults(dbRes);
           setIsLoading(false);
         }
-      } catch {
+      } catch (error: unknown) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
         if (!isCancelled) {
           const fallbackRes = retrieveCanonicalExamFallback(cleanQuery);
           setResults(fallbackRes);
@@ -81,6 +83,7 @@ export function SearchAutocompleteInput({
 
     return () => {
       isCancelled = true;
+      controller.abort();
       clearTimeout(timer);
     };
   }, [query]);

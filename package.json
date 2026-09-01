@@ -38,6 +38,10 @@
     "test:contact:live": "node scripts/test-contact-reply-live.mjs",
     "test:prompt1:public-catalog": "npx tsx scripts/test-prompt1-public-catalog.ts",
     "test:universities:v2": "node scripts/test-university-discovery-v2.mjs",
+    "test:search:final": "node scripts/test-university-search-final.mjs",
+    "test:search:security": "node scripts/test-university-search-security.mjs",
+    "test:search:browser-final": "node scripts/test-university-search-browser-final.mjs",
+    "benchmark:search:final": "node scripts/benchmark-university-search-final.mjs",
     "universities:verify-urls": "node scripts/verify-university-urls.mjs"
   },
   "dependencies": {

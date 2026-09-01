@@ -11,7 +11,8 @@ interface CacheEntry<T> {
 
 class SearchCacheManager {
   private cache = new Map<string, CacheEntry<unknown>>();
-  private defaultTTLMs = 1000 * 60 * 15; // 15 Minutes
+  private defaultTTLMs = 1000 * 60;
+  private maxEntries = 100;
 
   public get<T>(key: string): T | null {
     const entry = this.cache.get(key);
@@ -22,12 +23,21 @@ class SearchCacheManager {
       return null;
     }
 
+    // Map insertion order is the LRU order.
+    this.cache.delete(key);
+    this.cache.set(key, entry);
     return entry.data as T;
   }
 
   public set<T>(key: string, data: T, ttlMs?: number): void {
     const expiresAt = Date.now() + (ttlMs || this.defaultTTLMs);
+    this.cache.delete(key);
     this.cache.set(key, { data, expiresAt });
+    while (this.cache.size > this.maxEntries) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey === undefined) break;
+      this.cache.delete(oldestKey);
+    }
   }
 
   public clear(): void {
