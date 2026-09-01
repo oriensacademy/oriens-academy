@@ -23,7 +23,12 @@ import {
 import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
 import { completeStudentAppointment } from "@/lib/admin/student-learning";
 import { updateAdminBookingStatus } from "@/lib/admin/bookings";
-import { sendStudentPasswordReset, adminUpdateStudentProfile, type StudentProfile } from "@/lib/admin/students";
+import {
+  sendStudentPasswordReset,
+  adminUpdateStudentProfile,
+  adminUpdateGuardianRelationship,
+  type StudentProfile,
+} from "@/lib/admin/students";
 import { useAccount } from "@/lib/auth/account-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatExamBadges, formatDestinationBadges } from "@/lib/student/preferences";
@@ -183,6 +188,10 @@ export function StudentDetailSheet({
                 setErrorMessage("");
                 setEditModalOpen(true);
               }}
+              onRelationshipUpdated={(msg) => {
+                setMessage(msg);
+                onChanged?.();
+              }}
             />
           )}
 
@@ -291,12 +300,34 @@ function Overview({
   onCreateBooking,
   onOpenPasswordReset,
   onOpenEditIdentity,
+  onRelationshipUpdated,
 }: {
   student: StudentProfile;
   onCreateBooking: () => void;
   onOpenPasswordReset: () => void;
   onOpenEditIdentity: () => void;
+  onRelationshipUpdated?: (msg: string) => void;
 }) {
+  const [relationshipBusy, setRelationshipBusy] = useState(false);
+  const [relationshipError, setRelationshipError] = useState("");
+  const [selectedRoleOverride, setSelectedRoleOverride] = useState<"self" | "parent" | "guardian" | "other" | null>(null);
+
+  const currentRole = selectedRoleOverride ?? student.relationshipRole ?? "other";
+
+  const handleRoleChange = async (newRole: "self" | "parent" | "guardian" | "other") => {
+    if (!student.userId || newRole === currentRole) return;
+    setRelationshipBusy(true);
+    setRelationshipError("");
+    const res = await adminUpdateGuardianRelationship(student.userId, newRole, student.guardianUserId || undefined);
+    setRelationshipBusy(false);
+    if (res.success) {
+      setSelectedRoleOverride(newRole);
+      onRelationshipUpdated?.(`Hesap ilişkisi "${newRole === "self" ? "Öğrencinin Kendisi" : newRole === "parent" ? "Veli" : newRole === "guardian" ? "Yasal Vasi" : "Diğer"}" olarak güncellendi.`);
+    } else {
+      setRelationshipError(res.error || "İlişki güncellenemedi.");
+    }
+  };
+
   const val = (input: string | null | undefined) => input?.trim() || "Belirtilmemiş";
   const examBadges = formatExamBadges(
     student.targetExams && student.targetExams.length > 0
@@ -348,6 +379,55 @@ function Overview({
               </span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* HESAP SAHİBİ & İLİŞKİ SINIFLANDIRMASI (ADMIN ONLY) */}
+      <section className="space-y-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+          Hesap Sahibi &amp; İlişki Sınıflandırması
+        </h3>
+        <div className="rounded-2xl border border-border bg-surface-muted/30 p-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Info label="Hesap Sahibi (Ödeyen)" value={student.guardianName || student.fullName || "—"} />
+            <Info label="Hesap E-postası" value={student.guardianEmail || student.email || "—"} />
+            <div className="rounded-xl border border-border bg-background-soft/50 p-3">
+              <span className="block text-[9px] uppercase text-muted-foreground font-semibold">Mevcut İlişki</span>
+              <div className="mt-1">
+                <span className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+                  {currentRole === "self"
+                    ? "Öğrencinin Kendisi (self)"
+                    : currentRole === "parent"
+                    ? "Veli (parent)"
+                    : currentRole === "guardian"
+                    ? "Yasal Vasi (guardian)"
+                    : "Diğer (other)"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {student.userId && (
+            <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border/80">
+              <label htmlFor="admin-relationship-select" className="text-xs font-semibold text-ink">
+                Hesap İlişkisi:
+              </label>
+              <select
+                id="admin-relationship-select"
+                disabled={relationshipBusy}
+                value={currentRole}
+                onChange={(e) => handleRoleChange(e.target.value as "self" | "parent" | "guardian" | "other")}
+                className="min-h-9 rounded-xl border border-border bg-white px-3 text-xs font-medium text-ink shadow-2xs focus:border-primary focus:outline-none disabled:opacity-50 cursor-pointer"
+              >
+                <option value="self">Öğrencinin Kendisi</option>
+                <option value="parent">Veli</option>
+                <option value="guardian">Yasal Vasi</option>
+                <option value="other">Diğer</option>
+              </select>
+              {relationshipBusy && <span className="text-xs text-muted-foreground animate-pulse">Güncelleniyor...</span>}
+              {relationshipError && <span className="text-xs text-red-600 font-medium">{relationshipError}</span>}
+            </div>
+          )}
         </div>
       </section>
 

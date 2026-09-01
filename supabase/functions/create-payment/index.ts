@@ -20,7 +20,7 @@ Deno.serve(async (req: Request) => {
   return buildJsonResponse({
     error_code: paymentMethod === "bank_transfer" ? "BANK_TRANSFER_DISABLED" : "USE_AUTHENTICATED_PAYTR_CHECKOUT",
     message: locale === "tr"
-      ? "Yeni ödemeler yalnızca doğrulanmış Veli Hesabı ile PayTR kart ekranından başlatılabilir."
-      : "New payments must use the authenticated Parent Account PayTR card checkout.",
+      ? "Yeni ödemeler yalnızca doğrulanmış hesap üzerinden PayTR kart ekranından başlatılabilir."
+      : "New payments must use the authenticated account PayTR card checkout.",
   }, 409, req);
 });

@@ -112,7 +112,7 @@ export function CartPage() {
         <div className="mx-auto max-w-5xl">
           <header className="max-w-2xl">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-              {isTr ? "Veli Hesabı" : "Parent Account"}
+              {isTr ? "Hesabım" : "My Account"}
             </p>
             <h1 className="mt-3 font-heading text-[clamp(2.4rem,5vw,4rem)] leading-[1.05] text-ink">
               {isTr ? "Sepetim" : "My Cart"}

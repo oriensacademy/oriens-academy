@@ -216,7 +216,7 @@ export const pricingPreview = {
       features: [
         "60 dakikalık 10 birebir ders",
         "%15 paket indirimi",
-        "Sınav ve ödev takibi",
+        "Ders hakları ve akademik ilerleme takibi",
         "En çok tercih edilen paket",
       ],
     },

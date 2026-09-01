@@ -41,23 +41,74 @@ function render(row: OutboxRow) {
       `${isEn ? "Lessons remaining" : "Kalan ders"}: ${p.remaining_lessons}`,
       `${isEn ? "Activation date" : "Aktivasyon tarihi"}: ${p.activation_date}`,
     );
-  } else if (row.template === "lesson_completed_guardian") {
+  } else if (row.template === "lesson_completed_account_holder" || row.template === "lesson_completed_guardian") {
     channel = "support";
     subject = isEn ? `Lesson completed — ${p.learner_name}` : `Ders tamamlandı — ${p.learner_name}`;
+    const role = String(p.relationship_role || "other");
+    if (role === "self") {
+      lines.push(
+        isEn ? `Hello ${p.account_holder_name || p.guardian_name}, your lesson has been completed.` : `Merhaba ${p.account_holder_name || p.guardian_name}, dersiniz tamamlandı.`,
+        `${isEn ? "Remaining lesson rights" : "Kalan ders hakkınız"}: ${p.remaining_lessons ?? "-"}.`,
+      );
+    } else if (role === "parent" || role === "guardian") {
+      lines.push(
+        isEn ? `Dear ${p.account_holder_name || p.guardian_name}, a lesson has been completed for your learner ${p.learner_name}.` : `Sayın ${p.account_holder_name || p.guardian_name}, öğrenciniz ${p.learner_name} için ders tamamlandı.`,
+        `${isEn ? "Remaining lesson rights" : "Kalan ders hakkı"}: ${p.remaining_lessons ?? "-"}.`,
+      );
+    } else {
+      lines.push(
+        isEn ? `Dear ${p.account_holder_name || p.guardian_name}, a lesson has been completed for your linked learner ${p.learner_name}.` : `Sayın ${p.account_holder_name || p.guardian_name}, hesabınıza bağlı ${p.learner_name} için ders tamamlandı.`,
+        `${isEn ? "Remaining lesson rights" : "Kalan ders hakkı"}: ${p.remaining_lessons ?? "-"}.`,
+      );
+    }
     lines.push(
-      `${isEn ? "Learner" : "Öğrenci"}: ${p.learner_name}`,
       `${isEn ? "Lesson" : "Ders"}: ${p.lesson_title}`,
       `${isEn ? "Date" : "Tarih"}: ${p.lesson_date}`,
       `${isEn ? "Package" : "Paket"}: ${p.package_name || "-"}`,
-      `${isEn ? "Remaining / total lessons" : "Kalan / toplam ders"}: ${p.remaining_lessons ?? "-"} / ${p.total_lessons ?? "-"}`,
     );
     if (p.teacher_note) lines.push(`${isEn ? "Teacher note" : "Öğretmen notu"}: ${p.teacher_note}`);
+  } else if (row.template === "package_low_balance_account_holder") {
+    const role = String(p.relationship_role || "other");
+    subject = isEn ? "1 lesson right remains" : "1 ders hakkı kaldı";
+    if (role === "self") {
+      lines.push(isEn ? `Hello ${p.account_holder_name}, you have 1 lesson right remaining.` : `Merhaba ${p.account_holder_name}, 1 ders hakkınız kaldı.`);
+    } else if (role === "parent" || role === "guardian") {
+      lines.push(isEn ? `Dear ${p.account_holder_name}, 1 lesson right remains for your learner ${p.learner_name}.` : `Sayın ${p.account_holder_name}, öğrenciniz ${p.learner_name} için 1 ders hakkı kaldı.`);
+    } else {
+      lines.push(isEn ? `Dear ${p.account_holder_name}, 1 lesson right remains for your linked learner ${p.learner_name}.` : `Sayın ${p.account_holder_name}, hesabınıza bağlı ${p.learner_name} için 1 ders hakkı kaldı.`);
+    }
+    lines.push(
+      `${isEn ? "Package" : "Paket"}: ${p.package_name || "-"}`,
+      isEn ? "The package can be renewed and paid through Oriens Academy." : "Paketinizi Oriens Academy üzerinden yenileyebilir ve ödeyebilirsiniz.",
+    );
+  } else if (row.template === "payment_refunded_account_holder") {
+    const role = String(p.relationship_role || "other");
+    const full = p.refund_status === "full";
+    subject = isEn
+      ? `${full ? "Refund completed" : "Partial refund completed"} — ${p.reference}`
+      : `${full ? "İade tamamlandı" : "Kısmi iade tamamlandı"} — ${p.reference}`;
+    if (role === "self") {
+      lines.push(isEn ? `Hello ${p.account_holder_name}, your refund has been completed.` : `Merhaba ${p.account_holder_name}, iade işleminiz tamamlandı.`);
+    } else if (role === "parent" || role === "guardian") {
+      lines.push(isEn ? `Dear ${p.account_holder_name}, the refund for your learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, öğrenciniz ${p.learner_name} için iade işlemi tamamlandı.`);
+    } else {
+      lines.push(isEn ? `Dear ${p.account_holder_name}, the refund for your linked learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, hesabınıza bağlı ${p.learner_name} ile ilgili iade işlemi tamamlandı.`);
+    }
+    lines.push(
+      `${isEn ? "Transaction reference" : "İşlem referansı"}: ${p.reference}`,
+      `${isEn ? "Refund reference" : "İade referansı"}: ${p.refund_reference}`,
+      `${isEn ? "Refund amount" : "İade tutarı"}: ${p.refund_amount} ${p.currency}`,
+      `${isEn ? "Package" : "Paket"}: ${p.package_name}`,
+      `${isEn ? "Lesson rights revoked" : "İade edilen ders hakkı"}: ${p.revoked_lessons}`,
+      `${isEn ? "Remaining active lesson rights" : "Aktif kalan ders hakkı"}: ${p.remaining_lessons}`,
+      `${isEn ? "Refund status" : "İade durumu"}: ${full ? (isEn ? "Full" : "Tam") : (isEn ? "Partial" : "Kısmi")}`,
+    );
   } else if (row.template === "guardian_welcome") {
     channel = "support";
-    subject = isEn ? "Welcome to your Oriens Parent Account" : "Oriens Veli Hesabınıza hoş geldiniz";
+    subject = isEn ? "Welcome to your Oriens Academy Account" : "Oriens Academy hesabınıza hoş geldiniz";
     lines.push(
-      isEn ? `Dear ${p.guardian_name}, your verified Parent Account is ready.` : `Sayın ${p.guardian_name}, doğrulanmış Veli Hesabınız hazır.`,
-      isEn ? "You can now manage your linked learners from one account." : "Bağlı öğrencilerinizi artık tek hesaptan yönetebilirsiniz.",
+      isEn ? `Dear ${p.guardian_name}, your verified account is ready.` : `Sayın ${p.guardian_name}, doğrulanmış hesabınız hazır.`,
+      isEn ? "You can now set up learner information and manage lessons, packages, and payments." : "Öğrenci bilgilerini tanımlayabilir; ders, paket ve ödemeleri hesabınızdan yönetebilirsiniz.",
     );
   } else {
     throw new Error("UNSUPPORTED_OUTBOX_TEMPLATE");

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, Menu, ShoppingBag, UserRound, X } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { CompassMark } from "@/components/brand/CompassMark";
@@ -21,6 +21,8 @@ import { unifiedLoginPath } from "@/lib/routes";
 import { Wave } from "@/components/ui/wave";
 import { publicNavigation } from "@/lib/public-navigation";
 import { AccountMenu } from "@/components/auth/AccountMenu";
+import { LogoutConfirmationModal } from "@/components/auth/LogoutConfirmationModal";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 const focusableSelector = [
   "a[href]",
@@ -35,11 +37,14 @@ export function Navbar() {
   const { nav } = useCommonContent();
   const locale = useLocale();
   const pathname = usePathname();
-  const { accountType, isInitializing } = useAccount();
+  const { accountType, isInitializing, signOut } = useAccount();
+  const router = useRouter();
   const { cartCount } = useCart();
   const { showPricing } = usePublicSettings();
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
+  const [mobileLogoutOpen, setMobileLogoutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const isStudent = accountType === "student";
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -51,7 +56,7 @@ export function Navbar() {
     [locale, showPricing],
   );
   const accountHref = accountType === "admin" ? "/admin" : accountType === "student" ? localizedPath("studentAccount", locale) : unifiedLoginPath(locale);
-  const accountLabel = accountType === "student" ? (locale === "tr" ? "Veli Hesabı" : "Parent Account") : accountType === "admin" ? (locale === "tr" ? "Hesap" : "Account") : (locale === "tr" ? "Oturum Aç" : "Sign In");
+  const accountLabel = accountType === "student" ? (locale === "tr" ? "Hesabım" : "My Account") : accountType === "admin" ? (locale === "tr" ? "Hesap" : "Account") : (locale === "tr" ? "Hesabıma Giriş Yap" : "Sign In to My Account");
   const mobileItems = useMemo(() => [
     ...publicNavigation(locale, showPricing),
     ...(showPricing && (cartCount > 0 || isStudent) ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
@@ -78,7 +83,7 @@ export function Navbar() {
     }
 
     wasOpenRef.current = true;
-    const previousOverflow = document.body.style.overflow;
+    const unlockBodyScroll = lockBodyScroll();
     const background = [headerRef.current, document.querySelector("main"), document.querySelector("footer")]
       .filter((element): element is HTMLElement => element instanceof HTMLElement)
       .map((element) => ({
@@ -87,7 +92,6 @@ export function Navbar() {
         ariaHidden: element.getAttribute("aria-hidden"),
       }));
 
-    document.body.style.overflow = "hidden";
     background.forEach(({ element }) => {
       element.inert = true;
       element.setAttribute("aria-hidden", "true");
@@ -96,7 +100,7 @@ export function Navbar() {
 
     wasOpenRef.current = open;
     return () => {
-      document.body.style.overflow = previousOverflow;
+      unlockBodyScroll();
       background.forEach(({ element, inert, ariaHidden }) => {
         element.inert = inert;
         if (ariaHidden === null) element.removeAttribute("aria-hidden");
@@ -104,6 +108,13 @@ export function Navbar() {
       });
     };
   }, [open]);
+
+  async function confirmMobileLogout() {
+    if (signingOut) return;
+    setSigningOut(true);
+    await signOut();
+    router.replace(localizedPath("home", locale));
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -301,7 +312,7 @@ export function Navbar() {
                     </Link>
                   </li>
                 })}
-                {isStudent && <AccountMenu locale={locale} mobile onNavigate={() => setOpen(false)} />}
+                {isStudent && <AccountMenu locale={locale} mobile onNavigate={() => setOpen(false)} onRequestLogout={() => { setOpen(false); setMobileLogoutOpen(true); }} />}
               </ul>
             </nav>
 
@@ -312,6 +323,7 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+      <LogoutConfirmationModal open={mobileLogoutOpen} signingOut={signingOut} locale={locale} returnFocusRef={menuTriggerRef} onCancel={() => setMobileLogoutOpen(false)} onConfirm={confirmMobileLogout} />
     </>
   );
 }

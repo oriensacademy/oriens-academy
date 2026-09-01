@@ -401,7 +401,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.paytr-create-token]
-verify_jwt = true
+  verify_jwt = true
+
+[functions.paytr-refund]
+  verify_jwt = true
 
 [functions.process-notification-outbox]
 verify_jwt = false

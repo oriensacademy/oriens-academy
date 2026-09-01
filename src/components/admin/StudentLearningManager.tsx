@@ -31,6 +31,7 @@ import {
   addStudentExtraLessons,
   cancelStudentLesson,
   completeStudentLesson,
+  recordCompletedLesson,
   listStudentLearning,
   sendLessonMeetingLink,
   upsertStudentLesson,
@@ -45,6 +46,7 @@ import type { Tables } from "@/types/database.types";
 import { listStudentExamAttempts, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { canonicalExams } from "@/content/canonical-exams";
+import { adminLessonCopy } from "@/content/admin-lessons";
 
 export type LearningSection = "lessons" | "homework" | "packages" | "payments" | "notes" | "exam_history";
 
@@ -114,6 +116,7 @@ export function StudentLearningManager({
         lessons={lessons}
         purchases={purchases}
         userId={userId}
+        studentName={studentName}
         busy={busy}
         setBusy={setBusy}
         setError={setError}
@@ -203,6 +206,7 @@ function LessonsPanel({
   lessons,
   purchases,
   userId,
+  studentName,
   busy,
   setBusy,
   setError,
@@ -212,6 +216,7 @@ function LessonsPanel({
   lessons: Tables<"student_lessons">[];
   purchases: PackagePurchase[];
   userId: string;
+  studentName: string;
   busy: boolean;
   setBusy: (v: boolean) => void;
   setError: (v: string) => void;
@@ -220,10 +225,12 @@ function LessonsPanel({
 }) {
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const [isCreating, setIsCreating] = useState(false);
+  const [isAddingPast, setIsAddingPast] = useState(false);
   const [completeTarget, setCompleteTarget] = useState<Tables<"student_lessons"> | null>(null);
   const [completionNote, setCompletionNote] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const lessonCopy = adminLessonCopy.tr;
 
   const activePackage = purchases.find((p) => p.status === "active") || purchases[0];
 
@@ -238,6 +245,43 @@ function LessonsPanel({
     liveMeetingUrl: "",
     teacherNote: "",
   });
+  const [pastRequestKey, setPastRequestKey] = useState(() => crypto.randomUUID());
+  const [pastForm, setPastForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    startTime: new Date().toTimeString().slice(0, 5),
+    durationMinutes: 60,
+    title: lessonCopy.defaultTitle as string,
+    subject: lessonCopy.defaultSubject as string,
+    teacherNote: "",
+    packagePurchaseId: "",
+  });
+
+  async function handleRecordPastLesson(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    setActionSuccess(null);
+    const res = await recordCompletedLesson({
+      studentId: userId,
+      lessonDate: new Date(`${pastForm.date}T${pastForm.startTime}`).toISOString(),
+      durationMinutes: pastForm.durationMinutes,
+      title: pastForm.title,
+      subject: pastForm.subject,
+      teacherNote: pastForm.teacherNote,
+      packagePurchaseId: pastForm.packagePurchaseId || null,
+      idempotencyKey: `admin-past:${pastRequestKey}`,
+    });
+    setBusy(false);
+    if (!res.success) {
+      setError(res.error || lessonCopy.failure);
+      return;
+    }
+    setIsAddingPast(false);
+    setPastRequestKey(crypto.randomUUID());
+    setActionSuccess(lessonCopy.success);
+    changed();
+  }
 
   async function handleCreateLesson(e: React.FormEvent) {
     e.preventDefault();
@@ -298,7 +342,7 @@ function LessonsPanel({
 
     const res = await completeStudentLesson({
       lessonId: completeTarget.id,
-      packagePurchaseId: completeTarget.package_purchase_id,
+      packagePurchaseId: null,
       teacherNote: completionNote.trim() || null,
     });
 
@@ -312,7 +356,7 @@ function LessonsPanel({
       setActionSuccess(
         res.alreadyCompleted
           ? "Ders zaten tamamlanmış olarak işaretliydi."
-          : "Ders başarıyla tamamlandı, paketten 1 ders düşüldü ve öğrenciye bilgilendirme e-postası gönderildi."
+          : "Ders başarıyla tamamlandı, paketten 1 ders düşüldü ve hesap sahibine bilgilendirme olayı oluşturuldu."
       );
       changed();
     }
@@ -344,20 +388,42 @@ function LessonsPanel({
       )}
 
       {/* Top Header & Add Live Lesson Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-xs font-bold text-ink flex items-center gap-1.5">
           <Video className="size-4 text-primary" />
           Canlı Dersler ve Ders Geçmişi ({lessons.length})
         </h4>
-        <button
-          type="button"
-          onClick={() => onPlan ? onPlan() : setIsCreating(!isCreating)}
-          className="inline-flex items-center gap-1 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer"
-        >
-          <Plus className="size-3.5" />
-          {onPlan ? "Ders / Görüşme Planla" : isCreating ? "Formu Kapat" : "Ders / Görüşme Planla"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setIsAddingPast((value) => !value)} className="inline-flex items-center gap-1 rounded-lg border border-emerald-700 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 cursor-pointer"><History className="size-3.5" />{lessonCopy.pastAction}</button>
+          <button
+            type="button"
+            onClick={() => onPlan ? onPlan() : setIsCreating(!isCreating)}
+            className="inline-flex items-center gap-1 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer"
+          >
+            <Plus className="size-3.5" />
+            {onPlan ? "Ders / Görüşme Planla" : isCreating ? "Formu Kapat" : "Ders / Görüşme Planla"}
+          </button>
+        </div>
       </div>
+
+      {isAddingPast && (
+        <form onSubmit={handleRecordPastLesson} className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 text-xs shadow-xs">
+          <div className="font-bold text-ink">{lessonCopy.pastHeading}</div>
+          <div className="rounded-lg bg-white p-3 text-muted-foreground"><strong className="text-ink">{lessonCopy.learner}:</strong> {studentName}<br />{lessonCopy.accountEmail}</div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="font-semibold text-muted-foreground">{lessonCopy.title}<Input required placeholder={lessonCopy.titlePlaceholder} value={pastForm.title} onChange={(value) => setPastForm({ ...pastForm, title: value })} /></label>
+            <label className="font-semibold text-muted-foreground">{lessonCopy.subject}<Input required placeholder={lessonCopy.subjectPlaceholder} value={pastForm.subject} onChange={(value) => setPastForm({ ...pastForm, subject: value })} /></label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="font-semibold text-muted-foreground">{lessonCopy.date}<input required type="date" value={pastForm.date} onChange={(event) => setPastForm({ ...pastForm, date: event.target.value })} className={field} /></label>
+            <label className="font-semibold text-muted-foreground">{lessonCopy.startTime}<input required type="time" value={pastForm.startTime} onChange={(event) => setPastForm({ ...pastForm, startTime: event.target.value })} className={field} /></label>
+            <label className="font-semibold text-muted-foreground">{lessonCopy.duration}<Input required type="number" placeholder="60" value={String(pastForm.durationMinutes)} onChange={(value) => setPastForm({ ...pastForm, durationMinutes: Number(value) || 60 })} /></label>
+          </div>
+          <label className="font-semibold text-muted-foreground">{lessonCopy.package}<select value={pastForm.packagePurchaseId} onChange={(event) => setPastForm({ ...pastForm, packagePurchaseId: event.target.value })} className={field}><option value="">{lessonCopy.fifo}</option>{purchases.filter((purchase) => purchase.status === "active" && purchase.lessons_used < purchase.lesson_count).map((purchase) => <option key={purchase.id} value={purchase.id}>{purchase.custom_package_name || purchase.pricing_packages?.name_tr || purchase.package_id} ({purchase.lesson_count - purchase.lessons_used} {lessonCopy.remaining})</option>)}</select></label>
+          <label className="font-semibold text-muted-foreground">{lessonCopy.note}<textarea value={pastForm.teacherNote} onChange={(event) => setPastForm({ ...pastForm, teacherNote: event.target.value })} className={field} /></label>
+          <div className="flex justify-end gap-2"><button type="button" onClick={() => setIsAddingPast(false)} className="rounded-lg border border-border px-4 py-2 font-semibold">{lessonCopy.cancel}</button><button disabled={busy} className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50">{busy ? lessonCopy.saving : lessonCopy.save}</button></div>
+        </form>
+      )}
 
       {/* New Live Lesson Form */}
       {isCreating && !onPlan && (
@@ -462,7 +528,7 @@ function LessonsPanel({
             </p>
             <div className="rounded-lg bg-surface-muted p-3 text-xs space-y-1 text-ink/80">
               <div>• Öğrencinin ilişkili paketinden <strong>1 ders hakkı güvenli şekilde düşülecektir</strong>.</div>
-              <div>• Öğrenciye <strong>&ldquo;Dersiniz Tamamlandı&rdquo;</strong> bilgilendirme e-postası iletilecektir.</div>
+              <div>• <strong>Hesap sahibine</strong> ilişki türüne uygun ders tamamlandı e-postası iletilecektir.</div>
             </div>
             <div>
               <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Tamamlama / Değerlendirme Notu (İsteğe Bağlı)</label>
@@ -1538,6 +1604,10 @@ function PackagePanel({
                                 ? `+${adj.lesson_delta} Ek Ders`
                                 : adj.adjustment_type === "package_assigned"
                                   ? `Paket Tanımlandı (${adj.lesson_delta} Ders)`
+                                  : adj.adjustment_type === "lesson_completed"
+                                    ? "-1 Ders Tamamlandı"
+                                    : adj.adjustment_type === "past_lesson_added"
+                                      ? "-1 Geçmiş Ders Eklendi"
                                   : `${adj.lesson_delta} Ders Düzeltmesi`}
                             </span>
                             {adj.notes && <span className="text-ink/80"> — “{adj.notes}”</span>}

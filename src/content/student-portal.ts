@@ -21,7 +21,7 @@ export const studentCopy = {
     terms: "Gizlilik Politikası ve Kullanım Koşulları'nı kabul ediyorum.",
     genericError: "İşlem tamamlanamadı. Bilgilerinizi kontrol edip yeniden deneyin.",
     studentOnly: "Bu hesap için aktif bir Oriens Academy profili bulunamadı.",
-    tabs: ["Genel Bakış", "Profilim", "Derslerim", "Ödevlerim", "Paketim", "Ödemelerim", "Sınav Geçmişi", "Destek"],
+    tabs: ["Genel Bakış", "Profilim", "Dersler", "Ders Hakları / Paketler", "Ödemeler", "Destek"],
   },
   en: {
     login: "Sign In",
@@ -43,7 +43,7 @@ export const studentCopy = {
     terms: "I accept the Privacy Policy and Terms of Service.",
     genericError: "The request could not be completed. Check your details and try again.",
     studentOnly: "No active Oriens Academy profile was found for this account.",
-    tabs: ["Overview", "Profile", "My Lessons", "Homework", "My Package", "Payments", "Exam History", "Support"],
+    tabs: ["Overview", "Profile", "Lessons", "Lesson Rights / Packages", "Payments", "Support"],
   },
 } as const;
 

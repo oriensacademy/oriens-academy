@@ -2,7 +2,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import {
   dispatchLiveLessonLinkEmail,
-  dispatchLessonCompletedEmail,
   sendTransactionalEmail,
 } from "../_shared/email/service.ts";
 
@@ -118,31 +117,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // If NOT already completed, dispatch lesson completed email once
-    let delivery = null;
-    if (!rpcResult.already_completed && rpcResult.student_email) {
-      delivery = await dispatchLessonCompletedEmail(admin, {
-        lessonId,
-        studentName: rpcResult.student_name || "Öğrenci",
-        studentEmail: rpcResult.student_email,
-        lessonTitle: rpcResult.lesson_title || "Birebir Canlı Ders",
-        lessonDate: rpcResult.lesson_date || new Date().toISOString(),
-        packageName: rpcResult.package_name || "Birebir Ders Paketi",
-        remainingLessons: Number(rpcResult.remaining_lessons || 0),
-        totalLessons: Number(rpcResult.total_lessons || 0),
-        teacherNote,
-        locale: rpcResult.preferred_language === "en" ? "en" : "tr",
-      });
-    }
-
     return buildJsonResponse(
       {
         success: true,
         already_completed: Boolean(rpcResult.already_completed),
-        remaining_lessons: rpcResult.remaining_lessons,
-        total_lessons: rpcResult.total_lessons,
-        is_package_completed: rpcResult.is_package_completed,
-        delivery,
+        remaining_lessons: rpcResult.remaining ?? rpcResult.remaining_lessons,
+        total_lessons: rpcResult.total ?? rpcResult.total_lessons,
+        is_package_completed: (rpcResult.remaining ?? rpcResult.remaining_lessons) === 0,
+        notification: "durable_outbox",
       },
       200,
       req

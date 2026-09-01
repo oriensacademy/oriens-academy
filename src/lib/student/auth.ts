@@ -5,7 +5,6 @@ export interface StudentRegistrationInput {
   fullName: string;
   email: string;
   phone: string;
-  contactAddress: string;
   password: string;
   locale: Locale;
   school?: string;
@@ -126,7 +125,6 @@ export async function registerStudent(input: StudentRegistrationInput) {
       data: {
         full_name: input.fullName.trim(),
         phone: normalizedPhone,
-        contact_address: input.contactAddress.trim(),
         preferred_language: input.locale,
         school: input.school?.trim() || null,
         target_exam: input.targetExam?.trim() || null,

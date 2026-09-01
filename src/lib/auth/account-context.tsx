@@ -174,7 +174,18 @@ async function resolveAccount(session: Session): Promise<AccountResolution> {
       return { accountType: "student", adminProfile: null, studentProfile };
     }
 
-    // Profile creation is database-triggered. Never synthesize an active membership client-side.
+    // A verified account holder is valid before learner information is set up.
+    const { data: accountHolder } = await supabase
+      .from("guardian_accounts")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .maybeSingle();
+    if (accountHolder) {
+      return { accountType: "student", adminProfile: null, studentProfile: null };
+    }
+
+    // Account-holder and learner records are database-managed. Never synthesize membership client-side.
   } catch {
     /* database offline */
   }

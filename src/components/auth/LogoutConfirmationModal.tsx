@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { LogOut, X } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 export interface LogoutConfirmationModalProps {
   open: boolean;
@@ -12,6 +14,7 @@ export interface LogoutConfirmationModalProps {
   description?: string;
   onCancel: () => void;
   onConfirm: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export function LogoutConfirmationModal({
@@ -22,13 +25,13 @@ export function LogoutConfirmationModal({
   description,
   onCancel,
   onConfirm,
+  returnFocusRef,
 }: LogoutConfirmationModalProps) {
   const isTr = locale === "tr";
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const signingOutRef = useRef(signingOut);
-
   useEffect(() => {
     signingOutRef.current = signingOut;
   }, [signingOut]);
@@ -36,6 +39,8 @@ export function LogoutConfirmationModal({
   useEffect(() => {
     if (!open) return;
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    const explicitReturnFocus = returnFocusRef?.current;
+    const unlockBodyScroll = lockBodyScroll();
     cancelButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -63,11 +68,13 @@ export function LogoutConfirmationModal({
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      previouslyFocusedRef.current?.focus();
+      unlockBodyScroll();
+      const focusTarget = explicitReturnFocus || previouslyFocusedRef.current;
+      if (focusTarget?.isConnected) focusTarget.focus();
     };
-  }, [open, onCancel]);
+  }, [open, onCancel, returnFocusRef]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const defaultTitle = isTr
     ? "Çıkış yapmak istediğinize emin misiniz?"
@@ -77,8 +84,8 @@ export function LogoutConfirmationModal({
     ? "Hesabınızdan güvenli bir şekilde çıkış yapacaksınız."
     : "You will be securely signed out of your account.";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex min-h-dvh w-screen items-center justify-center p-4">
       <button
         type="button"
         className="absolute inset-0 cursor-default bg-[#10271B]/35 backdrop-blur-xs"
@@ -137,7 +144,8 @@ export function LogoutConfirmationModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

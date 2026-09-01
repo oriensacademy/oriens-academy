@@ -21,7 +21,7 @@ export type PackageAdjustment = {
   id: string;
   student_user_id: string;
   package_purchase_id: string;
-  adjustment_type: "extra_lessons" | "manual_adjustment" | "package_assigned" | "package_reactivated";
+  adjustment_type: "extra_lessons" | "manual_adjustment" | "package_assigned" | "package_reactivated" | "lesson_completed" | "past_lesson_added";
   lesson_delta: number;
   price_amount: number | null;
   currency: string;
@@ -188,6 +188,34 @@ export async function completeStudentLesson(input: {
     p_package_purchase_id: input.packagePurchaseId || null,
     p_teacher_note: input.teacherNote || null,
   } as unknown as { p_student_id: string; p_full_name: string; p_phone: string; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean });
+  return rpcResult(data, error);
+}
+
+export async function recordCompletedLesson(input: {
+  studentId: string;
+  lessonDate: string;
+  durationMinutes: number;
+  title: string;
+  subject: string;
+  teacherNote?: string | null;
+  packagePurchaseId?: string | null;
+  idempotencyKey: string;
+}) {
+  const supabase = getSupabaseClient();
+  // Generated RPC types follow when the migration is applied to the remote project.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("admin_record_completed_lesson", {
+    p_student_id: input.studentId,
+    p_lesson_date: input.lessonDate,
+    p_duration_minutes: input.durationMinutes,
+    p_title: input.title.trim(),
+    p_subject: input.subject.trim(),
+    p_teacher_note: input.teacherNote?.trim() || null,
+    p_package_purchase_id: input.packagePurchaseId || null,
+    p_existing_lesson_id: null,
+    p_completion_source: "past",
+    p_idempotency_key: input.idempotencyKey,
+  });
   return rpcResult(data, error);
 }
 

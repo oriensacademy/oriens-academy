@@ -1235,9 +1235,9 @@ export type Database = {
         Relationships: []
       }
       student_lessons: {
-        Row: { id: string; student_user_id: string; booking_id: string | null; package_purchase_id: string | null; title: string; subject: string; exam_code: string | null; lesson_date: string; duration_minutes: number; status: string; teacher_note: string | null; live_meeting_url: string | null; meeting_link_sent_at: string | null; completed_at: string | null; created_at: string }
-        Insert: { id?: string; student_user_id: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; created_at?: string }
-        Update: { id?: string; student_user_id?: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; created_at?: string }
+        Row: { id: string; student_user_id: string; booking_id: string | null; package_purchase_id: string | null; title: string; subject: string; exam_code: string | null; lesson_date: string; duration_minutes: number; status: string; teacher_note: string | null; live_meeting_url: string | null; meeting_link_sent_at: string | null; completed_at: string | null; completion_key: string | null; completion_source: string | null; completion_previous_remaining: number | null; created_at: string; updated_at: string }
+        Insert: { id?: string; student_user_id: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; completion_key?: string | null; completion_source?: string | null; completion_previous_remaining?: number | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; student_user_id?: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; completion_key?: string | null; completion_source?: string | null; completion_previous_remaining?: number | null; created_at?: string; updated_at?: string }
         Relationships: []
       }
       student_homework: {
@@ -1377,6 +1377,15 @@ export type Database = {
           payer_name: string | null
           payer_email: string | null
           payer_phone: string | null
+          payer_address: string | null
+          purchaser_guardian_user_id: string | null
+          package_owner_student_id: string | null
+          auth_actor_user_id: string | null
+          refunded_amount: number
+          refund_status: string
+          last_refunded_at: string | null
+          last_refund_reason: string | null
+          paytr_refund_reference: string | null
           metadata: Json
           created_at: string
           updated_at: string
@@ -1398,6 +1407,15 @@ export type Database = {
           payer_name?: string | null
           payer_email?: string | null
           payer_phone?: string | null
+          payer_address?: string | null
+          purchaser_guardian_user_id?: string | null
+          package_owner_student_id?: string | null
+          auth_actor_user_id?: string | null
+          refunded_amount?: number
+          refund_status?: string
+          last_refunded_at?: string | null
+          last_refund_reason?: string | null
+          paytr_refund_reference?: string | null
           metadata?: Json
           created_at?: string
           updated_at?: string
@@ -1419,10 +1437,75 @@ export type Database = {
           payer_name?: string | null
           payer_email?: string | null
           payer_phone?: string | null
+          payer_address?: string | null
+          purchaser_guardian_user_id?: string | null
+          package_owner_student_id?: string | null
+          auth_actor_user_id?: string | null
+          refunded_amount?: number
+          refund_status?: string
+          last_refunded_at?: string | null
+          last_refund_reason?: string | null
+          paytr_refund_reference?: string | null
           metadata?: Json
           created_at?: string
           updated_at?: string
           paid_at?: string | null
+        }
+        Relationships: []
+      }
+      payment_refunds: {
+        Row: {
+          id: string
+          payment_transaction_id: string
+          package_purchase_id: string
+          idempotency_key: string
+          provider_reference: string
+          requested_amount: number
+          lesson_rights_to_revoke: number
+          reason: string
+          status: string
+          provider_response: Json
+          provider_error_code: string | null
+          provider_error_message: string | null
+          provider_call_started_at: string | null
+          provider_succeeded_at: string | null
+          finalized_at: string | null
+          failed_at: string | null
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          payment_transaction_id: string
+          package_purchase_id: string
+          idempotency_key: string
+          provider_reference: string
+          requested_amount: number
+          lesson_rights_to_revoke: number
+          reason: string
+          status?: string
+          provider_response?: Json
+          provider_error_code?: string | null
+          provider_error_message?: string | null
+          provider_call_started_at?: string | null
+          provider_succeeded_at?: string | null
+          finalized_at?: string | null
+          failed_at?: string | null
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          status?: string
+          provider_response?: Json
+          provider_error_code?: string | null
+          provider_error_message?: string | null
+          provider_call_started_at?: string | null
+          provider_succeeded_at?: string | null
+          finalized_at?: string | null
+          failed_at?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1638,6 +1721,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      setup_account_learner: {
+        Args: { p_full_name: string; p_email: string; p_phone?: string | null; p_school?: string | null; p_preferred_language?: string }
+        Returns: Json
+      }
+      admin_record_completed_lesson: {
+        Args: { p_student_id: string; p_lesson_date: string; p_duration_minutes: number; p_title: string; p_subject: string; p_teacher_note?: string | null; p_package_purchase_id?: string | null; p_existing_lesson_id?: string | null; p_completion_source?: string; p_idempotency_key?: string | null }
+        Returns: Json
+      }
+      admin_get_payment_refund_context: { Args: { p_transaction_id: string }; Returns: Json }
+      admin_create_payment_refund_intent: { Args: { p_transaction_id: string; p_refund_amount: number; p_lesson_rights_to_revoke: number; p_reason: string; p_idempotency_key: string }; Returns: Json }
+      admin_complete_student_lesson: {
+        Args: { p_lesson_id: string; p_package_purchase_id?: string | null; p_teacher_note?: string | null }
+        Returns: Json
+      }
+      admin_complete_scheduled_event: {
+        Args: { p_event_id: string; p_package_purchase_id?: string | null; p_teacher_note?: string | null }
+        Returns: Json
+      }
       update_guardian_profile: {
         Args: { p_full_name: string; p_phone: string; p_contact_address: string; p_preferred_language?: string }
         Returns: Json

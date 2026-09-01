@@ -105,6 +105,41 @@ export async function calculatePaytrToken(params: {
   return btoa(binary);
 }
 
+/** Official PayTR refund signature: merchant_id + merchant_oid + decimal amount + merchant_salt. */
+export async function calculatePaytrRefundToken(params: {
+  merchantId: string;
+  merchantOid: string;
+  returnAmount: string;
+  merchantSalt: string;
+  merchantKey: string;
+}): Promise<string> {
+  const keyData = new TextEncoder().encode(params.merchantKey);
+  const messageData = new TextEncoder().encode(
+    `${params.merchantId}${params.merchantOid}${params.returnAmount}${params.merchantSalt}`
+  );
+  const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, messageData));
+  let binary = "";
+  for (const byte of signature) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+/** Official PayTR order-status signature used to reconcile an uncertain refund call. */
+export async function calculatePaytrStatusToken(params: {
+  merchantId: string;
+  merchantOid: string;
+  merchantSalt: string;
+  merchantKey: string;
+}): Promise<string> {
+  const keyData = new TextEncoder().encode(params.merchantKey);
+  const messageData = new TextEncoder().encode(`${params.merchantId}${params.merchantOid}${params.merchantSalt}`);
+  const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, messageData));
+  let binary = "";
+  for (const byte of signature) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 /**
  * Encodes basket items into PayTR-compliant UTF-8 Base64 JSON format.
  * Structure: [ [ "Ürün Adı", "Birim Fiyat", Adet ] ]

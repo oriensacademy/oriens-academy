@@ -160,7 +160,7 @@ export function PaymentResultPage() {
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
                 >
                   <User className="size-4" />
-                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Veli Hesabıma Git" : "Go to Parent Account")}
+                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Hesabıma Git" : "Go to My Account")}
                   <ArrowRight className="size-4" />
                 </Link>
               </div>
@@ -217,7 +217,7 @@ export function PaymentResultPage() {
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
                 >
                   <User className="size-4" />
-                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Veli Hesabıma Git" : "Go to Parent Account")}
+                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Hesabıma Git" : "Go to My Account")}
                 </Link>
               </div>
             </div>

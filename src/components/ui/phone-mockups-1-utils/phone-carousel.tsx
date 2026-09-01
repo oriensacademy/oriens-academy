@@ -216,7 +216,7 @@ export function PhoneCarousel({
                       {isTr ? "Ders & İlerleme" : "Lessons & Progress"}
                     </h3>
                     <p className="mt-1 text-xs text-white/70">
-                      {isTr ? "Planlanan dersler, ödevler ve paket durumu" : "Scheduled lessons, assignments & credits"}
+                      {isTr ? "Planlanan dersler, ders hakları ve gelişim durumu" : "Scheduled lessons, lesson rights, and academic progress"}
                     </p>
 
                     <div className="mt-4 space-y-2.5">
@@ -235,7 +235,7 @@ export function PhoneCarousel({
                         <p className="text-[10px] text-white/60">{isTr ? "Eğitmen: Doğuhan" : "Tutor: Doğuhan"}</p>
                       </div>
 
-                      {/* Homework status */}
+                      {/* Completed lesson status */}
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -243,8 +243,8 @@ export function PhoneCarousel({
                               <CheckCircle2 className="size-4" />
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-white">{isTr ? "Zamanlı Deneme 4" : "Timed Mock Exam 4"}</p>
-                              <p className="text-[10px] text-white/60">{isTr ? "İncelendi · Not: 92/100" : "Reviewed · Score: 92/100"}</p>
+                              <p className="text-xs font-bold text-white">{isTr ? "Matematik Dersi" : "Mathematics Lesson"}</p>
+                              <p className="text-[10px] text-white/60">{isTr ? "1 ders tamamlandı" : "1 lesson completed"}</p>
                             </div>
                           </div>
                         </div>
@@ -254,10 +254,10 @@ export function PhoneCarousel({
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-xs">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-semibold text-white/80">{isTr ? "10 Derslik Paket" : "10-Lesson Package"}</span>
-                          <span className="font-bold text-[#D6B56D]">8 / 10 {isTr ? "Ders" : "Lessons"}</span>
+                          <span className="font-bold text-[#D6B56D]">{isTr ? "1 Tamamlandı / 9 Kaldı" : "1 Completed / 9 Left"}</span>
                         </div>
                         <div className="mt-2 h-1.5 w-full rounded-full bg-white/10">
-                          <div className="h-full rounded-full bg-[#D6B56D]" style={{ width: "80%" }} />
+                          <div className="h-full rounded-full bg-[#D6B56D]" style={{ width: "10%" }} />
                         </div>
                       </div>
                     </div>

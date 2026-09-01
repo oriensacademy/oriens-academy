@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, MapPin, Phone, User as UserIcon } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User as UserIcon } from "lucide-react";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { AuthSwitch } from "@/components/ui/auth-switch";
-import { StudentOnboardingPersonalization } from "@/components/student/StudentOnboardingPersonalization";
 import { useLocale } from "@/content/locale-context";
 import { useAccount } from "@/lib/auth/account-context";
 import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routing";
@@ -46,14 +45,11 @@ export function UnifiedLoginPage() {
   // Register fields
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [contactAddress, setContactAddress] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [registeredUserId, setRegisteredUserId] = useState<string | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
@@ -90,14 +86,12 @@ export function UnifiedLoginPage() {
 
   useEffect(() => {
     if (isInitializing || navigatedRef.current || !["admin", "student"].includes(accountType)) return;
-    if (showOnboarding) return;
-
     navigatedRef.current = true;
     const destination = user?.user_metadata?.force_password_change === true
       ? changePasswordPath(locale)
       : destinationForAccount(accountType, locale, requested);
     router.replace(destination);
-  }, [accountType, isInitializing, locale, requested, router, showOnboarding, user]);
+  }, [accountType, isInitializing, locale, requested, router, user]);
 
   async function handleLogin(event: FormEvent) {
     event.preventDefault();
@@ -148,11 +142,6 @@ export function UnifiedLoginPage() {
       setError(isTr ? "Şifreniz en az 6 karakter olmalıdır." : "Password must be at least 6 characters.");
       return;
     }
-    if (contactAddress.trim().length < 10 || contactAddress.trim().length > 300) {
-      setError(isTr ? "Lütfen geçerli iletişim adresinizi girin." : "Enter your valid contact address.");
-      return;
-    }
-
     setSubmitting(true);
 
     try {
@@ -160,7 +149,6 @@ export function UnifiedLoginPage() {
         fullName,
         email,
         phone,
-        contactAddress,
         password,
         locale,
       });
@@ -181,13 +169,10 @@ export function UnifiedLoginPage() {
       if (regResult.data?.session && regResult.data?.user?.email_confirmed_at) {
         await tryClaimPendingResult();
         setSubmitting(false);
-        setRegisteredUserId(regResult.data.user.id);
-        setShowOnboarding(true);
         return;
       }
       setSubmitting(false);
       if (regResult.data?.user && !regResult.data.session) {
-        setRegisteredUserId(regResult.data.user.id);
         setPendingConfirmation(true);
         setResendCooldown(60);
       } else {
@@ -200,26 +185,8 @@ export function UnifiedLoginPage() {
     }
   }
 
-  const handleOnboardingComplete = () => {
-    navigatedRef.current = true;
-    const destination = destinationForAccount("student", locale, requested);
-    router.replace(destination);
-  };
-
-  if (isInitializing || (accountType !== "unauthenticated" && !showOnboarding)) {
+  if (isInitializing || accountType !== "unauthenticated") {
     return <AccountWaveLoader />;
-  }
-
-  if (showOnboarding) {
-    return (
-      <section className="min-h-screen bg-background px-4 pt-28 pb-16 sm:pt-36">
-        <StudentOnboardingPersonalization
-          studentId={registeredUserId || user?.id || ""}
-          onComplete={handleOnboardingComplete}
-          onSkip={handleOnboardingComplete}
-        />
-      </section>
-    );
   }
 
   if (pendingConfirmation) {
@@ -229,7 +196,7 @@ export function UnifiedLoginPage() {
           <Mail className="mx-auto size-10 text-primary" />
           <h1 className="mt-4 font-heading text-2xl text-ink">{isTr ? "E-postanızı doğrulayın" : "Verify your email"}</h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            {isTr ? `${email.trim()} adresine gönderilen bağlantıyı açın. Doğrulama tamamlanmadan Veli Hesabı ve ödeme kullanılamaz.` : `Open the link sent to ${email.trim()}. Your Parent Account and checkout remain unavailable until verification.`}
+            {isTr ? `${email.trim()} adresine gönderilen bağlantıyı açın. Doğrulama tamamlanmadan hesabınız ve ödeme işlemleri kullanılamaz.` : `Open the link sent to ${email.trim()}. Your account and checkout remain unavailable until verification.`}
           </p>
           <button
             type="button"
@@ -275,7 +242,7 @@ export function UnifiedLoginPage() {
               setMode(tab);
               setError("");
             }}
-            loginLabel={isTr ? "Oturum Aç" : "Sign In"}
+            loginLabel={isTr ? "Giriş Yap" : "Sign In"}
             registerLabel={isTr ? "Kayıt Ol" : "Create Account"}
             className="mb-6"
           />
@@ -284,11 +251,11 @@ export function UnifiedLoginPage() {
             <h1 className="font-heading text-2xl text-ink sm:text-3xl">
               {mode === "login"
                 ? isTr
-                  ? "Oturum Aç"
-                  : "Sign In"
+                  ? "Hesabınıza Giriş Yapın"
+                  : "Sign In to Your Account"
                 : isTr
-                ? "Veli Hesabı Oluştur"
-                : "Create Parent Account"}
+                ? "Hesap Oluştur"
+                : "Create Account"}
             </h1>
             <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
               {mode === "login"
@@ -296,8 +263,8 @@ export function UnifiedLoginPage() {
                   ? "Oriens Academy hesabınıza güvenle erişin."
                   : "Securely access your Oriens Academy account."
                 : isTr
-                ? "Derslerinizi, ödevlerinizi ve eğitim paketlerinizi tek panelden yönetin."
-                : "Manage your lessons, homework, and packages in one unified portal."}
+                ? "Eğitim sürecinizi, derslerinizi, ders haklarınızı ve ödemelerinizi tek panelden yönetin."
+                : "Manage your education process, lessons, lesson rights, packages, and payments in one portal."}
             </p>
           </header>
 
@@ -379,7 +346,7 @@ export function UnifiedLoginPage() {
                   <span>{isTr ? "Giriş yapılıyor..." : "Signing in..."}</span>
                 ) : (
                   <>
-                    <span>{isTr ? "Oturum Aç" : "Sign In"}</span>
+                    <span>{isTr ? "Giriş Yap" : "Sign In"}</span>
                     <ArrowRight className="size-4" />
                   </>
                 )}
@@ -452,24 +419,6 @@ export function UnifiedLoginPage() {
                 </span>
               </label>
 
-              <label className="block text-xs font-semibold text-ink" htmlFor="register-address">
-                {isTr ? "İletişim Adresi" : "Contact Address"}
-                <span className="relative mt-1 block">
-                  <MapPin className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground" />
-                  <textarea
-                    id="register-address"
-                    required
-                    minLength={10}
-                    maxLength={300}
-                    autoComplete="street-address"
-                    value={contactAddress}
-                    onChange={(event) => setContactAddress(event.target.value)}
-                    placeholder={isTr ? "Gerçek iletişim adresiniz" : "Your real contact address"}
-                    className="min-h-20 w-full resize-y rounded-xl border border-input bg-background py-3 pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </span>
-              </label>
-
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block text-xs font-semibold text-ink" htmlFor="register-password">
                   {isTr ? "Şifre" : "Password"}
@@ -534,7 +483,7 @@ export function UnifiedLoginPage() {
 
               <button
                 type="submit"
-                disabled={!fullName.trim() || !email.trim() || !phone.trim() || !contactAddress.trim() || !password || !confirmPassword || !termsAccepted || submitting}
+                disabled={!fullName.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword || !termsAccepted || submitting}
                 className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
               >
                 {submitting ? (
@@ -557,7 +506,7 @@ export function UnifiedLoginPage() {
                   }}
                   className="font-semibold text-ink underline decoration-primary underline-offset-4"
                 >
-                  {isTr ? "Oturum Aç" : "Sign In"}
+                  {isTr ? "Giriş Yap" : "Sign In"}
                 </button>
               </p>
             </form>

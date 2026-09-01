@@ -13,6 +13,11 @@ export interface AdminPaymentRow {
   provider: string;
   provider_transaction_id: string | null;
   status: string;
+  refunded_amount: number;
+  refund_status: "none" | "partial" | "full";
+  last_refunded_at: string | null;
+  last_refund_reason: string | null;
+  paytr_refund_reference: string | null;
   created_at: string;
   paid_at: string | null;
   metadata?: {
@@ -26,6 +31,39 @@ export interface AdminPaymentRow {
     lesson_count?: number;
     package_name?: string;
   } | null;
+}
+
+export interface AdminRefundHistoryRow {
+  id: string;
+  status: string;
+  amount: number;
+  lessons: number;
+  reason: string;
+  provider_reference: string;
+  created_at: string;
+  finalized_at: string | null;
+  admin_actor: string;
+  error_code: string | null;
+}
+
+export interface AdminRefundContext {
+  success: boolean;
+  error_code?: string;
+  transaction_id: string;
+  reference: string;
+  account_holder: string | null;
+  learner: string | null;
+  package_id: string;
+  paid_amount: number;
+  currency: string;
+  refunded_amount: number;
+  refundable_amount: number;
+  refund_status: "none" | "partial" | "full";
+  package_purchase_id: string;
+  total_lessons: number;
+  completed_lessons: number;
+  remaining_lessons: number;
+  refunds: AdminRefundHistoryRow[];
 }
 
 export interface ListAdminPaymentsParams {
@@ -110,7 +148,7 @@ export async function listAdminPaymentsPaginated(
     let query = client
       .from("payment_transactions")
       .select(
-        "id,public_reference,package_id,payer_name,payer_email,payer_phone,amount,currency,payment_method,provider,provider_transaction_id,status,created_at,paid_at,metadata",
+        "id,public_reference,package_id,payer_name,payer_email,payer_phone,amount,currency,payment_method,provider,provider_transaction_id,status,created_at,paid_at,metadata,refunded_amount,refund_status,last_refunded_at,last_refund_reason,paytr_refund_reference",
         { count: "exact" }
       );
 
@@ -393,4 +431,44 @@ export async function sendPaymentReminder(paymentId: string) {
     reminderCount: result?.reminder_count,
     lastReminderSentAt: result?.last_reminder_sent_at,
   };
+}
+
+export async function getAdminRefundContext(paymentId: string): Promise<{ data: AdminRefundContext | null; error: string | null }> {
+  const { data, error } = await getSupabaseClient().rpc("admin_get_payment_refund_context", { p_transaction_id: paymentId });
+  if (error) return { data: null, error: error.message };
+  const result = data as unknown as AdminRefundContext;
+  return result?.success ? { data: result, error: null } : { data: null, error: result?.error_code || "REFUND_CONTEXT_FAILED" };
+}
+
+export async function processPaytrRefund(input: {
+  transactionId: string;
+  refundAmount: number;
+  lessonsToRevoke: number;
+  reason: string;
+  idempotencyKey: string;
+  locale?: "tr" | "en";
+}) {
+  const client = getSupabaseClient();
+  const { data: sessionData } = await client.auth.getSession();
+  const token = sessionData.session?.access_token;
+  const { data, error } = await client.functions.invoke("paytr-refund", {
+    body: { ...input, locale: input.locale || "tr" },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (error) {
+    let code = "REFUND_FAILED";
+    let message = "İade işlemi tamamlanamadı.";
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const body = (await context.clone().json()) as { error_code?: string; message?: string };
+        code = body.error_code || code;
+        message = body.message || message;
+      } catch { /* keep safe fallback */ }
+    }
+    return { success: false, errorCode: code, error: message };
+  }
+  return data?.success
+    ? { success: true, data: data as Record<string, unknown>, error: null }
+    : { success: false, errorCode: data?.error_code || "REFUND_FAILED", error: data?.message || "İade işlemi tamamlanamadı." };
 }

@@ -32,6 +32,10 @@ export interface StudentProfile {
   school: string | null;
   targetUniversity: string | null;
   preferredLanguage: string;
+  relationshipRole: "self" | "parent" | "guardian" | "other" | null;
+  guardianUserId: string | null;
+  guardianName: string | null;
+  guardianEmail: string | null;
 }
 
 const normalizeEmail = (value: string | null | undefined) => value?.trim().toLowerCase() || "";
@@ -43,16 +47,17 @@ export const normalizePhone = (value: string | null | undefined) => {
 
 export async function listAdminStudents(): Promise<{ data: StudentProfile[]; error: string | null }> {
   const supabase = getSupabaseClient();
-  const [profilesResult, contactsResult, bookingsResult, deliveriesResult, purchasesResult, homeworkResult] = await Promise.all([
+  const [profilesResult, contactsResult, bookingsResult, deliveriesResult, purchasesResult, homeworkResult, guardianLinksResult] = await Promise.all([
     supabase.from("student_profiles").select("*").order("updated_at", { ascending: false }).limit(1000),
     supabase.from("contact_requests").select("*").order("created_at", { ascending: false }).limit(1000),
     supabase.from("bookings").select("*, availability_slots(id, starts_at, ends_at, status)").order("created_at", { ascending: false }).limit(1000),
     supabase.from("notification_deliveries").select("*").order("created_at", { ascending: false }).limit(2000),
     supabase.from("student_package_purchases").select("id,student_user_id,lesson_count,lessons_used,status,pricing_packages(name_tr,name_en)").order("created_at", { ascending: false }).limit(2000),
     supabase.from("student_homework").select("student_user_id,status").in("status", ["assigned", "in_progress", "submitted", "overdue"]),
+    supabase.from("guardian_students").select("guardian_user_id,student_id,relationship_role,is_primary,active,guardian_accounts(full_name,email)").eq("active", true),
   ]);
 
-  const firstError = profilesResult.error || contactsResult.error || bookingsResult.error || deliveriesResult.error || purchasesResult.error || homeworkResult.error;
+  const firstError = profilesResult.error || contactsResult.error || bookingsResult.error || deliveriesResult.error || purchasesResult.error || homeworkResult.error || guardianLinksResult.error;
   if (firstError) return { data: [], error: firstError.message };
 
   const contacts = (contactsResult.data || []) as StudentContact[];
@@ -61,6 +66,14 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
   const profiles: StudentProfile[] = [];
   const emailMap = new Map<string, StudentProfile>();
   const phoneMap = new Map<string, StudentProfile>();
+
+  const guardianLinkMap = new Map<string, { guardian_user_id: string; relationship_role: string; guardian_accounts: { full_name?: string; email?: string } | null }>();
+  (guardianLinksResult.data || []).forEach((row: Record<string, unknown>) => {
+    const studentId = String(row.student_id || "");
+    if (studentId && (!guardianLinkMap.has(studentId) || row.is_primary)) {
+      guardianLinkMap.set(studentId, row as unknown as { guardian_user_id: string; relationship_role: string; guardian_accounts: { full_name?: string; email?: string } | null });
+    }
+  });
 
   (profilesResult.data || []).forEach((account) => {
     const email = normalizeEmail(account.email);
@@ -75,6 +88,7 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
       ? rawCountries
       : account.target_country ? [account.target_country] : [];
 
+    const link = guardianLinkMap.get(account.id);
     const profile: StudentProfile = {
       id: `account-${account.id}`,
       userId: account.id,
@@ -102,13 +116,17 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
       school: account.school,
       targetUniversity: account.target_university,
       preferredLanguage: account.preferred_language,
+      relationshipRole: (link?.relationship_role as "self" | "parent" | "guardian" | "other") || null,
+      guardianUserId: link?.guardian_user_id || null,
+      guardianName: (link?.guardian_accounts as { full_name?: string })?.full_name || null,
+      guardianEmail: (link?.guardian_accounts as { email?: string })?.email || null,
     };
     profiles.push(profile);
     if (email) emailMap.set(email, profile);
     if (phone) phoneMap.set(phone, profile);
   });
 
-  const getProfile = (record: { id: string; full_name: string; email: string; phone: string | null; created_at: string }) => {
+  const getProfile = (record: { id: string; full_name: string; email: string; phone: string | null; created_at: string }): StudentProfile => {
     const email = normalizeEmail(record.email);
     const phone = normalizePhone(record.phone);
     let profile = emailMap.get(email);
@@ -144,6 +162,10 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
         school: null,
         targetUniversity: null,
         preferredLanguage: "tr",
+        relationshipRole: null,
+        guardianUserId: null,
+        guardianName: null,
+        guardianEmail: null,
       };
       profiles.push(profile);
     }
@@ -321,5 +343,30 @@ export async function adminUpdateStudentProfile(
     return { success: true, error: null };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Güncelleme başarısız oldu." };
+  }
+}
+
+/**
+ * Updates a student's guardian relationship role (self, parent, guardian, other) via Admin RPC with audit logging.
+ */
+export async function adminUpdateGuardianRelationship(
+  studentId: string,
+  relationshipRole: "self" | "parent" | "guardian" | "other",
+  guardianUserId?: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = getSupabaseClient();
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("admin_update_guardian_relationship", {
+      p_student_id: studentId,
+      p_relationship_role: relationshipRole,
+      p_guardian_user_id: guardianUserId ?? null,
+    });
+    if (error) return { success: false, error: error.message };
+    const res = data as { success?: boolean; error_code?: string };
+    if (!res?.success) return { success: false, error: res?.error_code || "İlişki güncellenemedi." };
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "İlişki güncellenemedi." };
   }
 }

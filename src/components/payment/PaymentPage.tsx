@@ -44,6 +44,8 @@ export function PaymentPage() {
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationSuccess | null>(null);
+  const [paymentAddress, setPaymentAddress] = useState("");
+  const [addressTouched, setAddressTouched] = useState(false);
 
   useEffect(() => {
     if (isInitializing) return;
@@ -76,6 +78,7 @@ export function PaymentPage() {
       if (accountType === "student" && user) {
         const ownGuardian = guardianRows.find((row) => row.user_id === user.id);
         setGuardianId(ownGuardian?.user_id ?? "");
+        setPaymentAddress(ownGuardian?.contact_address ?? "");
         const ownLinks = linkRows.filter((row) => row.guardian_user_id === user.id);
         const saved = localStorage.getItem("oriens.selectedLearnerId");
         const selected = ownLinks.some((row) => row.student_id === saved) ? saved! : ownLinks.find((row) => row.is_primary)?.student_id ?? ownLinks[0]?.student_id ?? "";
@@ -96,6 +99,8 @@ export function PaymentPage() {
   const finalPrice = Math.max(0, basePrice - discountAmount);
   const money = (value: number, currency = "TRY") => formatCurrency(value, { currency, locale });
   const contextReady = Boolean(selectedGuardian && selectedLearner && selectedGuardian.email_verified_at);
+  const normalizedPaymentAddress = paymentAddress.trim().replace(/\s+/g, " ");
+  const paymentAddressValid = normalizedPaymentAddress.length >= 10 && normalizedPaymentAddress.length <= 300;
 
   const orderSnapshot: LegalOrderSnapshot = {
     packageName: (isTr ? selectedPackage?.name_tr : selectedPackage?.name_en) || selectedPackage?.id || "Eğitim Paketi",
@@ -136,17 +141,36 @@ export function PaymentPage() {
             <h2 className="font-heading text-2xl text-ink">{isTr ? "Kart ile Ödeme" : "Pay by Card"}</h2>
             <p className="mt-2 text-xs text-muted-foreground">{isTr ? "Kart bilgileri yalnızca PayTR iframe içinde işlenir; Oriens Academy PAN/CVV bilgisi görmez veya saklamaz." : "Card details are processed only inside the PayTR iframe; Oriens Academy never sees or stores PAN/CVV data."}</p>
 
-            {accountType === "admin" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-900">{isTr ? "Yönetici işlemi için müşteri ve öğrenci bağlamını açıkça seçin. Yönetici hesabı ödeme sahibi olamaz." : "Explicitly select a customer and learner. The admin account cannot become the payer or package owner."}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><select value={guardianId} onChange={(event) => { setGuardianId(event.target.value); setLearnerId(""); }} className="min-h-11 rounded-xl border bg-white px-3 text-xs"><option value="">{isTr ? "Veli seçin" : "Select guardian"}</option>{guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}</select><select value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className="min-h-11 rounded-xl border bg-white px-3 text-xs disabled:opacity-50"><option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></div></div> : null}
+            {accountType === "admin" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-900">{isTr ? "Yönetici işlemi için müşteri ve öğrenci bağlamını açıkça seçin. Yönetici hesabı ödeme sahibi olamaz." : "Explicitly select a customer and learner. The admin account cannot become the payer or package owner."}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><select value={guardianId} onChange={(event) => { const nextId=event.target.value; setGuardianId(nextId); setLearnerId(""); setPaymentAddress(guardians.find((item) => item.user_id === nextId)?.contact_address ?? ""); setAddressTouched(false); }} className="min-h-11 rounded-xl border bg-white px-3 text-xs"><option value="">{isTr ? "Veli seçin" : "Select guardian"}</option>{guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}</select><select value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className="min-h-11 rounded-xl border bg-white px-3 text-xs disabled:opacity-50"><option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></div></div> : null}
 
             {accountType === "student" && availableLearners.length > 1 ? <label className="mt-6 block text-xs font-semibold text-ink">{isTr ? "Paket sahibi öğrenci" : "Learner receiving the package"}<select value={learnerId} onChange={(event) => { setLearnerId(event.target.value); localStorage.setItem("oriens.selectedLearnerId", event.target.value); }} className="mt-2 min-h-11 w-full rounded-xl border border-input px-3">{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></label> : null}
 
             <div className="mt-6 border-t border-border pt-6"><h3 className="text-sm font-semibold text-ink">{isTr ? "İletişim Bilgileri" : "Contact Information"}</h3><div className="mt-3 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border bg-surface-muted p-3"><span className="block text-[10px] text-muted-foreground">{isTr ? "Veli / Ödeyen" : "Guardian / Payer"}</span><strong className="text-xs">{selectedGuardian?.full_name || "—"}</strong></div><div className="rounded-xl border bg-surface-muted p-3"><span className="block text-[10px] text-muted-foreground">{isTr ? "Doğrulanmış e-posta" : "Verified email"}</span><strong className="text-xs">{selectedGuardian?.email || "—"}</strong>{selectedGuardian?.email_verified_at ? <Check className="ml-1 inline size-3 text-emerald-700" /> : null}</div><div className="rounded-xl border bg-surface-muted p-3 sm:col-span-2"><span className="block text-[10px] text-muted-foreground">{isTr ? "Paket sahibi öğrenci" : "Package owner learner"}</span><strong className="text-xs">{selectedLearner?.full_name || "—"}</strong></div></div></div>
 
-            {!contextReady ? <div role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{accountType === "admin" ? (isTr ? "Ödeme için doğrulanmış veli ve bağlı öğrenci seçilmelidir." : "Select a verified guardian and linked learner before payment.") : (isTr ? "Doğrulanmış Veli Hesabı veya öğrenci bağlantısı bulunamadı. Profilinizi tamamlayın." : "A verified Parent Account or learner link is missing. Complete your profile.")}</div> : null}
+            <label className="mt-6 block text-xs font-semibold text-ink" htmlFor="checkout-billing-address">
+              {copy.billingAddress}
+              <textarea
+                id="checkout-billing-address"
+                required
+                minLength={10}
+                maxLength={300}
+                autoComplete="street-address"
+                value={paymentAddress}
+                onBlur={() => setAddressTouched(true)}
+                onChange={(event) => setPaymentAddress(event.target.value)}
+                aria-describedby="checkout-billing-address-hint checkout-billing-address-error"
+                aria-invalid={addressTouched && !paymentAddressValid}
+                className="mt-2 min-h-24 w-full resize-y rounded-xl border border-input bg-surface p-3 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+              <span id="checkout-billing-address-hint" className="mt-1.5 block text-[11px] font-normal leading-relaxed text-muted-foreground">{copy.billingAddressHint}</span>
+              {addressTouched && !paymentAddressValid ? <span id="checkout-billing-address-error" role="alert" className="mt-1 block text-[11px] font-medium text-red-700">{copy.billingAddressError}</span> : null}
+            </label>
+
+            {!contextReady ? <div role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{accountType === "admin" ? (isTr ? "Ödeme için doğrulanmış hesap sahibi ve bağlı öğrenci seçilmelidir." : "Select a verified account holder and linked learner before payment.") : (isTr ? "Doğrulanmış hesap veya öğrenci bağlantısı bulunamadı. Profilinizi tamamlayın." : "A verified account or learner link is missing. Complete your profile.")}</div> : null}
 
             <div className="mt-6 space-y-3 rounded-2xl border bg-[#F9FAF8] p-4 text-xs"><label className="flex gap-3"><input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" /><span><button type="button" onClick={() => setActiveModal("preInformation")} className="font-semibold text-primary underline">{isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}</button>{isTr ? " ve " : " and "}<button type="button" onClick={() => setActiveModal("salesAgreement")} className="font-semibold text-primary underline">{isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}</button>{isTr ? " metinlerini kabul ediyorum." : "."}</span></label><label className="flex gap-3"><input type="checkbox" checked={refundPolicyAccepted} onChange={(event) => setRefundPolicyAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" /><span><button type="button" onClick={() => setActiveModal("refundPolicy")} className="font-semibold text-primary underline">{isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}</button>{isTr ? " metnini kabul ediyorum." : "."}</span></label></div>
 
-            <div className="mt-6"><HostedCardPanel locale={locale} packageId={selectedPackage?.id ?? ""} couponCode={appliedCoupon?.code} learnerId={learnerId} guardianUserId={accountType === "admin" ? guardianId : undefined} contextReady={contextReady} termsAccepted={termsAccepted} refundPolicyAccepted={refundPolicyAccepted} /></div>
+            <div className="mt-6"><HostedCardPanel locale={locale} packageId={selectedPackage?.id ?? ""} couponCode={appliedCoupon?.code} learnerId={learnerId} guardianUserId={accountType === "admin" ? guardianId : undefined} payerAddress={normalizedPaymentAddress} addressErrorText={copy.billingAddressError} onAddressInvalid={() => setAddressTouched(true)} contextReady={contextReady} termsAccepted={termsAccepted} refundPolicyAccepted={refundPolicyAccepted} /></div>
             <div className="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground"><ShieldCheck className="size-4 text-emerald-700" />{copy.secureText}</div>
           </div>
         </div>

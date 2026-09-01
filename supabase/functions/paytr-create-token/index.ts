@@ -41,6 +41,7 @@ Deno.serve(async (req: Request) => {
     const packageId = String(payload.packageId ?? "").trim();
     const learnerId = String(payload.learnerId ?? "").trim();
     const selectedGuardianId = String(payload.guardianUserId ?? "").trim();
+    const payerAddress = String(payload.payerAddress ?? "").trim().replace(/\s+/g, " ");
     const couponCode = payload.couponCode ? String(payload.couponCode).trim().toUpperCase() : null;
     const termsAccepted = payload.termsAccepted === true;
     const refundPolicyAccepted = payload.refundPolicyAccepted === true;
@@ -62,7 +63,7 @@ Deno.serve(async (req: Request) => {
       admin.from("guardian_students").select("active").eq("guardian_user_id", purchaserGuardianId).eq("student_id", learnerId).eq("active", true).maybeSingle(),
       admin.from("student_profiles").select("id,full_name,active").eq("id", learnerId).maybeSingle(),
     ]);
-    if (!guardian?.active || !relation?.active || !learner?.active) return buildJsonResponse({ error_code: "LEARNER_ACCESS_DENIED", message: locale === "tr" ? "Seçilen öğrenci bu veli hesabına bağlı değil." : "The selected learner is not linked to this guardian." }, 403, req);
+    if (!guardian?.active || !relation?.active || !learner?.active) return buildJsonResponse({ error_code: "LEARNER_ACCESS_DENIED", message: locale === "tr" ? "Seçilen öğrenci bu hesaba bağlı değil." : "The selected learner is not linked to this account." }, 403, req);
 
     const { data: purchaserAuth } = await admin.auth.admin.getUserById(purchaserGuardianId);
     const authGuardian = purchaserAuth?.user;
@@ -72,10 +73,9 @@ Deno.serve(async (req: Request) => {
     }
     const payerName = String(guardian.full_name || "").trim().replace(/\s+/g, " ");
     const payerPhone = String(guardian.phone || "").trim().replace(/[\s().-]+/g, "");
-    const payerAddress = String(guardian.contact_address || "").trim().replace(/\s+/g, " ");
     if (payerName.length < 2 || payerName.length > 100) return validationError(req, locale, "PAYER_NAME_REQUIRED", "Lütfen ad ve soyadınızı eksiksiz giriniz.", "Enter your full name in your guardian profile.");
     if (!PHONE_RE.test(payerPhone)) return validationError(req, locale, "PHONE_REQUIRED", "Ödeme için profilinizde geçerli telefon numarası bulunamadı.", "A valid phone number is missing from your guardian profile.");
-    if (payerAddress.length < 10 || payerAddress.length > 300) return validationError(req, locale, "ADDRESS_REQUIRED", "Ödeme için gerekli adres bilgisi profilinizde eksik.", "The address required for payment is missing from your guardian profile.");
+    if (payerAddress.length < 10 || payerAddress.length > 300) return validationError(req, locale, "ADDRESS_REQUIRED", "Fatura / ödeme adresi 10–300 karakter olmalıdır.", "Billing address must be between 10 and 300 characters.");
 
     const { data: packageRow, error: packageError } = await admin.from("pricing_packages")
       .select("id,name_tr,name_en,current_total,price_amount,currency,lesson_count,unit_price,purchase_mode,active")
@@ -94,6 +94,11 @@ Deno.serve(async (req: Request) => {
     }
     const finalAmount = Math.max(0, Math.round((baseAmount - discountAmount) * 100) / 100);
     if (finalAmount <= 0) return validationError(req, locale, "INVALID_AMOUNT", "Ödeme tutarı geçersiz.", "The payment amount is invalid.");
+
+    const { error: addressSaveError } = await admin.from("guardian_accounts")
+      .update({ contact_address: payerAddress })
+      .eq("user_id", purchaserGuardianId);
+    if (addressSaveError) return buildJsonResponse({ error_code: "ADDRESS_SAVE_FAILED", message: locale === "tr" ? "Ödeme adresi hesabınıza kaydedilemedi." : "Billing address could not be saved to your account." }, 500, req);
 
     const { data: singlePkg } = await admin.from("pricing_packages").select("price_amount,current_total,unit_price").eq("id", "single").maybeSingle();
     const merchantOid = generatePaytrMerchantOid();

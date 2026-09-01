@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, ClipboardList, Clock, CreditCard, ExternalLink, LayoutDashboard, Lock, LogOut, MessageCircle, Package, Plus, RefreshCw, Save, Send, UserRound, Video, Award } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
+import { getPaymentRefundCopy } from "@/content/payment-refund";
 import { localizedPath } from "@/lib/routes";
 import { updateGuardianProfile, updateStudentEmail, updateStudentPassword } from "@/lib/student/auth";
 import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
-import { getStudentPortalData, updateStudentProfile, type StudentPortalData } from "@/lib/student/data";
+import { getStudentPortalData, setupLearnerProfile, updateStudentProfile, type StudentPortalData } from "@/lib/student/data";
 import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
 import { InteractiveHomework } from "@/components/student/InteractiveHomework";
 import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
@@ -25,7 +26,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database.types";
 
 type SectionId = StudentSectionId;
-const icons = [LayoutDashboard, UserRound, BookOpen, ClipboardList, Package, CreditCard, Award, MessageCircle];
+const icons = [LayoutDashboard, UserRound, BookOpen, Package, CreditCard, MessageCircle];
 const visibleNavigation = VISIBLE_STUDENT_NAVIGATION.map((item) => ({ ...item, Icon: icons[item.labelIndex] }));
 
 export function StudentPortal() {
@@ -40,7 +41,7 @@ export function StudentPortal() {
   const [signingOut, setSigningOut] = useState(false);
   const navigatedRef = useRef(false);
   const loadedUserRef = useRef("");
-  const load = useCallback(async (id: string) => { setLoading(true); const result = await getStudentPortalData(id); setLoading(false); if (result.error || !result.data?.profile.active) { setError(result.error || "INACTIVE_PROFILE"); return; } setData(result.data); }, []);
+  const load = useCallback(async (id: string) => { setLoading(true); const result = await getStudentPortalData(id); setLoading(false); if (result.error || !result.data?.profile.active) { setError(result.error || "INACTIVE_PROFILE"); return; } setError(""); setData(result.data); }, []);
 
   // Claim pending exam result if token exists in sessionStorage
   useEffect(() => {
@@ -97,16 +98,59 @@ export function StudentPortal() {
   }
 
   if (isInitializing || accountType !== "student") return <AccountWaveLoader />;
-  if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Veli hesabı yükleniyor…" : "Loading parent account…")}</div></div></section>;
+  if (!loading && error === "NO_LINKED_LEARNER" && guardian && user) return <LearnerSetupState locale={locale} accountEmail={guardian.email || user.email || ""} onCreated={async (studentId) => { const profileResult = await getSupabaseClient().from("student_profiles").select("*").eq("id", studentId).single(); if (profileResult.data) setLearners([profileResult.data]); setSelectedLearnerId(studentId); localStorage.setItem("oriens.selectedLearnerId", studentId); await load(studentId); }} />;
+  if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Hesabınız yükleniyor…" : "Loading your account…")}</div></div></section>;
 
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
-    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Veli Hesabı" : "Parent Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1><p className="mt-2 text-xs text-muted-foreground">{locale === "tr" ? "Seçili öğrenci" : "Selected learner"}: <strong className="text-ink">{data.profile.full_name}</strong></p>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><div className="flex gap-2"><button onClick={() => load(selectedLearnerId)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><RefreshCw className="size-4" />{locale === "tr" ? "Yenile" : "Refresh"}</button><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></div></header>
+    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Hesabım" : "My Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1><p className="mt-2 text-xs text-muted-foreground">{locale === "tr" ? "Öğrenci" : "Learner"}: <strong className="text-ink">{data.profile.full_name}</strong></p>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><div className="flex gap-2"><button onClick={() => load(selectedLearnerId)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><RefreshCw className="size-4" />{locale === "tr" ? "Yenile" : "Refresh"}</button><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></div></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId)} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "homework" && <Homework data={data} locale={locale} onReload={() => load(selectedLearnerId)} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "exam_history" && <ExamHistoryView userId={selectedLearnerId} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId)} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
     </div>
   </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</div></nav>
   <LogoutConfirmationModal open={logoutModalOpen} signingOut={signingOut} locale={locale} onCancel={() => setLogoutModalOpen(false)} onConfirm={handleConfirmLogout} />
   </section>;
+}
+
+function LearnerSetupState({ locale, accountEmail, onCreated }: { locale: "tr" | "en"; accountEmail: string; onCreated: (studentId: string) => Promise<void> }) {
+  const [form, setForm] = useState({ fullName: "", email: accountEmail, phone: "", school: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const isTr = locale === "tr";
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    const result = await setupLearnerProfile({ ...form, preferredLanguage: locale });
+    const value = result.data as { success?: boolean; student_id?: string; error_code?: string } | null;
+    if (result.error || !value?.success || !value.student_id) {
+      setBusy(false);
+      setError(result.error?.message || value?.error_code || (isTr ? "Öğrenci bilgileri kaydedilemedi." : "Learner details could not be saved."));
+      return;
+    }
+    await onCreated(value.student_id);
+  }
+
+  return (
+    <section className="min-h-screen bg-background px-4 pt-28 pb-20 sm:pt-36">
+      <div className="mx-auto max-w-2xl rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{isTr ? "Hesabım" : "My Account"}</p>
+        <h1 className="mt-3 font-heading text-3xl text-ink">{isTr ? "Öğrenci Bilgileri" : "Learner Details"}</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          {isTr ? "Hesabınız hazır. Derslerin ve ders haklarının doğru kişiyle ilişkilendirilmesi için öğrenci bilgilerini tanımlayın." : "Your account is ready. Add learner details so lessons and lesson rights can be linked to the correct person."}
+        </p>
+        {error && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+        <form onSubmit={submit} className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label className="text-xs font-semibold text-ink">{isTr ? "Öğrenci Adı Soyadı" : "Learner Full Name"}<input required minLength={2} maxLength={100} value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
+          <label className="text-xs font-semibold text-ink">{isTr ? "Öğrenci E-postası" : "Learner Email"}<input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
+          <label className="text-xs font-semibold text-ink">{isTr ? "Telefon (isteğe bağlı)" : "Phone (optional)"}<input type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
+          <label className="text-xs font-semibold text-ink">{isTr ? "Okul (isteğe bağlı)" : "School (optional)"}<input value={form.school} onChange={(event) => setForm({ ...form, school: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
+          <button disabled={busy} className="min-h-12 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-forest disabled:opacity-50 sm:col-span-2">{busy ? (isTr ? "Kaydediliyor…" : "Saving…") : (isTr ? "Öğrenci Bilgilerini Kaydet" : "Save Learner Details")}</button>
+        </form>
+      </div>
+    </section>
+  );
 }
 
 function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) { return <section className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-7"><div className="font-heading text-2xl text-ink">{title}</div><div className="mt-5">{children}</div></section>; }
@@ -177,8 +221,6 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
       .filter((l) => l.status === "scheduled")
       .sort((a, b) => a.lesson_date.localeCompare(b.lesson_date))[0];
   }, [data.lessons]);
-
-  const activeHomework = data.homework.filter((h) => ["assigned", "in_progress", "overdue", "submitted"].includes(h.status));
 
   return (
     <div className="grid gap-5 sm:grid-cols-2">
@@ -295,9 +337,9 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
       </div>
 
       <div className="rounded-2xl border border-border bg-surface p-6">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{locale === "tr" ? "Aktif Ödevler" : "Active Homework"}</h3>
-        <p className="mt-2 text-2xl font-bold text-ink">{activeHomework.length}</p>
-        <p className="mt-1 text-xs text-muted-foreground">{locale === "tr" ? "Teslim bekleyen veya incelenen" : "Pending or submitted"}</p>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{locale === "tr" ? "Akademik İlerleme" : "Academic Progress"}</h3>
+        <p className="mt-2 text-2xl font-bold text-ink">{data.lessons.filter((lesson) => lesson.status === "completed").length}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{locale === "tr" ? "Tamamlanan ders" : "Completed lessons"}</p>
       </div>
     </div>
   );
@@ -348,7 +390,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
     const result = await updateGuardianProfile({ ...guardianForm, preferredLanguage: locale });
     setGuardianBusy(false);
     if (result.error) setErr(result.error.message);
-    else setMsg(locale === "tr" ? "Veli bilgileri güncellendi." : "Guardian details updated.");
+    else setMsg(locale === "tr" ? "Hesap bilgileri güncellendi." : "Account details updated.");
   }
 
   const toggleExam = (id: string) => {
@@ -426,17 +468,17 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
       {msg && <p className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800">{msg}</p>}
       {err && <p className="rounded-xl border border-red-300 bg-red-50 p-4 text-xs font-semibold text-red-800">{err}</p>}
 
-      <Panel title={locale === "tr" ? "Veli / Hesap Sahibi Bilgileri" : "Guardian / Account Holder Details"}>
+      <Panel title={locale === "tr" ? "Hesap Sahibi Bilgileri" : "Account Holder Details"}>
         <form onSubmit={saveGuardian} className="grid gap-4 sm:grid-cols-2">
           <label className="text-xs font-medium text-muted-foreground">{locale === "tr" ? "Ad Soyad" : "Full Name"}<input required minLength={2} maxLength={100} value={guardianForm.fullName} onChange={(event) => setGuardianForm({...guardianForm,fullName:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
           <label className="text-xs font-medium text-muted-foreground">{locale === "tr" ? "Telefon" : "Phone"}<input required type="tel" value={guardianForm.phone} onChange={(event) => setGuardianForm({...guardianForm,phone:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
           <label className="text-xs font-medium text-muted-foreground sm:col-span-2">{locale === "tr" ? "İletişim Adresi" : "Contact Address"}<textarea required minLength={10} maxLength={300} value={guardianForm.contactAddress} onChange={(event) => setGuardianForm({...guardianForm,contactAddress:event.target.value})} className="mt-1 min-h-20 w-full rounded-xl border border-input bg-surface p-3 text-sm text-ink" /></label>
-          <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">{locale === "tr" ? `Doğrulanmış e-posta: ${guardian?.email || "—"}. E-posta değişikliği ayrı doğrulama gerektirir.` : `Verified email: ${guardian?.email || "—"}. Email changes require separate verification.`}</p><button disabled={guardianBusy} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"><Save className="size-4" />{guardianBusy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Veli Bilgilerini Kaydet" : "Save Guardian Details")}</button></div>
+          <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">{locale === "tr" ? `Doğrulanmış e-posta: ${guardian?.email || "—"}. E-posta değişikliği ayrı doğrulama gerektirir.` : `Verified email: ${guardian?.email || "—"}. Email changes require separate verification.`}</p><button disabled={guardianBusy} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"><Save className="size-4" />{guardianBusy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Hesap Bilgilerini Kaydet" : "Save Account Details")}</button></div>
         </form>
       </Panel>
 
       {/* Learner identity remains distinct from the account holder. */}
-      <Panel title={locale === "tr" ? "Seçili Öğrenci Bilgileri" : "Selected Learner Details"}>
+      <Panel title={locale === "tr" ? "Öğrenci Bilgileri" : "Learner Details"}>
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-border bg-surface-muted/60 p-4">
@@ -464,8 +506,8 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
             <Lock className="size-3.5 shrink-0 text-muted-foreground" />
             <span>
               {locale === "tr"
-                ? "Öğrenci kimliği veli hesabından ve geçmiş ödeme anlık görüntülerinden ayrıdır."
-                : "Learner identity is separate from the guardian account and historical payment snapshots."}
+                ? "Öğrenci bilgileri hesap sahibinden ve geçmiş ödeme kayıtlarından ayrı tutulur."
+                : "Learner details are kept separate from the account holder and historical payment records."}
             </span>
           </div>
         </div>
@@ -931,7 +973,7 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
 
   if (!hasPurchases) {
     return (
-      <Panel title={locale === "tr" ? "Paketim" : "My Package"}>
+      <Panel title={locale === "tr" ? "Ders Hakları / Paketler" : "Lesson Rights / Packages"}>
         <Empty>{locale === "tr" ? "Hesabınıza tanımlı aktif bir eğitim paketi bulunmuyor." : "No active package is assigned to your account."}</Empty>
         <div className="mt-5">
           <Link
@@ -1112,6 +1154,7 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
 function Metric({label,value}:{label:string;value:string|number}){return <div className="rounded-xl border border-border bg-surface-muted p-4"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold text-ink">{value}</dd></div>;}
 
 function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
+  const refundCopy = getPaymentRefundCopy(locale);
   return (
     <div className="space-y-5">
       <Panel title={locale === "tr" ? "Ödemelerim" : "My Payments"}>
@@ -1141,8 +1184,9 @@ function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
                     {p.payment_method === "bank_transfer"
                       ? locale === "tr" ? "Havale / EFT" : "Bank Transfer"
                       : locale === "tr" ? "Kart" : "Card"}{" "}
-                    · <span className="font-semibold text-ink">{status(p.status, locale)}</span>
+                    · <span className="font-semibold text-ink">{p.refund_status === "partial" ? refundCopy.partiallyRefunded : p.refund_status === "full" ? refundCopy.refunded : status(p.status, locale)}</span>
                   </p>
+                  {Number(p.refunded_amount || 0) > 0 ? <p className="text-[11px] font-medium text-purple-800">{refundCopy.refundedAmount}: {new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: p.currency }).format(Number(p.refunded_amount))}</p> : null}
                 </article>
               );
             })}

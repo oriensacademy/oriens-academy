@@ -148,13 +148,6 @@ export function PricingPage() {
           />
         </Reveal>
 
-        <div className="mx-auto mb-8 max-w-[1320px] px-4">
-          <p className="rounded-xl border border-[#CBD5CC] bg-white/80 px-5 py-3 text-center text-sm text-[#52675B] shadow-xs">
-            <strong className="text-[#10271B]">{locale === "tr" ? "Şeffaf Fiyatlandırma" : "Transparent Pricing"}</strong>
-            {locale === "tr" ? " — Her öğrenci için aynı standart ücretler. Kişiselleştirilmiş çalışma planı yayımlanan paket ücretlerini değiştirmez." : " — The same standard rates for every student. A personalised study plan does not change the published package rates."}
-          </p>
-        </div>
-
         {!pricingLoaded && (
           <div className="mx-auto grid max-w-[1320px] gap-5 px-4 sm:grid-cols-2 lg:grid-cols-5" aria-label={locale === "tr" ? "Paketler yükleniyor" : "Loading packages"}>
             {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-[510px] animate-pulse rounded-[22px] border border-[#DDE4DC] bg-white/70 motion-reduce:animate-none" />)}

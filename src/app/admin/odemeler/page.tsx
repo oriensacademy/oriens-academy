@@ -10,6 +10,7 @@ import {
   ChevronRight,
   FilterX,
   RefreshCw,
+  RotateCcw,
   Search,
   Tag,
   WalletCards,
@@ -17,10 +18,13 @@ import {
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import {
   listAdminPaymentsPaginated,
+  processPaytrRefund,
   reviewManualBankTransfer,
   sendPaymentReminder,
   type AdminPaymentRow,
 } from "@/lib/admin/payments";
+import { PaymentRefundDialog, type RefundReviewRequest } from "@/components/admin/PaymentRefundDialog";
+import { getPaymentRefundCopy } from "@/content/payment-refund";
 import { formatCurrency } from "@/lib/format/currency";
 import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
@@ -35,6 +39,7 @@ const statusLabels: Record<string, { label: string; bg: string; text: string }> 
 };
 
 export default function AdminPaymentsPage() {
+  const refundCopy = getPaymentRefundCopy("tr");
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
   const router = useRouter();
   const pathname = usePathname();
@@ -59,6 +64,8 @@ export default function AdminPaymentsPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [reviewing, setReviewing] = useState("");
   const [reminding, setReminding] = useState("");
+  const [refundRow, setRefundRow] = useState<AdminPaymentRow | null>(null);
+  const [refunding, setRefunding] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -168,6 +175,30 @@ export default function AdminPaymentsPage() {
     });
   }
 
+  function reviewRefund(request: RefundReviewRequest) {
+    const { context, refundAmount, lessonsToRevoke, reason, idempotencyKey } = request;
+    requestConfirmation({
+      title: "İade işlemini onayla",
+      description: `${context.account_holder || "Hesap sahibi"}${context.learner ? ` / ${context.learner}` : ""} · ${context.reference} · ${money(refundAmount, context.currency)} iade · ${lessonsToRevoke} ders hakkı iptali · işlem sonrası ${context.remaining_lessons - lessonsToRevoke} kalan hak · Neden: ${reason}`,
+      confirmLabel: "İadeyi Onayla",
+      destructive: true,
+      action: async () => {
+        setRefunding(context.transaction_id);
+        setError("");
+        setMessage("");
+        const result = await processPaytrRefund({ transactionId: context.transaction_id, refundAmount, lessonsToRevoke, reason, idempotencyKey, locale: "tr" });
+        setRefunding("");
+        if (!result.success) {
+          setError(result.error || refundCopy.failed);
+          return;
+        }
+        setRefundRow(null);
+        setMessage(refundCopy.success);
+        refresh();
+      },
+    });
+  }
+
   function money(amount: number, currency = "TRY") {
     return formatCurrency(amount, { currency, locale: "tr" });
   }
@@ -178,6 +209,7 @@ export default function AdminPaymentsPage() {
   return (
     <div className="space-y-6">
       {confirmationDialog}
+      {refundRow ? <PaymentRefundDialog row={refundRow} onClose={() => { if (!refunding) setRefundRow(null); }} onReview={reviewRefund} /> : null}
       {/* Header */}
       <header className="flex flex-col gap-4 border-b border-[#DDE4DC] pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -367,6 +399,11 @@ export default function AdminPaymentsPage() {
                     bg: "bg-surface-muted",
                     text: "text-ink",
                   };
+                  const displayedStatus = row.refund_status === "partial"
+                    ? { label: refundCopy.partiallyRefunded, bg: "bg-purple-50 border-purple-200", text: "text-purple-800" }
+                    : row.refund_status === "full"
+                      ? { label: refundCopy.refunded, bg: "bg-purple-50 border-purple-200", text: "text-purple-800" }
+                      : st;
                   const reviewable =
                     row.payment_method === "bank_transfer" &&
                     row.provider === "manual_bank_transfer" &&
@@ -382,6 +419,7 @@ export default function AdminPaymentsPage() {
                       <td className="px-4 py-3.5 font-mono font-medium text-[#10271B]">{row.package_id}</td>
                       <td className="px-4 py-3.5">
                         <div className="font-bold text-sm text-[#10271B]">{money(row.amount, row.currency)}</div>
+                        {Number(row.refunded_amount || 0) > 0 ? <div className="mt-1 text-[10px] font-semibold text-purple-800">{refundCopy.refundedAmount}: {money(Number(row.refunded_amount), row.currency)} · {refundCopy.refundableAmount}: {money(Math.max(0, row.amount - Number(row.refunded_amount)), row.currency)}</div> : null}
                         {couponCode && (
                           <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-800">
                             <Tag className="size-3" />
@@ -406,8 +444,8 @@ export default function AdminPaymentsPage() {
                             : row.provider}
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${st.bg} ${st.text}`}>
-                          {st.label}
+                        <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${displayedStatus.bg} ${displayedStatus.text}`}>
+                          {displayedStatus.label}
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-[11px] text-[#68756C]">
@@ -450,6 +488,7 @@ export default function AdminPaymentsPage() {
                             </button>
                           </div>
                         )}
+                        {row.status === "paid" && row.payment_method === "card" && row.provider === "paytr" && row.refund_status !== "full" ? <div className="mt-2"><button type="button" disabled={refunding === row.id} onClick={() => setRefundRow(row)} className="inline-flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-1 text-[11px] font-semibold text-purple-900 hover:bg-purple-100 disabled:opacity-50"><RotateCcw className="size-3" />{refunding === row.id ? "İşleniyor…" : refundCopy.action}</button>{row.paytr_refund_reference ? <span className="mt-1 block font-mono text-[9px] text-purple-700">{row.paytr_refund_reference}</span> : null}{row.last_refund_reason ? <span className="mt-1 block text-[9px] text-muted-foreground">{row.last_refund_reason}</span> : null}</div> : null}
                       </td>
                     </tr>
                   );

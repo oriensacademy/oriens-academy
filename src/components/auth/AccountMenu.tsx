@@ -9,7 +9,7 @@ import { useAccount } from "@/lib/auth/account-context";
 import { localizedPath } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
-export function AccountMenu({ locale, mobile = false, active = false, onNavigate }: { locale: "tr" | "en"; mobile?: boolean; active?: boolean; onNavigate?: () => void }) {
+export function AccountMenu({ locale, mobile = false, active = false, onNavigate, onRequestLogout }: { locale: "tr" | "en"; mobile?: boolean; active?: boolean; onNavigate?: () => void; onRequestLogout?: () => void }) {
   const { signOut } = useAccount();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -46,13 +46,13 @@ export function AccountMenu({ locale, mobile = false, active = false, onNavigate
   }
 
   const logoutLabel = locale === "tr" ? "Çıkış Yap" : "Sign Out";
-  const accountLabel = locale === "tr" ? "Veli Hesabı" : "Parent Account";
+  const accountLabel = locale === "tr" ? "Hesabım" : "My Account";
 
   if (mobile) {
     return <>
       <li className="border-b border-border"><Link href={accountHref} onClick={onNavigate} className="block py-4 font-heading text-2xl font-medium text-ink">{accountLabel}</Link></li>
-      <li className="border-b border-border"><button type="button" onClick={() => setConfirming(true)} className="flex w-full items-center gap-2 py-4 text-left font-heading text-2xl font-medium text-ink"><LogOut className="size-5" />{logoutLabel}</button></li>
-      <li className="contents"><LogoutConfirmationModal open={confirming} signingOut={signingOut} locale={locale} onCancel={() => setConfirming(false)} onConfirm={confirmLogout} /></li>
+      <li className="border-b border-border"><button type="button" onClick={() => onRequestLogout ? onRequestLogout() : setConfirming(true)} className="flex w-full items-center gap-2 py-4 text-left font-heading text-2xl font-medium text-ink"><LogOut className="size-5" />{logoutLabel}</button></li>
+      {!onRequestLogout && <li className="contents"><LogoutConfirmationModal open={confirming} signingOut={signingOut} locale={locale} onCancel={() => setConfirming(false)} onConfirm={confirmLogout} /></li>}
     </>;
   }
 

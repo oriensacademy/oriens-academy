@@ -46,7 +46,7 @@ export const pricing = {
       package10: {
         title: "10 Derslik Paket",
         description: "Sınav hazırlığını, konu takibini ve düzenli ilerleme değerlendirmesini birlikte yürüten dengeli paket.",
-        features: ["60 dakikalık 10 birebir ders", "%15 paket indirimi", "Sınav ve ödev takibi"],
+        features: ["60 dakikalık 10 birebir ders", "%15 paket indirimi", "Ders hakları ve akademik ilerleme takibi"],
         unitPrice: "2.700 TL",
         totalPrice: "27.000 TL",
         originalPrice: "32.000 TL",

@@ -32,13 +32,15 @@ export type StudentPayment = Pick<
   | "created_at"
   | "public_reference"
   | "metadata"
+  | "refunded_amount"
+  | "refund_status"
 >;
 
 export type StudentAdjustment = {
   id: string;
   student_user_id: string;
   package_purchase_id: string;
-  adjustment_type: "extra_lessons" | "manual_adjustment" | "package_assigned" | "package_reactivated";
+  adjustment_type: "extra_lessons" | "manual_adjustment" | "package_assigned" | "package_reactivated" | "lesson_completed" | "past_lesson_added";
   lesson_delta: number;
   price_amount: number | null;
   currency: string;
@@ -182,7 +184,7 @@ export async function getStudentPortalData(
       supabase
         .from("payment_transactions")
         .select(
-          "id,package_id,amount,currency,payment_method,status,created_at,public_reference,metadata"
+          "id,package_id,amount,currency,payment_method,status,created_at,public_reference,metadata,refunded_amount,refund_status"
         )
         .eq("student_user_id", userId)
         .order("created_at", { ascending: false }),
@@ -259,6 +261,25 @@ export type StudentProfileUpdate = Partial<StudentProfileRow> & {
 export async function updateStudentProfile(userId: string, input: StudentProfileUpdate) {
   const client = getSupabaseClient();
   return client.from("student_profiles").update(input).eq("id", userId).select().single();
+}
+
+export async function setupLearnerProfile(input: {
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  school?: string | null;
+  preferredLanguage: "tr" | "en";
+}) {
+  const supabase = getSupabaseClient();
+  // Generated database types are updated after the migration is applied remotely.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any).rpc("setup_account_learner", {
+    p_full_name: input.fullName.trim(),
+    p_email: input.email.trim().toLowerCase(),
+    p_phone: input.phone?.trim() || null,
+    p_school: input.school?.trim() || null,
+    p_preferred_language: input.preferredLanguage,
+  });
 }
 
 export interface StudentHomeworkSubmissionInput {

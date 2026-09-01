@@ -1626,14 +1626,13 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
     <div style="font-size:14px;line-height:1.65;color:${PALETTE.primary};">
       <p style="margin:0 0 16px 0;">Merhaba <strong>${escapeHtml(studentName)}</strong>,</p>
       <p style="margin:0 0 12px 0;">Oriens Academy hesabınız başarıyla oluşturuldu.</p>
-      <p style="margin:0 0 16px 0;">Artık öğrenci hesabınız üzerinden sınav hazırlık sürecinizi ve eğitim planınızı tek yerden yönetebilirsiniz.</p>
+      <p style="margin:0 0 16px 0;">Artık eğitim sürecinizi ve ders planınızı hesabınızdan yönetebilirsiniz.</p>
       
       <p style="margin:0 0 8px 0;font-weight:600;color:${PALETTE.primary};">Hesabınız üzerinden:</p>
       <ul style="margin:0 0 20px 0;padding-left:20px;font-size:14px;line-height:1.75;color:${PALETTE.primary};">
-        <li style="margin-bottom:4px;">sınav geçmişinizi görüntüleyebilir,</li>
         <li style="margin-bottom:4px;">ders ve randevularınızı takip edebilir,</li>
-        <li style="margin-bottom:4px;">ödevlerinizi görüntüleyip teslim edebilir,</li>
-        <li style="margin-bottom:4px;">paket ve ödeme bilgilerinizi inceleyebilir,</li>
+        <li style="margin-bottom:4px;">kalan ders haklarınızı ve paketlerinizi inceleyebilir,</li>
+        <li style="margin-bottom:4px;">ödeme bilgilerinizi görüntüleyebilir,</li>
         <li style="margin-bottom:4px;">destek ekibimizle iletişime geçebilirsiniz.</li>
       </ul>
       ${actionButton(ctaLabel, portalAccountUrl)}
@@ -1642,14 +1641,13 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
     <div style="font-size:14px;line-height:1.65;color:${PALETTE.primary};">
       <p style="margin:0 0 16px 0;">Hello <strong>${escapeHtml(studentName)}</strong>,</p>
       <p style="margin:0 0 12px 0;">Your Oriens Academy account has been created successfully.</p>
-      <p style="margin:0 0 16px 0;">You can now manage your academic journey from your student account.</p>
+      <p style="margin:0 0 16px 0;">You can now manage your education process and lesson plan from your account.</p>
       
       <p style="margin:0 0 8px 0;font-weight:600;color:${PALETTE.primary};">From your account, you can:</p>
       <ul style="margin:0 0 20px 0;padding-left:20px;font-size:14px;line-height:1.75;color:${PALETTE.primary};">
-        <li style="margin-bottom:4px;">review your exam history,</li>
         <li style="margin-bottom:4px;">track lessons and appointments,</li>
-        <li style="margin-bottom:4px;">view and submit assignments,</li>
-        <li style="margin-bottom:4px;">manage package and payment information,</li>
+        <li style="margin-bottom:4px;">review remaining lesson rights and packages,</li>
+        <li style="margin-bottom:4px;">view payment information,</li>
         <li style="margin-bottom:4px;">contact the Oriens Academy support team.</li>
       </ul>
       ${actionButton(ctaLabel, portalAccountUrl)}
@@ -1673,13 +1671,12 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
         `Merhaba ${studentName},`,
         "",
         "Oriens Academy hesabınız başarıyla oluşturuldu.",
-        "Artık öğrenci hesabınız üzerinden sınav hazırlık sürecinizi ve eğitim planınızı tek yerden yönetebilirsiniz.",
+        "Artık eğitim sürecinizi ve ders planınızı hesabınızdan yönetebilirsiniz.",
         "",
         "Hesabınız üzerinden:",
-        "• sınav geçmişinizi görüntüleyebilir,",
         "• ders ve randevularınızı takip edebilir,",
-        "• ödevlerinizi görüntüleyip teslim edebilir,",
-        "• paket ve ödeme bilgilerinizi inceleyebilir,",
+        "• kalan ders haklarınızı ve paketlerinizi inceleyebilir,",
+        "• ödeme bilgilerinizi görüntüleyebilir,",
         "• destek ekibimizle iletişime geçebilirsiniz.",
         "",
         `${ctaLabel}: ${portalAccountUrl}`,
@@ -1693,13 +1690,12 @@ export function renderStudentWelcomeEmail(data: WelcomeEmailData) {
         `Hello ${studentName},`,
         "",
         "Your Oriens Academy account has been created successfully.",
-        "You can now manage your academic journey from your student account.",
+        "You can now manage your education process and lesson plan from your account.",
         "",
         "From your account, you can:",
-        "• review your exam history,",
         "• track lessons and appointments,",
-        "• view and submit assignments,",
-        "• manage package and payment information,",
+        "• review remaining lesson rights and packages,",
+        "• view payment information,",
         "• contact the Oriens Academy support team.",
         "",
         `${ctaLabel}: ${portalAccountUrl}`,

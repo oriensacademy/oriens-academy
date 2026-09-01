@@ -18,6 +18,9 @@ export function HostedCardPanel({
   couponCode,
   learnerId,
   guardianUserId,
+  payerAddress,
+  addressErrorText,
+  onAddressInvalid,
   contextReady = false,
   termsAccepted = false,
   refundPolicyAccepted = false,
@@ -28,6 +31,9 @@ export function HostedCardPanel({
   couponCode?: string;
   learnerId: string;
   guardianUserId?: string;
+  payerAddress: string;
+  addressErrorText: string;
+  onAddressInvalid?: () => void;
   contextReady?: boolean;
   termsAccepted?: boolean;
   refundPolicyAccepted?: boolean;
@@ -61,7 +67,7 @@ export function HostedCardPanel({
       return;
     }
 
-    const currentKey = `${packageId}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${locale}:${attempt}`;
+    const currentKey = `${packageId}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${payerAddress}:${locale}:${attempt}`;
     if (cachedKeyRef.current === currentKey && cachedTokenRef.current) {
       setIframeToken(cachedTokenRef.current);
       setLoading(false);
@@ -78,6 +84,7 @@ export function HostedCardPanel({
         couponCode,
         learnerId,
         guardianUserId,
+        payerAddress,
         locale,
         termsAccepted,
         refundPolicyAccepted,
@@ -123,6 +130,7 @@ export function HostedCardPanel({
     couponCode,
     learnerId,
     guardianUserId,
+    payerAddress,
     contextReady,
     startRequested,
     locale,
@@ -193,7 +201,15 @@ export function HostedCardPanel({
       ) : !startRequested ? (
         <button
           type="button"
-          onClick={() => setStartRequested(true)}
+          onClick={() => {
+            if (payerAddress.length < 10 || payerAddress.length > 300) {
+              onAddressInvalid?.();
+              setError({ title: addressErrorText, subtitle: isTr ? "Ödeme adresinizi kontrol edip tekrar deneyin." : "Review your billing address and try again." });
+              return;
+            }
+            setError(null);
+            setStartRequested(true);
+          }}
           className="group inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink px-6 text-base font-bold text-white shadow-lg shadow-ink/15 transition-all hover:-translate-y-0.5 hover:bg-forest hover:shadow-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
         >
           <ShieldCheck className="size-5" />

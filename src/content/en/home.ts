@@ -216,7 +216,7 @@ export const pricingPreview = {
       features: [
         "10 60-minute 1:1 lessons",
         "15% package discount",
-        "Exam and homework tracking",
+        "Lesson rights and academic progress tracking",
         "Most popular package",
       ],
     },

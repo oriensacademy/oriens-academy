@@ -126,7 +126,7 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
     name_tr: "20 Derslik Paket",
     name_en: "20-Lesson Package",
     description_tr: "Derinlemesine konu hakimiyeti, ödev takip ve deneme sınavı analizleri.",
-    description_en: "In-depth subject mastery, homework tracking, and mock exam analysis.",
+    description_en: "In-depth subject mastery, lesson-right tracking, and academic progress analysis.",
     lesson_count: 20,
     price_amount: 51000,
     current_total: 51000,
