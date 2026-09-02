@@ -258,7 +258,7 @@ otp_expiry = 3600
 
 # Recovery email template
 [auth.email.template.recovery]
-subject = "Oriens Academy — Şifrenizi Sıfırlayın / Reset Your Password"
+subject = "Oriens Academy — Şifre Sıfırlama Bağlantısı"
 content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template

@@ -46,6 +46,32 @@ export async function requestPasswordRecovery(
 
     const redirectTo = `${origin}${resetPasswordPath(locale)}`;
 
+    // 1. Primary: invoke canonical localized Edge Function
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "request-password-recovery",
+        {
+          body: { email: cleanEmail, locale },
+        }
+      );
+
+      if (!fnError && data?.success) {
+        return { success: true };
+      }
+
+      if (fnError) {
+        console.warn(
+          `[password-recovery] Edge function reported: ${fnError.message}, falling back to GoTrue`
+        );
+      }
+    } catch (edgeErr) {
+      console.warn(
+        "[password-recovery] Edge function unreachable, falling back to GoTrue:",
+        edgeErr
+      );
+    }
+
+    // 2. Fallback: direct Supabase Auth GoTrue recovery
     const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
       redirectTo,
     });

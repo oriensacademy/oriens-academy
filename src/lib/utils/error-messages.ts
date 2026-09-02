@@ -23,7 +23,7 @@ const ERROR_PATTERNS: ErrorMapping[] = [
     en: "Invalid email address or password. Please verify your credentials.",
   },
   {
-    test: (msg) => /rate limit|too many requests|over email rate limit/i.test(msg),
+    test: (msg) => /rate limit|too many requests|over email rate limit|security purposes|only request this once/i.test(msg),
     tr: "Çok fazla deneme yapıldı. Lütfen biraz bekleyip tekrar deneyiniz.",
     en: "Too many requests. Please wait a moment and try again.",
   },
