@@ -303,7 +303,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "5. İletişim",
           paragraphs: [
-            "İptal, iade ve muhasebe süreçlerine dair tüm destek talepleriniz için payments@oriens-academy.com veya 0850 304 04 67 numaralı kurumsal hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
+            "İptal, iade ve muhasebe süreçlerine dair tüm destek talepleriniz için payments@oriens-academy.com veya 0850 304 04 67 numaralı destek hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
           ],
         },
       ],
@@ -452,7 +452,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "4. İletişim",
           paragraphs: [
-            "Kullanım koşullarına dair bildirimleriniz için info@oriens-academy.com e-posta adresi veya 0850 304 04 67 kurumsal hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
+            "Kullanım koşullarına dair bildirimleriniz için info@oriens-academy.com e-posta adresi veya 0850 304 04 67 destek hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
           ],
         },
       ],
@@ -664,7 +664,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "5. Support Contact",
           paragraphs: [
-            "For inquiries regarding refunds and accounting, please contact payments@oriens-academy.com or our corporate line at 0850 304 04 67.",
+            "For inquiries regarding refunds and accounting, please contact payments@oriens-academy.com or our support line at 0850 304 04 67.",
           ],
         },
       ],

@@ -9,14 +9,13 @@ import {
   FileText,
   PackagePlus,
   Plus,
+  Minus,
   Send,
   StickyNote,
   Video,
   XCircle,
-  Sparkles,
   History,
   Check,
-  RotateCcw,
   CalendarPlus,
   Pencil,
   Trash2,
@@ -28,7 +27,7 @@ import {
   updateStudentPrivateNote,
   deleteStudentPrivateNote,
   assignStudentPackage,
-  addStudentExtraLessons,
+  adjustStudentPackageLessons,
   cancelStudentLesson,
   completeStudentLesson,
   recordCompletedLesson,
@@ -47,6 +46,7 @@ import { listStudentExamAttempts, type StudentExamAttempt } from "@/lib/student/
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { canonicalExams } from "@/content/canonical-exams";
 import { adminLessonCopy } from "@/content/admin-lessons";
+import { previewLessonAdjustment } from "@/lib/admin/lesson-adjustments";
 
 export type LearningSection = "lessons" | "homework" | "packages" | "payments" | "notes" | "exam_history";
 
@@ -394,7 +394,7 @@ function LessonsPanel({
           Canlı Dersler ve Ders Geçmişi ({lessons.length})
         </h4>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setIsAddingPast((value) => !value)} className="inline-flex items-center gap-1 rounded-lg border border-emerald-700 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 cursor-pointer"><History className="size-3.5" />{lessonCopy.pastAction}</button>
+          <button type="button" onClick={() => setIsAddingPast((value) => !value)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-700 bg-emerald-50 px-4 text-xs font-bold text-emerald-900 shadow-xs hover:bg-emerald-100 cursor-pointer"><History className="size-4" />{lessonCopy.pastAction}</button>
           <button
             type="button"
             onClick={() => onPlan ? onPlan() : setIsCreating(!isCreating)}
@@ -683,7 +683,7 @@ function LessonsPanel({
                       type="button"
                       disabled={busy}
                       onClick={() => setCompleteTarget(l)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 cursor-pointer disabled:opacity-50"
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-emerald-700 px-4 text-xs font-bold text-white shadow-xs hover:bg-emerald-800 cursor-pointer disabled:opacity-50"
                     >
                       <CheckCircle2 className="size-3.5" />
                       Ders Yapıldı
@@ -939,8 +939,9 @@ function PackagePanel({
   changed: () => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [activeModal, setActiveModal] = useState<"none" | "assign_package" | "extra_lessons">("none");
+  const [activeModal, setActiveModal] = useState<"none" | "assign_package" | "adjust_lessons">("none");
   const [targetPurchaseId, setTargetPurchaseId] = useState<string>("");
+  const [adjustmentMode, setAdjustmentMode] = useState<"add" | "remove">("add");
 
   // Assign Package Form State
   const [assignMode, setAssignMode] = useState<"catalog" | "custom">("catalog");
@@ -954,37 +955,43 @@ function PackagePanel({
     currency: "TRY",
     paymentStatus: "paid" as "pending" | "paid" | "waived",
     adminNotes: "",
-    sendNotification: true,
   });
 
-  // Extra Lessons Form State
-  const [extraForm, setExtraForm] = useState({
+  const [adjustmentForm, setAdjustmentForm] = useState({
     purchaseId: "",
-    lessonDelta: "3",
-    price: "0",
-    currency: "TRY",
-    paymentStatus: "waived" as "pending" | "paid" | "waived",
+    amount: "1",
+    reason: "",
     notes: "",
-    sendNotification: true,
   });
 
-  // Pick default purchase for extra lessons
   const defaultPurchase = purchases.find((p) => p.status === "active") || purchases[0];
-  const selectedExtraPurchase = purchases.find((p) => p.id === (extraForm.purchaseId || targetPurchaseId)) || defaultPurchase;
+  const selectedAdjustmentPurchase = purchases.find((p) => p.id === (adjustmentForm.purchaseId || targetPurchaseId)) || defaultPurchase;
+  const adjustmentAmount = Math.max(0, Number(adjustmentForm.amount) || 0);
+  const signedAdjustment = adjustmentMode === "add" ? adjustmentAmount : -adjustmentAmount;
+  const adjustmentPreview = previewLessonAdjustment(
+    selectedAdjustmentPurchase?.lesson_count || 0,
+    selectedAdjustmentPurchase?.lessons_used || 0,
+    signedAdjustment
+  );
+  const resultingLessonCount = adjustmentPreview.newLessonCount;
+  const resultingRemaining = adjustmentPreview.newRemaining;
 
   function openAssignModal() {
     setActiveModal("assign_package");
   }
 
-  function openExtraModal(purchaseId?: string) {
+  function openAdjustmentModal(purchaseId: string, mode: "add" | "remove") {
     const pId = purchaseId || defaultPurchase?.id || "";
     setTargetPurchaseId(pId);
-    setExtraForm((prev) => ({
+    setAdjustmentMode(mode);
+    setAdjustmentForm((prev) => ({
       ...prev,
       purchaseId: pId,
-      currency: purchases.find((x) => x.id === pId)?.currency || "TRY",
+      amount: "1",
+      reason: "",
+      notes: "",
     }));
-    setActiveModal("extra_lessons");
+    setActiveModal("adjust_lessons");
   }
 
   function chooseCatalogPackage(id: string) {
@@ -1014,7 +1021,6 @@ function PackagePanel({
       currency: "TRY",
       paymentStatus: packageForm.paymentStatus,
       adminNotes: packageForm.adminNotes.trim() || null,
-      sendNotification: packageForm.sendNotification,
     });
     setBusy(false);
     if (res.error) {
@@ -1025,24 +1031,27 @@ function PackagePanel({
     }
   }
 
-  async function handleExtraSubmit(e: React.FormEvent) {
+  async function handleAdjustmentSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedExtraPurchase) return;
-    const delta = Number(extraForm.lessonDelta);
-    if (delta < 1) {
-      setError("Ek ders sayısı en az 1 olmalıdır.");
+    if (!selectedAdjustmentPurchase) return;
+    if (adjustmentAmount < 1 || adjustmentAmount > 500) {
+      setError("Ders hakkı değişikliği 1 ile 500 arasında olmalıdır.");
+      return;
+    }
+    if (adjustmentForm.reason.trim().length < 3) {
+      setError("En az 3 karakterlik bir gerekçe girin.");
+      return;
+    }
+    if (resultingRemaining < 0) {
+      setError("Kalan ders hakkından daha fazla ders azaltılamaz.");
       return;
     }
     setBusy(true);
-    const res = await addStudentExtraLessons({
-      purchaseId: selectedExtraPurchase.id,
-      studentId: userId,
-      lessonDelta: delta,
-      priceAmount: Number(extraForm.price || 0),
-      currency: "TRY",
-      paymentStatus: extraForm.paymentStatus,
-      notes: extraForm.notes.trim() || null,
-      sendNotification: extraForm.sendNotification,
+    const res = await adjustStudentPackageLessons({
+      purchaseId: selectedAdjustmentPurchase.id,
+      lessonDelta: signedAdjustment,
+      reason: adjustmentForm.reason.trim(),
+      notes: adjustmentForm.notes.trim() || null,
     });
     setBusy(false);
     if (res.error) {
@@ -1235,15 +1244,9 @@ function PackagePanel({
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={packageForm.sendNotification}
-                  onChange={(e) => setPackageForm({ ...packageForm, sendNotification: e.target.checked })}
-                  className="rounded border-input text-primary focus:ring-primary"
-                />
-                Öğrenciye e-posta bildirimi gönder (payments@oriens-academy.com üzerinden)
-              </label>
+              <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] leading-relaxed text-emerald-900">
+                Paket kaydedildikten sonra hesap sahibinin bildirimi güvenli outbox üzerinden otomatik olarak işleme alınır.
+              </p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-border">
                 <button
@@ -1267,14 +1270,14 @@ function PackagePanel({
         </div>
       )}
 
-      {/* CENTERED MODAL: Ek Ders Ekle */}
-      {activeModal === "extra_lessons" && selectedExtraPurchase && (
+      {/* CENTERED MODAL: Ders hakkı ekle / azalt */}
+      {activeModal === "adjust_lessons" && selectedAdjustmentPurchase && (
         <div className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" role="dialog" aria-modal="true">
           <div className="relative my-auto w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
-                <Sparkles className="size-4 text-primary" />
-                Pakete Ek Ders Ekle
+                {adjustmentMode === "add" ? <Plus className="size-4 text-emerald-700" /> : <Minus className="size-4 text-rose-700" />}
+                {adjustmentMode === "add" ? "Ders Hakkı Ekle" : "Ders Hakkı Azalt"}
               </h4>
               <button
                 type="button"
@@ -1285,20 +1288,13 @@ function PackagePanel({
               </button>
             </div>
 
-            <form onSubmit={handleExtraSubmit} className="space-y-4">
+            <form onSubmit={handleAdjustmentSubmit} className="space-y-4">
               {purchases.length > 1 && (
                 <div>
                   <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Hedef Paket</label>
                   <select
-                    value={extraForm.purchaseId || selectedExtraPurchase.id}
-                    onChange={(e) => {
-                      const pId = e.target.value;
-                      setExtraForm({
-                        ...extraForm,
-                        purchaseId: pId,
-                        currency: "TRY",
-                      });
-                    }}
+                    value={adjustmentForm.purchaseId || selectedAdjustmentPurchase.id}
+                    onChange={(e) => setAdjustmentForm({ ...adjustmentForm, purchaseId: e.target.value })}
                     className={field}
                   >
                     {purchases.map((p) => (
@@ -1314,33 +1310,32 @@ function PackagePanel({
               <div className="rounded-xl border border-border bg-surface-muted/70 p-3.5 text-xs space-y-1.5">
                 <div className="flex justify-between font-semibold text-ink">
                   <span>Mevcut Paket:</span>
-                  <span>{selectedExtraPurchase.custom_package_name || selectedExtraPurchase.pricing_packages?.name_tr || selectedExtraPurchase.package_id}</span>
+                  <span>{selectedAdjustmentPurchase.custom_package_name || selectedAdjustmentPurchase.pricing_packages?.name_tr || selectedAdjustmentPurchase.package_id}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Ders Durumu:</span>
                   <span>
-                    {selectedExtraPurchase.lessons_used} kullanılan / {selectedExtraPurchase.lesson_count} toplam ·{" "}
-                    <strong className="text-emerald-700">{Math.max(0, selectedExtraPurchase.lesson_count - selectedExtraPurchase.lessons_used)} kalan</strong>
+                    {selectedAdjustmentPurchase.lesson_count} toplam · {selectedAdjustmentPurchase.lessons_used} kullanılan ·{" "}
+                    <strong className="text-emerald-700">{Math.max(0, selectedAdjustmentPurchase.lesson_count - selectedAdjustmentPurchase.lessons_used)} kalan</strong>
                   </span>
                 </div>
               </div>
 
-              {/* Lesson Delta Selector */}
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Eklenecek Ders Sayısı</label>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Değişiklik Miktarı</label>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   {[1, 2, 3, 5, 10].map((num) => (
                     <button
                       key={num}
                       type="button"
-                      onClick={() => setExtraForm({ ...extraForm, lessonDelta: String(num) })}
+                      onClick={() => setAdjustmentForm({ ...adjustmentForm, amount: String(num) })}
                       className={`rounded-xl border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer ${
-                        extraForm.lessonDelta === String(num)
+                        adjustmentForm.amount === String(num)
                           ? "border-primary bg-primary text-white shadow-xs"
                           : "border-border bg-surface hover:bg-surface-muted text-ink"
                       }`}
                     >
-                      +{num} Ders
+                      {adjustmentMode === "add" ? "+" : "−"}{num} Ders
                     </button>
                   ))}
                 </div>
@@ -1348,94 +1343,60 @@ function PackagePanel({
                   required
                   type="number"
                   min="1"
-                  max="100"
-                  placeholder="Özel ders adedi girin"
-                  value={extraForm.lessonDelta}
-                  onChange={(e) => setExtraForm({ ...extraForm, lessonDelta: e.target.value })}
+                  max="500"
+                  placeholder="Ders adedi"
+                  value={adjustmentForm.amount}
+                  onChange={(e) => setAdjustmentForm({ ...adjustmentForm, amount: e.target.value })}
                   className={field}
                 />
               </div>
 
-              {/* LIVE PREVIEW BOX */}
-              {Number(extraForm.lessonDelta) > 0 && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-950 space-y-1">
-                  <p className="font-bold flex items-center gap-1.5 text-emerald-900">
+              {adjustmentAmount > 0 && (
+                <div className={`rounded-2xl border p-3.5 text-xs space-y-1 ${resultingRemaining < 0 ? "border-rose-200 bg-rose-50 text-rose-950" : "border-emerald-200 bg-emerald-50/70 text-emerald-950"}`}>
+                  <p className="font-bold flex items-center gap-1.5">
                     <Check className="size-3.5 text-emerald-700" />
-                    Ek Ders Sonrası Hak Özeti:
+                    İşlem Sonrası Hak Özeti
                   </p>
                   <div className="grid grid-cols-3 gap-2 pt-1 text-center font-semibold">
                     <div className="rounded-xl bg-white/80 p-2 border border-emerald-200">
                       <span className="block text-[10px] text-muted-foreground">Yeni Toplam</span>
                       <span className="text-sm font-bold text-ink">
-                        {selectedExtraPurchase.lesson_count + Number(extraForm.lessonDelta)} ders
+                        {resultingLessonCount} ders
                       </span>
                     </div>
                     <div className="rounded-xl bg-white/80 p-2 border border-emerald-200">
                       <span className="block text-[10px] text-muted-foreground">Kullanılan (Sabit)</span>
-                      <span className="text-sm font-bold text-ink">{selectedExtraPurchase.lessons_used} ders</span>
+                      <span className="text-sm font-bold text-ink">{selectedAdjustmentPurchase.lessons_used} ders</span>
                     </div>
                     <div className="rounded-xl bg-emerald-100 p-2 border border-emerald-300">
                       <span className="block text-[10px] text-emerald-800">Yeni Kalan</span>
                       <span className="text-sm font-bold text-emerald-900">
-                        {selectedExtraPurchase.lesson_count + Number(extraForm.lessonDelta) - selectedExtraPurchase.lessons_used} ders
+                        {resultingRemaining} ders
                       </span>
                     </div>
                   </div>
-                  {selectedExtraPurchase.status === "completed" && (
-                    <p className="mt-2 text-[11px] font-medium text-emerald-800 flex items-center gap-1">
-                      <RotateCcw className="size-3" />
-                      Paket tamamlanmıştı; ek ders sonrası otomatik olarak <strong>Aktif</strong> duruma gelecektir.
-                    </p>
-                  )}
+                  {resultingRemaining < 0 && <p className="mt-2 font-semibold">Kalan haktan daha fazla ders azaltılamaz.</p>}
                 </div>
               )}
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ek Ücret (TL) (Opsiyonel)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={extraForm.price}
-                    onChange={(e) => setExtraForm({ ...extraForm, price: e.target.value })}
-                    className={field}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ödeme Durumu</label>
-                  <select
-                    value={extraForm.paymentStatus}
-                    onChange={(e) => setExtraForm({ ...extraForm, paymentStatus: e.target.value as "pending" | "paid" | "waived" })}
-                    className={field}
-                  >
-                    <option value="waived">Ücret Muafiyeti / Ücretsiz (Hediye / Dahil)</option>
-                    <option value="paid">Ödendi (Onaylı)</option>
-                    <option value="pending">Ödeme Bekliyor</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Gerekçe / Açıklama (Opsiyonel)</label>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Gerekçe</label>
                 <input
+                  required
                   type="text"
-                  placeholder="örn. Deneme sınavı soru analiz seansı / Hediye ek ders"
-                  value={extraForm.notes}
-                  onChange={(e) => setExtraForm({ ...extraForm, notes: e.target.value })}
+                  minLength={3}
+                  maxLength={200}
+                  placeholder="örn. Yönetim onaylı ders hakkı düzeltmesi"
+                  value={adjustmentForm.reason}
+                  onChange={(e) => setAdjustmentForm({ ...adjustmentForm, reason: e.target.value })}
                   className={field}
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={extraForm.sendNotification}
-                  onChange={(e) => setExtraForm({ ...extraForm, sendNotification: e.target.checked })}
-                  className="rounded border-input text-primary focus:ring-primary"
-                />
-                Öğrenciye e-posta bildirimi gönder (payments@oriens-academy.com üzerinden)
-              </label>
+              <div>
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Yönetici Notu (Opsiyonel)</label>
+                <textarea maxLength={1000} rows={3} value={adjustmentForm.notes} onChange={(e) => setAdjustmentForm({ ...adjustmentForm, notes: e.target.value })} className={field} />
+              </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-border">
                 <button
@@ -1447,11 +1408,11 @@ function PackagePanel({
                 </button>
                 <button
                   type="submit"
-                  disabled={busy || Number(extraForm.lessonDelta) < 1}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
+                  disabled={busy || adjustmentAmount < 1 || adjustmentAmount > 500 || adjustmentForm.reason.trim().length < 3 || resultingRemaining < 0}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 cursor-pointer ${adjustmentMode === "add" ? "bg-emerald-700 hover:bg-emerald-800" : "bg-rose-700 hover:bg-rose-800"}`}
                 >
-                  <Sparkles className="size-3.5" />
-                  {busy ? "Ekleniyor..." : "Ek Dersleri Tanımla"}
+                  {adjustmentMode === "add" ? <Plus className="size-3.5" /> : <Minus className="size-3.5" />}
+                  {busy ? "Kaydediliyor..." : adjustmentMode === "add" ? "Ders Hakkını Ekle" : "Ders Hakkını Azalt"}
                 </button>
               </div>
             </form>
@@ -1537,16 +1498,25 @@ function PackagePanel({
                     >
                       {isActive ? "Aktif" : p.status === "completed" ? "Tamamlandı" : p.status}
                     </span>
-                    {isActive && (
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => openExtraModal(p.id)}
-                        className="inline-flex items-center gap-1 rounded-xl border border-border bg-white px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors"
+                        onClick={() => openAdjustmentModal(p.id, "add")}
+                        className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 cursor-pointer transition-colors"
                       >
-                        <Plus className="size-3 text-primary" />
-                        Ek Ders Ekle
+                        <Plus className="size-3" />
+                        Ders Hakkı Ekle
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        disabled={remaining <= 0}
+                        onClick={() => openAdjustmentModal(p.id, "remove")}
+                        className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer transition-colors"
+                      >
+                        <Minus className="size-3" />
+                        Ders Hakkı Azalt
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1610,7 +1580,8 @@ function PackagePanel({
                                       ? "-1 Geçmiş Ders Eklendi"
                                   : `${adj.lesson_delta} Ders Düzeltmesi`}
                             </span>
-                            {adj.notes && <span className="text-ink/80"> — “{adj.notes}”</span>}
+                            {adj.reason && <span className="text-ink/80"> — {adj.reason}</span>}
+                            {adj.notes && <span className="text-ink/70"> · “{adj.notes}”</span>}
                           </div>
                           <span className="text-[10px]">
                             {new Date(adj.created_at).toLocaleDateString("tr-TR", {

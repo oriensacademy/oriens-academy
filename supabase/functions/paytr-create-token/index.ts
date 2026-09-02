@@ -24,15 +24,15 @@ Deno.serve(async (req: Request) => {
   if (!supabaseUrl || !serviceKey || !merchantId || !merchantKey || !merchantSalt) return buildJsonResponse({ error_code: "SERVER_CONFIG_ERROR", message: "Payment service is not configured." }, 503, req);
 
   try {
+    const payload = (await req.json()) as Record<string, unknown>;
+    const locale: "tr" | "en" = payload.locale === "en" ? "en" : "tr";
     const admin = createClient(supabaseUrl, serviceKey);
     const authorization = req.headers.get("authorization") ?? "";
     const accessToken = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7) : "";
     const { data: actorData, error: authError } = accessToken ? await admin.auth.getUser(accessToken) : { data: { user: null }, error: new Error("missing token") };
-    if (authError || !actorData.user) return buildJsonResponse({ error_code: "INVALID_SESSION", message: "Invalid user session." }, 401, req);
+    if (authError || !actorData.user) return buildJsonResponse({ error_code: "INVALID_SESSION", message: locale === "tr" ? "Oturumunuzun süresi dolmuş. Lütfen yeniden giriş yapın." : "Your session has expired. Please sign in again." }, 401, req);
 
     const actor = actorData.user;
-    const payload = (await req.json()) as Record<string, unknown>;
-    const locale: "tr" | "en" = payload.locale === "en" ? "en" : "tr";
     const rawPackageIds = Array.isArray(payload.packageIds) ? payload.packageIds : payload.packageId ? [payload.packageId] : [];
     const packageIds = rawPackageIds.map((value) => String(value).trim()).filter(Boolean);
     const learnerId = String(payload.learnerId ?? "").trim();

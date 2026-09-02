@@ -27,16 +27,7 @@ import { PaymentRefundDialog, type RefundReviewRequest } from "@/components/admi
 import { getPaymentRefundCopy } from "@/content/payment-refund";
 import { formatCurrency } from "@/lib/format/currency";
 import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
-
-const statusLabels: Record<string, { label: string; bg: string; text: string }> = {
-  pending: { label: "Bekliyor", bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
-  requires_action: { label: "Doğrulama Gerekli", bg: "bg-amber-50 border-amber-200", text: "text-amber-800" },
-  processing: { label: "İşleniyor", bg: "bg-blue-50 border-blue-200", text: "text-blue-800" },
-  paid: { label: "Ödendi", bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-800" },
-  failed: { label: "Başarısız", bg: "bg-rose-50 border-rose-200", text: "text-rose-800" },
-  cancelled: { label: "İptal", bg: "bg-neutral-100 border-neutral-200", text: "text-neutral-700" },
-  refunded: { label: "İade", bg: "bg-purple-50 border-purple-200", text: "text-purple-800" },
-};
+import { getAdminPaymentStatus } from "@/lib/admin/payment-status";
 
 export default function AdminPaymentsPage() {
   const refundCopy = getPaymentRefundCopy("tr");
@@ -215,7 +206,7 @@ export default function AdminPaymentsPage() {
         <div>
           <div className="flex items-center gap-2">
             <WalletCards className="size-6 text-[#819586]" />
-            <h1 className="text-xl font-bold text-[#10271B]">Ödemeler / Payments</h1>
+            <h1 className="text-xl font-bold text-[#10271B]">Ödemeler</h1>
           </div>
           <p className="mt-1 text-xs text-[#68756C]">
             Öğrenci paket satın alma ve ödeme işlemlerini sunucu taraflı filtreleyin; havaleleri doğrulayın veya hatırlatma gönderin.
@@ -275,12 +266,12 @@ export default function AdminPaymentsPage() {
           >
             <option value="all">Tüm Durumlar</option>
             <option value="paid">Ödendi (Paid)</option>
-            <option value="pending">Bekliyor (Pending)</option>
+            <option value="pending">Bekliyor</option>
             <option value="requires_action">Doğrulama Gerekli</option>
             <option value="processing">İşleniyor</option>
             <option value="refunded">İade (Refunded)</option>
-            <option value="failed">Başarısız (Failed)</option>
-            <option value="cancelled">İptal (Cancelled)</option>
+            <option value="failed">Başarısız</option>
+            <option value="cancelled">İptal</option>
           </select>
 
           {/* Payment Method */}
@@ -394,11 +385,7 @@ export default function AdminPaymentsPage() {
                   const lastReminder = meta.last_reminder_sent_at
                     ? new Date(meta.last_reminder_sent_at).toLocaleString("tr-TR")
                     : null;
-                  const st = statusLabels[row.status] || {
-                    label: row.status,
-                    bg: "bg-surface-muted",
-                    text: "text-ink",
-                  };
+                  const st = getAdminPaymentStatus(row.status, row.metadata);
                   const displayedStatus = row.refund_status === "partial"
                     ? { label: refundCopy.partiallyRefunded, bg: "bg-purple-50 border-purple-200", text: "text-purple-800" }
                     : row.refund_status === "full"

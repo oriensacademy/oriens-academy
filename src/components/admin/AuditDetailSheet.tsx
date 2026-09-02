@@ -34,7 +34,7 @@ export function AuditDetailSheet({ log, onClose }: AuditDetailSheetProps) {
           <div className="flex items-center gap-2">
             <FileCheck className="size-5 text-[#819586]" />
             <h2 className="text-sm font-semibold tracking-wide">
-              Denetim Kaydı Detayı / Audit Log Details
+              Denetim Kaydı Detayı
             </h2>
           </div>
           <button
@@ -51,7 +51,7 @@ export function AuditDetailSheet({ log, onClose }: AuditDetailSheetProps) {
           {/* Action Header */}
           <div className="rounded-xl border border-border bg-background-soft p-4 shadow-xs space-y-2">
             <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              İşlem Türü / Action
+              İşlem Türü
             </div>
             <div className="font-mono text-sm font-bold text-[#10271B]">
               {log.action}
@@ -76,14 +76,14 @@ export function AuditDetailSheet({ log, onClose }: AuditDetailSheetProps) {
               <div className="rounded-lg border border-border bg-white p-3">
                 <div className="text-[11px] text-muted-foreground">Aktör User ID</div>
                 <div className="font-mono text-[11px] font-semibold text-foreground truncate mt-0.5">
-                  {log.actor_user_id || "Sistem / Edge Function"}
+                  {log.actor_user_id || "Sistem İşlevi"}
                 </div>
               </div>
 
               <div className="rounded-lg border border-border bg-white p-3">
                 <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                   <Tag className="size-3 text-muted-foreground" />
-                  <span>Entity Type</span>
+                  <span>Varlık Türü</span>
                 </div>
                 <div className="font-semibold text-foreground mt-0.5 capitalize">
                   {log.entity_type}
@@ -105,7 +105,7 @@ export function AuditDetailSheet({ log, onClose }: AuditDetailSheetProps) {
           <div className="space-y-2">
             <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
               <Code2 className="size-4 text-[#819586]" />
-              <span>İşlem Meta Verileri / Audit Metadata</span>
+              <span>İşlem Meta Verileri</span>
             </h3>
 
             {log.metadata ? (

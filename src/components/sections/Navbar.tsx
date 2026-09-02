@@ -216,7 +216,7 @@ export function Navbar() {
                   href={accountHref}
                   aria-current={isAccountActive ? "page" : undefined}
                   className={cn(
-                    "flex min-h-11 items-center justify-center gap-2 rounded-full border px-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    "flex min-h-11 min-w-fit shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border px-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     isAccountActive
                       ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25 shadow-xs"
                       : "border-border text-ink hover:bg-surface-muted",

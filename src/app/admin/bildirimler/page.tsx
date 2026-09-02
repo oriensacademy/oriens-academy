@@ -109,7 +109,7 @@ function NotificationsContent() {
           <div className="flex items-center gap-2">
             <Bell className="size-6 text-[#819586]" />
             <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              Bildirim & E-Posta Teslimatları / Notifications Log
+              Bildirim ve E-Posta Teslimatları
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -180,11 +180,11 @@ function NotificationsContent() {
               }}
               className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
             >
-              <option value="all">Tüm Durumlar (All)</option>
-              <option value="sent">Gönderildi (Sent)</option>
-              <option value="failed">Başarısız (Failed)</option>
-              <option value="pending">Bekliyor (Pending)</option>
-              <option value="processing">İşleniyor (Processing)</option>
+              <option value="all">Tüm Durumlar</option>
+              <option value="sent">Gönderildi</option>
+              <option value="failed">Başarısız</option>
+              <option value="pending">Bekliyor</option>
+              <option value="processing">İşleniyor</option>
             </select>
           </div>
 
@@ -198,8 +198,8 @@ function NotificationsContent() {
               }}
               className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
             >
-              <option value="all">Tüm Kanallar (All)</option>
-              <option value="email">E-posta (Email)</option>
+              <option value="all">Tüm Kanallar</option>
+              <option value="email">E-posta</option>
               <option value="sms">SMS</option>
               <option value="push">Push</option>
             </select>
@@ -286,7 +286,7 @@ function NotificationsContent() {
             <Inbox className="size-6" />
           </div>
           <h3 className="mt-3 text-sm font-bold text-foreground">
-            Bildirim Kaydı Bulunamadı / No Notification Logs
+            Bildirim Kaydı Bulunamadı
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
             Filtreleme kriterlerinize uygun bildirim teslimat kaydı bulunmuyor.
@@ -303,7 +303,6 @@ function NotificationsContent() {
                 <tr>
                   <th className="px-4 py-3">Konu & Bildirim Türü</th>
                   <th className="px-4 py-3">Alıcı</th>
-                  <th className="px-4 py-3">Kanal / Sağlayıcı</th>
                   <th className="px-4 py-3">Durum</th>
                   <th className="px-4 py-3">Tarih</th>
                   <th className="px-4 py-3 text-right">İşlem</th>
@@ -338,10 +337,6 @@ function NotificationsContent() {
                             ID: {del.provider_message_id}
                           </div>
                         )}
-                      </td>
-
-                      <td className="px-4 py-3.5 text-muted-foreground font-semibold">
-                        <span className="uppercase text-foreground">{del.channel || "email"}</span> &middot; <span className="uppercase text-[11px]">{del.provider}</span>
                       </td>
 
                       <td className="px-4 py-3.5">

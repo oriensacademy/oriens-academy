@@ -37,7 +37,7 @@ assert.doesNotMatch(portal, /Öğrenci bilgileri hesap sahibinden ve geçmiş ö
 assert.doesNotMatch(portal, /RefreshCw/);
 assert.match(portal, /window\.addEventListener\("focus", refreshSilently\)/);
 assert.match(navbar, /"Giriş Yap" : "Sign In"/);
-assert.match(language, /target === "tr" \? "Türkçe" : "English"/);
+assert.match(language, /target === "tr" \? "TR" : "ENG"/);
 assert.doesNotMatch(language, /target\.toUpperCase/);
 
 const canonical = new Map([["package10", 1000], ["package5", 600]]);

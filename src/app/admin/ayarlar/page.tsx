@@ -13,7 +13,7 @@ export default function AdminSettingsPage() {
       <header className="border-b border-border pb-5">
         <div className="flex items-center gap-2">
           <Settings className="size-6 text-[#819586]" />
-          <h1 className="text-xl font-bold tracking-tight text-[#10271B]">Ayarlar / Settings</h1>
+          <h1 className="text-xl font-bold tracking-tight text-[#10271B]">Ayarlar</h1>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">Yönetici hesap güvenliğini ve sistem kayıtlarını yönetin.</p>
       </header>
@@ -22,7 +22,7 @@ export default function AdminSettingsPage() {
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-xl bg-forest/10 text-primary"><ScrollText className="size-5" /></span>
           <span>
-            <span className="block text-sm font-bold text-foreground">Denetim Logları / Audit Logs</span>
+            <span className="block text-sm font-bold text-foreground">Denetim Logları</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">Yönetici işlemlerinin zaman damgalı sistem geçmişini görüntüleyin.</span>
           </span>
         </div>
@@ -87,7 +87,7 @@ function AccountSecuritySection() {
   return (
     <section className="space-y-6 rounded-xl border border-border bg-white p-6 shadow-xs">
       <div className="border-b border-border pb-3">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><ShieldCheck className="size-4 text-[#819586]" /><span>Hesap Güvenliği / Account Security</span></h2>
+        <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><ShieldCheck className="size-4 text-[#819586]" /><span>Hesap Güvenliği</span></h2>
         <p className="mt-0.5 text-xs text-muted-foreground">Yönetici hesabınızın giriş şifresini güvenli olarak değiştirin.</p>
       </div>
 
@@ -100,19 +100,19 @@ function AccountSecuritySection() {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <div className="space-y-2 rounded-lg border border-border bg-background-soft/50 p-4">
-          <div className="text-xs font-bold text-foreground">Yönetici E-postası / Admin Email</div>
+          <div className="text-xs font-bold text-foreground">Yönetici E-postası</div>
           <div className="break-all text-xs text-muted-foreground">{user?.email}</div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">E-posta değişikliği bu panelden yapılmaz.</p>
         </div>
         <form onSubmit={handleUpdatePassword} className="space-y-3 rounded-lg border border-border bg-background-soft/50 p-4">
-          <div className="text-xs font-bold text-foreground">Şifre Değiştir / Change Password</div>
-          <input type="password" required autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Mevcut Şifre / Current Password" className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground" />
-          <input type="password" required autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Yeni Şifre / New Password" className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground" />
-          <input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Yeni Şifre Tekrarı / Confirm Password" className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground" />
+          <div className="text-xs font-bold text-foreground">Şifre Değiştir</div>
+          <input type="password" required autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="Mevcut Şifre" className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground" />
+          <input type="password" required autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="Yeni Şifre" className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground" />
+          <input type="password" required autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Yeni Şifre Tekrarı" className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground" />
           <p className="text-[11px] leading-relaxed text-muted-foreground">En az 8 karakter; büyük harf, küçük harf, sayı ve sembol kullanın.</p>
           <button type="submit" disabled={passLoading || !currentPassword || !newPassword || !confirmPassword} className="inline-flex items-center gap-1.5 rounded-lg bg-[#10271B] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#0D2A1C] disabled:cursor-not-allowed disabled:opacity-40">
             {passLoading ? <Wave className="h-3.5 w-7 text-white" aria-label="Şifre güncelleniyor" /> : <Lock className="size-3.5" />}
-            <span>Şifreyi Güncelle / Update Password</span>
+            <span>Şifreyi Güncelle</span>
           </button>
         </form>
       </div>

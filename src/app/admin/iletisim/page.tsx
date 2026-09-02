@@ -24,7 +24,7 @@ export default function AdminContactsPage({ initialContactId = null, embedded = 
 }
 
 const STATUS_OPTIONS: Array<{ value: ContactStatus | "all"; label: string }> = [
-  { value: "all", label: "Tüm Durumlar / All Statuses" },
+  { value: "all", label: "Tüm Durumlar" },
   { value: "new", label: "Yeni (New)" },
   { value: "in_progress", label: "İşlemde (In Progress)" },
   { value: "resolved", label: "Çözüldü (Resolved)" },
@@ -102,7 +102,7 @@ function ContactsContent({ initialContactId, embedded }: { initialContactId: str
           <div className="flex items-center gap-2">
             <MessageSquare className="size-6 text-[#819586]" />
             <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              İletişim Talepleri / Contact Requests
+              İletişim Talepleri
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -117,7 +117,7 @@ function ContactsContent({ initialContactId, embedded }: { initialContactId: str
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted"
         >
           {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
-          <span>Yenile / Refresh</span>
+          <span>Yenile</span>
         </button>
       </div>}
 
@@ -211,7 +211,7 @@ function ContactsContent({ initialContactId, embedded }: { initialContactId: str
             <Inbox className="size-6" />
           </div>
           <h3 className="mt-3 text-sm font-bold text-foreground">
-            İletişim Talebi Bulunamadı / No Contact Requests
+            İletişim Talebi Bulunamadı
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
             Henüz gönderilmiş iletişim talebi yok veya filtrenizle eşleşen kayıt bulunamadı.
@@ -226,7 +226,7 @@ function ContactsContent({ initialContactId, embedded }: { initialContactId: str
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-3">Gönderen / Contact</th>
+                  <th className="px-4 py-3">Gönderen</th>
                   <th className="px-4 py-3">Konu & Özet</th>
                   <th className="px-4 py-3">Durum</th>
                   <th className="px-4 py-3">Tarih</th>
@@ -286,7 +286,7 @@ function ContactsContent({ initialContactId, embedded }: { initialContactId: str
                         }}
                         className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted"
                       >
-                        <span>Oku / Detay</span>
+                        <span>Detay</span>
                         <ChevronRight className="size-3 text-muted-foreground" />
                       </button>
                     </td>

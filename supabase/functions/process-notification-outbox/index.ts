@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
+import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 
 type OutboxRow = {
   id: string;
@@ -119,44 +120,47 @@ function render(row: OutboxRow) {
   return { subject, text, html, channel };
 }
 
-function verifyServiceRole(token: string): boolean {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return false;
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    const parsed = JSON.parse(jsonPayload);
-    return parsed.role === "service_role";
-  } catch {
-    return false;
-  }
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+  const invalid = validateMutationRequest(req, ["POST"]);
+  if (invalid) return invalid;
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const schedulerKeyHash = Deno.env.get("OUTBOX_SCHEDULER_KEY_SHA256") ?? "";
   const apikey = req.headers.get("apikey") || "";
   const authHeader = req.headers.get("authorization") || "";
   const bearer = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const body = await req.json().catch(() => ({})) as Record<string, unknown>;
 
-  const isAuthorized =
-    verifyServiceRole(bearer) ||
-    verifyServiceRole(apikey) ||
-    bearer === serviceKey ||
-    apikey === serviceKey;
-
-  if (!isAuthorized) return new Response("Forbidden", { status: 403 });
+  const isServiceRequest = Boolean(serviceKey) && (bearer === serviceKey || apikey === serviceKey);
+  const isScheduledRequest = body.source === "scheduled" && Boolean(schedulerKeyHash) && Boolean(apikey) &&
+    (await sha256Hex(apikey)) === schedulerKeyHash;
 
   const admin = createClient(supabaseUrl, serviceKey);
+  let isAdminRequest = false;
+  if (!isServiceRequest && !isScheduledRequest && bearer) {
+    const { data: userData } = await admin.auth.getUser(bearer);
+    if (userData.user) {
+      const { data: profile } = await admin
+        .from("admin_profiles")
+        .select("active,role")
+        .eq("user_id", userData.user.id)
+        .maybeSingle();
+      isAdminRequest = profile?.active === true && profile.role === "admin";
+    }
+  }
+
+  if (!isServiceRequest && !isScheduledRequest && !isAdminRequest) {
+    return buildJsonResponse({ success: false, error_code: "ADMIN_OR_SERVICE_REQUIRED" }, 403, req);
+  }
+
   const { data, error } = await admin.rpc("claim_email_notifications", { p_limit: 10 });
-  if (error) return Response.json({ success: false, error_code: "OUTBOX_CLAIM_FAILED" }, { status: 500 });
+  if (error) return buildJsonResponse({ success: false, error_code: "OUTBOX_CLAIM_FAILED" }, 500, req);
 
   let sent = 0;
   let failed = 0;
@@ -189,5 +193,5 @@ Deno.serve(async (req: Request) => {
       }).eq("id", row.id);
     }
   }
-  return Response.json({ success: true, claimed: (data || []).length, sent, failed });
+  return buildJsonResponse({ success: true, claimed: (data || []).length, sent, failed }, 200, req);
 });

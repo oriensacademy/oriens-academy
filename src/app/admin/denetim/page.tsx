@@ -26,7 +26,7 @@ export default function AdminAuditPage() {
 }
 
 const ENTITY_OPTIONS = [
-  { value: "all", label: "Tüm Varlıklar / All Entities" },
+  { value: "all", label: "Tüm Varlıklar" },
   { value: "booking", label: "Randevu (booking)" },
   { value: "contact_request", label: "İletişim Talebi (contact_request)" },
   { value: "availability_slot", label: "Müsaitlik (availability_slot)" },
@@ -116,7 +116,7 @@ function AuditContent() {
           <div className="flex items-center gap-2">
             <FileCheck className="size-6 text-[#819586]" />
             <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              Denetim & İşlem Logları / Audit Logs
+              Denetim ve İşlem Logları
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -214,7 +214,7 @@ function AuditContent() {
             <Inbox className="size-6" />
           </div>
           <h3 className="mt-3 text-sm font-bold text-foreground">
-            Denetim Kaydı Bulunamadı / No Audit Logs
+            Denetim Kaydı Bulunamadı
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
             Filtreleme kriterlerinize uygun denetim işlem kaydı bulunmuyor.
@@ -229,8 +229,8 @@ function AuditContent() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-3">İşlem (Action)</th>
-                  <th className="px-4 py-3">Varlık (Entity)</th>
+                  <th className="px-4 py-3">İşlem</th>
+                  <th className="px-4 py-3">Varlık</th>
                   <th className="px-4 py-3">Aktör / Kullanıcı</th>
                   <th className="px-4 py-3">Tarih</th>
                   <th className="px-4 py-3 text-right">İşlem</th>

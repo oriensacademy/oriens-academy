@@ -32,27 +32,27 @@ interface BookingDetailSheetProps {
 
 const STATUS_LABELS: Record<BookingStatus, { label: string; bgClass: string; textClass: string }> = {
   pending: {
-    label: "Bekliyor / Pending",
+    label: "Bekliyor",
     bgClass: "bg-amber-100 border-amber-300",
     textClass: "text-amber-800",
   },
   confirmed: {
-    label: "Onaylandı / Confirmed",
+    label: "Onaylandı",
     bgClass: "bg-emerald-100 border-emerald-300",
     textClass: "text-emerald-800",
   },
   completed: {
-    label: "Tamamlandı / Completed",
+    label: "Tamamlandı",
     bgClass: "bg-blue-100 border-blue-300",
     textClass: "text-blue-800",
   },
   cancelled: {
-    label: "İptal Edildi / Cancelled",
+    label: "İptal Edildi",
     bgClass: "bg-red-100 border-red-300",
     textClass: "text-red-800",
   },
   no_show: {
-    label: "Gelmedi / No Show",
+    label: "Gelmedi",
     bgClass: "bg-sage-soft border-input",
     textClass: "text-muted-foreground",
   },
@@ -205,7 +205,7 @@ export function BookingDetailSheet({
           <div className="flex items-center gap-2">
             <Calendar className="size-5 text-[#819586]" />
             <h2 className="text-sm font-semibold tracking-wide">
-              {isEditing ? "Randevuyu Düzenle / Edit Booking" : "Randevu Detayı / Booking Details"}
+              {isEditing ? "Randevuyu Düzenle" : "Randevu Detayı"}
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -257,7 +257,7 @@ export function BookingDetailSheet({
               {/* Event Type */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-foreground">
-                  Etkinlik Türü / Event Type
+                  Etkinlik Türü
                 </label>
                 <select
                   value={editEventType}
@@ -266,7 +266,7 @@ export function BookingDetailSheet({
                 >
                   {EVENT_TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.labelTr} / {opt.labelEn} {opt.freeNotice ? "(Paketten düşmez)" : "(1 Ders hakkı)"}
+                      {opt.labelTr} {opt.freeNotice ? "(Paketten düşmez)" : "(1 Ders hakkı)"}
                     </option>
                   ))}
                 </select>
@@ -351,17 +351,17 @@ export function BookingDetailSheet({
 
               {/* Status Selector */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-foreground">Durum / Status</label>
+                <label className="block text-xs font-bold text-foreground">Durum</label>
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value as BookingStatus)}
                   className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground"
                 >
                   <option value="confirmed">Onaylandı (Confirmed)</option>
-                  <option value="pending">Bekliyor (Pending)</option>
-                  <option value="completed">Tamamlandı (Completed)</option>
-                  <option value="cancelled">İptal Edildi (Cancelled)</option>
-                  <option value="no_show">Gelmedi (No Show)</option>
+                  <option value="pending">Bekliyor</option>
+                  <option value="completed">Tamamlandı</option>
+                  <option value="cancelled">İptal Edildi</option>
+                  <option value="no_show">Gelmedi</option>
                 </select>
               </div>
 
@@ -416,7 +416,7 @@ export function BookingDetailSheet({
               <div className="flex items-center justify-between rounded-xl border p-4 shadow-xs">
                 <div>
                   <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Mevcut Durum / Current Status
+                    Mevcut Durum
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <span
@@ -438,13 +438,13 @@ export function BookingDetailSheet({
               <div className="rounded-xl border border-border bg-background-soft/50 p-4 space-y-2">
                 <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
                   <Clock className="size-4 text-[#819586]" />
-                  <span>Randevu Zamanı / Appointment Time</span>
+                  <span>Randevu Zamanı</span>
                 </h3>
 
                 {slotStart && slotEnd ? (
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-muted-foreground block text-[11px]">Tarih / Date</span>
+                      <span className="text-muted-foreground block text-[11px]">Tarih</span>
                       <span className="font-semibold text-foreground">
                         {slotStart.toLocaleDateString("tr-TR", {
                           weekday: "long",
@@ -455,7 +455,7 @@ export function BookingDetailSheet({
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-[11px]">Saat Dilimi / Time</span>
+                      <span className="text-muted-foreground block text-[11px]">Saat</span>
                       <span className="font-semibold text-foreground">
                         {slotStart.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} –{" "}
                         {slotEnd.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
@@ -464,7 +464,7 @@ export function BookingDetailSheet({
                   </div>
                 ) : (
                   <div className="text-xs text-muted-foreground italic">
-                    Ayrılmış zaman dilimi bulunamadı. / No linked slot details.
+                    Ayrılmış zaman dilimi bulunamadı.
                   </div>
                 )}
 
@@ -488,7 +488,7 @@ export function BookingDetailSheet({
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
                   <User className="size-4 text-[#10271B]" />
-                  <span>Öğrenci & İletişim Bilgileri / Client Info</span>
+                  <span>Öğrenci ve İletişim Bilgileri</span>
                 </h3>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
@@ -541,7 +541,7 @@ export function BookingDetailSheet({
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
                   <Globe className="size-4 text-muted-foreground" />
-                  <span>Başvuru Detayları / Submission Metadata</span>
+                  <span>Başvuru Detayları</span>
                 </h3>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -553,7 +553,7 @@ export function BookingDetailSheet({
                   </div>
 
                   <div className="rounded-lg border border-border bg-white p-3">
-                    <div className="text-[11px] text-muted-foreground">Dil / Locale</div>
+                    <div className="text-[11px] text-muted-foreground">E-posta Dili</div>
                     <div className="font-medium uppercase text-foreground">
                       {booking.locale}
                     </div>
@@ -565,7 +565,7 @@ export function BookingDetailSheet({
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-foreground flex items-center gap-2">
                   <FileText className="size-4 text-muted-foreground" />
-                  <span>Yönetici Notları / Admin Notes</span>
+                  <span>Yönetici Notları</span>
                 </label>
                 <textarea
                   rows={3}
@@ -579,7 +579,7 @@ export function BookingDetailSheet({
               {/* Status Change Controls */}
               <div className="border-t border-border pt-4 space-y-3">
                 <div className="text-xs font-bold text-foreground">
-                  Hızlı Durum Güncelle / Quick Status Change
+                  Hızlı Durum Güncelle
                 </div>
 
                 {confirmingCancel && (
@@ -668,4 +668,3 @@ export function BookingDetailSheet({
     </div>
   );
 }
-

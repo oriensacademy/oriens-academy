@@ -262,7 +262,7 @@ export default function AdminCouponsPage() {
         <div>
           <div className="flex items-center gap-2">
             <Tag className="size-6 text-[#819586]" />
-            <h1 className="text-xl font-bold text-[#10271B]">İndirim Kuponları / Discount Coupons</h1>
+            <h1 className="text-xl font-bold text-[#10271B]">İndirim Kuponları</h1>
           </div>
           <p className="mt-1 text-xs text-[#68756C]">
             Öğrenci ödeme ve kayıt süreçlerinde kullanılacak indirim kuponlarını ve paket hedeflerini yönetin.

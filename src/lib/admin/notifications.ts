@@ -39,8 +39,17 @@ export interface ListNotificationsResult {
  * Derives a human-readable notification subject/title from the delivery row.
  */
 export function humanizeNotificationSubject(row: NotificationDeliveryRow, locale: "tr" | "en" = "tr"): string {
+  const eventTitles: Record<string, string> = {
+    "consultation.created.admin_notification": "Görüşme Talebi — Yönetici Bildirimi",
+    "consultation.created.student_acknowledgement": "Görüşme Talebi — Kullanıcı Bilgilendirmesi",
+    "package.activated": "Paket Tanımlandı",
+    "appointment.reminder": "Ders Hatırlatması",
+  };
+  const eventTitle = eventTitles[String(row.event_type || "").toLowerCase()];
+  if (eventTitle) return eventTitle;
+
   if (row.subject && row.subject.trim()) {
-    return row.subject;
+    return eventTitles[row.subject.trim().toLowerCase()] || row.subject;
   }
 
   const isTr = locale === "tr";
@@ -92,6 +101,10 @@ export function humanizeNotificationSubject(row: NotificationDeliveryRow, locale
 export function humanizeEventType(eventType: string, locale: "tr" | "en" = "tr"): string {
   const isTr = locale === "tr";
   const type = String(eventType || "").toLowerCase();
+
+  if (type === "consultation.created.admin_notification") return "Görüşme Talebi — Yönetici Bildirimi";
+  if (type === "consultation.created.student_acknowledgement") return "Görüşme Talebi — Kullanıcı Bilgilendirmesi";
+  if (type === "appointment.reminder") return "Ders Hatırlatması";
 
   if (type.includes("support.ticket_created") || type.includes("support_ticket_created")) {
     return isTr ? "Destek Talebi Oluşturuldu" : "Support Ticket Created";

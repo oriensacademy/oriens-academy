@@ -42,6 +42,9 @@
     "test:search:security": "node scripts/test-university-search-security.mjs",
     "test:search:browser-final": "node scripts/test-university-search-browser-final.mjs",
     "benchmark:search:final": "node scripts/benchmark-university-search-final.mjs",
+    "test:payment:operations": "npx tsx scripts/test-payment-auth-outbox-lesson-rights.ts",
+    "test:portal-admin:final": "node scripts/test-portal-admin-final.mjs",
+    "test:portal-public:browser-final": "node scripts/test-portal-public-browser-final.mjs",
     "universities:verify-urls": "node scripts/verify-university-urls.mjs"
   },
   "dependencies": {

@@ -27,6 +27,7 @@ export type PackageAdjustment = {
   currency: string;
   payment_status: "pending" | "paid" | "waived" | "refunded";
   notes: string | null;
+  reason?: string | null;
   created_by: string | null;
   created_at: string;
 };
@@ -307,12 +308,8 @@ export async function assignStudentPackage(input: {
   const res = rpcResult(data, error);
   const purchaseId = (data as { purchase_id?: string })?.purchase_id;
 
-  if (res.success && input.sendNotification && purchaseId) {
-    void dispatchPackageNotification({
-      action: "package_assigned",
-      studentId: input.studentId,
-      purchaseId,
-    });
+  if (res.success && purchaseId) {
+    void kickNotificationOutbox(purchaseId);
   }
 
   return res;
@@ -356,6 +353,58 @@ export async function addStudentExtraLessons(input: {
   return res;
 }
 
+export interface LessonAdjustmentResult {
+  success: boolean;
+  error: string | null;
+  purchaseId?: string;
+  oldLessonCount?: number;
+  newLessonCount?: number;
+  lessonsUsed?: number;
+  oldRemaining?: number;
+  newRemaining?: number;
+  adjustmentId?: string;
+}
+
+export async function adjustStudentPackageLessons(input: {
+  purchaseId: string;
+  lessonDelta: number;
+  reason: string;
+  notes?: string | null;
+}): Promise<LessonAdjustmentResult> {
+  const supabase = getSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("admin_adjust_package_lessons", {
+    p_purchase_id: input.purchaseId,
+    p_lesson_delta: input.lessonDelta,
+    p_reason: input.reason,
+    p_notes: input.notes || null,
+  });
+  if (error) return { success: false, error: error.message };
+  const value = data as Record<string, unknown> | null;
+  if (!value?.success) {
+    const errorCode = String(value?.error_code || "İşlem tamamlanamadı.");
+    return {
+      success: false,
+      error: errorCode === "INSUFFICIENT_UNUSED_LESSONS"
+        ? "Kalan ders hakkından daha fazla ders azaltılamaz."
+        : errorCode === "ADJUSTMENT_REASON_REQUIRED"
+          ? "En az 3 karakterlik bir gerekçe girin."
+          : errorCode,
+    };
+  }
+  return {
+    success: true,
+    error: null,
+    purchaseId: String(value.purchase_id),
+    oldLessonCount: Number(value.old_lesson_count),
+    newLessonCount: Number(value.new_lesson_count),
+    lessonsUsed: Number(value.lessons_used),
+    oldRemaining: Number(value.old_remaining),
+    newRemaining: Number(value.new_remaining),
+    adjustmentId: String(value.adjustment_id),
+  };
+}
+
 async function dispatchPackageNotification(payload: {
   action: "package_assigned" | "extra_lessons";
   studentId: string;
@@ -378,6 +427,22 @@ async function dispatchPackageNotification(payload: {
     });
   } catch (err) {
     console.warn("Failed to dispatch package notification email:", err);
+  }
+}
+
+async function kickNotificationOutbox(purchaseId: string) {
+  try {
+    const supabase = getSupabaseClient();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return;
+
+    await supabase.functions.invoke("process-notification-outbox", {
+      body: { source: "admin_package_assignment", purchaseId },
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    console.warn("Notification outbox kick failed; scheduled retry remains active:", err);
   }
 }
 

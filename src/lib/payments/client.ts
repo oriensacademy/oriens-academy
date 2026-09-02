@@ -1,6 +1,11 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { VerifiedPaymentStatus } from "./types";
 import { LEGAL_VERSIONS } from "@/config/legal";
+import { paymentErrorMessage } from "./public-errors";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
+
+const SESSION_EXPIRY_BUFFER_SECONDS = 60;
+const MOCK_PAYMENT_TOKEN = "mock-dev-access-token";
 
 export interface CreatePaytrTokenInput {
   packageIds: string[];
@@ -30,11 +35,61 @@ export interface CreatePaytrTokenResult {
   message?: string;
 }
 
+type PaymentAuthClient = Pick<SupabaseClient, "auth">;
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = globalThis.atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
+    return JSON.parse(decoded) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function isUsablePaymentSession(
+  session: Session | null | undefined,
+  nowSeconds = Math.floor(Date.now() / 1000)
+): session is Session {
+  if (!session?.access_token || !session.user?.id || session.access_token === MOCK_PAYMENT_TOKEN) return false;
+  const payload = decodeJwtPayload(session.access_token);
+  if (!payload) return false;
+  const expiresAt = Number(payload.exp ?? session.expires_at ?? 0);
+  return (
+    payload.role === "authenticated" &&
+    payload.sub === session.user.id &&
+    Number.isFinite(expiresAt) &&
+    expiresAt > nowSeconds + SESSION_EXPIRY_BUFFER_SECONDS
+  );
+}
+
+export async function resolvePaymentSession(
+  client: PaymentAuthClient,
+  nowSeconds = Math.floor(Date.now() / 1000)
+): Promise<Session | null> {
+  const current = await client.auth.getSession();
+  if (!current.error && isUsablePaymentSession(current.data.session, nowSeconds)) {
+    return current.data.session;
+  }
+
+  const refreshed = await client.auth.refreshSession();
+  if (refreshed.error || !isUsablePaymentSession(refreshed.data.session, nowSeconds)) return null;
+  return refreshed.data.session;
+}
+
 export async function createPaytrToken(input: CreatePaytrTokenInput): Promise<CreatePaytrTokenResult> {
   try {
     const supabase = getSupabaseClient();
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
+    const session = await resolvePaymentSession(supabase);
+    if (!session) {
+      return {
+        success: false,
+        errorCode: "SESSION_EXPIRED",
+        message: paymentErrorMessage("SESSION_EXPIRED", input.locale),
+      };
+    }
 
     const payload = {
       ...input,
@@ -49,28 +104,28 @@ export async function createPaytrToken(input: CreatePaytrTokenInput): Promise<Cr
 
     const { data, error } = await supabase.functions.invoke("paytr-create-token", {
       body: payload,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     if (error) {
       let errorCode = "TOKEN_ERROR";
-      let message = input.locale === "tr" ? "Ödeme ekranı şu anda hazırlanamadı. Lütfen tekrar deneyin." : "Payment screen could not be prepared. Please try again.";
+      let serverMessage: string | undefined;
       const context = (error as { context?: unknown }).context;
       if (context instanceof Response) {
         try {
           const body = (await context.clone().json()) as { error_code?: string; message?: string };
           if (body.error_code) errorCode = body.error_code;
-          if (body.message) message = body.message;
+          if (body.message) serverMessage = body.message;
         } catch { /* response unavailable */ }
       }
-      return { success: false, errorCode, message };
+      return { success: false, errorCode, message: paymentErrorMessage(errorCode, input.locale, serverMessage) };
     }
 
     if (!data?.success || (!data?.iframe_token && !data?.zero_payment)) {
       return {
         success: false,
         errorCode: data?.error_code || "TOKEN_ERROR",
-        message: data?.message || (input.locale === "tr" ? "Ödeme ekranı şu anda hazırlanamadı." : "Payment screen could not be prepared."),
+        message: paymentErrorMessage(data?.error_code, input.locale, data?.message),
       };
     }
 

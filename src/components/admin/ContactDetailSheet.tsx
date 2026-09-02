@@ -15,10 +15,10 @@ interface ContactDetailSheetProps {
 }
 
 const STATUS_CONFIG: Record<ContactStatus, { label: string; className: string }> = {
-  new: { label: "Yeni / New", className: "border-amber-300 bg-amber-50 text-amber-800" },
-  in_progress: { label: "İşlemde / In Progress", className: "border-blue-300 bg-blue-50 text-blue-800" },
-  resolved: { label: "Çözüldü / Resolved", className: "border-emerald-300 bg-emerald-50 text-emerald-800" },
-  spam: { label: "Spam / Önemsiz", className: "border-input bg-muted text-muted-foreground" },
+  new: { label: "Yeni", className: "border-amber-300 bg-amber-50 text-amber-800" },
+  in_progress: { label: "İşlemde", className: "border-blue-300 bg-blue-50 text-blue-800" },
+  resolved: { label: "Çözüldü", className: "border-emerald-300 bg-emerald-50 text-emerald-800" },
+  spam: { label: "Önemsiz", className: "border-input bg-muted text-muted-foreground" },
 };
 
 function newIdempotencyKey(): string {
@@ -26,9 +26,9 @@ function newIdempotencyKey(): string {
 }
 
 function deliveryLabel(status: string): string {
-  if (status === "sent") return "Gönderildi / Sent";
-  if (status === "failed") return "Başarısız / Failed";
-  return "Gönderiliyor / Pending";
+  if (status === "sent") return "Gönderildi";
+  if (status === "failed") return "Başarısız";
+  return "Gönderiliyor";
 }
 
 export function ContactDetailSheet({ contact, onClose, onStatusUpdated }: ContactDetailSheetProps) {
@@ -109,15 +109,15 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="contact-detail-title">
-      <button type="button" className="fixed inset-0 bg-forest/35 backdrop-blur-xs" onClick={onClose} aria-label="Kapat / Close" />
+      <button type="button" className="fixed inset-0 bg-forest/35 backdrop-blur-xs" onClick={onClose} aria-label="Kapat" />
 
       <div className="relative z-10 flex h-full w-full max-w-2xl flex-col border-l border-border bg-white shadow-2xl">
         <header className="flex min-h-16 items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
             <Mail className="size-5 text-[#819586]" />
-            <h2 id="contact-detail-title" className="text-sm font-semibold tracking-wide">İletişim Talebi Detayı / Contact Request Details</h2>
+            <h2 id="contact-detail-title" className="text-sm font-semibold tracking-wide">İletişim Talebi Detayı</h2>
           </div>
-          <button type="button" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sage-soft hover:text-foreground" aria-label="Kapat / Close"><X className="size-5" /></button>
+          <button type="button" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sage-soft hover:text-foreground" aria-label="Kapat"><X className="size-5" /></button>
         </header>
 
         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
@@ -150,7 +150,7 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
 
           <section className="space-y-3" aria-labelledby="conversation-title">
             <div>
-              <h3 id="conversation-title" className="text-xs font-bold text-foreground">Konuşma / Conversation</h3>
+              <h3 id="conversation-title" className="text-xs font-bold text-foreground">Konuşma</h3>
               {contact.subject && <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Tag className="size-3" />{contact.subject}</div>}
             </div>
 
@@ -160,7 +160,7 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
                 <time dateTime={contact.created_at} className="inline-flex items-center gap-1"><Calendar className="size-3" />{new Date(contact.created_at).toLocaleString(locale)}</time>
               </div>
               <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-foreground">{contact.message}</p>
-              <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Alındı / Received</div>
+              <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Alındı</div>
             </article>
 
             {loadingReplies ? (
@@ -178,23 +178,23 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
           </section>
 
           <form onSubmit={handleReplySubmit} className="space-y-3 rounded-xl border border-border bg-background-soft/50 p-4">
-            <label htmlFor="contact-reply" className="text-xs font-bold text-foreground">Yanıt / Reply</label>
-            <textarea id="contact-reply" required maxLength={10000} rows={6} value={replyText} onChange={(event) => setReplyText(event.target.value)} placeholder="Yanıtınızı yazın… / Type your reply…" className="w-full resize-y rounded-xl border border-input bg-white p-3 text-xs leading-relaxed text-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-primary" />
+            <label htmlFor="contact-reply" className="text-xs font-bold text-foreground">Yanıt</label>
+            <textarea id="contact-reply" required maxLength={10000} rows={6} value={replyText} onChange={(event) => setReplyText(event.target.value)} placeholder="Yanıtınızı yazın…" className="w-full resize-y rounded-xl border border-input bg-white p-3 text-xs leading-relaxed text-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-primary" />
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[11px] text-muted-foreground">info@oriens-academy.com → {contact.email}</p>
               <button type="submit" disabled={sending || !replyText.trim()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest disabled:cursor-not-allowed disabled:opacity-40">
                 {sending ? <Wave className="h-3.5 w-7 text-white" aria-label="Gönderiliyor" /> : <Send className="size-4" />}
-                <span>{sending ? "Gönderiliyor… / Sending…" : "Gönder / Send"}</span>
+                <span>{sending ? "Gönderiliyor…" : "Gönder"}</span>
               </button>
             </div>
           </form>
 
           <section className="space-y-3 border-t border-border pt-4">
-            <div className="text-xs font-bold text-foreground">Talep Durumu / Request Status</div>
+            <div className="text-xs font-bold text-foreground">Talep Durumu</div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <StatusButton label="Yeni / New" disabled={updating || contact.status === "new"} onClick={() => handleStatusChange("new")} icon={<Inbox className="size-3.5" />} />
-              <StatusButton label="İşlemde / In Progress" disabled={updating || contact.status === "in_progress"} onClick={() => handleStatusChange("in_progress")} icon={<Wave className="h-3.5 w-7" aria-label="İşlemde" />} />
-              <StatusButton label="Çözüldü / Resolved" disabled={updating || contact.status === "resolved"} onClick={() => handleStatusChange("resolved")} icon={<CheckCircle2 className="size-3.5" />} />
+              <StatusButton label="Yeni" disabled={updating || contact.status === "new"} onClick={() => handleStatusChange("new")} icon={<Inbox className="size-3.5" />} />
+              <StatusButton label="İşlemde" disabled={updating || contact.status === "in_progress"} onClick={() => handleStatusChange("in_progress")} icon={<Wave className="h-3.5 w-7" aria-label="İşlemde" />} />
+              <StatusButton label="Çözüldü" disabled={updating || contact.status === "resolved"} onClick={() => handleStatusChange("resolved")} icon={<CheckCircle2 className="size-3.5" />} />
               <StatusButton label="Spam" disabled={updating || contact.status === "spam"} onClick={() => handleStatusChange("spam")} icon={<AlertCircle className="size-3.5" />} />
             </div>
           </section>

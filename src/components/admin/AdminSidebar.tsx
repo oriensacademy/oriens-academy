@@ -20,7 +20,6 @@ import { useAdminNotifications } from "@/lib/admin/admin-notifications-context";
 
 export interface NavItem {
   label: string;
-  labelEn: string;
   href: string;
   icon: typeof LayoutDashboard;
   enabled: boolean;
@@ -29,17 +28,16 @@ export interface NavItem {
 }
 
 const GROUP_LABELS: Record<NavItem["group"], string> = {
-  GENEL: "GENEL / GENERAL",
-  "ÖĞRENCİ YÖNETİMİ": "ÖĞRENCİ / STUDENTS",
-  FİNANS: "FİNANS / FINANCE",
-  İÇERİK: "BİLDİRİMLER / NOTIFICATIONS",
-  SİSTEM: "SİSTEM / SYSTEM",
+  GENEL: "GENEL",
+  "ÖĞRENCİ YÖNETİMİ": "ÖĞRENCİ YÖNETİMİ",
+  FİNANS: "FİNANS",
+  İÇERİK: "BİLDİRİMLER",
+  SİSTEM: "SİSTEM",
 };
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   {
-    label: "Dashboard",
-    labelEn: "Dashboard",
+    label: "Gösterge Paneli",
     href: "/admin",
     icon: LayoutDashboard,
     enabled: true,
@@ -47,7 +45,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Öğrenciler",
-    labelEn: "Students",
     href: "/admin/ogrenciler",
     icon: Users,
     enabled: true,
@@ -55,7 +52,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Ders & Randevular",
-    labelEn: "Lessons & Appointments",
     href: "/admin/randevular",
     icon: CalendarCheck,
     enabled: true,
@@ -63,7 +59,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Değerlendirmeler",
-    labelEn: "Evaluations",
     href: "/admin/degerlendirmeler",
     icon: ListChecks,
     enabled: true,
@@ -71,7 +66,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "İletişim & Destek",
-    labelEn: "Communication & Support",
     href: "/admin/iletisim-destek",
     icon: MessageSquare,
     enabled: true,
@@ -79,7 +73,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Fiyatlandırma",
-    labelEn: "Pricing",
     href: "/admin/fiyatlandirma",
     icon: CreditCard,
     enabled: true,
@@ -87,7 +80,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "İndirim Kuponları",
-    labelEn: "Coupons",
     href: "/admin/indirim-kuponlari",
     icon: FileText,
     enabled: true,
@@ -95,7 +87,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Ödemeler",
-    labelEn: "Payments",
     href: "/admin/odemeler",
     icon: WalletCards,
     enabled: true,
@@ -103,7 +94,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Mali Akış",
-    labelEn: "Financial Flow",
     href: "/admin/mali-akis",
     icon: TrendingUp,
     enabled: true,
@@ -111,7 +101,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Bildirimler",
-    labelEn: "Notifications",
     href: "/admin/bildirimler",
     icon: Bell,
     enabled: true,
@@ -119,7 +108,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   },
   {
     label: "Ayarlar",
-    labelEn: "Settings",
     href: "/admin/ayarlar",
     icon: Settings,
     enabled: true,
@@ -199,7 +187,7 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
                     isActive ? "text-ink" : "text-muted-foreground"
                   }`}
                 />
-                <span>{item.label} / {item.labelEn}</span>
+                <span>{item.label}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 {dynamicBadge > 0 && (

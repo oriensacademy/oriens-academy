@@ -21,7 +21,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     user: account.user,
     session: account.session,
     profile: account.adminProfile,
-    error: account.accountType === "unknown" ? "No active Oriens Academy profile was found." : null,
+    error: account.accountType === "unknown" ? "Etkin bir Oriens Academy yönetici profili bulunamadı." : null,
     signOut: account.signOut,
     refreshSession: account.refreshAccount,
   }}>{children}</AdminAuthContext.Provider>;

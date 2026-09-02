@@ -18,10 +18,10 @@ export default function RootEntry() {
         <p className="text-sm text-muted-foreground">Yönlendiriliyor… / Redirecting…</p>
         <nav aria-label="Language" className="flex gap-6 text-sm font-medium">
           <Link href="/tr/" className="text-ink underline underline-offset-4">
-            Türkçe
+            TR
           </Link>
           <Link href="/en/" className="text-ink underline underline-offset-4">
-            English
+            ENG
           </Link>
         </nav>
       </div>

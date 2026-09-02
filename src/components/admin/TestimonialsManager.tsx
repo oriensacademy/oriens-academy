@@ -288,7 +288,7 @@ export function TestimonialsManager() {
           >
             <option value="all">Tüm Diller</option>
             <option value="tr">Türkçe (TR)</option>
-            <option value="en">English (EN)</option>
+            <option value="en">İngilizce (EN)</option>
           </select>
 
           {/* Status Filter */}

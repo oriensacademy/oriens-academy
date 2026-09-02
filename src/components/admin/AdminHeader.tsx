@@ -120,7 +120,7 @@ export function AdminHeader() {
     router.replace("/tr");
   };
 
-  const displayName = profile?.display_name || "Oriens Academy Admin";
+  const displayName = profile?.display_name || "Oriens Academy Yöneticisi";
   const email = user?.email || "admin@oriens-academy.com";
 
   return (
@@ -290,7 +290,7 @@ export function AdminHeader() {
               <p className="hidden max-w-56 break-all text-[10px] leading-4 text-[#667085] md:block">{email}</p>
             </div>
             <span className="rounded-full bg-[#EEF2EC] px-2 py-0.5 text-[10px] font-semibold text-[#10271B]">
-              Admin
+              Yönetici
             </span>
           </div>
 

@@ -195,8 +195,7 @@ export function StudentOnboardingPersonalization({
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="text-base">🇹🇷</span>
-              <span>Türkçe</span>
+              <span>TR</span>
             </div>
             {selectedLanguage === "tr" && <Check className="size-4 text-primary" />}
           </button>
@@ -211,8 +210,7 @@ export function StudentOnboardingPersonalization({
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="text-base">🇬🇧</span>
-              <span>English</span>
+              <span>ENG</span>
             </div>
             {selectedLanguage === "en" && <Check className="size-4 text-primary" />}
           </button>

@@ -97,6 +97,7 @@ export function PaymentPage() {
     const allowed = new Set(links.filter((row) => row.guardian_user_id === guardianId).map((row) => row.student_id));
     return learners.filter((row) => allowed.has(row.id));
   }, [guardianId, learners, links]);
+  const selectedLearner = availableLearners.find((item) => item.id === learnerId) ?? null;
   const checkoutPackages = useMemo(() => isCartCheckout
     ? cartItems.map((item) => packages.find((pkg) => pkg.id === item.packageId)).filter((pkg): pkg is PublicPricingPackage => Boolean(pkg))
     : packages.filter((pkg) => pkg.id === directPackageId), [cartItems, directPackageId, isCartCheckout, packages]);
@@ -107,8 +108,9 @@ export function PaymentPage() {
   const finalPrice = Math.max(0, basePrice - discountAmount);
   const currency = checkoutPackages[0]?.currency || "TRY";
   const money = (value: number, code = "TRY") => formatCurrency(value, { currency: code, locale });
-  const emailVerified = Boolean(selectedGuardian?.email_verified_at);
-  const contextReady = Boolean(selectedGuardian && learnerId && emailVerified && packageIds.length && !cartMismatch);
+  const authEmailVerified = accountType === "admin" || Boolean(user?.email_confirmed_at);
+  const emailVerified = Boolean(selectedGuardian?.email_verified_at && authEmailVerified);
+  const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch);
 
   async function applyCoupon() {
     if (!couponInput.trim() || !packageIds.length) return;

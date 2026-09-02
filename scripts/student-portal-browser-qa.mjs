@@ -79,12 +79,17 @@ await page.route("**/auth/v1/user*", (route) => json(route, user, true));
 await page.route("**/rest/v1/**", (route) => {
   const url = route.request().url();
   const method = route.request().method();
-  if (url.includes("student_profiles")) return json(route, profile, true);
+  const wantsSingle = route.request().headers().accept?.includes("application/vnd.pgrst.object+json");
+  if (url.includes("guardian_accounts")) return json(route, { user_id: userId, full_name: "QA Account Holder", email: user.email, active: true }, true);
+  if (url.includes("guardian_students")) return json(route, [{ guardian_user_id: userId, student_id: userId, is_primary: true, active: true }]);
+  if (url.includes("student_profiles")) return json(route, wantsSingle ? profile : [profile], wantsSingle);
   if (url.includes("bookings"))
     return json(route, [
       {
         id: "b1",
         status: "confirmed",
+        event_type: "pre_consultation",
+        appointment_subject: "[Ön Görüşme] Tanışma",
         exam_code: "sat",
         custom_exam: null,
         created_at: new Date().toISOString(),
@@ -143,6 +148,8 @@ await page.route("**/rest/v1/**", (route) => {
         payment_transaction_id: "t1",
         lesson_count: 20,
         lessons_used: 14,
+        price_amount: 51000,
+        currency: "TRY",
         start_date: "2026-07-14",
         end_date: null,
         status: "active",
@@ -240,27 +247,24 @@ for (const [route, welcome] of [
     body.includes("14 / 20") && body.includes("6"),
     `${route} package progress is incorrect`,
   );
-  const homeworkTab = page
+  const lessonsTab = page
     .getByRole("button", {
-      name: route.startsWith("/tr") ? "Ödevlerim" : "Homework",
+      name: route.startsWith("/tr") ? "Dersler" : "Lessons",
     })
     .last();
-  await homeworkTab.click();
+  await lessonsTab.click();
+  const lessonsBody = await page.locator("body").innerText();
   check(
-    (await page.getByText("QA Homework", { exact: true }).count()) > 0,
-    `${route} homework view is missing`,
+    lessonsBody.includes(route.startsWith("/tr") ? "Dersler" : "Lessons") &&
+      !lessonsBody.includes("Yaklaşan Ders ve Görüşmeler") &&
+      !lessonsBody.includes("Geçmiş Ders ve Görüşmeler"),
+    `${route} unified lesson timeline is missing`,
   );
-  const paymentTab = page
-    .getByRole("button", {
-      name: route.startsWith("/tr") ? "Ödemelerim" : "Payments",
-    })
-    .last();
-  await paymentTab.click();
-  const paymentBody = await page.locator("body").innerText();
-  check(
-    paymentBody.includes("51.000") || paymentBody.includes("51,000"),
-    `${route} payment history is missing`,
-  );
+  if (route.startsWith("/tr")) {
+    check(lessonsBody.includes("Tanışma Görüşmesi"), `${route} introduction badge is missing`);
+    check(lessonsBody.includes("Yaklaşan"), `${route} upcoming badge is missing`);
+    check(lessonsBody.includes("Tamamlandı"), `${route} completed badge is missing`);
+  }
 }
 
 const guestContext = await browser.newContext();

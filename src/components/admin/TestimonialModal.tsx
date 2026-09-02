@@ -219,7 +219,7 @@ export function TestimonialModal({
 
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Açıklama / Unvan (Context)
+                Açıklama / Unvan
               </label>
               <input
                 type="text"
@@ -291,7 +291,7 @@ export function TestimonialModal({
                 className="w-full rounded-lg border border-input bg-white p-2 text-xs text-foreground"
               >
                 <option value="tr">Türkçe (TR)</option>
-                <option value="en">English (EN)</option>
+                <option value="en">İngilizce (EN)</option>
               </select>
             </div>
 
@@ -316,7 +316,7 @@ export function TestimonialModal({
                 onChange={(e) => setActive(e.target.checked)}
                 className="rounded border-input text-[#10271B]"
               />
-              <span>Aktif / Yayınlandı</span>
+              <span>Aktif ve Yayında</span>
             </label>
 
             <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">

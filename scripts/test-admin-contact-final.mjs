@@ -38,8 +38,9 @@ assert(!dashboard.includes("Bekleyen Ödev"), "homework metric remains on dashbo
 assert(!dashboardData.includes("pendingHomework"), "dashboard still queries homework metrics");
 
 assert.equal((sidebar.match(/href: "\/admin\/degerlendirmeler"/g) || []).length, 1, "Evaluations must have exactly one primary sidebar item");
-assert(sidebar.includes('labelEn: "Evaluations"'), "Evaluations English label is missing");
-assert(evaluations.includes("filterSubmissionsOnly"), "Evaluations does not use the existing review surface");
+assert(!sidebar.includes("labelEn"), "sidebar still exposes duplicate English labels");
+assert(evaluations.includes("TestimonialsManager"), "Değerlendirmeler does not use the testimonials CRM");
+assert(!evaluations.includes("filterSubmissionsOnly"), "Değerlendirmeler still renders homework review");
 assert(dashboard.includes('href="/admin/degerlendirmeler"'), "dashboard does not link to Evaluations");
 
 const originalIndex = detail.indexOf("contact.message");

@@ -57,7 +57,7 @@ function DashboardContent() {
             <div className="flex items-center gap-2">
               <ShieldCheck className="size-5 text-[#819586]" />
               <h1 className="text-lg font-bold tracking-tight text-[#10271B]">
-                Oriens Academy Admin Control Panel
+                Oriens Academy Yönetim Paneli
               </h1>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -74,7 +74,7 @@ function DashboardContent() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
             </span>
-            <span className="font-medium">Sistem Aktif / Operational</span>
+            <span className="font-medium">Sistem Aktif</span>
           </div>
         </div>
       </div>
@@ -108,7 +108,7 @@ function DashboardContent() {
       {/* Consolidated Actionable Operational KPIs */}
       <div className="space-y-3">
         <h2 className="text-sm font-bold tracking-tight text-[#10271B]">
-          Operasyonel Veri Özeti / Operational Overview
+          Operasyonel Veri Özeti
         </h2>
 
         {loading ? (
@@ -163,7 +163,7 @@ function DashboardContent() {
       {/* Module Quick Navigation Grid */}
       <div className="space-y-3">
         <h2 className="text-sm font-bold tracking-tight text-[#10271B]">
-          Yönetim Modülleri / Active Modules
+          Yönetim Modülleri
         </h2>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -198,10 +198,10 @@ function DashboardContent() {
             description="Ödeme işlemlerini ve banka havalelerini inceleyin."
           />
           <ModuleLinkCard
-            title="Değerlendirmeler / Evaluations"
+            title="Değerlendirmeler"
             href="/admin/degerlendirmeler"
             icon={ListChecks}
-            description="Gönderilmiş öğrenci çalışmalarını inceleyip değerlendirin."
+            description="Öğrenci ve veli yorumlarını, öne çıkan değerlendirmeleri yönetin."
           />
           <ModuleLinkCard
             title="E-Posta Bildirimleri"

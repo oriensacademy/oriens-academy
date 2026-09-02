@@ -30,6 +30,12 @@ export interface AdminPaymentRow {
     last_reminder_sent_at?: string;
     lesson_count?: number;
     package_name?: string;
+    failed_reason_code?: string | number | null;
+    failed_reason_msg?: string | null;
+    paytr_callback?: {
+      failed_reason_code?: string | number | null;
+      failed_reason_msg?: string | null;
+    } | null;
   } | null;
 }
 

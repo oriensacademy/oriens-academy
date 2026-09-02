@@ -51,27 +51,12 @@ export interface UpdateTestimonialInput {
 export async function getPublicTestimonials(locale?: string): Promise<PublicTestimonialsResult> {
   try {
     const supabase = getSupabaseClient();
-    // Generated database types intentionally lag additive rollout migrations.
+    // Generated database types intentionally lag this additive bounded RPC.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase as any)
-      .from("testimonials")
-      .select("*")
-      .eq("active", true)
-      .eq("verified", true)
-      .is("archived_at", null)
-      .eq("featured", true)
-      .order("pin_order", { ascending: true, nullsFirst: false })
-      .order("pinned_at", { ascending: false, nullsFirst: false })
-      .order("display_order", { ascending: true })
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true })
-      .limit(20);
-
-    if (locale) {
-      query = query.eq("locale", locale);
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await (supabase as any).rpc("get_public_testimonials_v2", {
+      p_locale: locale || null,
+      p_limit: 16,
+    });
     if (error) return { data: [], error: error.message };
     return { data: (data || []) as TestimonialRow[], error: null };
   } catch (error) {

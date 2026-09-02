@@ -159,7 +159,7 @@ export default function AdminFinancialFlowPage() {
         <div>
           <div className="flex items-center gap-2">
             <TrendingUp className="size-6 text-primary" />
-            <h1 className="text-xl font-bold text-ink">Mali Akış / Financial Overview</h1>
+            <h1 className="text-xl font-bold text-ink">Mali Akış</h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Akademinin tüm paket tahsilatlarını, bekleyen havalelerini, kupon indirimlerini ve finansal akışını sunucu taraflı izleyin.
@@ -259,12 +259,12 @@ export default function AdminFinancialFlowPage() {
           >
             <option value="all">Tüm Durumlar</option>
             <option value="paid">Ödendi (Paid)</option>
-            <option value="pending">Bekliyor (Pending)</option>
+            <option value="pending">Bekliyor</option>
             <option value="requires_action">Doğrulama Gerekli</option>
             <option value="processing">İşleniyor</option>
             <option value="refunded">İade (Refunded)</option>
-            <option value="failed">Başarısız (Failed)</option>
-            <option value="cancelled">İptal (Cancelled)</option>
+            <option value="failed">Başarısız</option>
+            <option value="cancelled">İptal</option>
           </select>
 
           <select

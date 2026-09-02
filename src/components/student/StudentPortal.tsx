@@ -609,8 +609,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span>🇹🇷</span>
-                  <span>Türkçe</span>
+                  <span>TR</span>
                 </div>
                 {preferredLanguage === "tr" && <Check className="size-4 shrink-0" />}
               </button>
@@ -626,8 +625,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span>🇬🇧</span>
-                  <span>English</span>
+                  <span>ENG</span>
                 </div>
                 {preferredLanguage === "en" && <Check className="size-4 shrink-0" />}
               </button>
@@ -778,7 +776,7 @@ function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en
       .sort((a, b) => b.dateIso.localeCompare(a.dateIso));
   }, [allSessions]);
 
-  const renderBadge = (eventType: UnifiedSessionItem["eventType"]) => {
+  const renderTypeBadge = (eventType: UnifiedSessionItem["eventType"]) => {
     switch (eventType) {
       case "lesson":
         return (
@@ -790,8 +788,7 @@ function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en
       case "discovery":
         return (
           <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
-            <span>{isTr ? "Ön Görüşme" : "Pre-Consultation"}</span>
-            <span className="text-[9px] text-emerald-600 font-normal">({isTr ? "Paketten düşmez" : "Free"})</span>
+            <span>{isTr ? "Tanışma Görüşmesi" : "Introduction Meeting"}</span>
           </span>
         );
       case "additional_consultation":
@@ -818,103 +815,67 @@ function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en
     }
   };
 
+  const renderStatusBadge = (sessionStatus: string) => {
+    const cancelled = sessionStatus === "cancelled";
+    const completed = sessionStatus === "completed";
+    return (
+      <span className={cn(
+        "inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold",
+        cancelled
+          ? "border-red-200 bg-red-50 text-red-800"
+          : completed
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : "border-amber-200 bg-amber-50 text-amber-800",
+      )}>
+        {cancelled
+          ? (isTr ? "İptal Edildi" : "Cancelled")
+          : completed
+            ? (isTr ? "Tamamlandı" : "Completed")
+            : (isTr ? "Yaklaşan" : "Upcoming")}
+      </span>
+    );
+  };
+
+  const renderSession = (s: UnifiedSessionItem, past = false) => (
+    <article
+      key={`${s.sourceType}-${s.id}`}
+      className={cn(
+        "rounded-2xl border bg-surface p-4 sm:p-5",
+        past ? "border-border" : "border-primary/25 shadow-xs",
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap gap-2">{renderTypeBadge(s.eventType)}{renderStatusBadge(s.status)}</div>
+      </div>
+      <h3 className="mt-3 font-heading text-lg font-bold text-ink">{s.title}</h3>
+      <p className="mt-1 text-xs font-medium text-primary">
+        {s.subject}{s.examCode ? ` · ${s.examCode.toUpperCase()}` : ""}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {fmt(s.dateIso, locale, true)} · {s.durationMinutes} {isTr ? "dk" : "min"}
+      </p>
+      {s.teacherNote && <p className="mt-3 rounded-lg border border-border bg-surface-muted p-2.5 text-xs text-ink/80"><strong>{isTr ? "Eğitmen Notu" : "Teacher Note"}:</strong> {s.teacherNote}</p>}
+      {!past && s.liveMeetingUrl && (
+        <div className="mt-4 border-t border-primary/10 pt-3">
+          <a href={s.liveMeetingUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-forest">
+            <Video className="size-4 text-warm-accent" />
+            {s.eventType === "lesson" ? (isTr ? "Canlı Derse Katıl" : "Join Live Lesson") : (isTr ? "Görüşmeye Katıl" : "Join Meeting")}
+            <ExternalLink className="size-3" />
+          </a>
+        </div>
+      )}
+    </article>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* 1. Yaklaşan Ders ve Görüşmeler */}
-      <Panel title={isTr ? "Yaklaşan Ders ve Görüşmeler" : "Upcoming Lessons & Meetings"}>
-        {upcoming.length ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {upcoming.map((s) => (
-              <article
-                key={`${s.sourceType}-${s.id}`}
-                className="rounded-2xl border border-primary/25 p-5 bg-surface shadow-xs flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    {renderBadge(s.eventType)}
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {status(s.status, locale)}
-                    </span>
-                  </div>
-
-                  <h3 className="mt-3 font-heading text-lg font-bold text-ink">{s.title}</h3>
-                  <p className="mt-1 text-xs text-primary font-medium">
-                    {s.subject}
-                    {s.examCode ? ` · ${s.examCode.toUpperCase()}` : ""}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {fmt(s.dateIso, locale, true)} · {s.durationMinutes} {isTr ? "dk" : "min"}
-                  </p>
-
-                  {s.teacherNote && (
-                    <p className="mt-3 rounded-lg bg-surface-muted p-2.5 text-xs text-ink/80 border border-border">
-                      <strong>{isTr ? "Eğitmen Notu" : "Teacher Note"}:</strong> {s.teacherNote}
-                    </p>
-                  )}
-                </div>
-
-                {s.liveMeetingUrl && (
-                  <div className="mt-4 pt-3 border-t border-primary/10">
-                    <a
-                      href={s.liveMeetingUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
-                    >
-                      <Video className="size-4 text-warm-accent" />
-                      {s.eventType === "lesson"
-                        ? isTr ? "Canlı Derse Katıl" : "Join Live Lesson"
-                        : isTr ? "Görüşmeye Katıl" : "Join Meeting"}
-                      <ExternalLink className="size-3" />
-                    </a>
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <Empty>
-            {isTr
-              ? "Şu anda planlanmış aktif bir canlı ders veya görüşmeniz bulunmuyor."
-              : "No upcoming live lessons or meetings scheduled at this moment."}
-          </Empty>
-        )}
-      </Panel>
-
-      {/* 2. Geçmiş Ders ve Görüşmeler */}
-      <Panel title={isTr ? "Geçmiş Ders ve Görüşmeler" : "Past Lessons & Meetings"}>
-        {history.length ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {history.map((s) => (
-              <article
-                key={`${s.sourceType}-${s.id}`}
-                className="rounded-xl border border-border p-4 bg-surface"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  {renderBadge(s.eventType)}
-                  <span className="text-xs text-muted-foreground">{status(s.status, locale)}</span>
-                </div>
-                <h3 className="mt-2 font-semibold text-ink">{s.title}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {s.subject}
-                  {s.examCode ? ` · ${s.examCode.toUpperCase()}` : ""}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {fmt(s.dateIso, locale, true)} · {s.durationMinutes} {isTr ? "dk" : "min"}
-                </p>
-                {s.teacherNote && (
-                  <p className="mt-2.5 border-t border-border pt-2 text-xs leading-5 text-ink/75">
-                    {s.teacherNote}
-                  </p>
-                )}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <Empty>
-            {isTr ? "Henüz tamamlanmış ders veya görüşme kaydı yok." : "No completed lesson or meeting records yet."}
-          </Empty>
-        )}
+    <div>
+      <Panel title={isTr ? "Dersler" : "Lessons"}>
+        {!upcoming.length && !history.length ? (
+          <Empty>{isTr ? "Henüz ders veya görüşme kaydı yok." : "No lesson or meeting records yet."}</Empty>
+        ) : <div className="space-y-6">
+          {upcoming.length ? <div className="grid gap-3 sm:grid-cols-2">{upcoming.map((s) => renderSession(s))}</div> : null}
+          {history.length ? <div className={cn("grid gap-3 border-t border-border pt-6 sm:grid-cols-2", !upcoming.length && "border-t-0 pt-0")}>{history.map((s) => renderSession(s, true))}</div> : null}
+        </div>}
       </Panel>
     </div>
   );

@@ -102,7 +102,7 @@ function PricingContent() {
           <div className="flex items-center gap-2">
             <CreditCard className="size-6 text-[#819586]" />
             <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              Fiyat Paketleri Yönetimi / Pricing Packages
+              Fiyat Paketleri Yönetimi
             </h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -166,7 +166,7 @@ function PricingContent() {
             <Inbox className="size-6" />
           </div>
           <h3 className="mt-3 text-sm font-bold text-foreground">
-            Henüz Fiyat Paketi Bulunmuyor / No Pricing Packages
+            Henüz Fiyat Paketi Bulunmuyor
           </h3>
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
             Veritabanında kayıtlı fiyat paketi yok. &quot;Yeni Paket Ekle&quot; butonunu kullanarak ilk seans veya paket seçeneğini oluşturabilirsiniz.

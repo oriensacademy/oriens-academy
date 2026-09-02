@@ -104,7 +104,7 @@ export const about: AboutContent = {
     examLabel: "İletişim",
     links: [
       { route: "contact", title: "WhatsApp", description: "+90 544 293 90 40 üzerinden anında mesaj gönderin.", linkLabel: "WhatsApp'tan Yazın" },
-      { route: "contact", title: "Telefon", description: "0850 304 04 67 kurumsal hattımızdan bize ulaşın.", linkLabel: "Hemen Arayın" },
+      { route: "contact", title: "Telefon", description: "0850 304 04 67 destek hattımızdan bize ulaşın.", linkLabel: "Hemen Arayın" },
       { route: "contact", title: "E-Posta", description: "info@oriens-academy.com adresinden detaylı bilgi alın.", linkLabel: "E-Posta Gönderin" },
       { route: "contact", title: "Instagram", description: "@oriens.academy hesabımızı takip edin.", linkLabel: "Instagram'da Görün" },
     ],
