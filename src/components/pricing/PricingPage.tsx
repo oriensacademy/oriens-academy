@@ -49,7 +49,7 @@ export function PricingPage() {
     return {
       ...fallback,
       title: locale === "tr" ? row.name_tr : row.name_en || fallback.title,
-      description: locale === "tr" ? row.description_tr || fallback.description : row.description_en || fallback.description,
+      description: fallback.description || (locale === "tr" ? row.description_tr : row.description_en),
       badge: locale === "tr" ? row.badge_tr || fallback.badge : row.badge_en || fallback.badge,
     };
   }
@@ -79,7 +79,7 @@ export function PricingPage() {
       oldPrice: item.old_total,
       unitPrice: item.unit_price,
       discount: item.discount_percentage,
-      description: (locale === "tr" ? item.description_tr : item.description_en) || itemContent.description || "",
+      description: itemContent.description || (locale === "tr" ? item.description_tr : item.description_en) || "",
       features: itemContent.features || [],
       popular: item.id === "package10" || item.featured,
       badge: dynamicBadge,
