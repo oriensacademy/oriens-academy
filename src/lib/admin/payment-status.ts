@@ -1,6 +1,8 @@
 export interface PaymentStatusMetadata {
   failed_reason_code?: string | number | null;
   failed_reason_msg?: string | null;
+  status_reason?: string | null;
+  cancellation_reason?: string | null;
   paytr_callback?: {
     failed_reason_code?: string | number | null;
     failed_reason_msg?: string | null;
@@ -27,6 +29,17 @@ export function getAdminPaymentStatus(
   status: string,
   metadata?: PaymentStatusMetadata | null
 ): AdminPaymentStatusPresentation {
+  if (status === "cancelled") {
+    const reason = String(metadata?.status_reason || metadata?.cancellation_reason || "").trim().toLowerCase();
+    if (reason === "timeout" || reason === "stale_pending_ttl") {
+      return { label: "Zaman Aşımı", bg: "bg-neutral-100 border-neutral-200", text: "text-neutral-700" };
+    }
+    if (reason === "abandoned") {
+      return { label: "Vazgeçildi", bg: "bg-neutral-100 border-neutral-200", text: "text-neutral-700" };
+    }
+    return STATUS_COPY.cancelled;
+  }
+
   if (status !== "failed") {
     return STATUS_COPY[status] || { label: status, bg: "bg-surface-muted", text: "text-ink" };
   }

@@ -1764,6 +1764,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_payment_agreements: {
+        Args: { p_merchant_oid: string; p_legal_versions?: Json }
+        Returns: boolean
+      }
+      expire_stale_card_payments: {
+        Args: { p_threshold_minutes?: number }
+        Returns: number
+      }
       setup_account_learner: {
         Args: { p_full_name: string; p_email: string; p_phone?: string | null; p_school?: string | null; p_preferred_language?: string }
         Returns: Json

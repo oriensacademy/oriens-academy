@@ -13,6 +13,7 @@ interface CartContextType {
   cartCount: number;
   addToCart: (packageId: string) => void;
   removeFromCart: (packageId: string) => void;
+  removeItemsFromCart: (packageIds: string[]) => void;
   clearCart: () => void;
   isInCart: (packageId: string) => boolean;
 }
@@ -208,6 +209,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, [user?.id]);
 
+  const removeItemsFromCart = useCallback((packageIds: string[]) => {
+    if (!packageIds || !packageIds.length) return;
+    const toRemove = new Set(packageIds.map((id) => id.trim()).filter(Boolean));
+    if (!toRemove.size) return;
+    setItems((prev) => {
+      const updated = prev.filter((item) => !toRemove.has(item.packageId));
+      const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+      writeCartToStorage(key, updated);
+      return updated;
+    });
+  }, [user?.id]);
+
   const clearCart = useCallback(() => {
     setItems([]);
     const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
@@ -228,6 +241,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartCount,
         addToCart,
         removeFromCart,
+        removeItemsFromCart,
         clearCart,
         isInCart,
       }}

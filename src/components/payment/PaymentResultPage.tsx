@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -25,7 +25,7 @@ export function PaymentResultPage() {
   const locale = useLocale();
   const pathname = usePathname();
   const copy = getPaymentCopy(locale);
-  const { clearCart } = useCart();
+  const { removeItemsFromCart } = useCart();
   const { accountType } = useAccount();
   const isTr = locale === "tr";
 
@@ -33,7 +33,11 @@ export function PaymentResultPage() {
   const isFailedUrl = pathname.includes("/basarisiz") || pathname.includes("/failed");
 
   const [payment, setPayment] = useState<VerifiedPaymentStatus | null>(null);
-  const [loading, setLoading] = useState(!isSuccessUrl && !isFailedUrl);
+  const [loading, setLoading] = useState(true);
+  const [pollAttempt, setPollAttempt] = useState(0);
+  const [isPendingReview, setIsPendingReview] = useState(false);
+  const cartCleanedRef = useRef(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -41,28 +45,69 @@ export function PaymentResultPage() {
     const reference = params.get("reference") ?? "";
     const token = params.get("token") ?? "";
 
-    if (reference && token) {
-      getPaymentStatus(reference, token)
-        .then((res) => {
-          if (!active) return;
-          setPayment(res);
-          if (res?.status === "paid") {
-            clearCart();
-          }
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-    } else {
-      if (isSuccessUrl) {
-        clearCart();
-      }
+    if (!reference || !token) {
+      const timer = setTimeout(() => {
+        if (active) setLoading(false);
+      }, 0);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
     }
+
+    void getPaymentStatus(reference, token)
+      .then((res) => {
+        if (!active) return;
+        setPayment(res);
+
+        // 1. Authoritative Success: Paid status verified by server callback
+        if (res?.status === "paid") {
+          setLoading(false);
+          setIsPendingReview(false);
+          if (!cartCleanedRef.current) {
+            cartCleanedRef.current = true;
+            const purchasedIds =
+              res.packageIds && res.packageIds.length > 0 ? res.packageIds : [res.packageId];
+            removeItemsFromCart(purchasedIds);
+          }
+          return;
+        }
+
+        // 2. Final Inactive States
+        if (res && ["failed", "cancelled", "refunded"].includes(res.status)) {
+          setLoading(false);
+          setIsPendingReview(false);
+          return;
+        }
+
+        // 3. Pending / Processing: Bounded retry (max 5 attempts, ~2s interval)
+        if (pollAttempt < 5) {
+          timerRef.current = setTimeout(() => {
+            if (active) setPollAttempt((v) => v + 1);
+          }, 2000);
+        } else {
+          // Bounded polling complete but status still pending: allow manual check
+          setLoading(false);
+          setIsPendingReview(true);
+        }
+      })
+      .catch(() => {
+        if (active) setLoading(false);
+      });
 
     return () => {
       active = false;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
     };
-  }, [isSuccessUrl, clearCart]);
+  }, [pollAttempt, removeItemsFromCart]);
+
+  const handleManualCheck = () => {
+    setLoading(true);
+    setIsPendingReview(false);
+    setPollAttempt(0);
+  };
 
   const labels = isTr
     ? {
@@ -84,14 +129,30 @@ export function PaymentResultPage() {
         refunded: "Payment Refunded",
       };
 
-  const isSuccessState = isSuccessUrl || payment?.status === "paid";
-  const isFailedState = isFailedUrl || payment?.status === "failed" || payment?.status === "cancelled";
+  const getStatusDisplayLabel = (status: string, reason?: string | null) => {
+    if (status === "cancelled") {
+      if (reason === "timeout" || reason === "stale_pending_ttl") {
+        return isTr ? "Zaman Aşımı" : "Timeout";
+      }
+      if (reason === "abandoned") {
+        return isTr ? "Vazgeçildi" : "Abandoned";
+      }
+      return isTr ? "Ödeme İptal Edildi" : "Payment Cancelled";
+    }
+    return labels[status as keyof typeof labels] || status;
+  };
 
-  const Icon = isSuccessState
+  const isConfirmedPaid = payment?.status === "paid";
+  const isConfirmedFailed =
+    payment?.status === "failed" ||
+    (payment?.status === "cancelled" && !isSuccessUrl) ||
+    isFailedUrl;
+
+  const Icon = isConfirmedPaid
     ? CheckCircle2
-    : isFailedState
+    : isConfirmedFailed
       ? XCircle
-      : payment
+      : isPendingReview || loading
         ? Clock3
         : ShieldQuestion;
 
@@ -101,9 +162,9 @@ export function PaymentResultPage() {
         <div className="mx-auto max-w-2xl rounded-3xl border border-border bg-surface p-7 text-center shadow-editorial sm:p-10">
           <div
             className={`mx-auto flex size-16 items-center justify-center rounded-full ${
-              isSuccessState
+              isConfirmedPaid
                 ? "bg-emerald-100 text-emerald-800"
-                : isFailedState
+                : isConfirmedFailed
                   ? "bg-rose-100 text-rose-800"
                   : "bg-surface-muted text-primary"
             }`}
@@ -116,32 +177,39 @@ export function PaymentResultPage() {
           </p>
 
           <h1 className="mt-3 font-heading text-3xl text-ink sm:text-4xl">
-            {isSuccessState
+            {isConfirmedPaid
               ? isTr
                 ? "Ödeme İşleminiz Alındı"
                 : "Payment Received"
-              : isFailedState
+              : isConfirmedFailed
                 ? isTr
                   ? "Ödeme Tamamlanamadı"
                   : "Payment Could Not Be Completed"
-                : copy.resultTitle}
+                : isPendingReview
+                  ? isTr
+                    ? "Ödemeniz Doğrulanıyor"
+                    : "Payment Verification in Progress"
+                  : copy.resultTitle}
           </h1>
 
           {loading ? (
-            <p className="mt-5 text-sm text-muted-foreground">{copy.verifying}</p>
-          ) : isSuccessState ? (
+            <div className="mt-5 space-y-3">
+              <p className="text-sm text-muted-foreground">{copy.verifying}</p>
+              <div className="mx-auto size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : isConfirmedPaid ? (
             <div className="mt-4 space-y-4">
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {isTr
-                  ? "Ödemenizin doğrulanması tamamlandığında paketiniz hesabınıza otomatik olarak tanımlanacaktır."
-                  : "Once your payment is verified, your package will be automatically activated in your account."}
+                  ? "Ödemeniz başarıyla doğrulanmıştır. Satın aldığınız paket hesabınıza tanımlanmıştır."
+                  : "Your payment has been successfully verified. Your package is now available in your account."}
               </p>
 
               {payment && (
                 <dl className="mx-auto mt-6 max-w-md divide-y divide-border rounded-2xl border border-border bg-surface-muted/50 p-4 text-left text-xs sm:text-sm">
                   <div className="flex justify-between gap-4 py-2.5">
                     <dt className="text-muted-foreground">{isTr ? "Durum" : "Status"}</dt>
-                    <dd className="font-semibold text-emerald-800">{labels[payment.status]}</dd>
+                    <dd className="font-semibold text-emerald-800">{getStatusDisplayLabel(payment.status, payment.statusReason)}</dd>
                   </div>
                   <div className="flex justify-between gap-4 py-2.5">
                     <dt className="text-muted-foreground">{isTr ? "Referans" : "Reference"}</dt>
@@ -160,18 +228,34 @@ export function PaymentResultPage() {
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
                 >
                   <User className="size-4" />
-                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Hesabıma Git" : "Go to My Account")}
+                  {accountType === "admin"
+                    ? isTr
+                      ? "Yönetim Paneline Git"
+                      : "Go to Admin"
+                    : isTr
+                      ? "Hesabıma Git"
+                      : "Go to My Account"}
                   <ArrowRight className="size-4" />
                 </Link>
               </div>
             </div>
-          ) : isFailedState ? (
+          ) : isConfirmedFailed ? (
             <div className="mt-4 space-y-4">
               <p className="text-sm leading-relaxed text-muted-foreground">
-                {isTr
-                  ? "Ödeme işleminiz sırasında bir hata oluştu veya işlem onaylanmadı. Kart bilgilerinizi ve limitinizi kontrol ederek tekrar deneyebilirsiniz."
-                  : "An error occurred during payment processing or the transaction was not approved. Please check your card details and try again."}
+                {payment?.status === "cancelled"
+                  ? isTr
+                    ? "Ödeme oturumu zaman aşımına uğramış veya işlem iptal edilmiştir. Sepetiniz korunmaktadır."
+                    : "The payment session timed out or was cancelled. Your cart items are preserved."
+                  : isTr
+                    ? "Ödeme işleminiz sırasında bir hata oluştu veya işlem onaylanmadı. Kart bilgilerinizi ve limitinizi kontrol ederek tekrar deneyebilirsiniz."
+                    : "An error occurred during payment processing or the transaction was not approved. Please check your card details and try again."}
               </p>
+
+              {payment && (
+                <div className="mt-2 text-xs font-semibold text-rose-800">
+                  {isTr ? "İşlem Durumu" : "Transaction Status"}: {getStatusDisplayLabel(payment.status, payment.statusReason)}
+                </div>
+              )}
 
               <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                 <Link
@@ -189,35 +273,43 @@ export function PaymentResultPage() {
                 </Link>
               </div>
             </div>
-          ) : payment ? (
-            <div className="mt-6">
-              <p className="font-heading text-2xl text-ink">{labels[payment.status]}</p>
-              <dl className="mx-auto mt-6 max-w-md divide-y divide-border border-y border-border text-left text-sm">
-                <div className="flex justify-between gap-4 py-3">
-                  <dt className="text-muted-foreground">{isTr ? "Referans" : "Reference"}</dt>
-                  <dd className="font-mono font-semibold text-ink">{payment.reference}</dd>
-                </div>
-                <div className="flex justify-between gap-4 py-3">
-                  <dt className="text-muted-foreground">{copy.package}</dt>
-                  <dd className="font-semibold text-ink">{payment.packageId}</dd>
-                </div>
-                <div className="flex justify-between gap-4 py-3">
-                  <dt className="text-muted-foreground">{isTr ? "Tutar" : "Amount"}</dt>
-                  <dd className="font-semibold text-ink">
-                    {new Intl.NumberFormat(isTr ? "tr-TR" : "en-GB", {
-                      style: "currency",
-                      currency: payment.currency,
-                    }).format(payment.amount)}
-                  </dd>
-                </div>
-              </dl>
-              <div className="mt-8 flex justify-center">
+          ) : isPendingReview ? (
+            /* Pending Callback / Polling Limit Grace State */
+            <div className="mt-4 space-y-4">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {isTr
+                  ? "Ödeme bildiriminiz bankadan teyit ediliyor. Bu işlem birkaç saniye sürebilir. Paketiniz onaylandığında hesabınıza otomatik tanımlanacaktır."
+                  : "Your payment confirmation is being verified by the bank. This may take a few moments. Once confirmed, your package will be credited automatically."}
+              </p>
+
+              {payment && (
+                <dl className="mx-auto mt-6 max-w-md divide-y divide-border rounded-2xl border border-border bg-surface-muted/50 p-4 text-left text-xs sm:text-sm">
+                  <div className="flex justify-between gap-4 py-2.5">
+                    <dt className="text-muted-foreground">{isTr ? "Durum" : "Status"}</dt>
+                    <dd className="font-semibold text-amber-800">{getStatusDisplayLabel(payment.status, payment.statusReason)}</dd>
+                  </div>
+                  <div className="flex justify-between gap-4 py-2.5">
+                    <dt className="text-muted-foreground">{isTr ? "Referans" : "Reference"}</dt>
+                    <dd className="font-mono font-semibold text-ink">{payment.reference}</dd>
+                  </div>
+                </dl>
+              )}
+
+              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleManualCheck}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
+                >
+                  <RefreshCw className="size-4" />
+                  {isTr ? "Durumu Yeniden Kontrol Et" : "Recheck Status"}
+                </button>
                 <Link
                   href={accountType === "admin" ? "/admin" : localizedPath("studentAccount", locale)}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border px-6 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted"
                 >
                   <User className="size-4" />
-                  {accountType === "admin" ? (isTr ? "Yönetim Paneline Git" : "Go to Admin") : (isTr ? "Hesabıma Git" : "Go to My Account")}
+                  {isTr ? "Hesabıma Dön" : "Return to Account"}
                 </Link>
               </div>
             </div>

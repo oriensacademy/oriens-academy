@@ -5,9 +5,11 @@ export type HistoricalPaymentMethod = PaymentMethod | "bank_transfer";
 export interface VerifiedPaymentStatus {
   reference: string;
   packageId: string;
+  packageIds?: string[];
   amount: number;
   currency: string;
   status: PaymentStatus;
+  statusReason?: string | null;
   paymentMethod: HistoricalPaymentMethod;
   provider: string;
   createdAt: string;

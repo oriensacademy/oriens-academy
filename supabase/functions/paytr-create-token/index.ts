@@ -5,7 +5,7 @@ import { createStatusCredential, generatePaytrMerchantOid, sha256 } from "../_sh
 
 const PHONE_RE = /^\+[1-9][0-9]{6,14}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PAYTR_COMPANY_ADDRESS = "Emaar Square, The Heights E Blok\nÜnalan Mah., Libadiye Cd. No:82\nÜsküdar / İstanbul";
+const PAYTR_DEFAULT_ADDRESS = "İstanbul / Türkiye";
 
 function validationError(req: Request, locale: "tr" | "en", code: string, tr: string, en: string) {
   return buildJsonResponse({ error_code: code, message: locale === "en" ? en : tr }, 400, req);
@@ -40,8 +40,8 @@ Deno.serve(async (req: Request) => {
     const couponCode = payload.couponCode ? String(payload.couponCode).trim().toUpperCase() : null;
     const termsAccepted = payload.termsAccepted === true;
     const refundPolicyAccepted = payload.refundPolicyAccepted === true;
+    const legalAccepted = termsAccepted && refundPolicyAccepted;
     const legalVersions = (payload.legalVersions as Record<string, string>) || {};
-    if (!termsAccepted || !refundPolicyAccepted) return validationError(req, locale, "LEGAL_ACCEPTANCE_REQUIRED", "Ödemeye devam etmek için sözleşmeleri onaylayın.", "Accept the agreements to continue to payment.");
     if (!packageIds.length || packageIds.length > 20 || new Set(packageIds).size !== packageIds.length) return validationError(req, locale, "INVALID_PACKAGES", "Siparişteki paketler geçersiz.", "The packages in this order are invalid.");
     if (!UUID_RE.test(learnerId)) return validationError(req, locale, "LEARNER_REQUIRED", "Ödeme yapılacak öğrenci bulunamadı.", "The learner for this payment could not be found.");
 
@@ -113,8 +113,22 @@ Deno.serve(async (req: Request) => {
       student_user_id: learner.legacy_auth_user_id, auth_actor_user_id: actor.id, purchaser_guardian_user_id: purchaserGuardianId, package_owner_student_id: learnerId,
       package_id: packageIds[0], public_reference: merchantOid, status_token_hash: statusTokenHash, provider: finalAmount === 0 ? "coupon" : "paytr", amount: finalAmount, currency,
       status: "pending", payment_method: "card", payer_name: payerName, payer_email: verifiedEmail,
-      payer_phone: payerPhone, payer_address: PAYTR_COMPANY_ADDRESS, identity_selection_method: selectionMethod,
-      metadata: { locale, learner_name: learner.full_name, coupon_code: couponCode, coupon_id: couponId, discounted_package_id: discountedPackageId, base_amount: baseAmount, discount_amount: discountAmount, checkout_items: checkoutItems, package_ids: packageIds, package_name: checkoutItems.map((item) => item.package_name).join(", "), lesson_count: checkoutItems.reduce((sum, item) => sum + Number(item.lesson_count || 0), 0), provider_test_mode: testMode === "1", created_at: nowIso, sales_terms_version: legalVersions.salesAgreement || "2026-08-27", sales_terms_accepted_at: nowIso, pre_information_version: legalVersions.preInformation || "2026-08-27", pre_information_accepted_at: nowIso, refund_policy_version: legalVersions.refundPolicy || "2026-08-27", refund_policy_accepted_at: nowIso, single_lesson_list_price_snapshot: Number(singlePkg?.current_total ?? singlePkg?.price_amount ?? singlePkg?.unit_price ?? 3200), package_list_price_snapshot: baseAmount, package_discount_snapshot: 0, coupon_discount_snapshot: discountAmount, amount_paid: finalAmount },
+      payer_phone: payerPhone, payer_address: PAYTR_DEFAULT_ADDRESS, identity_selection_method: selectionMethod,
+      metadata: {
+        locale, learner_name: learner.full_name, coupon_code: couponCode, coupon_id: couponId, discounted_package_id: discountedPackageId,
+        base_amount: baseAmount, discount_amount: discountAmount, checkout_items: checkoutItems, package_ids: packageIds,
+        package_name: checkoutItems.map((item) => item.package_name).join(", "), lesson_count: checkoutItems.reduce((sum, item) => sum + Number(item.lesson_count || 0), 0),
+        provider_test_mode: testMode === "1", created_at: nowIso,
+        sales_terms_version: legalVersions.salesAgreement || "2026-08-27",
+        sales_terms_accepted_at: legalAccepted ? nowIso : null,
+        pre_information_version: legalVersions.preInformation || "2026-08-27",
+        pre_information_accepted_at: legalAccepted ? nowIso : null,
+        refund_policy_version: legalVersions.refundPolicy || "2026-08-27",
+        refund_policy_accepted_at: legalAccepted ? nowIso : null,
+        legal_accepted: legalAccepted,
+        single_lesson_list_price_snapshot: Number(singlePkg?.current_total ?? singlePkg?.price_amount ?? singlePkg?.unit_price ?? 3200),
+        package_list_price_snapshot: baseAmount, package_discount_snapshot: 0, coupon_discount_snapshot: discountAmount, amount_paid: finalAmount
+      },
     }).select("id").single();
     if (insertError || !transaction) return buildJsonResponse({ error_code: "TRANSACTION_CREATE_FAILED", message: "Payment record could not be created." }, 500, req);
 
@@ -123,9 +137,11 @@ Deno.serve(async (req: Request) => {
       if (redemptionError) { await admin.from("payment_transactions").update({ status: "failed" }).eq("id", transaction.id); return buildJsonResponse({ error_code: "COUPON_RESERVATION_FAILED", message: locale === "tr" ? "Kupon bu sipariş için ayrılamadı." : "The coupon could not be reserved for this order." }, 409, req); }
     }
     if (finalAmount === 0) {
-      const { error: activationError } = await admin.rpc("finalize_zero_payment_order", { p_payment_id: transaction.id });
-      if (activationError) return buildJsonResponse({ error_code: "FREE_ORDER_ACTIVATION_FAILED", message: locale === "tr" ? "Ücretsiz sipariş tamamlanamadı." : "The free order could not be completed." }, 500, req);
-      return buildJsonResponse({ success: true, zero_payment: true, merchant_oid: merchantOid, reference: merchantOid, statusToken, final_amount: 0, currency }, 200, req);
+      if (legalAccepted) {
+        const { error: activationError } = await admin.rpc("finalize_zero_payment_order", { p_payment_id: transaction.id });
+        if (activationError) return buildJsonResponse({ error_code: "FREE_ORDER_ACTIVATION_FAILED", message: locale === "tr" ? "Ücretsiz sipariş tamamlanamadı." : "The free order could not be completed." }, 500, req);
+      }
+      return buildJsonResponse({ success: true, zero_payment: true, prepared: !legalAccepted, legal_accepted: legalAccepted, merchant_oid: merchantOid, reference: merchantOid, statusToken, final_amount: 0, currency }, 200, req);
     }
 
     const userBasket = encodePaytrUserBasket(checkoutItems.map((item) => [item.package_name, item.final_amount.toFixed(2), 1]));
@@ -134,11 +150,11 @@ Deno.serve(async (req: Request) => {
     const merchantFailUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/failed" : "tr/odeme/basarisiz"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
     const paymentAmount = Math.round(finalAmount * 100).toString();
     const paytrToken = await calculatePaytrToken({ merchantId, userIp, merchantOid, email: verifiedEmail, paymentAmount, userBasket, noInstallment: "0", maxInstallment: "12", currency, testMode, merchantSalt, merchantKey });
-    const formData = new URLSearchParams({ merchant_id: merchantId, user_ip: userIp, merchant_oid: merchantOid, email: verifiedEmail, payment_amount: paymentAmount, paytr_token: paytrToken, user_basket: userBasket, debug_on: debugOn, no_installment: "0", max_installment: "12", user_name: payerName, user_address: PAYTR_COMPANY_ADDRESS, user_phone: payerPhone, merchant_ok_url: merchantOkUrl, merchant_fail_url: merchantFailUrl, timeout_limit: "30", currency, test_mode: testMode, lang: locale === "en" ? "en" : "tr" });
+    const formData = new URLSearchParams({ merchant_id: merchantId, user_ip: userIp, merchant_oid: merchantOid, email: verifiedEmail, payment_amount: paymentAmount, paytr_token: paytrToken, user_basket: userBasket, debug_on: debugOn, no_installment: "0", max_installment: "12", user_name: payerName, user_address: PAYTR_DEFAULT_ADDRESS, user_phone: payerPhone, merchant_ok_url: merchantOkUrl, merchant_fail_url: merchantFailUrl, timeout_limit: "30", currency, test_mode: testMode, lang: locale === "en" ? "en" : "tr" });
     const paytrRes = await fetch("https://www.paytr.com/odeme/api/get-token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString() });
     const paytrData = paytrRes.ok ? await paytrRes.json() : null;
     if (!paytrRes.ok || paytrData?.status !== "success" || !paytrData?.token) { await admin.from("payment_transactions").update({ status: "failed" }).eq("id", transaction.id); return buildJsonResponse({ error_code: "PAYTR_SESSION_FAILED", message: locale === "tr" ? "Güvenli ödeme oturumu başlatılamadı. Tekrar deneyin." : "The secure payment session could not be started. Try again." }, 502, req); }
-    return buildJsonResponse({ success: true, iframe_token: paytrData.token, merchant_oid: merchantOid, reference: merchantOid, statusToken, final_amount: finalAmount, currency }, 200, req);
+    return buildJsonResponse({ success: true, iframe_token: paytrData.token, merchant_oid: merchantOid, reference: merchantOid, statusToken, final_amount: finalAmount, currency, legal_accepted: legalAccepted }, 200, req);
   } catch (error) {
     console.error("[paytr-create-token] request failed", error instanceof Error ? error.name : "unknown");
     return buildJsonResponse({ error_code: "INTERNAL_ERROR", message: "Payment session could not be prepared." }, 500, req);

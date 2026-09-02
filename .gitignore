@@ -59,6 +59,9 @@ scripts/backup_*.json
 .netlify
 .netlify/
 
+# cloudflare / wrangler
+.wrangler/
+
 
 # typescript
 *.tsbuildinfo

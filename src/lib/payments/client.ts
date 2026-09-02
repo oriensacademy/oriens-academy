@@ -33,6 +33,7 @@ export interface CreatePaytrTokenResult {
   currency?: string;
   errorCode?: string;
   message?: string;
+  legal_accepted?: boolean;
 }
 
 type PaymentAuthClient = Pick<SupabaseClient, "auth">;
@@ -138,6 +139,7 @@ export async function createPaytrToken(input: CreatePaytrTokenInput): Promise<Cr
       statusToken: data.statusToken,
       final_amount: data.final_amount,
       currency: data.currency,
+      legal_accepted: Boolean(data.legal_accepted),
     };
   } catch {
     return {
@@ -145,6 +147,26 @@ export async function createPaytrToken(input: CreatePaytrTokenInput): Promise<Cr
       errorCode: "NETWORK_ERROR",
       message: input.locale === "tr" ? "Ağ bağlantısı hatası oluştu." : "A network error occurred.",
     };
+  }
+}
+
+export async function confirmPaymentAgreements(
+  reference: string,
+  legalVersions?: { salesAgreement?: string; preInformation?: string; refundPolicy?: string }
+): Promise<boolean> {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.rpc("confirm_payment_agreements", {
+      p_merchant_oid: reference,
+      p_legal_versions: legalVersions || {
+        salesAgreement: LEGAL_VERSIONS.salesAgreement,
+        preInformation: LEGAL_VERSIONS.preInformation,
+        refundPolicy: LEGAL_VERSIONS.refundPolicy,
+      },
+    });
+    return !error && data === true;
+  } catch {
+    return false;
   }
 }
 
