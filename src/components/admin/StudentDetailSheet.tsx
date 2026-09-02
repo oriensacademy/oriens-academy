@@ -467,13 +467,20 @@ function Overview({
           Eğitim & Aktivite Özeti
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Info label="Aktif Paket" value={student.activePackage?.name || "Tanımlı Paket Yok"} />
+          <Info
+            label="Aktif Paket"
+            value={
+              student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0
+                ? student.activePackage.name
+                : "Aktif Paket Bulunmuyor"
+            }
+          />
           <Info
             label="Kalan Ders"
             value={
-              student.activePackage
-                ? `${Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed)} ders`
-                : "—"
+              student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0
+                ? `${student.activePackage.lessonCount - student.activePackage.lessonsUsed} ders`
+                : "0 ders"
             }
           />
           <Info label="Sonraki Randevu" value={date(student.nextAppointment)} />
@@ -1107,8 +1114,8 @@ function RecordPastLessonModal({
     setBusy(true);
     setError("");
 
-    const hasActivePkg = Boolean(student.activePackage);
-    const remaining = student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
+    const hasActivePkg = Boolean(student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0);
+    const remaining = hasActivePkg && student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
 
     const res = await recordCompletedLesson({
       studentId: student.userId || student.id,
@@ -1198,9 +1205,13 @@ function RecordPastLessonModal({
             />
           </label>
 
-          {student.activePackage && (
+          {student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0 ? (
             <p className="text-[11px] text-muted-foreground bg-surface-muted/60 rounded-xl p-2.5">
-              💡 Öğrencinin aktif <strong>{student.activePackage.name}</strong> paketi bulunmaktadır. Ders kaydedildiğinde paketten 1 ders hakkı düşülecektir.
+              💡 Öğrencinin aktif <strong>{student.activePackage.name}</strong> paketi ({student.activePackage.lessonCount - student.activePackage.lessonsUsed} ders kaldı) bulunmaktadır. Ders kaydedildiğinde paketten 1 ders hakkı düşülecektir.
+            </p>
+          ) : (
+            <p className="text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200 rounded-xl p-2.5">
+              ℹ️ Öğrencinin aktif ders hakkı kalmamıştır. Ders bağımsız/ekstra geçmiş ders olarak kaydedilecektir.
             </p>
           )}
 
@@ -1367,7 +1378,7 @@ function DecreaseLessonRightsModal({
           </label>
 
           <p className="text-[11px] text-muted-foreground bg-blue-50/60 border border-blue-100 rounded-xl p-2.5">
-            📧 İşlem başarıyla tamamlandığında öğrenciye <strong>"Ders hakkınız güncellendi"</strong> başlığıyla güncel kalan hakkını belirten bildirim iletilecektir.
+            📧 İşlem başarıyla tamamlandığında öğrenciye <strong>&quot;Ders hakkınız güncellendi&quot;</strong> başlığıyla güncel kalan hakkını belirten bildirim iletilecektir.
           </p>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-border">

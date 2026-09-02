@@ -50,8 +50,8 @@ export function CreateBookingModal({
   onClose,
   onCreated,
   initialEmail = "",
-  initialName = "",
-  initialPhone = "",
+  initialName: _initialName = "",
+  initialPhone: _initialPhone = "",
   initialStudentUserId = null,
 }: CreateBookingModalProps) {
   const isHydrated = useIsHydrated();
@@ -129,7 +129,9 @@ export function CreateBookingModal({
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
-    setLoadingStudents(true);
+    queueMicrotask(() => {
+      if (active) setLoadingStudents(true);
+    });
     listAdminStudents().then((res) => {
       if (!active) return;
       const list = res.data || [];

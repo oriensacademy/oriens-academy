@@ -232,7 +232,7 @@ function LessonsPanel({
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const lessonCopy = adminLessonCopy.tr;
 
-  const activePackage = purchases.find((p) => p.status === "active") || purchases[0];
+  const activePackage = purchases.find((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0) || null;
 
   const nowIso = new Date().toISOString().slice(0, 16);
   const [form, setForm] = useState({
@@ -477,11 +477,13 @@ function LessonsPanel({
                 className={field}
               >
                 <option value="">Paket Seçilmedi (Bağımsız Ders)</option>
-                {purchases.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id} ({p.lessons_used}/{p.lesson_count} ders kullanıldı)
-                  </option>
-                ))}
+                {purchases
+                  .filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id} ({p.lesson_count - p.lessons_used} ders kaldı)
+                    </option>
+                  ))}
               </select>
             </div>
             <div>
@@ -972,7 +974,7 @@ function PackagePanel({
     notes: "",
   });
 
-  const defaultPurchase = purchases.find((p) => p.status === "active") || purchases[0];
+  const defaultPurchase = purchases.find((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0) || purchases[0];
   const selectedAdjustmentPurchase = purchases.find((p) => p.id === (adjustmentForm.purchaseId || targetPurchaseId)) || defaultPurchase;
   const adjustmentAmount = Math.max(0, Number(adjustmentForm.amount) || 0);
   const signedAdjustment = adjustmentMode === "add" ? adjustmentAmount : -adjustmentAmount;
@@ -1457,157 +1459,295 @@ function PackagePanel({
         </div>
       )}
 
-      {/* PACKAGES LIST */}
+      {/* 1. AKTİF PAKETLER */}
       <div className="space-y-3">
-        {purchases.length ? (
-          purchases.map((p) => {
-            const pkgAdjustments = adjustments.filter((a) => a.package_purchase_id === p.id);
-            const extraLessonsSum = pkgAdjustments
-              .filter((a) => a.adjustment_type === "extra_lessons")
-              .reduce((sum, a) => sum + (a.lesson_delta || 0), 0);
-            const baseLessonCount = Math.max(0, p.lesson_count - extraLessonsSum);
-            const remaining = Math.max(0, p.lesson_count - p.lessons_used);
-            const pct = Math.min(100, p.lesson_count ? Math.round((p.lessons_used / p.lesson_count) * 100) : 0);
-            const title = p.custom_package_name || p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id;
-            const isActive = p.status === "active";
+        <div className="flex items-center justify-between">
+          <h4 className="font-heading text-sm font-bold text-ink uppercase tracking-wider">
+            Aktif Paketler ({purchases.filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0).length})
+          </h4>
+        </div>
+        {purchases.filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0).length > 0 ? (
+          purchases
+            .filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0)
+            .map((p) => {
+              const pkgAdjustments = adjustments.filter((a) => a.package_purchase_id === p.id);
+              const extraLessonsSum = pkgAdjustments
+                .filter((a) => a.adjustment_type === "extra_lessons")
+                .reduce((sum, a) => sum + (a.lesson_delta || 0), 0);
+              const baseLessonCount = Math.max(0, p.lesson_count - extraLessonsSum);
+              const remaining = Math.max(0, p.lesson_count - p.lessons_used);
+              const pct = Math.min(100, p.lesson_count ? Math.round((p.lessons_used / p.lesson_count) * 100) : 0);
+              const title = p.custom_package_name || p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id;
 
-            return (
-              <div key={p.id} className="rounded-2xl border border-border bg-surface p-4 text-xs space-y-3.5">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-ink">{title}</h4>
-                      {extraLessonsSum > 0 && (
-                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                          +{extraLessonsSum} Ek Ders
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {p.start_date}
-                      {p.end_date ? ` — ${p.end_date}` : " (Süresiz)"}
-                      {p.price_amount !== null ? ` · ${money(p.price_amount, p.currency)}` : ""}
-                      {p.custom_package_name ? " · Özel Paket" : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                        isActive
-                          ? "bg-emerald-100 text-emerald-800"
-                          : p.status === "completed"
-                            ? "bg-slate-100 text-slate-800"
-                            : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {isActive ? "Aktif" : p.status === "completed" ? "Tamamlandı" : p.status}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => openAdjustmentModal(p.id, "add")}
-                        className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 cursor-pointer transition-colors"
-                      >
-                        <Plus className="size-3" />
-                        Ders Hakkı Ekle
-                      </button>
-                      <button
-                        type="button"
-                        disabled={remaining <= 0}
-                        onClick={() => openAdjustmentModal(p.id, "remove")}
-                        className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer transition-colors"
-                      >
-                        <Minus className="size-3" />
-                        Ders Hakkı Azalt
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar & Entitlement Details */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-[11px]">
-                    <span className="text-muted-foreground">
-                      Kullanılan: <strong>{p.lessons_used}</strong> / {p.lesson_count} ders ({pct}%)
-                    </span>
-                    <span className="font-semibold text-emerald-800">
-                      Kalan: <strong>{remaining} ders</strong>
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
-                    <div
-                      className={`h-full rounded-full transition-[width] duration-300 ${
-                        remaining === 0 ? "bg-slate-400" : "bg-primary"
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  {extraLessonsSum > 0 && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Baz Paket: <strong>{baseLessonCount} ders</strong> · Ek Dersler: <strong>+{extraLessonsSum} ders</strong> · Toplam Hak: <strong>{p.lesson_count} ders</strong>
-                    </p>
-                  )}
-                </div>
-
-                {/* Info Badges */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border text-[11px] text-muted-foreground">
-                  <span>Ödeme Durumu: <strong>{formatPaymentStatus(p.payment_status)}</strong></span>
-                  <span>·</span>
-                  <span>Kaynak: <strong>{p.assignment_source === "admin_manual" ? "Yönetici Tanımlı" : "Satın Alma"}</strong></span>
-                  {p.admin_notes && (
-                    <>
-                      <span>·</span>
-                      <span className="italic text-ink/80">Not: {p.admin_notes}</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Adjustment History Timeline */}
-                {pkgAdjustments.length > 0 && (
-                  <div className="mt-2 rounded-xl bg-surface-muted/70 p-3 text-[11px] space-y-2 border border-border">
-                    <div className="flex items-center gap-1.5 font-bold text-ink">
-                      <History className="size-3.5 text-primary" />
-                      <span>Paket Düzeltme & Ek Ders Geçmişi</span>
-                    </div>
-                    <ul className="space-y-1.5 pl-2">
-                      {pkgAdjustments.map((adj) => (
-                        <li key={adj.id} className="flex flex-wrap items-center justify-between gap-1 text-muted-foreground border-l-2 border-primary/40 pl-2">
-                          <div>
-                            <span className="font-semibold text-ink">
-                              {adj.adjustment_type === "extra_lessons"
-                                ? `+${adj.lesson_delta} Ek Ders`
-                                : adj.adjustment_type === "package_assigned"
-                                  ? `Paket Tanımlandı (${adj.lesson_delta} Ders)`
-                                  : adj.adjustment_type === "lesson_completed"
-                                    ? "-1 Ders Tamamlandı"
-                                    : adj.adjustment_type === "past_lesson_added"
-                                      ? "-1 Geçmiş Ders Eklendi"
-                                  : `${adj.lesson_delta} Ders Düzeltmesi`}
-                            </span>
-                            {adj.reason && <span className="text-ink/80"> — {adj.reason}</span>}
-                            {adj.notes && <span className="text-ink/70"> · “{adj.notes}”</span>}
-                          </div>
-                          <span className="text-[10px]">
-                            {new Date(adj.created_at).toLocaleDateString("tr-TR", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })} · {formatPaymentStatus(adj.payment_status)}
+              return (
+                <div key={p.id} className="rounded-2xl border border-border bg-surface p-4 text-xs space-y-3.5 shadow-xs">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-ink">{title}</h4>
+                        {extraLessonsSum > 0 && (
+                          <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                            +{extraLessonsSum} Ek Ders
                           </span>
-                        </li>
-                      ))}
-                    </ul>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {p.start_date}
+                        {p.end_date ? ` — ${p.end_date}` : " (Süresiz)"}
+                        {p.price_amount !== null ? ` · ${money(p.price_amount, p.currency)}` : ""}
+                        {p.custom_package_name ? " · Özel Paket" : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-[11px] font-bold">
+                        Aktif
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openAdjustmentModal(p.id, "add")}
+                          className="inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 cursor-pointer transition-colors"
+                        >
+                          <Plus className="size-3" />
+                          Ders Hakkı Ekle
+                        </button>
+                        <button
+                          type="button"
+                          disabled={remaining <= 0}
+                          onClick={() => openAdjustmentModal(p.id, "remove")}
+                          className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-800 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer transition-colors"
+                        >
+                          <Minus className="size-3" />
+                          Ders Hakkı Azalt
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })
+
+                  {/* Progress Bar & Entitlement Details */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">
+                        Kullanılan: <strong>{p.lessons_used}</strong> / {p.lesson_count} ders ({pct}%)
+                      </span>
+                      <span className="font-semibold text-emerald-800">
+                        Kalan: <strong>{remaining} ders</strong>
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-[width] duration-300"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {extraLessonsSum > 0 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Baz Paket: <strong>{baseLessonCount} ders</strong> · Ek Dersler: <strong>+{extraLessonsSum} ders</strong> · Toplam Hak: <strong>{p.lesson_count} ders</strong>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Info Badges */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border text-[11px] text-muted-foreground">
+                    <span>Ödeme Durumu: <strong>{formatPaymentStatus(p.payment_status)}</strong></span>
+                    <span>·</span>
+                    <span>Kaynak: <strong>{p.assignment_source === "admin_manual" ? "Yönetici Tanımlı" : "Satın Alma"}</strong></span>
+                    {p.admin_notes && (
+                      <>
+                        <span>·</span>
+                        <span className="italic text-ink/80">Not: {p.admin_notes}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Adjustment History Timeline */}
+                  {pkgAdjustments.length > 0 && (
+                    <div className="mt-2 rounded-xl bg-surface-muted/70 p-3 text-[11px] space-y-2 border border-border">
+                      <div className="flex items-center gap-1.5 font-bold text-ink">
+                        <History className="size-3.5 text-primary" />
+                        <span>Paket Düzeltme & Ek Ders Geçmişi</span>
+                      </div>
+                      <ul className="space-y-1.5 pl-2">
+                        {pkgAdjustments.map((adj) => (
+                          <li key={adj.id} className="flex flex-wrap items-center justify-between gap-1 text-muted-foreground border-l-2 border-primary/40 pl-2">
+                            <div>
+                              <span className="font-semibold text-ink">
+                                {adj.adjustment_type === "extra_lessons"
+                                  ? `+${adj.lesson_delta} Ek Ders`
+                                  : adj.adjustment_type === "package_assigned"
+                                    ? `Paket Tanımlandı (${adj.lesson_delta} Ders)`
+                                    : adj.adjustment_type === "lesson_completed"
+                                      ? "-1 Ders Tamamlandı"
+                                      : adj.adjustment_type === "past_lesson_added"
+                                        ? "-1 Geçmiş Ders Eklendi"
+                                      : `${adj.lesson_delta} Ders Düzeltmesi`}
+                              </span>
+                              {adj.reason && <span className="text-ink/80"> — {adj.reason}</span>}
+                              {adj.notes && <span className="text-ink/70"> · “{adj.notes}”</span>}
+                            </div>
+                            <span className="text-[10px]">
+                              {new Date(adj.created_at).toLocaleDateString("tr-TR", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })} · {formatPaymentStatus(adj.payment_status)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              );
+            })
         ) : (
-          <Empty>Atanmış eğitim paketi bulunmuyor. Yukarıdaki “Yeni Paket Tanımla” butonundan yeni bir paket tanımlayabilirsiniz.</Empty>
+          <div className="rounded-2xl border border-dashed border-border bg-surface-muted/40 p-4 text-center text-xs text-muted-foreground">
+            Öğrencinin aktif ders hakkı bulunan paketi bulunmamaktadır.
+          </div>
         )}
       </div>
+
+      {/* 2. ARŞİV / TAMAMLANAN PAKETLER */}
+      {purchases.filter((p) => p.status !== "active" || (p.lesson_count || 0) - (p.lessons_used || 0) <= 0).length > 0 && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <h4 className="font-heading text-sm font-bold text-muted-foreground uppercase tracking-wider">
+              Arşiv / Tamamlanan Paketler ({purchases.filter((p) => p.status !== "active" || (p.lesson_count || 0) - (p.lessons_used || 0) <= 0).length})
+            </h4>
+          </div>
+          {purchases
+            .filter((p) => p.status !== "active" || (p.lesson_count || 0) - (p.lessons_used || 0) <= 0)
+            .map((p) => {
+              const pkgAdjustments = adjustments.filter((a) => a.package_purchase_id === p.id);
+              const extraLessonsSum = pkgAdjustments
+                .filter((a) => a.adjustment_type === "extra_lessons")
+                .reduce((sum, a) => sum + (a.lesson_delta || 0), 0);
+              const baseLessonCount = Math.max(0, p.lesson_count - extraLessonsSum);
+              const remaining = Math.max(0, p.lesson_count - p.lessons_used);
+              const pct = Math.min(100, p.lesson_count ? Math.round((p.lessons_used / p.lesson_count) * 100) : 0);
+              const title = p.custom_package_name || p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id;
+              const isCompleted = p.status === "completed" || p.lessons_used >= p.lesson_count;
+              const isRefunded = p.status === "refunded";
+              const statusLabel = isCompleted ? "Tamamlandı / Arşiv" : isRefunded ? "İade Edildi" : "Arşiv";
+
+              return (
+                <div key={p.id} className="rounded-2xl border border-border/80 bg-surface-muted/40 p-4 text-xs space-y-3.5 opacity-90">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-ink">{title}</h4>
+                        {extraLessonsSum > 0 && (
+                          <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                            +{extraLessonsSum} Ek Ders
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {p.start_date}
+                        {p.end_date ? ` — ${p.end_date}` : " (Süresiz)"}
+                        {p.price_amount !== null ? ` · ${money(p.price_amount, p.currency)}` : ""}
+                        {p.custom_package_name ? " · Özel Paket" : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${isRefunded ? "bg-rose-100 text-rose-800" : "bg-slate-200/80 text-slate-800"}`}>
+                        {statusLabel}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openAdjustmentModal(p.id, "add")}
+                          className="inline-flex items-center gap-1 rounded-xl border border-border bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors"
+                        >
+                          <Plus className="size-3" />
+                          Ders Hakkı Ekle
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar & Entitlement Details */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">
+                        Kullanılan: <strong>{p.lessons_used}</strong> / {p.lesson_count} ders ({pct}%)
+                      </span>
+                      <span className="font-semibold text-muted-foreground">
+                        Kalan: <strong>{remaining} ders</strong>
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
+                      <div
+                        className="h-full rounded-full bg-slate-400 transition-[width] duration-300"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {extraLessonsSum > 0 && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Baz Paket: <strong>{baseLessonCount} ders</strong> · Ek Dersler: <strong>+{extraLessonsSum} ders</strong> · Toplam Hak: <strong>{p.lesson_count} ders</strong>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Info Badges */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border text-[11px] text-muted-foreground">
+                    <span>Ödeme Durumu: <strong>{formatPaymentStatus(p.payment_status)}</strong></span>
+                    <span>·</span>
+                    <span>Kaynak: <strong>{p.assignment_source === "admin_manual" ? "Yönetici Tanımlı" : "Satın Alma"}</strong></span>
+                    {p.admin_notes && (
+                      <>
+                        <span>·</span>
+                        <span className="italic text-ink/80">Not: {p.admin_notes}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Adjustment History Timeline */}
+                  {pkgAdjustments.length > 0 && (
+                    <div className="mt-2 rounded-xl bg-surface p-3 text-[11px] space-y-2 border border-border">
+                      <div className="flex items-center gap-1.5 font-bold text-ink">
+                        <History className="size-3.5 text-primary" />
+                        <span>Paket Düzeltme & Ek Ders Geçmişi</span>
+                      </div>
+                      <ul className="space-y-1.5 pl-2">
+                        {pkgAdjustments.map((adj) => (
+                          <li key={adj.id} className="flex flex-wrap items-center justify-between gap-1 text-muted-foreground border-l-2 border-primary/40 pl-2">
+                            <div>
+                              <span className="font-semibold text-ink">
+                                {adj.adjustment_type === "extra_lessons"
+                                  ? `+${adj.lesson_delta} Ek Ders`
+                                  : adj.adjustment_type === "package_assigned"
+                                    ? `Paket Tanımlandı (${adj.lesson_delta} Ders)`
+                                    : adj.adjustment_type === "lesson_completed"
+                                      ? "-1 Ders Tamamlandı"
+                                      : adj.adjustment_type === "past_lesson_added"
+                                        ? "-1 Geçmiş Ders Eklendi"
+                                      : `${adj.lesson_delta} Ders Düzeltmesi`}
+                              </span>
+                              {adj.reason && <span className="text-ink/80"> — {adj.reason}</span>}
+                              {adj.notes && <span className="text-ink/70"> · “{adj.notes}”</span>}
+                            </div>
+                            <span className="text-[10px]">
+                              {new Date(adj.created_at).toLocaleDateString("tr-TR", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })} · {formatPaymentStatus(adj.payment_status)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }

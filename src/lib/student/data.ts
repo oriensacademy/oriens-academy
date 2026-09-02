@@ -92,15 +92,17 @@ export function getStudentEntitlementSummary(purchases: StudentPurchase[]): Stud
     (p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0
   );
 
-  // Past / exhausted / refunded packages
-  const pastPackages = purchases.filter(
-    (p) =>
-      p.status === "completed" ||
-      p.status === "expired" ||
-      p.status === "cancelled" ||
-      p.status === "refunded" ||
-      (p.lesson_count || 0) - (p.lessons_used || 0) <= 0
-  );
+  // Past / exhausted / refunded packages (most recent first)
+  const pastPackages = purchases
+    .filter(
+      (p) =>
+        p.status === "completed" ||
+        p.status === "expired" ||
+        p.status === "cancelled" ||
+        p.status === "refunded" ||
+        (p.lesson_count || 0) - (p.lessons_used || 0) <= 0
+    )
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
 
   const totalGrantedLessons = purchases.reduce((sum, p) => sum + (p.lesson_count || 0), 0);
   const totalUsedLessons = purchases.reduce((sum, p) => sum + (p.lessons_used || 0), 0);
@@ -109,7 +111,8 @@ export function getStudentEntitlementSummary(purchases: StudentPurchase[]): Stud
     0
   );
 
-  const primaryPackage = activePackages[0] || purchases[0] || null;
+  // An exhausted package (remaining_lessons = 0) is NEVER considered primary active package
+  const primaryPackage = activePackages[0] || null;
 
   return {
     totalGrantedLessons,

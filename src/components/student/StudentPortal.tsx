@@ -272,12 +272,13 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
     totalGrantedLessons: 0,
     totalUsedLessons: 0,
     totalRemainingLessons: 0,
-    activePackages: data.purchases || [],
-    pastPackages: [],
-    primaryPackage: data.currentPackage || data.purchases[0] || null,
+    activePackages: (data.purchases || []).filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0),
+    pastPackages: (data.purchases || []).filter((p) => p.status !== "active" || (p.lesson_count || 0) - (p.lessons_used || 0) <= 0),
+    primaryPackage: data.currentPackage || null,
   };
   const activeCount = entitlement.activePackages.length;
   const primaryPkg = entitlement.primaryPackage;
+  const hasActivePackage = entitlement.totalRemainingLessons > 0 && Boolean(primaryPkg);
 
   const nextBooking = useMemo(() => {
     return data.bookings
@@ -297,22 +298,24 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
       <button onClick={() => onNavigate("package")} className="rounded-2xl border border-border bg-forest p-6 text-left text-white sm:col-span-2 cursor-pointer hover:border-border-strong transition-all">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs uppercase tracking-wider text-white/65">
-            {activeCount > 1
+            {hasActivePackage && activeCount > 1
               ? (locale === "tr" ? `${activeCount} Aktif Eğitim Paketi` : `${activeCount} Active Packages`)
               : (locale === "tr" ? "Eğitim Paketi" : "Education Package")}
           </p>
           <span className="rounded-full bg-white/15 px-3 py-0.5 text-xs font-semibold text-white">
-            {locale === "tr" ? `${entitlement.totalRemainingLessons} Ders Hakkı` : `${entitlement.totalRemainingLessons} Lessons Available`}
+            {hasActivePackage
+              ? (locale === "tr" ? `${entitlement.totalRemainingLessons} Ders Hakkı` : `${entitlement.totalRemainingLessons} Lessons Available`)
+              : (locale === "tr" ? "Aktif Paket Yok" : "No Active Package")}
           </span>
         </div>
 
         <h2 className="mt-2 font-heading text-3xl">
-          {primaryPkg
+          {hasActivePackage && primaryPkg
             ? primaryPkg.custom_package_name || (locale === "tr" ? primaryPkg.pricing_packages?.name_tr : primaryPkg.pricing_packages?.name_en) || primaryPkg.package_id
-            : "—"}
+            : (locale === "tr" ? "Aktif Eğitim Paketi Bulunmuyor" : "No Active Education Package")}
         </h2>
 
-        {entitlement.totalGrantedLessons > 0 && (
+        {hasActivePackage && entitlement.totalGrantedLessons > 0 ? (
           <>
             <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
               <div
@@ -326,6 +329,16 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
               {locale === "tr" ? "Toplam Kullanılan" : "Total Completed"}: {entitlement.totalUsedLessons} / {entitlement.totalGrantedLessons} · {locale === "tr" ? "Toplam Kalan" : "Total Remaining"}: <strong className="text-white font-bold">{entitlement.totalRemainingLessons} {locale === "tr" ? "Ders" : "Lessons"}</strong>
             </p>
           </>
+        ) : (
+          <p className="mt-3 text-sm text-white/75">
+            {entitlement.pastPackages.length > 0
+              ? (locale === "tr"
+                  ? "Tüm ders haklarınız tamamlanmıştır. Detayları Ders Hakları / Paketler bölümünden inceleyebilirsiniz."
+                  : "All your lesson entitlements have been completed. You can review past packages in Lesson Rights / Packages.")
+              : (locale === "tr"
+                  ? "Eğitim paketi satın alarak hemen birebir derslerinizi planlayabilirsiniz."
+                  : "Purchase an education package to start scheduling one-on-one lessons.")}
+          </p>
         )}
       </button>
 
@@ -985,8 +998,10 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
     totalUsedLessons: 0,
     totalRemainingLessons: 0,
     activePackages: data.purchases.filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0),
-    pastPackages: data.purchases.filter((p) => p.status !== "active" || (p.lesson_count || 0) - (p.lessons_used || 0) <= 0),
-    primaryPackage: data.currentPackage || data.purchases[0] || null,
+    pastPackages: data.purchases
+      .filter((p) => p.status !== "active" || (p.lesson_count || 0) - (p.lessons_used || 0) <= 0)
+      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")),
+    primaryPackage: data.currentPackage || null,
   };
 
   const hasPurchases = data.purchases.length > 0;
@@ -1059,12 +1074,12 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
         </div>
       </Panel>
 
-      {/* Active Packages List */}
-      {activePackages.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="font-heading text-xl text-ink">
-            {locale === "tr" ? "Aktif Paketler" : "Active Packages"}
-          </h3>
+      {/* 1. Aktif Paketler Bölümü */}
+      <div className="space-y-4">
+        <h3 className="font-heading text-xl text-ink">
+          {locale === "tr" ? "Aktif Paketler" : "Active Packages"}
+        </h3>
+        {activePackages.length > 0 ? (
           <div className="grid gap-4">
             {activePackages.map((p, idx) => {
               const pkgAdjustments = (data.adjustments || []).filter((a) => a.package_purchase_id === p.id);
@@ -1129,37 +1144,72 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
               );
             })}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-surface p-6 text-center text-muted-foreground">
+            <p className="text-sm font-semibold text-ink">
+              {locale === "tr" ? "Aktif Eğitim Paketi Bulunmuyor" : "No Active Education Package"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {pastPackages.length > 0
+                ? (locale === "tr"
+                    ? "Mevcut paketlerinizin tüm ders hakları tamamlanmıştır. Detayları aşağıdaki arşiv bölümünden inceleyebilirsiniz."
+                    : "All lesson entitlements from your previous packages have been completed. You can review them in the archive below.")
+                : (locale === "tr"
+                    ? "Hesabınıza tanımlı aktif bir eğitim paketi bulunmuyor."
+                    : "No active education package is assigned to your account.")}
+            </p>
+          </div>
+        )}
+      </div>
 
-      {/* Past / Completed Packages */}
+      {/* 2. Arşiv / Tamamlanan Paketler Bölümü */}
       {pastPackages.length > 0 && (
         <div className="space-y-4 pt-2">
-          <h3 className="font-heading text-xl text-ink/75">
-            {locale === "tr" ? "Geçmiş / Tamamlanan Paketler" : "Past / Completed Packages"}
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading text-xl text-ink/80">
+              {locale === "tr" ? "Arşiv / Tamamlanan Paketler" : "Archive / Completed Packages"}
+            </h3>
+            <span className="text-xs text-muted-foreground font-semibold">
+              {pastPackages.length} {locale === "tr" ? "Paket" : "Packages"}
+            </span>
+          </div>
           <div className="grid gap-3">
             {pastPackages.map((p) => {
               const fee = p.price_amount === null ? "—" : new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: p.currency }).format(p.price_amount);
+              const isCompleted = p.status === "completed" || p.lessons_used >= p.lesson_count;
+              const isRefunded = p.status === "refunded";
+              const statusLabel = isCompleted
+                ? (locale === "tr" ? "Tamamlandı" : "Completed")
+                : isRefunded
+                ? (locale === "tr" ? "İade Edildi" : "Refunded")
+                : (locale === "tr" ? "Süresi Doldu" : "Expired");
+
               return (
-                <div key={p.id} className="rounded-xl border border-border/70 bg-surface-muted/50 p-4 flex flex-wrap items-center justify-between gap-3 text-sm opacity-85">
-                  <div>
-                    <h4 className="font-medium text-ink">
-                      {p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
-                    </h4>
+                <div key={p.id} className="rounded-2xl border border-border/80 bg-surface-muted/45 p-5 flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-heading text-base font-bold text-ink">
+                        {p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
+                      </h4>
+                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        isCompleted
+                          ? "bg-slate-200/80 text-slate-800"
+                          : isRefunded
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}>
+                        {statusLabel}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      {p.lesson_count} {locale === "tr" ? "Ders" : "Lessons"} · {locale === "tr" ? "Kullanılan" : "Completed"}: {p.lessons_used} · {fmt(p.created_at, locale)}
+                      {p.lesson_count} {locale === "tr" ? "Derslik Paket" : "Lesson Package"} · {statusLabel} · <strong className="text-ink font-semibold">{p.lessons_used} / {p.lesson_count}</strong> {locale === "tr" ? "ders kullanıldı" : "lessons completed"} · {fmt(p.created_at, locale)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-muted-foreground">{fee}</span>
-                    <span className="rounded-full border border-border bg-surface px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">
-                      {p.status === "completed" || p.lessons_used >= p.lesson_count
-                        ? (locale === "tr" ? "Tamamlandı" : "Completed")
-                        : p.status === "refunded"
-                        ? (locale === "tr" ? "İade Edildi" : "Refunded")
-                        : (locale === "tr" ? "Süresi Doldu" : "Expired")}
-                    </span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="block text-[10px] uppercase font-semibold text-muted-foreground">{locale === "tr" ? "Paket Tutarı" : "Package Fee"}</span>
+                      <span className="text-xs font-bold text-ink">{fee}</span>
+                    </div>
                   </div>
                 </div>
               );
