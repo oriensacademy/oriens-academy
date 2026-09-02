@@ -1,24 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Globe, GraduationCap, Sparkles, ArrowRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Check, Globe, GraduationCap, Sparkles, ArrowRight, Building2, Search, X } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
-
+import { VERIFIED_OFFICIAL_UNIVERSITY_URLS } from "@/data/official-universities";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { useAccount } from "@/lib/auth/account-context";
 
 interface StudentOnboardingPersonalizationProps {
   studentId: string;
   initialExams?: string[];
   initialCountries?: string[];
+  initialUniversity?: string;
   onComplete: (exams: string[], countries: string[]) => void;
   onSkip?: () => void;
 }
+
+const ALL_UNIVERSITIES = Object.keys(VERIFIED_OFFICIAL_UNIVERSITY_URLS);
 
 export function StudentOnboardingPersonalization({
   studentId,
   initialExams = [],
   initialCountries = [],
+  initialUniversity = "",
   onComplete,
   onSkip,
 }: StudentOnboardingPersonalizationProps) {
@@ -28,9 +33,18 @@ export function StudentOnboardingPersonalization({
 
   const [selectedExams, setSelectedExams] = useState<string[]>(initialExams);
   const [selectedCountries, setSelectedCountries] = useState<string[]>(initialCountries);
+  const [selectedUniversity, setSelectedUniversity] = useState<string>(initialUniversity);
+  const [universityQuery, setUniversityQuery] = useState("");
+  const [isUniDropdownOpen, setIsUniDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<"tr" | "en">(isTr ? "tr" : "en");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const filteredUniversities = useMemo(() => {
+    if (!universityQuery.trim()) return ALL_UNIVERSITIES.slice(0, 8);
+    const q = universityQuery.toLowerCase();
+    return ALL_UNIVERSITIES.filter((u) => u.toLowerCase().includes(q)).slice(0, 10);
+  }, [universityQuery]);
 
   const toggleExam = (id: string) => {
     setSelectedExams((prev) =>
@@ -65,6 +79,15 @@ export function StudentOnboardingPersonalization({
         selectedLanguage
       );
       if (!result.success) throw new Error(result.error || (isTr ? "Tercihler kaydedilemedi." : "Preferences could not be saved."));
+
+      if (selectedUniversity) {
+        const supabase = getSupabaseClient();
+        await supabase
+          .from("student_profiles")
+          .update({ target_university: selectedUniversity })
+          .eq("id", targetUserId);
+      }
+
       onComplete(selectedExams, selectedCountries);
     } catch (err) {
       setError(err instanceof Error ? err.message : (isTr ? "Tercihler kaydedilemedi." : "Preferences could not be saved."));
@@ -170,6 +193,69 @@ export function StudentOnboardingPersonalization({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Target University Searchable Selection */}
+      <div className="mt-8">
+        <label className="flex items-center gap-2 text-xs font-bold tracking-wider text-ink uppercase">
+          <Building2 className="size-4 text-primary" />
+          <span>{isTr ? "Hedef Üniversite (Opsiyonel)" : "Target University (Optional)"}</span>
+        </label>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {isTr
+            ? "Kabul almayı hedeflediğiniz üniversiteyi arayarak seçebilir veya yazabilirsiniz."
+            : "Search and select or enter your target university."}
+        </p>
+
+        <div className="relative mt-3">
+          <div className="flex items-center rounded-xl border border-border bg-background px-3.5 py-2.5 shadow-xs focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+            <Search className="size-4 text-muted-foreground mr-2 shrink-0" />
+            <input
+              type="text"
+              value={selectedUniversity || universityQuery}
+              onChange={(e) => {
+                setSelectedUniversity("");
+                setUniversityQuery(e.target.value);
+                setIsUniDropdownOpen(true);
+              }}
+              onFocus={() => setIsUniDropdownOpen(true)}
+              placeholder={isTr ? "Örn: University of Oxford, Imperial College, Bocconi..." : "e.g., University of Oxford, Imperial College, Bocconi..."}
+              className="w-full bg-transparent text-xs text-ink placeholder:text-muted-foreground/60 focus:outline-none"
+            />
+            {(selectedUniversity || universityQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedUniversity("");
+                  setUniversityQuery("");
+                }}
+                className="text-muted-foreground hover:text-ink"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          {isUniDropdownOpen && filteredUniversities.length > 0 && !selectedUniversity && (
+            <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-border bg-surface p-1 shadow-editorial">
+              {filteredUniversities.map((uni) => (
+                <button
+                  key={uni}
+                  type="button"
+                  onClick={() => {
+                    setSelectedUniversity(uni);
+                    setUniversityQuery("");
+                    setIsUniDropdownOpen(false);
+                  }}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium text-ink hover:bg-surface-muted transition-colors"
+                >
+                  <span>{uni}</span>
+                  <Check className="size-3.5 text-primary opacity-0 hover:opacity-100" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

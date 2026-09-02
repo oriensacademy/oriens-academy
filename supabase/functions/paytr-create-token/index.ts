@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
     const { data: purchaserAuth } = await admin.auth.admin.getUserById(purchaserGuardianId);
     const authGuardian = purchaserAuth?.user;
     const verifiedEmail = authGuardian?.email?.trim().toLowerCase() || "";
-    if (!authGuardian?.email_confirmed_at || !guardian.email_verified_at || !verifiedEmail || verifiedEmail !== String(guardian.email).trim().toLowerCase()) return validationError(req, locale, "EMAIL_NOT_VERIFIED", "E-posta adresinizi doğrulayın ve tekrar deneyin.", "Verify your email address and try again.");
+    if (!guardian.email_verified_at || !verifiedEmail || verifiedEmail !== String(guardian.email).trim().toLowerCase()) return validationError(req, locale, "EMAIL_NOT_VERIFIED", "E-posta adresinizi doğrulayın ve tekrar deneyin.", "Verify your email address and try again.");
     const payerName = String(guardian.full_name || "").trim().replace(/\s+/g, " ");
     const payerPhone = String(guardian.phone || "").trim().replace(/[\s().-]+/g, "");
     if (payerName.length < 2 || payerName.length > 100) return validationError(req, locale, "PAYER_NAME_REQUIRED", "Profilinizde geçerli ad soyad bulunamadı.", "A valid full name is missing from your profile.");

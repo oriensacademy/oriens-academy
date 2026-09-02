@@ -1961,3 +1961,78 @@ export function renderStudentSupportConfirmationEmail(
 
   return { subject, html, text };
 }
+
+// ============================================================================
+// L. SATIN ALMA E-POSTA DOĞRULAMA (PURCHASE EMAIL VERIFICATION OTP)
+// ============================================================================
+
+export type PurchaseEmailVerificationOtpData = {
+  candidateEmail: string;
+  otp: string;
+  locale: "tr" | "en";
+  expiresInMinutes?: number;
+};
+
+export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerificationOtpData): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const isTr = data.locale === "tr";
+  const minutes = data.expiresInMinutes || 10;
+  const subject = isTr
+    ? `Oriens Academy — ${data.otp} E-posta Doğrulama Kodunuz`
+    : `Oriens Academy — ${data.otp} Your Email Verification Code`;
+
+  const eyebrow = isTr ? "GÜVENLİK & DOĞRULAMA" : "SECURITY & VERIFICATION";
+  const title = isTr ? "E-posta Adresinizi Doğrulayın" : "Verify Your Email Address";
+
+  const bodyHtml = `
+    <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;">
+      ${isTr
+        ? "Oriens Academy üzerinden eğitim paketi satın alımınızı tamamlamak için e-posta doğrulama kodunuz aşağıdadır:"
+        : "Below is your verification code to complete your educational package purchase on Oriens Academy:"}
+    </p>
+
+    <div style="background-color:${PALETTE.surfaceGold};border:1px solid ${PALETTE.borderGold};border-radius:12px;padding:24px 20px;text-align:center;margin:20px 0;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${PALETTE.goldDark};margin-bottom:8px;">
+        ${isTr ? "6 HANELİ DOĞRULAMA KODU" : "6-DIGIT VERIFICATION CODE"}
+      </div>
+      <div style="font-size:36px;font-weight:800;letter-spacing:.25em;color:${PALETTE.primary};font-family:ui-monospace,Menlo,Monaco,'Cascadia Mono','Segoe UI Mono','Roboto Mono',monospace;">
+        ${escapeHtml(data.otp)}
+      </div>
+      <div style="font-size:12px;color:${PALETTE.textMuted};margin-top:10px;">
+        ${isTr
+          ? `Bu kod <strong>${minutes} dakika</strong> boyunca geçerlidir.`
+          : `This code is valid for <strong>${minutes} minutes</strong>.`}
+      </div>
+    </div>
+
+    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.5;color:${PALETTE.textMuted};">
+      ${isTr
+        ? "Eğer bu işlemi siz başlatmadıysanız bu e-postayı dikkate almayınız. Güvenliğiniz için bu kodu kimseyle paylaşmayınız."
+        : "If you did not initiate this request, please disregard this email. For your security, do not share this code with anyone."}
+    </p>`;
+
+  const html = renderEmailShell({
+    locale: data.locale,
+    eyebrow,
+    title,
+    bodyHtml,
+    footerEmail: "payments@oriens-academy.com",
+    footerNote: isTr
+      ? "Bu otomatik bir güvenlik ve işlem e-postasıdır."
+      : "This is an automated security and transaction email.",
+  });
+
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`,
+    "",
+    isTr
+      ? `E-posta doğrulama kodunuz: ${data.otp}\nBu kod ${minutes} dakika boyunca geçerlidir.\nEğer bu işlemi siz başlatmadıysanız lütfen dikkate almayınız.`
+      : `Your email verification code: ${data.otp}\nThis code is valid for ${minutes} minutes.\nIf you did not initiate this request, please disregard this email.`,
+  ]);
+
+  return { subject, html, text };
+}
+

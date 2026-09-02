@@ -400,11 +400,15 @@ export default async function TopLevelHubPage({
         ) : isExamTest ? (
           <ExamTestPage />
         ) : isPayment ? (
-          <PaymentPage />
+          <Suspense fallback={<AccountWaveLoader />}>
+            <PaymentPage />
+          </Suspense>
         ) : isCart ? (
           <CartPage />
         ) : isStudentAccount ? (
-          <StudentPortal />
+          <Suspense fallback={<AccountWaveLoader />}>
+            <StudentPortal />
+          </Suspense>
         ) : isLogin ? (
           <Suspense fallback={<AccountWaveLoader />}>
             <UnifiedLoginPage />

@@ -165,18 +165,33 @@ export function UnifiedLoginPage() {
         return;
       }
 
-      // A usable session is accepted only when Supabase reports a confirmed email.
-      if (regResult.data?.session && regResult.data?.user?.email_confirmed_at) {
+      // Seamless frictionless signup: If session is present or direct login succeeds, enter portal
+      if (regResult.data?.session) {
         await tryClaimPendingResult();
+        navigatedRef.current = true;
+        const targetPath = `${localizedPath("studentAccount", locale)}?onboarding=personalization`;
+        router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
         setSubmitting(false);
         return;
       }
+
+      // Fallback sign-in attempt if session was not returned in signUp
+      const signInResult = await signIn(email, password);
+      if (!signInResult.error && signInResult.accountType !== "unknown") {
+        await tryClaimPendingResult();
+        navigatedRef.current = true;
+        const targetPath = `${localizedPath("studentAccount", locale)}?onboarding=personalization`;
+        router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
+        setSubmitting(false);
+        return;
+      }
+
       setSubmitting(false);
-      if (regResult.data?.user && !regResult.data.session) {
+      if (regResult.data?.user) {
         setPendingConfirmation(true);
         setResendCooldown(60);
       } else {
-        setError(isTr ? "Doğrulama bekleyen hesap oluşturulamadı." : "A pending verification account could not be created.");
+        setError(isTr ? "Hesap oluşturulamadı." : "Account could not be created.");
       }
     } catch (err: unknown) {
       setSubmitting(false);

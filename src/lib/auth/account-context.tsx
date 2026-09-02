@@ -160,10 +160,6 @@ async function resolveAccount(session: Session): Promise<AccountResolution> {
       }
     }
 
-    if (!user.email_confirmed_at) {
-      return { accountType: "unknown", adminProfile: null, studentProfile: null };
-    }
-
     // Student profile lookup
     const { data: studentProfile } = await supabase
       .from("student_profiles")
@@ -174,7 +170,7 @@ async function resolveAccount(session: Session): Promise<AccountResolution> {
       return { accountType: "student", adminProfile: null, studentProfile };
     }
 
-    // A verified account holder is valid before learner information is set up.
+    // Account holder is valid before or alongside student profile.
     const { data: accountHolder } = await supabase
       .from("guardian_accounts")
       .select("user_id")

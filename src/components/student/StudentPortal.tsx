@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, Clock, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, Save, Send, UserRound, Video, Award } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, Clock, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, Save, Send, UserRound, Video, Award, Sparkles } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { getPaymentRefundCopy } from "@/content/payment-refund";
@@ -13,13 +13,14 @@ import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { getStudentPortalData, setupLearnerProfile, updateStudentProfile, type StudentPortalData } from "@/lib/student/data";
-import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from "@/lib/student/preferences";
+import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences, formatExamBadges } from "@/lib/student/preferences";
 import { InteractiveHomework } from "@/components/student/InteractiveHomework";
 import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
 import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
 import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { LogoutConfirmationModal } from "@/components/auth/LogoutConfirmationModal";
+import { StudentOnboardingPersonalization } from "@/components/student/StudentOnboardingPersonalization";
 import { cn } from "@/lib/utils";
 import { VISIBLE_STUDENT_NAVIGATION, type StudentSectionId } from "@/lib/student/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
@@ -31,12 +32,15 @@ const visibleNavigation = VISIBLE_STUDENT_NAVIGATION.map((item) => ({ ...item, I
 
 export function StudentPortal() {
   const locale = useLocale(); const copy = getStudentCopy(locale); const router = useRouter();
+  const searchParams = useSearchParams();
   const { accountType, user, isInitializing, signOut } = useAccount();
   const [section, setSection] = useState<SectionId>("overview"); const [data, setData] = useState<StudentPortalData | null>(null);
   const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const [guardian, setGuardian] = useState<Tables<"guardian_accounts"> | null>(null);
   const [learners, setLearners] = useState<Tables<"student_profiles">[]>([]);
   const [selectedLearnerId, setSelectedLearnerId] = useState("");
+  const [personalizationOpen, setPersonalizationOpen] = useState<boolean | null>(null);
+  const showPersonalization = personalizationOpen ?? (searchParams?.get("onboarding") === "personalization");
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const navigatedRef = useRef(false);
@@ -80,11 +84,33 @@ export function StudentPortal() {
         const profileResult = ids.length ? await supabase.from("student_profiles").select("*").in("id", ids).eq("active", true) : { data: [] as Tables<"student_profiles">[] };
         const rows = profileResult.data ?? [];
         const saved = localStorage.getItem("oriens.selectedLearnerId");
-        const selected = rows.some((row) => row.id === saved) ? saved! : links.find((row) => row.is_primary)?.student_id ?? rows[0]?.id ?? "";
+        let selected = rows.some((row) => row.id === saved) ? saved! : links.find((row) => row.is_primary)?.student_id ?? rows[0]?.id ?? "";
+        
+        // Auto-provision self learner profile if missing
+        if (!selected && user) {
+          const selfName = guardianResult.data?.full_name || (user.email ? user.email.split("@")[0] : "Student");
+          const { data: newProfile } = await supabase.from("student_profiles").upsert({
+            id: user.id,
+            full_name: selfName,
+            email: user.email || "",
+            preferred_language: locale,
+            active: true,
+          }).select().single();
+          await supabase.from("guardian_students").upsert({
+            guardian_user_id: user.id,
+            student_id: user.id,
+            relationship_role: "self",
+            is_primary: true,
+            active: true,
+          });
+          if (newProfile) setLearners([newProfile]);
+          selected = user.id;
+        }
+
         setGuardian(guardianResult.data);
-        setLearners(rows);
+        if (rows.length > 0) setLearners(rows);
         setSelectedLearnerId(selected);
-        if (selected) await load(selected); else { setLoading(false); setError("NO_LINKED_LEARNER"); }
+        if (selected) await load(selected); else { setLoading(false); }
       });
     }
   }, [accountType, isInitializing, locale, load, router, user]);
@@ -106,16 +132,32 @@ export function StudentPortal() {
   }
 
   if (isInitializing || accountType !== "student") return <AccountWaveLoader />;
-  if (!loading && error === "NO_LINKED_LEARNER" && guardian && user) return <LearnerSetupState locale={locale} accountEmail={guardian.email || user.email || ""} onCreated={async (studentId) => { const profileResult = await getSupabaseClient().from("student_profiles").select("*").eq("id", studentId).single(); if (profileResult.data) setLearners([profileResult.data]); setSelectedLearnerId(studentId); localStorage.setItem("oriens.selectedLearnerId", studentId); await load(studentId); }} />;
   if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Hesabınız yükleniyor…" : "Loading your account…")}</div></div></section>;
 
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Hesabım" : "My Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1><p className="mt-2 text-xs text-muted-foreground">{locale === "tr" ? "Öğrenci" : "Learner"}: <strong className="text-ink">{data.profile.full_name}</strong></p>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} onOpenPersonalization={() => setPersonalizationOpen(true)} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
     </div>
   </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</div></nav>
   <LogoutConfirmationModal open={logoutModalOpen} signingOut={signingOut} locale={locale} onCancel={() => setLogoutModalOpen(false)} onConfirm={handleConfirmLogout} />
+  {showPersonalization && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-2xl my-8">
+        <StudentOnboardingPersonalization
+          studentId={selectedLearnerId || user?.id || ""}
+          initialExams={data?.profile?.target_exams || []}
+          initialCountries={data?.profile?.target_countries || []}
+          initialUniversity={data?.profile?.target_university || ""}
+          onComplete={async () => {
+            setPersonalizationOpen(false);
+            if (selectedLearnerId) await load(selectedLearnerId, true);
+          }}
+          onSkip={() => setPersonalizationOpen(false)}
+        />
+      </div>
+    </div>
+  )}
   </section>;
 }
 
@@ -206,7 +248,7 @@ function status(value: string, locale: "tr" | "en") {
   return (locale === "tr" ? tr : en)[value] || value;
 }
 
-function Overview({ data, locale, onNavigate }: { data: StudentPortalData; locale: "tr"|"en"; onNavigate: (id: SectionId) => void }) {
+function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: StudentPortalData; locale: "tr"|"en"; onNavigate: (id: SectionId) => void; onOpenPersonalization?: () => void }) {
   const entitlement = data.entitlement || {
     totalGrantedLessons: 0,
     totalUsedLessons: 0,
@@ -267,6 +309,31 @@ function Overview({ data, locale, onNavigate }: { data: StudentPortalData; local
           </>
         )}
       </button>
+
+      {/* Target Academic Preferences / Goals Card */}
+      <div className="rounded-2xl border border-border bg-surface p-5 sm:col-span-2 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs font-bold text-primary tracking-wider uppercase">
+            <Sparkles className="size-4" />
+            <span>{locale === "tr" ? "Akademik Hedefler & Kişiselleştirme" : "Academic Goals & Personalization"}</span>
+          </div>
+          <p className="text-sm font-semibold text-ink">
+            {data.profile.target_university
+              ? `${data.profile.target_university} · ${formatExamBadges(data.profile.target_exams).join(", ") || (locale === "tr" ? "Genel Destek" : "General Support")}`
+              : (locale === "tr" ? "Eğitim hedeflerinizi belirleyin ve programınızı özelleştirin." : "Define your academic goals and customize your curriculum.")}
+          </p>
+        </div>
+        {onOpenPersonalization && (
+          <button
+            type="button"
+            onClick={onOpenPersonalization}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-surface-muted px-4 text-xs font-semibold text-ink hover:bg-surface transition-colors cursor-pointer"
+          >
+            <Sparkles className="size-3.5 text-primary" />
+            <span>{locale === "tr" ? "Kişiselleştirmeyi Düzenle" : "Edit Personalization"}</span>
+          </button>
+        )}
+      </div>
 
       {/* Upcoming Live Lesson Banner if available */}
       {nextLesson && (
