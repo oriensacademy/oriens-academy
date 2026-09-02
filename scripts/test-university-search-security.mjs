@@ -45,7 +45,7 @@ assert.ifError(crafted.error);
 assert.ok(crafted.data.every((row) => !forbidden.test(row.title)));
 
 const ineligibleLookup = await service.from("universities").select("id")
-  .eq("name", "Bristol and Bath Science Park").maybeSingle();
+  .eq("normalized_name", "bristol and bath science park").maybeSingle();
 assert.ifError(ineligibleLookup.error);
 assert.ok(ineligibleLookup.data?.id, "known ineligible fixture exists");
 const direct = await anon.from("universities").select("id,name")

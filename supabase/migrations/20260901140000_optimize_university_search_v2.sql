@@ -72,46 +72,107 @@ returns table(
   badge text,
   official_url text
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public, extensions
+set jit = off
 as $$
-with input as (
+declare
+  v_q text := public.normalize_university_search_text(coalesce(p_query, ''));
+  v_lim integer := greatest(1, least(coalesce(p_limit, 10), 10));
+  v_country_filter text := nullif(upper(trim(coalesce(p_country_iso2, ''))), '');
+  v_returned integer := 0;
+begin
+  -- Canonical names and reviewed aliases are authoritative. Return through a
+  -- deliberately small exact-index plan without planning the prefix stage.
+  return query
+  with exact_matches as materialized (
+    select
+      t.university_id,
+      min(case
+        when t.term_type = 'canonical' then 1
+        when t.term_type = 'alias' then 2
+        when t.term_type = 'canonical_token' then 5
+        else 6
+      end)::integer as layer,
+      max(case
+        when t.term_type = 'canonical' then 1000
+        when t.term_type = 'alias' and t.trust_score >= 0.95 then 1450
+        when t.term_type = 'alias' then 1000 + 200 * t.trust_score
+        when t.term_type = 'canonical_token' then 720 + 80 * t.trust_score
+        else 0
+      end)::numeric as match_score
+    from public.university_search_terms t
+    where v_q <> ''
+      and t.normalized_term = v_q
+    group by t.university_id
+  )
   select
-    public.normalize_university_search_text(coalesce(p_query, '')) as q,
-    greatest(1, least(coalesce(p_limit, 10), 10)) as lim,
-    nullif(upper(trim(coalesce(p_country_iso2, ''))), '') as country_filter
+    u.id,
+    u.name,
+    concat_ws(' · ', nullif(u.city, ''), c.name),
+    u.slug,
+    case
+      when m.layer = 5 and u.normalized_name in ('university of ' || v_q, v_q || ' university', 'the university of ' || v_q) then 3
+      else m.layer
+    end,
+    (
+      m.match_score
+      + coalesce(u.university_confidence, 0) * 450
+      + case when u.degree_granting then 85 else 0 end
+      + least(greatest(coalesce(u.manual_search_priority, 0), -100), 150)
+      + least(coalesce(u.search_priority, 0), 200) * 0.80
+      + case when m.layer = 5 and u.normalized_name in ('university of ' || v_q, v_q || ' university', 'the university of ' || v_q) then 190 else 0 end
+      + case when v_country_filter is not null and c.iso2 = v_country_filter then 140 when v_country_filter is not null then -80 else 0 end
+      + case when u.institution_class in ('research_only', 'non_higher_education') then -600 else 0 end
+    )::numeric,
+    c.iso2,
+    c.name,
+    case when cf.manual_rank is not null then 'Featured' end,
+    case when u.url_verification_status in ('verified', 'redirect_verified') then u.verified_official_url end
+  from exact_matches m
+  join public.universities u on u.id = m.university_id
+    and u.active
+    and u.eligibility_status = 'eligible'
+    and (u.manual_eligibility_override = 'eligible' or coalesce(u.university_confidence, 0) >= 0.65)
+  join public.countries c on c.id = u.country_id and c.active
+    and (v_country_filter is null or c.iso2 = v_country_filter)
+  left join public.country_featured_universities cf on cf.university_id = u.id and cf.active
+  order by 6 desc, 5, 2
+  limit v_lim;
+
+  get diagnostics v_returned = row_count;
+  if v_returned > 0 then
+    return;
+  end if;
+
+  return query
+  with input as (
+  select
+    v_q as q,
+    v_lim as lim,
+    v_country_filter as country_filter
 ), term_hits as materialized (
-  select t.*
-  from input i
-  join public.university_search_terms t
-    on i.q <> '' and t.normalized_term = i.q
-  union all
-  select t.*
+  select t.university_id, t.normalized_term, t.term_type, t.trust_score
   from input i
   join public.university_search_terms t
     on length(i.q) >= 3
+    and t.normalized_term operator(pg_catalog.~>=~) i.q
+    and t.normalized_term operator(pg_catalog.~<~) (i.q || U&'\FFFF')
     and t.normalized_term like i.q || '%'
     and t.normalized_term <> i.q
 ), matches as materialized (
   select
     t.university_id,
     min(case
-      when t.term_type = 'canonical' and t.normalized_term = i.q then 1
-      when t.term_type = 'alias' and t.normalized_term = i.q then 2
       when t.term_type = 'canonical' and t.normalized_term like i.q || '%' then 3
       when t.term_type = 'alias' and t.normalized_term like i.q || '%' then 4
-      when t.term_type = 'canonical_token' and t.normalized_term = i.q then 5
       else 6
     end) as layer,
     max(case
-      when t.term_type = 'canonical' and t.normalized_term = i.q then 1000
-      when t.term_type = 'alias' and t.normalized_term = i.q then
-        case when t.trust_score >= 0.95 then 1450 else 1000 + 200 * t.trust_score end
       when t.term_type = 'canonical' and t.normalized_term like i.q || '%' then 835
       when t.term_type = 'alias' and t.normalized_term like i.q || '%' then 790 + 80 * t.trust_score
-      when t.term_type = 'canonical_token' and t.normalized_term = i.q then 720 + 80 * t.trust_score
       else 0
     end)::numeric as match_score
   from input i
@@ -158,6 +219,7 @@ from ranked r
 cross join input i
 order by r.score desc, r.match_layer, r.title
 limit (select lim from input);
+end;
 $$;
 
 create or replace function public.search_university_fuzzy_candidates_v2(
@@ -181,6 +243,7 @@ language sql
 stable
 security definer
 set search_path = public, extensions
+set jit = off
 set pg_trgm.similarity_threshold = '0.45'
 as $$
 with input as (
@@ -271,16 +334,86 @@ returns table(
   badge text,
   official_url text
 )
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public, extensions
+set jit = off
 as $$
-with input as (
+declare
+  v_q text := public.normalize_university_search_text(coalesce(p_query, ''));
+  v_lim integer := greatest(1, least(coalesce(p_limit, 10), 10));
+  v_country_filter text := nullif(upper(trim(coalesce(p_country_iso2, ''))), '');
+  v_strong_count integer := 0;
+  v_has_exam boolean := false;
+begin
+  select exists (
+    select 1
+    from public.exams e
+    left join public.exam_aliases a on a.exam_id = e.id and a.active
+    where e.active and e.supported_public and v_q <> ''
+      and (
+        lower(e.code) = v_q
+        or public.normalize_university_search_text(e.canonical_name) = v_q
+        or lower(e.code) like v_q || '%'
+        or public.normalize_university_search_text(e.canonical_name) like v_q || '%'
+        or a.normalized_alias = v_q
+        or a.normalized_alias like v_q || '%'
+      )
+  ) into v_has_exam;
+
+  if v_has_exam then
+    return query
+    select distinct on (e.id)
+      e.id,
+      'QUALIFICATION'::text,
+      e.display_name_en,
+      e.purpose,
+      e.slug,
+      case
+        when lower(e.code) = v_q or public.normalize_university_search_text(e.canonical_name) = v_q then 1
+        when a.normalized_alias = v_q then 2
+        when lower(e.code) like v_q || '%' then 3
+        else 4
+      end,
+      (2200 + coalesce(a.priority, 0))::numeric,
+      null::text,
+      null::text,
+      'Supported by Oriens'::text,
+      e.official_url
+    from public.exams e
+    left join public.exam_aliases a on a.exam_id = e.id and a.active
+      and (a.normalized_alias = v_q or a.normalized_alias like v_q || '%')
+    where e.active and e.supported_public and v_q <> ''
+      and (
+        lower(e.code) = v_q
+        or public.normalize_university_search_text(e.canonical_name) = v_q
+        or lower(e.code) like v_q || '%'
+        or public.normalize_university_search_text(e.canonical_name) like v_q || '%'
+        or a.id is not null
+      )
+    order by e.id, 6, 7 desc;
+
+  end if;
+
+  return query
   select
-    public.normalize_university_search_text(coalesce(p_query, '')) as q,
-    greatest(1, least(coalesce(p_limit, 10), 10)) as lim,
-    nullif(upper(trim(coalesce(p_country_iso2, ''))), '') as country_filter
+    s.entity_id, 'UNIVERSITY'::text, s.title, s.subtitle, s.slug,
+    s.match_layer, s.score, s.country_iso2, s.country_name, s.badge, s.official_url
+  from public.search_university_strong_candidates_v2(v_q, v_lim, v_country_filter) s
+  order by s.score desc, s.match_layer, s.title;
+
+  get diagnostics v_strong_count = row_count;
+  if v_has_exam or v_strong_count > 0 then
+    return;
+  end if;
+
+  return query
+  with input as (
+  select
+    v_q as q,
+    v_lim as lim,
+    v_country_filter as country_filter
 ), exam_candidates as materialized (
   select distinct on (e.id)
     e.id as entity_id,
@@ -308,23 +441,40 @@ with input as (
     or lower(e.code) like i.q || '%'
     or public.normalize_university_search_text(e.canonical_name) like i.q || '%'
     or a.id is not null
-  order by e.id, match_layer, score desc
+  order by e.id, 6, 7 desc
 ), strong_candidates as materialized (
-  select s.*
-  from input i
-  cross join lateral public.search_university_strong_candidates_v2(i.q, i.lim, i.country_filter) s
+  select
+    null::uuid as entity_id, null::text as title, null::text as subtitle,
+    null::text as slug, null::integer as match_layer, null::numeric as score,
+    null::text as country_iso2, null::text as country_name,
+    null::text as badge, null::text as official_url
+  where false
 ), strong_meta as (
-  select count(*)::integer as strong_count from strong_candidates
+  select
+    count(*)::integer as strong_count,
+    min(sc.match_layer)::integer as best_match_layer,
+    exists (
+      select 1
+      from input i
+      join public.university_search_terms t on t.normalized_term = i.q
+    ) as exact_term_exists
+  from strong_candidates sc
 ), fuzzy_candidates as materialized (
   select f.*
   from input i
   cross join strong_meta sm
   cross join lateral public.search_university_fuzzy_candidates_v2(
-    i.q,
+    case
+      when sm.strong_count < i.lim and not sm.exact_term_exists then i.q
+      else ''
+    end,
     least(10, greatest(1, i.lim - sm.strong_count + 4)),
     i.country_filter
   ) f
   where sm.strong_count < i.lim
+    -- Any indexed exact term already resolves the user's intent. Avoid a cold
+    -- trigram scan merely to pad an exact canonical/alias/token result.
+    and not sm.exact_term_exists
 ), university_candidates as (
   select s.* from strong_candidates s
   union all
@@ -358,6 +508,7 @@ from ranked r
 cross join input i
 where r.rn <= i.lim
 order by r.score desc, r.match_layer, r.title;
+end;
 $$;
 
 alter function public.search_university_strong_candidates_v2(text, integer, text) owner to postgres;
