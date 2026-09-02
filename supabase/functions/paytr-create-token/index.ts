@@ -101,6 +101,42 @@ Deno.serve(async (req: Request) => {
     });
     if (Math.round(checkoutItems.reduce((sum, item) => sum + item.final_amount, 0) * 100) / 100 !== finalAmount) return buildJsonResponse({ error_code: "AMOUNT_CALCULATION_FAILED", message: "Order total could not be calculated." }, 500, req);
 
+    const sortedPackageIds = [...packageIds].sort().join(",");
+    const idempotencyContext = `${actor.id}:${learnerId}:${purchaserGuardianId || ""}:${sortedPackageIds}:${finalAmount}:${currency}:${couponId || ""}`;
+    const checkoutIdempotencyKey = await sha256(idempotencyContext);
+
+    // Reuse existing active pending preload if within valid 15-minute window
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: existingTx } = await admin
+      .from("payment_transactions")
+      .select("id,public_reference,amount,currency,metadata,status")
+      .eq("checkout_idempotency_key", checkoutIdempotencyKey)
+      .eq("status", "pending")
+      .eq("is_archived", false)
+      .gte("created_at", fifteenMinutesAgo)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingTx && (existingTx.metadata as Record<string, unknown>)?.iframe_token) {
+      const meta = existingTx.metadata as Record<string, unknown>;
+      return buildJsonResponse(
+        {
+          success: true,
+          iframe_token: meta.iframe_token,
+          merchant_oid: existingTx.public_reference,
+          reference: existingTx.public_reference,
+          statusToken: meta.status_token,
+          final_amount: existingTx.amount,
+          currency: existingTx.currency,
+          legal_accepted: legalAccepted,
+          reused_existing: true,
+        },
+        200,
+        req
+      );
+    }
+
     const merchantOid = generatePaytrMerchantOid();
     const { token: statusToken } = createStatusCredential(merchantOid);
     const statusTokenHash = await sha256(statusToken);
@@ -109,28 +145,68 @@ Deno.serve(async (req: Request) => {
     const userIp = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "").slice(0, 39);
     if (finalAmount > 0 && !userIp) return validationError(req, locale, "CUSTOMER_IP_REQUIRED", "Ödeme isteği doğrulanamadı. Sayfayı yenileyip tekrar deneyin.", "The payment request could not be verified. Refresh the page and try again.");
     const { data: singlePkg } = await admin.from("pricing_packages").select("price_amount,current_total,unit_price").eq("id", "single").maybeSingle();
+    const initialMetadata: Record<string, unknown> = {
+      locale, learner_name: learner.full_name, coupon_code: couponCode, coupon_id: couponId, discounted_package_id: discountedPackageId,
+      base_amount: baseAmount, discount_amount: discountAmount, checkout_items: checkoutItems, package_ids: packageIds,
+      package_name: checkoutItems.map((item) => item.package_name).join(", "), lesson_count: checkoutItems.reduce((sum, item) => sum + Number(item.lesson_count || 0), 0),
+      provider_test_mode: testMode === "1", created_at: nowIso,
+      sales_terms_version: legalVersions.salesAgreement || "2026-08-27",
+      sales_terms_accepted_at: legalAccepted ? nowIso : null,
+      pre_information_version: legalVersions.preInformation || "2026-08-27",
+      pre_information_accepted_at: legalAccepted ? nowIso : null,
+      refund_policy_version: legalVersions.refundPolicy || "2026-08-27",
+      refund_policy_accepted_at: legalAccepted ? nowIso : null,
+      legal_accepted: legalAccepted,
+      single_lesson_list_price_snapshot: Number(singlePkg?.current_total ?? singlePkg?.price_amount ?? singlePkg?.unit_price ?? 3200),
+      package_list_price_snapshot: baseAmount, package_discount_snapshot: 0, coupon_discount_snapshot: discountAmount, amount_paid: finalAmount,
+      is_preload: true,
+      checkout_idempotency_key: checkoutIdempotencyKey,
+      status_token: statusToken,
+    };
+
     const { data: transaction, error: insertError } = await admin.from("payment_transactions").insert({
       student_user_id: learner.legacy_auth_user_id, auth_actor_user_id: actor.id, purchaser_guardian_user_id: purchaserGuardianId, package_owner_student_id: learnerId,
       package_id: packageIds[0], public_reference: merchantOid, status_token_hash: statusTokenHash, provider: finalAmount === 0 ? "coupon" : "paytr", amount: finalAmount, currency,
       status: "pending", payment_method: "card", payer_name: payerName, payer_email: verifiedEmail,
       payer_phone: payerPhone, payer_address: PAYTR_DEFAULT_ADDRESS, identity_selection_method: selectionMethod,
-      metadata: {
-        locale, learner_name: learner.full_name, coupon_code: couponCode, coupon_id: couponId, discounted_package_id: discountedPackageId,
-        base_amount: baseAmount, discount_amount: discountAmount, checkout_items: checkoutItems, package_ids: packageIds,
-        package_name: checkoutItems.map((item) => item.package_name).join(", "), lesson_count: checkoutItems.reduce((sum, item) => sum + Number(item.lesson_count || 0), 0),
-        provider_test_mode: testMode === "1", created_at: nowIso,
-        sales_terms_version: legalVersions.salesAgreement || "2026-08-27",
-        sales_terms_accepted_at: legalAccepted ? nowIso : null,
-        pre_information_version: legalVersions.preInformation || "2026-08-27",
-        pre_information_accepted_at: legalAccepted ? nowIso : null,
-        refund_policy_version: legalVersions.refundPolicy || "2026-08-27",
-        refund_policy_accepted_at: legalAccepted ? nowIso : null,
-        legal_accepted: legalAccepted,
-        single_lesson_list_price_snapshot: Number(singlePkg?.current_total ?? singlePkg?.price_amount ?? singlePkg?.unit_price ?? 3200),
-        package_list_price_snapshot: baseAmount, package_discount_snapshot: 0, coupon_discount_snapshot: discountAmount, amount_paid: finalAmount
-      },
-    }).select("id").single();
-    if (insertError || !transaction) return buildJsonResponse({ error_code: "TRANSACTION_CREATE_FAILED", message: "Payment record could not be created." }, 500, req);
+      is_preload: true,
+      checkout_idempotency_key: checkoutIdempotencyKey,
+      metadata: initialMetadata,
+    }).select("id,metadata").single();
+
+    if (insertError) {
+      // If unique index collision occurred due to concurrent in-flight request, fetch and reuse the existing one
+      const { data: racedTx } = await admin
+        .from("payment_transactions")
+        .select("id,public_reference,amount,currency,metadata")
+        .eq("checkout_idempotency_key", checkoutIdempotencyKey)
+        .eq("status", "pending")
+        .eq("is_archived", false)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (racedTx && (racedTx.metadata as Record<string, unknown>)?.iframe_token) {
+        const meta = racedTx.metadata as Record<string, unknown>;
+        return buildJsonResponse(
+          {
+            success: true,
+            iframe_token: meta.iframe_token,
+            merchant_oid: racedTx.public_reference,
+            reference: racedTx.public_reference,
+            statusToken: meta.status_token,
+            final_amount: racedTx.amount,
+            currency: racedTx.currency,
+            legal_accepted: legalAccepted,
+            reused_existing: true,
+          },
+          200,
+          req
+        );
+      }
+      return buildJsonResponse({ error_code: "TRANSACTION_CREATE_FAILED", message: "Payment record could not be created." }, 500, req);
+    }
+    if (!transaction) return buildJsonResponse({ error_code: "TRANSACTION_CREATE_FAILED", message: "Payment record could not be created." }, 500, req);
 
     if (couponId) {
       const { error: redemptionError } = await admin.from("discount_coupon_redemptions").insert({ coupon_id: couponId, student_user_id: learnerId, payment_transaction_id: transaction.id, discount_amount: discountAmount });
@@ -154,6 +230,16 @@ Deno.serve(async (req: Request) => {
     const paytrRes = await fetch("https://www.paytr.com/odeme/api/get-token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString() });
     const paytrData = paytrRes.ok ? await paytrRes.json() : null;
     if (!paytrRes.ok || paytrData?.status !== "success" || !paytrData?.token) { await admin.from("payment_transactions").update({ status: "failed" }).eq("id", transaction.id); return buildJsonResponse({ error_code: "PAYTR_SESSION_FAILED", message: locale === "tr" ? "Güvenli ödeme oturumu başlatılamadı. Tekrar deneyin." : "The secure payment session could not be started. Try again." }, 502, req); }
+
+    // Persist iframe token to metadata for idempotency reuse
+    await admin.from("payment_transactions").update({
+      metadata: {
+        ...initialMetadata,
+        iframe_token: paytrData.token,
+        status_token: statusToken,
+      },
+    }).eq("id", transaction.id);
+
     return buildJsonResponse({ success: true, iframe_token: paytrData.token, merchant_oid: merchantOid, reference: merchantOid, statusToken, final_amount: finalAmount, currency, legal_accepted: legalAccepted }, 200, req);
   } catch (error) {
     console.error("[paytr-create-token] request failed", error instanceof Error ? error.name : "unknown");

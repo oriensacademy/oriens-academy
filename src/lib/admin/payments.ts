@@ -157,7 +157,9 @@ export async function listAdminPaymentsPaginated(
         "id,public_reference,package_id,payer_name,payer_email,payer_phone,amount,currency,payment_method,provider,provider_transaction_id,status,created_at,paid_at,metadata,refunded_amount,refund_status,last_refunded_at,last_refund_reason,paytr_refund_reference",
         { count: "exact" }
       )
-      .eq("is_archived", false);
+      .eq("is_archived", false)
+      // Exclude unattempted pure preloads (status=pending and is_preload=true)
+      .or("is_preload.eq.false,is_preload.is.null,status.neq.pending");
 
     // Apply Search
     if (params.search?.trim()) {

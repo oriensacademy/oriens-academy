@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
@@ -20,33 +20,35 @@ interface PreparedPayment {
   merchantOid: string;
   reference: string;
   statusToken?: string;
-  zeroPayment: boolean;
+  zeroPayment?: boolean;
   legalAccepted: boolean;
   finalAmount?: number;
   currency?: string;
 }
 
-export function HostedCardPanel({
-  locale,
-  packageIds,
-  couponCode,
-  learnerId,
-  guardianUserId,
-  contextReady = false,
-  termsAccepted = false,
-  refundPolicyAccepted = false,
-  onTokenReady,
-}: {
-  locale: Locale;
+interface HostedCardPanelProps {
   packageIds: string[];
   couponCode?: string;
   learnerId: string;
   guardianUserId?: string;
-  contextReady?: boolean;
-  termsAccepted?: boolean;
-  refundPolicyAccepted?: boolean;
-  onTokenReady?: (tokenResult: CreatePaytrTokenResult) => void;
-}) {
+  termsAccepted: boolean;
+  refundPolicyAccepted: boolean;
+  onTokenReady?: (result: CreatePaytrTokenResult) => void;
+  contextReady: boolean;
+  locale: Locale;
+}
+
+export function HostedCardPanel({
+  packageIds,
+  couponCode,
+  learnerId,
+  guardianUserId,
+  termsAccepted,
+  refundPolicyAccepted,
+  onTokenReady,
+  contextReady,
+  locale,
+}: HostedCardPanelProps) {
   const copy = getPaymentCopy(locale);
   const router = useRouter();
   const isTr = locale === "tr";
@@ -57,13 +59,16 @@ export function HostedCardPanel({
   const [error, setError] = useState<ErrorState | null>(null);
   const [attempt, setAttempt] = useState(0);
 
-  // Cached prepared payment state to prevent duplicate server roundtrips
-  const cachedKeyRef = useRef<string>("");
+  // Stable sorted packages key to prevent array reference recreation triggers
+  const sortedPackagesKey = useMemo(() => [...packageIds].sort().join(","), [packageIds]);
+  const inFlightKeyRef = useRef<string>("");
+  const preparedKeyRef = useRef<string>("");
   const activeAbortRef = useRef<AbortController | null>(null);
   const confirmedAgreementOidRef = useRef<string>("");
 
   const retry = useCallback(() => {
-    cachedKeyRef.current = "";
+    inFlightKeyRef.current = "";
+    preparedKeyRef.current = "";
     setPrepared(null);
     setError(null);
     setAttempt((v) => v + 1);
@@ -71,15 +76,14 @@ export function HostedCardPanel({
 
   // 1. PAYMENT PRELOAD: Prepare early in the background once context is ready
   useEffect(() => {
-    if (!contextReady || !packageIds.length || !learnerId) {
+    if (!contextReady || !sortedPackagesKey || !learnerId) {
       return;
     }
 
-    const sortedPackages = [...packageIds].sort().join(",");
-    const currentContextKey = `${sortedPackages}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${locale}:${attempt}`;
+    const currentContextKey = `${sortedPackagesKey}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${locale}:${attempt}`;
 
-    // If already prepared for this exact checkout context, do not duplicate
-    if (cachedKeyRef.current === currentContextKey && prepared) {
+    // Single-flight lock: If already in-flight or prepared for this exact checkout context, do not duplicate
+    if (inFlightKeyRef.current === currentContextKey || preparedKeyRef.current === currentContextKey) {
       return;
     }
 
@@ -89,6 +93,7 @@ export function HostedCardPanel({
     }
     const abortCtrl = new AbortController();
     activeAbortRef.current = abortCtrl;
+    inFlightKeyRef.current = currentContextKey;
 
     let isActive = true;
     setLoading(true);
@@ -103,11 +108,17 @@ export function HostedCardPanel({
       termsAccepted: false,
       refundPolicyAccepted: false,
     }).then((result) => {
-      if (!isActive || abortCtrl.signal.aborted) return;
+      if (!isActive || abortCtrl.signal.aborted) {
+        if (inFlightKeyRef.current === currentContextKey) {
+          inFlightKeyRef.current = "";
+        }
+        return;
+      }
       setLoading(false);
+      inFlightKeyRef.current = "";
 
       if (result.success && (result.iframe_token || result.zero_payment)) {
-        cachedKeyRef.current = currentContextKey;
+        preparedKeyRef.current = currentContextKey;
         const prep: PreparedPayment = {
           token: result.iframe_token || "",
           merchantOid: result.merchant_oid || result.reference || "",
@@ -133,7 +144,9 @@ export function HostedCardPanel({
       isActive = false;
       abortCtrl.abort();
     };
-  }, [attempt, contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onTokenReady, packageIds, prepared]);
+    // sortedPackagesKey represents stable identity of packageIds without object reference recreation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt, contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onTokenReady, sortedPackagesKey]);
 
   // 2. AUDITABLE LEGAL ACCEPTANCE CONFIRMATION
   // When user checks both agreements, persist legal timestamp server-side if not already recorded

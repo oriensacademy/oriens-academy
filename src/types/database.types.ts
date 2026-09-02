@@ -1436,6 +1436,8 @@ export type Database = {
           is_archived: boolean
           archived_at: string | null
           archive_reason: string | null
+          is_preload: boolean
+          checkout_idempotency_key: string | null
         }
         Insert: {
           id?: string
@@ -1469,6 +1471,8 @@ export type Database = {
           is_archived?: boolean
           archived_at?: string | null
           archive_reason?: string | null
+          is_preload?: boolean
+          checkout_idempotency_key?: string | null
         }
         Update: {
           id?: string
@@ -1502,6 +1506,8 @@ export type Database = {
           is_archived?: boolean
           archived_at?: string | null
           archive_reason?: string | null
+          is_preload?: boolean
+          checkout_idempotency_key?: string | null
         }
         Relationships: []
       }

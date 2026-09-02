@@ -209,18 +209,49 @@ function base64UrlEncode(str: string): string {
     .replace(/=+$/, "");
 }
 
-function utf8Base64(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-/** RFC 2047 encoding for non-ASCII mailbox display names and subjects. */
+/** Standards-compliant RFC 2047 Q-encoding for non-ASCII mailbox display names and subjects. */
 export function encodeHeaderWord(value: string): string {
   const clean = value.replace(/[\r\n]+/g, " ").trim();
-  if (/^=\?UTF-8\?[BQ]\?.+\?=$/i.test(clean) || /^[\x20-\x7E]*$/.test(clean)) return clean;
-  return `=?UTF-8?B?${utf8Base64(clean)}?=`;
+  if (/^=\?UTF-8\?[BQ]\?.+\?=$/i.test(clean)) return clean;
+  if (/^[A-Za-z0-9!*+\-/ ]+$/.test(clean)) return clean;
+
+  const MAX_PAYLOAD_LEN = 56;
+  const encodedWords: string[] = [];
+  let currentWord = "";
+
+  // Iterate by Unicode code points (Array.from handles surrogate pairs safely)
+  for (const ch of Array.from(clean)) {
+    const bytes = new TextEncoder().encode(ch);
+    let chQ = "";
+    for (let i = 0; i < bytes.length; i++) {
+      const b = bytes[i];
+      if (b === 0x20) {
+        chQ += "_";
+      } else if (
+        (b >= 0x41 && b <= 0x5A) || // A-Z
+        (b >= 0x61 && b <= 0x7A) || // a-z
+        (b >= 0x30 && b <= 0x39) || // 0-9
+        b === 0x21 || b === 0x2A || b === 0x2B || b === 0x2D || b === 0x2F // ! * + - /
+      ) {
+        chQ += String.fromCharCode(b);
+      } else {
+        chQ += "=" + b.toString(16).toUpperCase().padStart(2, "0");
+      }
+    }
+
+    if (currentWord.length + chQ.length > MAX_PAYLOAD_LEN) {
+      encodedWords.push(`=?UTF-8?Q?${currentWord}?=`);
+      currentWord = chQ;
+    } else {
+      currentWord += chQ;
+    }
+  }
+
+  if (currentWord) {
+    encodedWords.push(`=?UTF-8?Q?${currentWord}?=`);
+  }
+
+  return encodedWords.join(" ");
 }
 
 function encodeMailboxHeader(value: string): string {

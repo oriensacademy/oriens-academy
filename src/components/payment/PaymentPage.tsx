@@ -33,7 +33,7 @@ export function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { accountType, user, isInitializing, refreshAccount } = useAccount();
-  const { items: cartItems } = useCart();
+  const { items: cartItems, isHydrated: cartHydrated } = useCart();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
   const [directPackageId, setDirectPackageId] = useState("");
@@ -65,7 +65,8 @@ export function PaymentPage() {
   // Reactive Cart Mode determination (compatible with static export)
   const sourceParam = searchParams.get("source");
   const packageParam = searchParams.get("package");
-  const isCartCheckout = sourceParam === "cart" || (!packageParam && cartItems.length > 0);
+  const isDirectPackageMode = Boolean(packageParam) && sourceParam !== "cart";
+  const isCartCheckout = sourceParam === "cart" || (!isDirectPackageMode && cartItems.length > 0);
   const verifiedHandledRef = useRef(false);
 
   const refreshGuardianData = useCallback(async () => {
@@ -86,10 +87,15 @@ export function PaymentPage() {
   useEffect(() => {
     if (isInitializing) return;
     if (accountType !== "student" && accountType !== "admin") {
-      const next = `${localizedPath("payment", locale)}/${window.location.search}`;
+      const search = new URLSearchParams(window.location.search);
+      if (isCartCheckout || sourceParam === "cart" || (!isDirectPackageMode && cartItems.length > 0)) {
+        search.set("source", "cart");
+      }
+      const qs = search.toString();
+      const next = `${localizedPath("payment", locale)}/${qs ? `?${qs}` : ""}`;
       router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
     }
-  }, [accountType, isInitializing, locale, router]);
+  }, [accountType, isInitializing, locale, router, isCartCheckout, sourceParam, isDirectPackageMode, cartItems.length]);
 
   useEffect(() => {
     if ((accountType !== "student" && accountType !== "admin") || !user?.id) return;
@@ -261,7 +267,13 @@ export function PaymentPage() {
       <aside className="rounded-3xl border border-border bg-surface p-6 shadow-editorial"><h2 className="font-heading text-xl text-ink">{isTr ? "Sipariş Özeti" : "Order Summary"}</h2>
         {!isCartCheckout ? <label className="mt-5 block text-xs font-semibold text-ink">{isTr ? "Eğitim Paketi" : "Package"}<select value={directPackageId} onChange={(event) => { setDirectPackageId(event.target.value); setAppliedCoupon(null); }} className="mt-2 min-h-12 w-full rounded-xl border border-input bg-surface px-3"><option value="">{isTr ? "Paket seçin" : "Select package"}</option>{packages.map((pkg) => <option key={pkg.id} value={pkg.id}>{isTr ? pkg.name_tr : pkg.name_en} — {money(Number(pkg.current_total ?? pkg.price_amount), pkg.currency)}</option>)}</select></label> : null}
         <div className="mt-5 space-y-3">{checkoutPackages.map((pkg) => <div key={pkg.id} className="flex items-start justify-between gap-4 rounded-xl border border-border bg-surface-muted p-3 text-xs"><span className="font-semibold text-ink">{isTr ? pkg.name_tr : pkg.name_en}</span><span>{money(Number(pkg.current_total ?? pkg.price_amount), pkg.currency)}</span></div>)}</div>
-        {cartMismatch || !checkoutPackages.length ? <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{isTr ? "Sepetinizdeki paketlerin tamamı doğrulanamadı. Sepete dönüp paketleri kontrol edin." : "Not every package in your cart could be verified. Return to your cart and review it."}</p> : null}
+        {cartMismatch || (isCartCheckout && cartHydrated && !cartItems.length) || (!isCartCheckout && !checkoutPackages.length) ? (
+          <p role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            {isCartCheckout && !cartItems.length
+              ? (isTr ? "Sepetiniz boş. Paket seçmek için eğitim paketlerimize göz atabilirsiniz." : "Your cart is empty. You can browse our pricing packages to add items.")
+              : (isTr ? "Sepetinizdeki paketlerin tamamı doğrulanamadı. Sepete dönüp paketleri kontrol edin." : "Not every package in your cart could be verified. Return to your cart and review it.")}
+          </p>
+        ) : null}
         <div className="mt-5 rounded-2xl bg-surface-muted p-4 text-sm"><div className="flex justify-between"><span>{isTr ? "Toplam" : "Total"}</span><strong>{money(finalPrice, currency)}</strong></div>{appliedCoupon ? <div className="mt-2 flex justify-between text-emerald-800"><span>{appliedCoupon.code}</span><span>-{money(discountAmount, currency)}</span></div> : null}</div>
         <form className="mt-5 flex gap-2" onSubmit={(event) => { event.preventDefault(); void applyCoupon(); }}><input value={couponInput} onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); if (appliedCoupon) setAppliedCoupon(null); }} className="min-h-11 min-w-0 flex-1 rounded-xl border border-input px-3 text-xs uppercase" placeholder={isTr ? "Kupon kodu" : "Coupon code"} />{appliedCoupon ? <button type="button" aria-label={isTr ? "Kuponu kaldır" : "Remove coupon"} onClick={() => { setAppliedCoupon(null); setCouponInput(""); }} className="rounded-xl border px-3"><X className="size-4" /></button> : <button type="submit" className="rounded-xl bg-ink px-4 text-xs font-semibold text-white"><Tag className="mr-1 inline size-3" />{isTr ? "Uygula" : "Apply"}</button>}</form>
         {couponError ? <p role="alert" className="mt-2 text-xs text-red-700">{couponError}</p> : null}

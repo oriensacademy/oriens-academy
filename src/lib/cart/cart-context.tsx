@@ -11,6 +11,7 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   cartCount: number;
+  isHydrated: boolean;
   addToCart: (packageId: string) => void;
   removeFromCart: (packageId: string) => void;
   removeItemsFromCart: (packageIds: string[]) => void;
@@ -30,9 +31,17 @@ function getOrCreateGuestSessionId(): string {
       id = localStorage.getItem(GUEST_SESSION_KEY);
     }
     if (!id) {
-      id = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-      sessionStorage.setItem(GUEST_SESSION_KEY, id);
-      localStorage.setItem(GUEST_SESSION_KEY, id);
+      id = "g_" + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+      try {
+        sessionStorage.setItem(GUEST_SESSION_KEY, id);
+      } catch {
+        // ignore
+      }
+      try {
+        localStorage.setItem(GUEST_SESSION_KEY, id);
+      } catch {
+        // ignore
+      }
     }
     return id;
   } catch {
@@ -42,9 +51,13 @@ function getOrCreateGuestSessionId(): string {
 
 function resetGuestSessionId(): string {
   if (typeof window === "undefined") return "guest_ssr";
-  const newId = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const newId = "g_" + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
   try {
     sessionStorage.setItem(GUEST_SESSION_KEY, newId);
+  } catch {
+    // ignore
+  }
+  try {
     localStorage.setItem(GUEST_SESSION_KEY, newId);
   } catch {
     // ignore
@@ -53,10 +66,7 @@ function resetGuestSessionId(): string {
 }
 
 function getStorageKey(userId: string | null | undefined, guestId: string): string {
-  if (userId) {
-    return `${USER_CART_PREFIX}${userId}`;
-  }
-  return `${GUEST_CART_PREFIX}${guestId}`;
+  return userId ? `${USER_CART_PREFIX}${userId}` : `${GUEST_CART_PREFIX}${guestId}`;
 }
 
 function readCartFromStorage(key: string): CartItem[] {
@@ -66,12 +76,15 @@ function readCartFromStorage(key: string): CartItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.filter((item) => item && typeof item.packageId === "string" && typeof item.quantity === "number");
+      return parsed.filter(
+        (item): item is CartItem =>
+          typeof item === "object" && item !== null && typeof item.packageId === "string" && typeof item.quantity === "number"
+      );
     }
-    return [];
   } catch {
-    return [];
+    // ignore
   }
+  return [];
 }
 
 function writeCartToStorage(key: string, items: CartItem[]): void {
@@ -80,7 +93,7 @@ function writeCartToStorage(key: string, items: CartItem[]): void {
     localStorage.setItem(key, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent("oriens:cart_updated", { detail: { key } }));
   } catch {
-    // ignore quota
+    // ignore
   }
 }
 
@@ -117,8 +130,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const currentKey = getStorageKey(currentUserId, guestId);
       activeKeyRef.current = currentKey;
 
-      // Transition from Guest (null) -> Authenticated User
-      if (prevUserId === null && currentUserId !== null) {
+      // Check if this is a login transition OR initial hydration with an authenticated user
+      const isLoginOrInitialUser = (prevUserId === null || prevUserId === undefined) && currentUserId !== null;
+
+      // Transition from Guest (null/undefined) -> Authenticated User
+      if (isLoginOrInitialUser) {
         const guestKey = `${GUEST_CART_PREFIX}${guestId}`;
         const guestItems = readCartFromStorage(guestKey);
         const userKey = `${USER_CART_PREFIX}${currentUserId}`;
@@ -239,6 +255,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       value={{
         items: isHydrated ? items : [],
         cartCount,
+        isHydrated,
         addToCart,
         removeFromCart,
         removeItemsFromCart,
