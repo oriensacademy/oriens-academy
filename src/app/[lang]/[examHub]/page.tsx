@@ -16,6 +16,7 @@ import { StudentPortal } from "@/components/student/StudentPortal";
 import { UnifiedLoginPage } from "@/components/auth/UnifiedLoginPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { AccountPasswordChangePage } from "@/components/auth/AccountPasswordChangePage";
+import { ResetPasswordPage } from "@/components/auth/ResetPasswordPage";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { Footer } from "@/components/sections/Footer";
 import { getDictionary, isLocale } from "@/content/dictionaries";
@@ -38,6 +39,7 @@ import {
   pricingSegment,
   privacySegment,
   refundPolicySegment,
+  resetPasswordSegment,
   salesAgreementSegment,
   studentAccountSegment,
   termsSegment,
@@ -64,6 +66,7 @@ export function generateStaticParams({ params }: { params: { lang: string } }) {
         { examHub: unifiedLoginSegment(params.lang) },
         { examHub: forgotPasswordSegment(params.lang) },
         { examHub: changePasswordSegment(params.lang) },
+        { examHub: resetPasswordSegment(params.lang) },
         { examHub: privacySegment(params.lang) },
         { examHub: termsSegment(params.lang) },
         { examHub: salesAgreementSegment(params.lang) },
@@ -99,6 +102,7 @@ export async function generateMetadata({
   const isLogin = examHub === unifiedLoginSegment(lang);
   const isForgotPassword = examHub === forgotPasswordSegment(lang);
   const isChangePassword = examHub === changePasswordSegment(lang);
+  const isResetPassword = examHub === resetPasswordSegment(lang);
   const isPrivacy = examHub === privacySegment(lang);
   const isTerms = examHub === termsSegment(lang);
   const isSalesAgreement = examHub === salesAgreementSegment(lang);
@@ -122,6 +126,7 @@ export async function generateMetadata({
     !isLogin &&
     !isForgotPassword &&
     !isChangePassword &&
+    !isResetPassword &&
     !isPrivacy &&
     !isTerms &&
     !isSalesAgreement &&
@@ -133,8 +138,14 @@ export async function generateMetadata({
     return {};
   }
 
-  if (isLogin || isForgotPassword || isChangePassword) {
-    const route = isLogin ? "login" : isForgotPassword ? "forgotPassword" : "changePassword";
+  if (isLogin || isForgotPassword || isChangePassword || isResetPassword) {
+    const route = isLogin
+      ? "login"
+      : isForgotPassword
+        ? "forgotPassword"
+        : isChangePassword
+          ? "changePassword"
+          : "resetPassword";
     const title = isLogin
       ? lang === "tr"
         ? "Oturum Aç | Oriens Academy"
@@ -143,9 +154,13 @@ export async function generateMetadata({
         ? lang === "tr"
           ? "Şifremi Unuttum | Oriens Academy"
           : "Forgot Password | Oriens Academy"
-        : lang === "tr"
-          ? "Şifre Değiştir | Oriens Academy"
-          : "Change Password | Oriens Academy";
+        : isChangePassword
+          ? lang === "tr"
+            ? "Şifre Değiştir | Oriens Academy"
+            : "Change Password | Oriens Academy"
+          : lang === "tr"
+            ? "Şifrenizi Yenileyin | Oriens Academy"
+            : "Reset Your Password | Oriens Academy";
     return {
       title,
       robots: { index: false, follow: false },
@@ -346,6 +361,7 @@ export default async function TopLevelHubPage({
   const isLogin = examHub === unifiedLoginSegment(lang);
   const isForgotPassword = examHub === forgotPasswordSegment(lang);
   const isChangePassword = examHub === changePasswordSegment(lang);
+  const isResetPassword = examHub === resetPasswordSegment(lang);
   const isPrivacy = examHub === privacySegment(lang);
   const isTerms = examHub === termsSegment(lang);
   const isSalesAgreement = examHub === salesAgreementSegment(lang);
@@ -369,6 +385,7 @@ export default async function TopLevelHubPage({
     !isLogin &&
     !isForgotPassword &&
     !isChangePassword &&
+    !isResetPassword &&
     !isPrivacy &&
     !isTerms &&
     !isSalesAgreement &&
@@ -417,6 +434,10 @@ export default async function TopLevelHubPage({
           <ForgotPasswordPage />
         ) : isChangePassword ? (
           <AccountPasswordChangePage />
+        ) : isResetPassword ? (
+          <Suspense fallback={<AccountWaveLoader />}>
+            <ResetPasswordPage />
+          </Suspense>
         ) : isSalesAgreement ? (
           <LegalPage kind="salesAgreement" />
         ) : isPreInformation ? (

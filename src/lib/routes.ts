@@ -18,6 +18,7 @@ export type LocalizedRouteId =
   | "login"
   | "forgotPassword"
   | "changePassword"
+  | "resetPassword"
   | "privacy"
   | "terms"
   | "salesAgreement"
@@ -42,6 +43,7 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   login: { tr: "giris", en: "login" },
   forgotPassword: { tr: "sifremi-unuttum", en: "forgot-password" },
   changePassword: { tr: "sifre-degistir", en: "change-password" },
+  resetPassword: { tr: "sifre-yenile", en: "reset-password" },
   privacy: { tr: "privacy", en: "privacy" },
   terms: { tr: "terms", en: "terms" },
   salesAgreement: { tr: "mesafeli-satis-sozlesmesi", en: "distance-sales-agreement" },
@@ -126,6 +128,14 @@ export function changePasswordSegment(locale: Locale): string {
 
 export function changePasswordPath(locale: Locale): string {
   return localizedPath("changePassword", locale);
+}
+
+export function resetPasswordSegment(locale: Locale): string {
+  return localizedSegments.resetPassword[locale];
+}
+
+export function resetPasswordPath(locale: Locale): string {
+  return localizedPath("resetPassword", locale);
 }
 
 export function studentAuthRootSegment(locale: Locale): string {
@@ -353,6 +363,9 @@ export function pathForLocale(pathname: string, target: Locale): string {
   }
   if (/^\/(?:tr\/sifre-degistir|en\/change-password)$/.test(cleanPath)) {
     return changePasswordPath(target);
+  }
+  if (/^\/(?:tr\/sifre-yenile|en\/reset-password)$/.test(cleanPath)) {
+    return resetPasswordPath(target);
   }
   if (/^\/(?:tr\/ogrenci\/kayit|en\/student\/register)$/.test(cleanPath)) {
     return studentRegisterPath(target);

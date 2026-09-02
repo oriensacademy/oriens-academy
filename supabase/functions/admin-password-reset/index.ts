@@ -1,3 +1,9 @@
+/**
+ * @deprecated
+ * Replaced by canonical Supabase Auth recovery flow (supabase.auth.resetPasswordForEmail)
+ * pointing to dedicated /tr/sifre-yenile and /en/reset-password pages.
+ * Preserved for backward compatibility.
+ */
 import { createClient, type SupabaseClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";

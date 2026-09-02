@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { requestPasswordRecovery } from "@/lib/auth/password-recovery";
 import type { Tables } from "@/types/database.types";
 import type { BookingWithSlot } from "./bookings";
 
@@ -266,7 +267,8 @@ export async function listAdminStudents(): Promise<{ data: StudentProfile[]; err
 }
 
 /**
- * Sends a secure Supabase Auth password recovery link to the student's verified email.
+ * Sends a secure Supabase Auth password recovery link to the student's verified email
+ * via canonical requestPasswordRecovery helper.
  * Does NOT generate any plaintext passwords.
  */
 export async function sendStudentPasswordReset(
@@ -274,25 +276,26 @@ export async function sendStudentPasswordReset(
   locale: "tr" | "en" = "tr"
 ): Promise<{ success: boolean; error: string | null }> {
   try {
-    const supabase = getSupabaseClient();
     const cleanEmail = studentEmail.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes("@")) {
       return { success: false, error: "Geçerli bir e-posta adresi bulunamadı." };
     }
 
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://oriens-academy.com";
-    const redirectTo = `${origin}/${locale}/sifre-yenile`;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo,
+    const res = await requestPasswordRecovery({
+      email: cleanEmail,
+      locale,
     });
 
-    if (error) {
-      return { success: false, error: error.message };
+    if (!res.success) {
+      return {
+        success: false,
+        error: res.error || "Şifre sıfırlama bağlantısı gönderilemedi.",
+      };
     }
 
     // Log admin audit event (without token)
     try {
+      const supabase = getSupabaseClient();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from("audit_logs") as any).insert({
         action: "student.password_reset_sent",
