@@ -207,7 +207,7 @@ export function ExamHub() {
                               <span className="text-[10px] tabular-nums text-muted-foreground md:hidden">{String(exam.order + 1).padStart(2, "0")}</span>
                             </div>
                             <div className="md:col-span-4">
-                              <p className="text-xs font-semibold tracking-[0.08em] text-secondary uppercase">{page.supportLabel}</p>
+                              <p className="text-xs font-semibold tracking-[0.08em] text-secondary">{page.supportLabel}</p>
                               <p className="mt-2 text-sm leading-relaxed text-ink/75">{text.shortDescription}</p>
                             </div>
                             <div className="md:col-span-3">
