@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { buildCorsHeaders, buildJsonResponse } from "../_shared/cors.ts";
+import { getCorsHeaders, buildJsonResponse } from "../_shared/cors.ts";
 
 async function computeTokenHmac(rawToken: string, secret: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -30,7 +30,7 @@ function getSafeRedirectUrl(locale: string, status: "success" | "expired" | "inv
 }
 
 Deno.serve(async (req: Request) => {
-  const corsHeaders = buildCorsHeaders(req);
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
