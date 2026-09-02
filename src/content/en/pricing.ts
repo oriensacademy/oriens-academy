@@ -45,7 +45,7 @@ export const pricing = {
       },
       package10: {
         title: "10-Lesson Package",
-        description: "A balanced package combining exam preparation, topic tracking and regular progress review.",
+        description: "A balanced package combining exam prep and regular progress review.",
         features: ["10 60-minute 1:1 lessons", "15% package discount", "Lesson rights and academic progress tracking"],
         unitPrice: "2,700 TRY",
         totalPrice: "27,000 TRY",

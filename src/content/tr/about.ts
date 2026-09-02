@@ -47,9 +47,9 @@ export const about: AboutContent = {
     ],
   },
   team: {
-    eyebrow: "Liderlik",
+    eyebrow: "Uzman Kadro",
     title: "Kurucu eğitmenimiz",
-    intro: "10+ yıl deneyimli Matematik-Fizik eğitmeni.",
+    intro: "Alanında uzman eğitim kadrosu.",
     members: [
       {
         id: "doguhan",
@@ -74,7 +74,7 @@ export const about: AboutContent = {
     fallbackPoints: ["10+ Yıl Deneyim", "Hedef Okullar & Yabancı Müfredatlar", "Birebir Ders Kurgusu"],
   },
   brandMoment: {
-    eyebrow: "Oriens Academy",
+    eyebrow: "ORIENS Academy",
     title: "Rotanı birlikte çizelim.",
     body: "Hedefinizdeki üniversite ve sınava yönelik en doğru çalışma rotasını oluşturuyoruz.",
     steps: ["Analiz", "Strateji", "Pratik", "Başarı"],

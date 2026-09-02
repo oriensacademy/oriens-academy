@@ -47,9 +47,9 @@ export const about: AboutContent = {
     ],
   },
   team: {
-    eyebrow: "Leadership",
+    eyebrow: "Expert Faculty",
     title: "Our founding tutor",
-    intro: "Mathematics & Physics tutor with 10+ years of experience.",
+    intro: "Subject-expert academic faculty.",
     members: [
       {
         id: "doguhan",

@@ -79,7 +79,7 @@ function ExamCard({ card, examCode }: { card: ExamOverviewCard; examCode: string
       <h3 className={cn("mt-7 font-heading text-2xl leading-[1.04] tracking-[-0.02em]", card.value && "mt-4")}>{card.title}</h3>
       <p className="mt-3 line-clamp-4 text-[13px] leading-[1.65] opacity-72">{card.description}</p>
       {card.bullets && card.bullets.length > 0 && <ul className="mt-auto flex flex-wrap gap-2 pt-5">{card.bullets.map((bullet) => <li key={bullet} className="rounded-full border border-current/15 bg-white/10 px-2.5 py-1.5 text-[10px] font-semibold leading-none">{bullet}</li>)}</ul>}
-      <span className="mt-auto pt-5 text-[9px] font-bold uppercase tracking-[0.18em] opacity-45">Oriens Academy · {card.footerCode ?? examCode}</span>
+      <span className="mt-auto pt-5 text-[9px] font-bold uppercase tracking-[0.18em] opacity-45">ORIENS Academy · {card.footerCode ?? examCode}</span>
     </article>
   );
 }
@@ -120,7 +120,7 @@ function ExamDetailSurface({ card, examCode, locale, closeRef, titleId, descript
           {card.bullets.map((bullet) => <li key={bullet} className="rounded-full border border-[#CBD6CC] bg-white px-3 py-2 text-xs font-semibold leading-tight text-[#294536]">{bullet}</li>)}
         </ul>
       )}
-      <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.18em] text-[#819086]">Oriens Academy · {card.footerCode ?? examCode}</p>
+      <p className="mt-8 text-[10px] font-bold uppercase tracking-[0.18em] text-[#819086]">ORIENS Academy · {card.footerCode ?? examCode}</p>
     </div>
   );
 }

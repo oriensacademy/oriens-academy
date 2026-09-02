@@ -46,7 +46,7 @@ export const detailPage = {
   purposeLabel: "Ne için kullanılır?",
   coverageEyebrow: "Akademik kapsam",
   coverageTitle: "Neyi değerlendirir veya kapsar?",
-  supportEyebrow: "Oriens yaklaşımı",
+  supportEyebrow: "ORIENS yaklaşımı",
   supportTitle: "Hazırlık sürecini nasıl destekliyoruz?",
   preparationEyebrow: "Çalışma sistemi",
   preparationTitle: "Hazırlık alanları",

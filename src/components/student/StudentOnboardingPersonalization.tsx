@@ -210,7 +210,7 @@ export function StudentOnboardingPersonalization({
             }`}
           >
             <div className="flex items-center gap-2">
-              <span>ENG</span>
+              <span>EN</span>
             </div>
             {selectedLanguage === "en" && <Check className="size-4 text-primary" />}
           </button>

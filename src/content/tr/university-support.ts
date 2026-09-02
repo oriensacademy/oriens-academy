@@ -86,7 +86,7 @@ export const universitySupport = {
       "Destek kapsamı, öğrencinin bölümüne ilişkin genel bir uzmanlık iddiası değil; paylaşılan ders içeriğine göre yapılan ön değerlendirme sonucunda belirlenir.",
   },
   method: {
-    eyebrow: "Oriens nasıl çalışır?",
+    eyebrow: "ORIENS nasıl çalışır?",
     title: "Önce mevcut konumu, sonra doğru çalışma rotasını belirleriz.",
     intro: "Süreç, uydurma bir formüle değil; ihtiyaç analizi, açık öncelikler ve düzenli gözden geçirmeye dayanır.",
     steps: [

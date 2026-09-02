@@ -55,7 +55,7 @@ export function Hero() {
             animate={state}
             variants={item}
             transition={{ duration: skip ? 0 : 0.45, delay: skip ? 0 : 0.05, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-5 max-w-[740px] text-balance font-heading text-[clamp(2.8rem,12vw,4rem)] leading-[1.04] font-normal tracking-[-0.02em] text-foreground md:text-[clamp(3rem,6.5vw,3.75rem)] md:leading-[1.02] lg:text-[clamp(3.4rem,4.3vw,5.1rem)] lg:leading-[1.01]"
+            className="mt-5 max-w-[740px] text-left font-heading text-[clamp(2.8rem,12vw,4rem)] leading-[1.04] font-normal tracking-[-0.02em] text-foreground md:text-[clamp(3rem,6.5vw,3.75rem)] md:leading-[1.02] lg:text-[clamp(3.4rem,4.3vw,5.1rem)] lg:leading-[1.01]"
           >
             <TextReveal preset="fade-in-blur" per="word" delay={.05} speedReveal={1.5} speedSegment={1.2} trigger={state === "visible"}>{hero.headline}</TextReveal>
           </motion.h1>

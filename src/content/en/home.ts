@@ -209,7 +209,7 @@ export const pricingPreview = {
     {
       id: "package10",
       name: "10-Lesson Package",
-      description: "A balanced package combining exam preparation, topic tracking and regular progress review.",
+      description: "A balanced package combining exam prep and regular progress review.",
       price: "27,000 TRY",
       cadence: "/ package (15% discount)",
       featured: true,

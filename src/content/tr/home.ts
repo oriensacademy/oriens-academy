@@ -108,7 +108,7 @@ export const universitySupport = {
 };
 
 export const whyOriens = {
-  eyebrow: "Neden Oriens?",
+  eyebrow: "Neden ORIENS?",
   headline: "Bizi farklı kılan temel özellikler.",
   reasons: [
     {
@@ -209,7 +209,7 @@ export const pricingPreview = {
     {
       id: "package10",
       name: "10 Derslik Paket",
-      description: "Sınav hazırlığını, konu takibini ve düzenli ilerleme değerlendirmesini birlikte yürüten dengeli paket.",
+      description: "Sınav hazırlığı ve düzenli konu takibini birlikte yürüten dengeli paket.",
       price: "27.000 TL",
       cadence: "/ paket (%15 indirim)",
       featured: true,

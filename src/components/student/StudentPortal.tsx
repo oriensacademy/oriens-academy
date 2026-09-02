@@ -625,7 +625,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span>ENG</span>
+                  <span>EN</span>
                 </div>
                 {preferredLanguage === "en" && <Check className="size-4 shrink-0" />}
               </button>

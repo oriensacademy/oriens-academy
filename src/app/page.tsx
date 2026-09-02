@@ -21,7 +21,7 @@ export default function RootEntry() {
             TR
           </Link>
           <Link href="/en/" className="text-ink underline underline-offset-4">
-            ENG
+            EN
           </Link>
         </nav>
       </div>

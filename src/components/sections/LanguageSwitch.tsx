@@ -50,7 +50,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
             )}
           >
             <span className={cn("transition-opacity duration-150", transitionActive && "opacity-0")}>
-              {target === "tr" ? "TR" : "ENG"}
+              {target === "tr" ? "TR" : "EN"}
             </span>
           </Link>
         );

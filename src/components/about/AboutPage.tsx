@@ -56,7 +56,7 @@ export function AboutPage() {
         description={content.story.paragraphs[0]}
         items={[
           ...content.principles.items.map((item) => ({ title: item.title, description: item.description })),
-          { title: content.team.eyebrow, description: `${content.team.title}. ${content.team.members[0]?.bio ?? content.team.fallbackBody}` },
+          { title: content.team.eyebrow, description: content.team.intro },
         ]}
       />
 
