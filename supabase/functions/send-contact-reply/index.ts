@@ -1,27 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { INFO_EMAIL, sendTransactionalEmail } from "../_shared/email/service.ts";
+import { renderContactReplyEmail } from "../_shared/email/templates.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function renderReplyHtml(message: string): string {
-  const paragraphs = escapeHtml(message)
-    .split(/\n{2,}/)
-    .map((paragraph) => `<p style="margin:0 0 16px;white-space:pre-wrap">${paragraph}</p>`)
-    .join("");
-
-  return `<!doctype html><html><body style="margin:0;background:#f6f8f3;color:#10271b;font-family:Arial,sans-serif"><div style="max-width:640px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #dde4dc;border-radius:16px;padding:28px"><div style="font-size:18px;font-weight:700;margin-bottom:20px">Oriens Academy</div><div style="font-size:14px;line-height:1.65">${paragraphs}</div><div style="margin-top:24px;padding-top:16px;border-top:1px solid #dde4dc;font-size:12px;color:#607066">Oriens Academy<br>${INFO_EMAIL}</div></div></div></body></html>`;
-}
 
 Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
@@ -81,7 +64,13 @@ Deno.serve(async (req: Request) => {
     return buildJsonResponse({ error_code: "INVALID_RECIPIENT" }, 400, req);
   }
 
-  const messageHtml = renderReplyHtml(messageText);
+  const renderedReply = renderContactReplyEmail({
+    fullName: contact.full_name,
+    originalSubject: contact.subject,
+    replyMessage: messageText,
+    locale: contact.locale === "en" ? "en" : "tr",
+  });
+  const messageHtml = renderedReply.html;
   const { data: claimedReply, error: claimError } = await admin
     .from("contact_replies")
     .insert({
@@ -117,15 +106,14 @@ Deno.serve(async (req: Request) => {
     return buildJsonResponse({ error_code: "REPLY_CLAIM_FAILED" }, 500, req);
   }
 
-  const originalSubject = String(contact.subject || "Oriens Academy İletişim Talebi").replace(/[\r\n]+/g, " ").slice(0, 180);
-  const subject = /^re:/i.test(originalSubject) ? originalSubject : `Re: ${originalSubject}`;
+  const subject = renderedReply.subject;
   const delivery = await sendTransactionalEmail({
     supabaseAdmin: admin,
     to: recipientEmail,
     replyTo: INFO_EMAIL,
     subject,
     html: messageHtml,
-    text: messageText,
+    text: renderedReply.text,
     eventType: "contact.admin_reply",
     entityType: "contact_reply",
     entityId: claimedReply.id,

@@ -24,6 +24,8 @@ import { StudentOnboardingPersonalization } from "@/components/student/StudentOn
 import { cn } from "@/lib/utils";
 import { VISIBLE_STUDENT_NAVIGATION, type StudentSectionId } from "@/lib/student/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { requestPurchaseEmailVerification, verifyPurchaseEmailVerification } from "@/lib/payments/email-verification";
+import { localizeErrorMessage } from "@/lib/utils/error-messages";
 import type { Tables } from "@/types/database.types";
 
 type SectionId = StudentSectionId;
@@ -135,6 +137,18 @@ export function StudentPortal() {
   if (isInitializing || accountType !== "student") return <AccountWaveLoader />;
   if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Hesabınız yükleniyor…" : "Loading your account…")}</div></div></section>;
 
+  const handleDismissPersonalization = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("oriens.newSignupOnboarding");
+      if (window.location.search.includes("onboarding=personalization")) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("onboarding");
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
+    setPersonalizationOpen(false);
+  };
+
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Hesabım" : "My Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1><p className="mt-2 text-xs text-muted-foreground">{locale === "tr" ? "Öğrenci" : "Learner"}: <strong className="text-ink">{data.profile.full_name}</strong></p>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</nav>
@@ -143,7 +157,14 @@ export function StudentPortal() {
   </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</div></nav>
   <LogoutConfirmationModal open={logoutModalOpen} signingOut={signingOut} locale={locale} onCancel={() => setLogoutModalOpen(false)} onConfirm={handleConfirmLogout} />
   {showPersonalization && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleDismissPersonalization();
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+    >
       <div className="relative w-full max-w-2xl my-8">
         <StudentOnboardingPersonalization
           studentId={selectedLearnerId || user?.id || ""}
@@ -151,28 +172,11 @@ export function StudentPortal() {
           initialCountries={data?.profile?.target_countries || []}
           initialUniversity={data?.profile?.target_university || ""}
           onComplete={async () => {
-            if (typeof window !== "undefined") {
-              sessionStorage.removeItem("oriens.newSignupOnboarding");
-              if (window.location.search.includes("onboarding=personalization")) {
-                const url = new URL(window.location.href);
-                url.searchParams.delete("onboarding");
-                window.history.replaceState(null, "", url.toString());
-              }
-            }
-            setPersonalizationOpen(false);
+            handleDismissPersonalization();
             if (selectedLearnerId) await load(selectedLearnerId, true);
           }}
-          onSkip={() => {
-            if (typeof window !== "undefined") {
-              sessionStorage.removeItem("oriens.newSignupOnboarding");
-              if (window.location.search.includes("onboarding=personalization")) {
-                const url = new URL(window.location.href);
-                url.searchParams.delete("onboarding");
-                window.history.replaceState(null, "", url.toString());
-              }
-            }
-            setPersonalizationOpen(false);
-          }}
+          onSkip={handleDismissPersonalization}
+          onClose={handleDismissPersonalization}
         />
       </div>
     </div>
@@ -342,27 +346,31 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
         )}
       </button>
 
-      {/* Target Academic Preferences / Goals Card */}
-      <div className="rounded-2xl border border-border bg-surface p-5 sm:col-span-2 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs font-bold text-primary tracking-wider uppercase">
+      {/* Target Academic Preferences / Goals Card (Compact & Balanced) */}
+      <div className="rounded-2xl border border-border bg-surface px-4 py-3.5 sm:col-span-2 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Sparkles className="size-4" />
-            <span>{locale === "tr" ? "Akademik Hedefler & Kişiselleştirme" : "Academic Goals & Personalization"}</span>
           </div>
-          <p className="text-sm font-semibold text-ink">
-            {data.profile.target_university
-              ? `${data.profile.target_university} · ${formatExamBadges(data.profile.target_exams).join(", ") || (locale === "tr" ? "Genel Destek" : "General Support")}`
-              : (locale === "tr" ? "Eğitim hedeflerinizi belirleyin ve programınızı özelleştirin." : "Define your academic goals and customize your curriculum.")}
-          </p>
+          <div className="min-w-0">
+            <span className="block text-[10px] font-bold text-primary tracking-wider uppercase">
+              {locale === "tr" ? "Akademik Hedefler & Kişiselleştirme" : "Academic Goals & Personalization"}
+            </span>
+            <p className="truncate text-xs sm:text-sm font-semibold text-ink">
+              {data.profile.target_university
+                ? `${data.profile.target_university} · ${formatExamBadges(data.profile.target_exams).join(", ") || (locale === "tr" ? "Genel Destek" : "General Support")}`
+                : (locale === "tr" ? "Eğitim hedeflerinizi belirleyin ve programınızı özelleştirin." : "Define your academic goals and customize your curriculum.")}
+            </p>
+          </div>
         </div>
         {onOpenPersonalization && (
           <button
             type="button"
             onClick={onOpenPersonalization}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-surface-muted px-4 text-xs font-semibold text-ink hover:bg-surface transition-colors cursor-pointer"
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface-muted px-3 text-xs font-semibold text-ink hover:bg-surface hover:border-primary/40 transition-colors cursor-pointer"
           >
             <Sparkles className="size-3.5 text-primary" />
-            <span>{locale === "tr" ? "Kişiselleştirmeyi Düzenle" : "Edit Personalization"}</span>
+            <span>{locale === "tr" ? "Düzenle" : "Edit"}</span>
           </button>
         )}
       </div>
@@ -485,6 +493,53 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
   });
   const [guardianBusy, setGuardianBusy] = useState(false);
 
+  const [optEmailBusy, setOptEmailBusy] = useState(false);
+  const [optOtpSent, setOptOtpSent] = useState(false);
+  const [optOtpCode, setOptOtpCode] = useState("");
+  const [optOtpMsg, setOptOtpMsg] = useState("");
+  const [optOtpErr, setOptOtpErr] = useState("");
+  const [emailVerifiedLocally, setEmailVerifiedLocally] = useState<boolean | null>(null);
+
+  const isEmailVerified = emailVerifiedLocally ?? Boolean(guardian?.email_verified_at);
+
+  async function handleSendOptOtp() {
+    const targetEmail = data.profile.email;
+    if (!targetEmail || !targetEmail.includes("@")) return;
+    setOptEmailBusy(true);
+    setOptOtpMsg("");
+    setOptOtpErr("");
+    const res = await requestPurchaseEmailVerification(targetEmail, locale);
+    setOptEmailBusy(false);
+    if (!res.success) {
+      setOptOtpErr(localizeErrorMessage(res.message, locale, locale === "tr" ? "Doğrulama kodu gönderilemedi." : "Failed to send verification code."));
+      return;
+    }
+    setOptOtpSent(true);
+    setOptOtpMsg(locale === "tr" ? "6 haneli doğrulama kodu e-postanıza gönderildi." : "6-digit verification code sent to your email.");
+  }
+
+  async function handleVerifyOptOtp() {
+    const targetEmail = data.profile.email;
+    if (!optOtpCode.trim() || optOtpCode.length !== 6) {
+      setOptOtpErr(locale === "tr" ? "Lütfen 6 haneli kodu eksiksiz giriniz." : "Please enter the 6-digit code.");
+      return;
+    }
+    setOptEmailBusy(true);
+    setOptOtpMsg("");
+    setOptOtpErr("");
+    const res = await verifyPurchaseEmailVerification(targetEmail, optOtpCode.trim(), locale);
+    setOptEmailBusy(false);
+    if (!res.success) {
+      setOptOtpErr(localizeErrorMessage(res.message, locale, locale === "tr" ? "Doğrulama başarısız oldu." : "Verification failed."));
+      return;
+    }
+    setEmailVerifiedLocally(true);
+    setOptOtpSent(false);
+    setOptOtpCode("");
+    setOptOtpMsg(locale === "tr" ? "E-posta adresiniz başarıyla doğrulandı!" : "Email address verified successfully!");
+    onReload();
+  }
+
   async function saveGuardian(e: React.FormEvent) {
     e.preventDefault();
     setGuardianBusy(true); setMsg(""); setErr("");
@@ -498,7 +553,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
       preferredLanguage: locale,
     });
     setGuardianBusy(false);
-    if (result.error) setErr(result.error.message);
+    if (result.error) setErr(localizeErrorMessage(result.error, locale, locale === "tr" ? "Hesap bilgileri güncellenemedi." : "Account details could not be updated."));
     else setMsg(locale === "tr" ? "Hesap bilgileri güncellendi." : "Account details updated.");
   }
 
@@ -533,7 +588,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
 
       if (profileError) {
         setBusy(false);
-        setErr(profileError.message);
+        setErr(localizeErrorMessage(profileError, locale, locale === "tr" ? "Profil güncellenemedi." : "Profile could not be updated."));
         return;
       }
 
@@ -543,7 +598,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
       onReload();
     } catch (error) {
       setBusy(false);
-      setErr(error instanceof Error ? error.message : (locale === "tr" ? "Bir hata oluştu." : "An error occurred."));
+      setErr(localizeErrorMessage(error, locale, locale === "tr" ? "Bir hata oluştu." : "An error occurred."));
     }
   }
 
@@ -554,7 +609,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
     setErr("");
     const r = await updateStudentEmail(emailForm.email.trim());
     setEmailBusy(false);
-    if (r.error) setErr(r.error.message);
+    if (r.error) setErr(localizeErrorMessage(r.error, locale, locale === "tr" ? "E-posta güncellenemedi." : "Email could not be updated."));
     else setMsg(locale === "tr" ? "Doğrulama bağlantısı e-posta adresinize gönderildi." : "Confirmation email sent.");
   }
 
@@ -565,7 +620,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
     setErr("");
     const r = await updateStudentPassword(passwordForm.password);
     setPasswordBusy(false);
-    if (r.error) setErr(r.error.message);
+    if (r.error) setErr(localizeErrorMessage(r.error, locale, locale === "tr" ? "Şifre güncellenemedi." : "Password could not be updated."));
     else {
       setPasswordForm({ password: "" });
       setMsg(locale === "tr" ? "Şifre güncellendi." : "Password updated.");
@@ -747,6 +802,78 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
 
       {/* 3. HESAP GÜVENLİĞİ (SAME PAGE) */}
       <Panel title={locale === "tr" ? "Hesap Güvenliği" : "Account Security"}>
+        {/* Optional Email Verification Status / Action Card */}
+        <div className="mb-5 rounded-2xl border border-border bg-surface/60 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-ink">
+                  {locale === "tr" ? "Hesap E-postası:" : "Account Email:"}
+                </span>
+                <span className="text-xs font-mono font-medium text-ink">{data.profile.email}</span>
+                {isEmailVerified ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                    <Check className="size-3" />
+                    {locale === "tr" ? "Doğrulandı" : "Verified"}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                    {locale === "tr" ? "Doğrulanmadı" : "Unverified"}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {isEmailVerified
+                  ? (locale === "tr" ? "E-posta adresiniz doğrulanmış durumdadır." : "Your email address is verified.")
+                  : (locale === "tr" ? "İsteğe bağlı olarak e-posta adresinizi doğrulayabilirsiniz." : "You can optionally verify your email address.")}
+              </p>
+            </div>
+
+            {!isEmailVerified && !optOtpSent && (
+              <button
+                type="button"
+                onClick={handleSendOptOtp}
+                disabled={optEmailBusy}
+                className="inline-flex min-h-9 items-center rounded-xl bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
+              >
+                {optEmailBusy ? (locale === "tr" ? "Gönderiliyor..." : "Sending...") : (locale === "tr" ? "Doğrulama Kodu Gönder" : "Send Verification Code")}
+              </button>
+            )}
+          </div>
+
+          {!isEmailVerified && optOtpSent && (
+            <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                maxLength={6}
+                value={optOtpCode}
+                onChange={(e) => setOptOtpCode(e.target.value.replace(/\D/g, ""))}
+                placeholder={locale === "tr" ? "6 Haneli Kod" : "6-Digit Code"}
+                className="min-h-9 w-32 rounded-xl border border-input bg-white px-3 text-center text-xs font-mono font-bold tracking-widest outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={handleVerifyOptOtp}
+                disabled={optEmailBusy || optOtpCode.length !== 6}
+                className="inline-flex min-h-9 items-center rounded-xl bg-primary px-4 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
+              >
+                {optEmailBusy ? (locale === "tr" ? "Doğrulanıyor..." : "Verifying...") : (locale === "tr" ? "Kodu Onayla" : "Confirm Code")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSendOptOtp}
+                disabled={optEmailBusy}
+                className="text-xs text-primary underline hover:text-forest ml-2 cursor-pointer"
+              >
+                {locale === "tr" ? "Tekrar Gönder" : "Resend"}
+              </button>
+            </div>
+          )}
+
+          {optOtpMsg && <p className="mt-3 text-xs font-semibold text-emerald-800">{optOtpMsg}</p>}
+          {optOtpErr && <p className="mt-3 text-xs font-semibold text-red-700">{optOtpErr}</p>}
+        </div>
+
         <div className="grid min-w-0 gap-5 md:grid-cols-2 md:items-stretch">
           <form onSubmit={saveEmail} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/50 p-4 sm:p-5">
             <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "E-posta Değiştir" : "Change Email"}</h3>

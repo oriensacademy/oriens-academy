@@ -801,6 +801,66 @@ export function renderStudentContactEmail(data: ContactEmailData) {
   return { subject, html, text };
 }
 
+/**
+ * 4b. Contact Reply Email to Student/Inquirer
+ */
+export function renderContactReplyEmail(params: {
+  fullName?: string;
+  originalSubject?: string;
+  replyMessage: string;
+  locale?: "tr" | "en";
+}): EmailTemplateResult {
+  const isTr = params.locale !== "en";
+  const subject = params.originalSubject
+    ? /^re:/i.test(params.originalSubject)
+      ? params.originalSubject
+      : `Re: ${params.originalSubject}`
+    : isTr
+      ? "İletişim Talebiniz Hakkında | Oriens Academy"
+      : "Regarding Your Inquiry | Oriens Academy";
+
+  const safeName = params.fullName ? escapeHtml(params.fullName) : "";
+  const greeting = safeName
+    ? isTr ? `Merhaba <strong>${safeName}</strong>,` : `Hello <strong>${safeName}</strong>,`
+    : isTr ? "Merhaba," : "Hello,";
+
+  const paragraphs = escapeHtml(params.replyMessage)
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p style="margin:0 0 14px;line-height:1.65;white-space:pre-wrap;color:${PALETTE.primary}">${paragraph}</p>`)
+    .join("");
+
+  const bodyHtml = `
+    <div>${greeting}</div>
+    <div style="margin-top:16px;">
+      ${paragraphs}
+    </div>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid ${PALETTE.border};font-size:12px;color:${PALETTE.textMuted};">
+      ${isTr
+        ? "Sorularınız için bu e-postayı doğrudan yanıtlayabilir veya <a href=\"mailto:info@oriens-academy.com\" style=\"color:#10271B;font-weight:600;\">info@oriens-academy.com</a> üzerinden bize ulaşabilirsiniz."
+        : "You can reply directly to this email or reach us at <a href=\"mailto:info@oriens-academy.com\" style=\"color:#10271B;font-weight:600;\">info@oriens-academy.com</a>."}
+    </div>`;
+
+  const html = renderEmailShell({
+    locale: params.locale || "tr",
+    eyebrow: isTr ? "Oriens Danışmanlık Yanıtı" : "Oriens Advisory Response",
+    title: isTr ? "Mesajınızın Yanıtı" : "Response to Your Inquiry",
+    bodyHtml,
+    footerEmail: "info@oriens-academy.com",
+  });
+
+  const text = joinText([
+    `ORIENS ACADEMY - ${subject}`,
+    "",
+    params.fullName ? (isTr ? `Sayın ${params.fullName},` : `Dear ${params.fullName},`) : "",
+    "",
+    params.replyMessage,
+    "",
+    "Oriens Academy - info@oriens-academy.com",
+  ]);
+
+  return { subject, html, text };
+}
+
 // ============================================================================
 // B. RANDEVU MAİLLERİ (APPOINTMENT & LESSON EMAILS)
 // ============================================================================

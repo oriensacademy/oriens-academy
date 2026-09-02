@@ -1,20 +1,15 @@
 "use client";
 
-import { MessageSquare, Phone, Mail, MapPin, ChevronUp } from "lucide-react";
+import { MessageSquare, Phone, Mail, MapPin } from "lucide-react";
 import { FaInstagram } from "react-icons/fa6";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useRef, useEffect } from "react";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { useLocale } from "@/content/locale-context";
 import {
-  cookiePolicyPath,
-  kvkkPath,
   localizedPath,
-  preInformationPath,
   privacyPath,
-  refundPolicyPath,
   salesAgreementPath,
   termsPath,
 } from "@/lib/routes";
@@ -22,62 +17,6 @@ import { CONTACT } from "@/config/contact";
 import { FooterSection } from "@/components/ui/footer-section";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { publicNavigation } from "@/lib/public-navigation";
-
-function LegalGroup({
-  label,
-  items,
-}: {
-  label: string;
-  items: { label: string; href: string }[];
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer text-[11px] font-medium"
-        aria-expanded={open}
-      >
-        <span>{label}</span>
-        <ChevronUp className={`size-3 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <div className="absolute bottom-full left-0 mb-2 z-50 min-w-[200px] rounded-xl border border-border bg-surface p-2 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex flex-col space-y-1">
-            {items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-2.5 py-1.5 text-xs text-foreground/80 hover:bg-surface-muted hover:text-foreground transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function Footer() {
   const locale = useLocale();
@@ -87,54 +26,16 @@ export function Footer() {
   const navigationItems = publicNavigation(locale, showPricing)
     .filter((item) => !["home", "contact"].includes(item.id));
 
-  const legalGroups = isTr
+  const legalItems = isTr
     ? [
-        {
-          id: "privacy",
-          label: "Gizlilik & KVKK",
-          items: [
-            { label: "Gizlilik Politikası", href: privacyPath(locale) },
-            { label: "KVKK Aydınlatma Metni", href: kvkkPath(locale) },
-          ],
-        },
-        {
-          id: "sales",
-          label: "Satış Koşulları",
-          items: [
-            { label: "Mesafeli Satış Sözleşmesi", href: salesAgreementPath(locale) },
-            { label: "Ön Bilgilendirme Formu", href: preInformationPath(locale) },
-          ],
-        },
+        { label: "Gizlilik & KVKK", href: privacyPath(locale) },
+        { label: "Satış, İptal ve İade Koşulları", href: salesAgreementPath(locale) },
+        { label: "Kullanım & Çerez Koşulları", href: termsPath(locale) },
       ]
     : [
-        {
-          id: "privacy",
-          label: "Privacy & Data",
-          items: [
-            { label: "Privacy Policy", href: privacyPath(locale) },
-            { label: "KVKK Notice", href: kvkkPath(locale) },
-          ],
-        },
-        {
-          id: "sales",
-          label: "Sales Terms",
-          items: [
-            { label: "Distance Sales Agreement", href: salesAgreementPath(locale) },
-            { label: "Pre-Information Form", href: preInformationPath(locale) },
-          ],
-        },
-      ];
-
-  const singleLegalItems = isTr
-    ? [
-        { label: "İptal ve İade Koşulları", href: refundPolicyPath(locale) },
-        { label: "Kullanım Koşulları", href: termsPath(locale) },
-        { label: "Çerez Politikası", href: cookiePolicyPath(locale) },
-      ]
-    : [
-        { label: "Cancellation & Refund", href: refundPolicyPath(locale) },
-        { label: "Terms of Service", href: termsPath(locale) },
-        { label: "Cookie Policy", href: cookiePolicyPath(locale) },
+        { label: "Privacy & Data", href: privacyPath(locale) },
+        { label: "Sales & Refund Terms", href: salesAgreementPath(locale) },
+        { label: "Terms & Cookies", href: termsPath(locale) },
       ];
 
   const contacts = [
@@ -273,31 +174,23 @@ export function Footer() {
         </div>
       }
       legal={
-        <div className="space-y-3 text-xs text-muted-foreground">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px]">
-            {legalGroups.map((group) => (
-              <span key={group.id} className="inline-flex items-center gap-3">
-                <LegalGroup label={group.label} items={group.items} />
-                <span className="text-border">·</span>
-              </span>
-            ))}
-            {singleLegalItems.map((item, idx) => (
-              <span key={item.href} className="inline-flex items-center gap-3">
-                <Link href={item.href} className="hover:text-foreground transition-colors">
+        <div className="flex flex-col gap-4 text-xs text-muted-foreground pt-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px]">
+            {legalItems.map((item, idx) => (
+              <span key={item.href} className="inline-flex items-center gap-4">
+                <Link href={item.href} className="hover:text-foreground transition-colors font-medium">
                   {item.label}
                 </Link>
-                {idx < singleLegalItems.length - 1 && <span className="text-border">·</span>}
+                {idx < legalItems.length - 1 && <span className="text-border">·</span>}
               </span>
             ))}
           </div>
 
-          <div className="flex flex-col gap-3 pt-2 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[11px]">
+          <div className="flex flex-wrap items-center gap-4 sm:justify-end">
+            <p className="text-[11px] whitespace-nowrap">
               &copy; 2026 Oriens Academy. {isTr ? "Tüm hakları saklıdır." : "All rights reserved."}
             </p>
-            <div className="flex items-center gap-3">
-              <ThemeSelector locale={locale} />
-            </div>
+            <ThemeSelector locale={locale} />
           </div>
         </div>
       }

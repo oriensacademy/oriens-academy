@@ -35,6 +35,7 @@ interface HostedCardPanelProps {
   refundPolicyAccepted: boolean;
   onTokenReady?: (result: CreatePaytrTokenResult) => void;
   contextReady: boolean;
+  emailVerified?: boolean;
   locale: Locale;
 }
 
@@ -47,6 +48,7 @@ export function HostedCardPanel({
   refundPolicyAccepted,
   onTokenReady,
   contextReady,
+  emailVerified = true,
   locale,
 }: HostedCardPanelProps) {
   const copy = getPaymentCopy(locale);
@@ -197,10 +199,18 @@ export function HostedCardPanel({
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#819586]/40 bg-[#F6F8F3] p-8 text-center sm:p-10">
           <FileCheck2 className="size-7 text-[#10271B]" />
           <h3 className="mt-4 font-heading text-base font-semibold text-[#10271B]">
-            {isTr ? "Ödeme Bilgileri Bekleniyor" : "Payment Information Pending"}
+            {!packageIds.length
+              ? (isTr ? "Paket Seçimi Bekleniyor" : "Package Selection Pending")
+              : !emailVerified
+                ? (isTr ? "E-posta Doğrulaması Bekleniyor" : "Email Verification Pending")
+                : (isTr ? "Ödeme Bilgileri Bekleniyor" : "Payment Information Pending")}
           </h3>
           <p className="mt-2 max-w-md text-xs leading-relaxed text-[#68756C]">
-            {isTr ? "Ödemeye devam etmek için lütfen e-posta ve paket seçiminizi tamamlayınız." : "Please verify your email and complete package selection to proceed."}
+            {!packageIds.length
+              ? (isTr ? "Ödemeye devam etmek için lütfen bir eğitim paketi seçiniz." : "Please select an academic package to proceed.")
+              : !emailVerified
+                ? (isTr ? "Kart ile ödeme formunun açılması için lütfen yukarıdaki alandan e-posta adresinizi doğrulayınız." : "Please verify your email address above to proceed with card payment.")
+                : (isTr ? "Ödemeye devam etmek için lütfen sipariş ve iletişim adımlarını tamamlayınız." : "Please complete the required order and contact steps to proceed.")}
           </p>
         </div>
       ) : loading && !prepared ? (

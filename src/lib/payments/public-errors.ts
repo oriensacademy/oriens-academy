@@ -1,3 +1,5 @@
+import { localizeErrorMessage } from "@/lib/utils/error-messages";
+
 export type PaymentLocale = "tr" | "en";
 
 const PAYMENT_ERROR_COPY: Record<string, Record<PaymentLocale, string>> = {
@@ -29,7 +31,13 @@ export function paymentErrorMessage(
   if (mapped) return mapped;
 
   if (serverMessage?.trim() && !/invalid\s+(user\s+)?session/i.test(serverMessage)) {
-    return serverMessage.trim();
+    return localizeErrorMessage(
+      serverMessage.trim(),
+      locale,
+      locale === "tr"
+        ? "Ödeme işlemi şu anda hazırlanamadı. Lütfen tekrar deneyin."
+        : "Payment could not be prepared. Please try again."
+    );
   }
 
   return locale === "tr"

@@ -15,6 +15,7 @@ import { useCart } from "@/lib/cart/cart-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { requestPurchaseEmailVerification, verifyPurchaseEmailVerification } from "@/lib/payments/email-verification";
+import { localizeErrorMessage } from "@/lib/utils/error-messages";
 import type { Tables } from "@/types/database.types";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { ButtonLink } from "@/components/ui/button";
@@ -51,8 +52,6 @@ export function PaymentPage() {
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationSuccess | null>(null);
 
   // OTP Verification State
-  const [customEmail, setCustomEmail] = useState("");
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -165,7 +164,7 @@ export function PaymentPage() {
   }, [searchParams, isTr, refreshGuardianData, refreshAccount]);
 
   const selectedGuardian = guardians.find((item) => item.user_id === guardianId) ?? null;
-  const targetCandidateEmail = (customEmail || selectedGuardian?.email || user?.email || "").trim().toLowerCase();
+  const targetCandidateEmail = (selectedGuardian?.email || user?.email || "").trim().toLowerCase();
 
   useEffect(() => {
     if (resendSeconds <= 0) return;
@@ -202,13 +201,12 @@ export function PaymentPage() {
     const res = await requestPurchaseEmailVerification(targetCandidateEmail, locale);
     setOtpLoading(false);
     if (!res.success) {
-      setOtpError(res.message || (isTr ? "Doğrulama kodu gönderilemedi." : "Failed to send verification code."));
+      setOtpError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama kodu gönderilemedi." : "Failed to send verification code."));
       return;
     }
     setOtpSent(true);
-    setIsEditingEmail(false);
     setResendSeconds(60);
-    setOtpSuccess(isTr ? `${targetCandidateEmail} adresine 6 haneli doğrulama kodu ve bağlantısı gönderildi.` : `6-digit verification code and link sent to ${targetCandidateEmail}.`);
+    setOtpSuccess(isTr ? `${targetCandidateEmail} adresine 6 haneli doğrulama kodu gönderildi.` : `6-digit verification code sent to ${targetCandidateEmail}.`);
   }
 
   async function handleVerifyOtp() {
@@ -221,7 +219,7 @@ export function PaymentPage() {
     const res = await verifyPurchaseEmailVerification(targetCandidateEmail, otpCode.trim(), locale);
     setOtpLoading(false);
     if (!res.success) {
-      setOtpError(res.message || (isTr ? "Doğrulama başarısız oldu." : "Verification failed."));
+      setOtpError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama başarısız oldu." : "Verification failed."));
       return;
     }
     const verifiedAt = res.verified_at || new Date().toISOString();
@@ -264,74 +262,140 @@ export function PaymentPage() {
     <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary"><LockKeyhole className="size-3.5" />{isTr ? "Güvenli Ödeme" : "Secure Checkout"}</div>
     <h1 className="mt-4 font-heading text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
     <div className="mt-9 grid gap-8 lg:grid-cols-[380px_1fr]">
-      <aside className="rounded-3xl border border-border bg-surface p-6 shadow-editorial"><h2 className="font-heading text-xl text-ink">{isTr ? "Sipariş Özeti" : "Order Summary"}</h2>
-        {!isCartCheckout ? <label className="mt-5 block text-xs font-semibold text-ink">{isTr ? "Eğitim Paketi" : "Package"}<select value={directPackageId} onChange={(event) => { setDirectPackageId(event.target.value); setAppliedCoupon(null); }} className="mt-2 min-h-12 w-full rounded-xl border border-input bg-surface px-3"><option value="">{isTr ? "Paket seçin" : "Select package"}</option>{packages.map((pkg) => <option key={pkg.id} value={pkg.id}>{isTr ? pkg.name_tr : pkg.name_en} — {money(Number(pkg.current_total ?? pkg.price_amount), pkg.currency)}</option>)}</select></label> : null}
-        <div className="mt-5 space-y-3">{checkoutPackages.map((pkg) => <div key={pkg.id} className="flex items-start justify-between gap-4 rounded-xl border border-border bg-surface-muted p-3 text-xs"><span className="font-semibold text-ink">{isTr ? pkg.name_tr : pkg.name_en}</span><span>{money(Number(pkg.current_total ?? pkg.price_amount), pkg.currency)}</span></div>)}</div>
+      <aside className="rounded-3xl border border-border bg-surface p-6 shadow-editorial">
+        <h2 className="font-heading text-xl text-ink">{isTr ? "Sipariş Özeti" : "Order Summary"}</h2>
+        
+        {/* Only show package select if not cart checkout AND direct package is not yet chosen */}
+        {!isCartCheckout && !directPackageId && !checkoutPackages.length ? (
+          <label className="mt-5 block text-xs font-semibold text-ink">
+            {isTr ? "Eğitim Paketi" : "Package"}
+            <select
+              value={directPackageId}
+              onChange={(event) => { setDirectPackageId(event.target.value); setAppliedCoupon(null); }}
+              className="mt-2 min-h-12 w-full rounded-xl border border-input bg-surface px-3"
+            >
+              <option value="">{isTr ? "Paket seçin" : "Select package"}</option>
+              {packages.map((pkg) => (
+                <option key={pkg.id} value={pkg.id}>
+                  {isTr ? pkg.name_tr : pkg.name_en} — {money(Number(pkg.current_total ?? pkg.price_amount), pkg.currency)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <div className="mt-5 space-y-3">
+          {checkoutPackages.map((pkg) => {
+            const regularTotal = Number(pkg.old_total ?? pkg.price_amount ?? 0);
+            const currentTotal = Number(pkg.current_total ?? pkg.price_amount ?? 0);
+            const hasDiscount = regularTotal > currentTotal;
+            const discountPct = pkg.discount_percentage || (hasDiscount ? Math.round(((regularTotal - currentTotal) / regularTotal) * 100) : 0);
+
+            return (
+              <div key={pkg.id} className="rounded-2xl border border-border bg-surface-muted p-3.5 text-xs space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-ink text-sm">{isTr ? pkg.name_tr : pkg.name_en}</h3>
+                    {pkg.lesson_count ? (
+                      <span className="text-[11px] text-muted-foreground">
+                        {pkg.lesson_count} {isTr ? "Ders" : "Lessons"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="text-right">
+                    {hasDiscount && (
+                      <span className="block text-[11px] text-muted-foreground line-through">
+                        {money(regularTotal, pkg.currency)}
+                      </span>
+                    )}
+                    <span className="text-sm font-bold text-ink">
+                      {money(currentTotal, pkg.currency)}
+                    </span>
+                  </div>
+                </div>
+
+                {hasDiscount && discountPct > 0 && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                      %{discountPct} {isTr ? "İndirim" : "Discount"}
+                    </span>
+                    <span className="text-[11px] text-emerald-800 font-medium">
+                      {money(regularTotal - currentTotal, pkg.currency)} {isTr ? "avantaj" : "savings"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
         {cartMismatch || (isCartCheckout && cartHydrated && !cartItems.length) || (!isCartCheckout && !checkoutPackages.length) ? (
           <p role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             {isCartCheckout && !cartItems.length
               ? (isTr ? "Sepetiniz boş. Paket seçmek için eğitim paketlerimize göz atabilirsiniz." : "Your cart is empty. You can browse our pricing packages to add items.")
-              : (isTr ? "Sepetinizdeki paketlerin tamamı doğrulanamadı. Sepete dönüp paketleri kontrol edin." : "Not every package in your cart could be verified. Return to your cart and review it.")}
+              : (isTr ? "Paket seçimi bulunamadı. Lütfen bir paket seçiniz." : "No package found. Please select a package.")}
           </p>
         ) : null}
-        <div className="mt-5 rounded-2xl bg-surface-muted p-4 text-sm"><div className="flex justify-between"><span>{isTr ? "Toplam" : "Total"}</span><strong>{money(finalPrice, currency)}</strong></div>{appliedCoupon ? <div className="mt-2 flex justify-between text-emerald-800"><span>{appliedCoupon.code}</span><span>-{money(discountAmount, currency)}</span></div> : null}</div>
-        <form className="mt-5 flex gap-2" onSubmit={(event) => { event.preventDefault(); void applyCoupon(); }}><input value={couponInput} onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); if (appliedCoupon) setAppliedCoupon(null); }} className="min-h-11 min-w-0 flex-1 rounded-xl border border-input px-3 text-xs uppercase" placeholder={isTr ? "Kupon kodu" : "Coupon code"} />{appliedCoupon ? <button type="button" aria-label={isTr ? "Kuponu kaldır" : "Remove coupon"} onClick={() => { setAppliedCoupon(null); setCouponInput(""); }} className="rounded-xl border px-3"><X className="size-4" /></button> : <button type="submit" className="rounded-xl bg-ink px-4 text-xs font-semibold text-white"><Tag className="mr-1 inline size-3" />{isTr ? "Uygula" : "Apply"}</button>}</form>
+
+        <div className="mt-5 rounded-2xl bg-surface-muted p-4 text-sm space-y-2">
+          {checkoutPackages.some((pkg) => Number(pkg.old_total ?? 0) > Number(pkg.current_total ?? 0)) && (
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{isTr ? "Paket Liste Fiyatı" : "Package Regular Price"}</span>
+              <span className="line-through">
+                {money(
+                  checkoutPackages.reduce((sum, pkg) => sum + Number(pkg.old_total ?? pkg.price_amount ?? 0), 0),
+                  currency
+                )}
+              </span>
+            </div>
+          )}
+          <div className="flex justify-between font-medium">
+            <span>{isTr ? "Ara Toplam" : "Subtotal"}</span>
+            <span>{money(basePrice, currency)}</span>
+          </div>
+          {appliedCoupon ? (
+            <div className="flex justify-between text-emerald-800 text-xs font-semibold">
+              <span>{isTr ? `Kupon İndirimi (${appliedCoupon.code})` : `Coupon Discount (${appliedCoupon.code})`}</span>
+              <span>-{money(discountAmount, currency)}</span>
+            </div>
+          ) : null}
+          <div className="pt-2 border-t border-border/80 flex justify-between text-base">
+            <span className="font-bold text-ink">{isTr ? "Ödenecek Tutar" : "Total Amount"}</span>
+            <strong className="text-primary font-bold">{money(finalPrice, currency)}</strong>
+          </div>
+        </div>
+
+        <form className="mt-5 flex gap-2" onSubmit={(event) => { event.preventDefault(); void applyCoupon(); }}>
+          <input value={couponInput} onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); if (appliedCoupon) setAppliedCoupon(null); }} className="min-h-11 min-w-0 flex-1 rounded-xl border border-input px-3 text-xs uppercase" placeholder={isTr ? "Kupon kodu" : "Coupon code"} />
+          {appliedCoupon ? <button type="button" aria-label={isTr ? "Kuponu kaldır" : "Remove coupon"} onClick={() => { setAppliedCoupon(null); setCouponInput(""); }} className="rounded-xl border px-3"><X className="size-4" /></button> : <button type="submit" className="rounded-xl bg-ink px-4 text-xs font-semibold text-white"><Tag className="mr-1 inline size-3" />{isTr ? "Uygula" : "Apply"}</button>}
+        </form>
         {couponError ? <p role="alert" className="mt-2 text-xs text-red-700">{couponError}</p> : null}
       </aside>
       <div className="rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8"><h2 className="font-heading text-2xl text-ink">{isTr ? "Kart ile Ödeme" : "Pay by Card"}</h2>
         {accountType === "admin" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-900">{isTr ? "Yönetici işlemi için hesap sahibi ve öğrenci bağlamını seçin." : "Select the account holder and learner for this admin-assisted payment."}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><select value={guardianId} onChange={(event) => { setGuardianId(event.target.value); setLearnerId(""); }} className="min-h-11 rounded-xl border bg-white px-3 text-xs"><option value="">{isTr ? "Hesap sahibi seçin" : "Select account holder"}</option>{guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}</select><select value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className="min-h-11 rounded-xl border bg-white px-3 text-xs disabled:opacity-50"><option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></div></div> : null}
         <div className="mt-6 border-t border-border pt-6"><h3 className="text-sm font-semibold text-ink">{isTr ? "İletişim Bilgileri" : "Contact Information"}</h3><dl className="mt-3 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "Ad Soyad" : "Full Name"}</dt><dd className="mt-1 text-xs font-semibold">{selectedGuardian?.full_name || "—"}</dd></div><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "Telefon" : "Phone"}</dt><dd className="mt-1 text-xs font-semibold">{selectedGuardian?.phone || "—"}</dd></div><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "E-posta" : "Email"}</dt><dd className="mt-1 break-all text-xs font-semibold">{selectedGuardian?.email || "—"}</dd></div></dl></div>
         
-        {/* PURCHASE-ONLY EMAIL OTP VERIFICATION GATE */}
         {!emailVerified ? (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5">
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-900 tracking-wider uppercase">
               <Mail className="size-4 text-amber-700" />
-              <span>{isTr ? "Ödemeye Devam Etmek İçin E-posta Doğrulaması Gereklidir" : "Email Verification Required to Proceed"}</span>
+              <span>{isTr ? "E-posta Doğrulaması Gereklidir" : "Email Verification Required"}</span>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-amber-800">
+            <p className="mt-1.5 text-xs text-amber-800">
               {isTr
-                ? "Sipariş faturası ve ders bilgilendirmelerinizin güvenle iletilebilmesi için e-posta adresinizi doğrulayınız."
-                : "Please verify your email address so invoice and lesson notifications can be delivered securely."}
+                ? "Ödemenizi tamamlamak için lütfen e-posta adresinizi doğrulayınız."
+                : "Please verify your email address to complete checkout."}
             </p>
 
-            <div className="mt-4 space-y-3">
-              {isEditingEmail ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="email"
-                    value={customEmail}
-                    onChange={(e) => setCustomEmail(e.target.value)}
-                    placeholder={isTr ? "Yeni e-posta adresi" : "New email address"}
-                    className="min-h-11 flex-1 rounded-xl border border-input bg-white px-3 text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingEmail(false)}
-                    className="min-h-11 rounded-xl border border-border bg-white px-3 text-xs font-semibold text-muted-foreground hover:bg-surface-muted"
-                  >
-                    {isTr ? "İptal" : "Cancel"}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-white p-3">
-                  <div className="text-xs font-semibold text-ink break-all">
-                    {targetCandidateEmail || "—"}
-                  </div>
-                  {!otpSent && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomEmail(targetCandidateEmail);
-                        setIsEditingEmail(true);
-                      }}
-                      className="text-[11px] font-semibold text-primary underline hover:text-forest"
-                    >
-                      {isTr ? "E-posta Adresini Değiştir" : "Change Email"}
-                    </button>
-                  )}
-                </div>
-              )}
+            <div className="mt-3.5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200/80 bg-white px-3.5 py-2.5">
+                <span className="text-xs font-mono font-medium text-ink break-all">
+                  {targetCandidateEmail || "—"}
+                </span>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                  {isTr ? "Doğrulanmamış" : "Unverified"}
+                </span>
+              </div>
 
               {otpError && (
                 <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-800">
@@ -349,65 +413,76 @@ export function PaymentPage() {
                   type="button"
                   onClick={handleSendOtp}
                   disabled={otpLoading}
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest transition-colors disabled:opacity-50"
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
                 >
                   {otpLoading ? (isTr ? "Gönderiliyor..." : "Sending...") : (isTr ? "Doğrulama Kodu Gönder" : "Send Verification Code")}
                 </button>
               ) : (
-                <div className="space-y-3 pt-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                      placeholder={isTr ? "6 Haneli Kod" : "6-Digit Code"}
-                      className="min-h-11 w-36 rounded-xl border border-input bg-white px-3 text-center text-sm font-mono font-bold tracking-widest"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyOtp}
-                      disabled={otpLoading || otpCode.length !== 6}
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 text-xs font-semibold text-white hover:bg-forest transition-colors disabled:opacity-50"
-                    >
-                      {otpLoading ? (isTr ? "Doğrulanıyor..." : "Verifying...") : (isTr ? "Kodu Doğrula" : "Verify Code")}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      disabled={resendSeconds > 0 || otpLoading}
-                      className="text-primary underline hover:text-forest disabled:opacity-50 disabled:no-underline"
-                    >
-                      {resendSeconds > 0
-                        ? (isTr ? `Tekrar göndermek için bekleyin (${resendSeconds}s)` : `Wait to resend (${resendSeconds}s)`)
-                        : (isTr ? "Yeni Kod Gönder" : "Resend Code")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOtpSent(false);
-                        setIsEditingEmail(true);
-                      }}
-                      className="text-muted-foreground hover:text-ink"
-                    >
-                      {isTr ? "Farklı e-posta kullan" : "Use a different email"}
-                    </button>
-                  </div>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder={isTr ? "6 Haneli Kod" : "6-Digit Code"}
+                    className="min-h-10 w-32 rounded-xl border border-input bg-white px-3 text-center text-xs font-mono font-bold tracking-widest outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    disabled={otpLoading || otpCode.length !== 6}
+                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-white hover:bg-forest transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+                  >
+                    {otpLoading ? (isTr ? "Doğrulanıyor..." : "Verifying...") : (isTr ? "Kodu Onayla" : "Confirm Code")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={otpLoading || resendSeconds > 0}
+                    className="text-xs text-primary underline hover:text-forest ml-2 cursor-pointer disabled:opacity-50 disabled:no-underline"
+                  >
+                    {resendSeconds > 0
+                      ? (isTr ? `Yeniden gönder (${resendSeconds}s)` : `Resend (${resendSeconds}s)`)
+                      : (isTr ? "Tekrar Gönder" : "Resend")}
+                  </button>
                 </div>
               )}
             </div>
           </div>
-        ) : !contextReady ? (
-          <div role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            {isTr ? "Ödeme için hesap bilgileriniz tamamlanmalıdır." : "Complete your account information before payment."}
-          </div>
         ) : null}
 
-        <div className="mt-6 space-y-3 rounded-2xl border bg-[#F9FAF8] p-4 text-xs"><label className="flex gap-3"><input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" /><span><button type="button" onClick={() => setActiveModal("preInformation")} className="font-semibold text-primary underline">{isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}</button>{isTr ? " ve " : " and "}<button type="button" onClick={() => setActiveModal("salesAgreement")} className="font-semibold text-primary underline">{isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}</button>{isTr ? " metinlerini kabul ediyorum." : "."}</span></label><label className="flex gap-3"><input type="checkbox" checked={refundPolicyAccepted} onChange={(event) => setRefundPolicyAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" /><span><button type="button" onClick={() => setActiveModal("refundPolicy")} className="font-semibold text-primary underline">{isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}</button>{isTr ? " metnini kabul ediyorum." : "."}</span></label></div>
-        <div className="mt-6"><HostedCardPanel locale={locale} packageIds={packageIds} couponCode={appliedCoupon?.code} learnerId={learnerId} guardianUserId={accountType === "admin" ? guardianId : undefined} contextReady={contextReady} termsAccepted={termsAccepted} refundPolicyAccepted={refundPolicyAccepted} /></div>
+        <div className="mt-6 space-y-3 rounded-2xl border bg-[#F9FAF8] p-4 text-xs">
+          <label className="flex gap-3">
+            <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" />
+            <span>
+              <button type="button" onClick={() => setActiveModal("preInformation")} className="font-semibold text-primary underline">{isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}</button>
+              {isTr ? " ve " : " and "}
+              <button type="button" onClick={() => setActiveModal("salesAgreement")} className="font-semibold text-primary underline">{isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}</button>
+              {isTr ? " metinlerini kabul ediyorum." : "."}
+            </span>
+          </label>
+          <label className="flex gap-3">
+            <input type="checkbox" checked={refundPolicyAccepted} onChange={(event) => setRefundPolicyAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" />
+            <span>
+              <button type="button" onClick={() => setActiveModal("refundPolicy")} className="font-semibold text-primary underline">{isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}</button>
+              {isTr ? " metnini kabul ediyorum." : "."}
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-6">
+          <HostedCardPanel
+            locale={locale}
+            packageIds={packageIds}
+            couponCode={appliedCoupon?.code}
+            learnerId={learnerId}
+            guardianUserId={accountType === "admin" ? guardianId : undefined}
+            contextReady={contextReady}
+            emailVerified={emailVerified}
+            termsAccepted={termsAccepted}
+            refundPolicyAccepted={refundPolicyAccepted}
+          />
+        </div>
       </div>
     </div>
   </div>{activeModal ? <LegalModal isOpen onClose={() => setActiveModal(null)} docKey={activeModal} locale={locale} orderSnapshot={orderSnapshot} /> : null}</section>;

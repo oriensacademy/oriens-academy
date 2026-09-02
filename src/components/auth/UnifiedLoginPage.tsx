@@ -12,6 +12,7 @@ import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routin
 import { changePasswordPath, forgotPasswordPath, localizedPath } from "@/lib/routes";
 import { registerStudent, resendGuardianConfirmation, validateStudentPhone } from "@/lib/student/auth";
 import { claimAnonymousExamResult } from "@/lib/student/exam-history";
+import { localizeErrorMessage } from "@/lib/utils/error-messages";
 
 export function UnifiedLoginPage() {
   const locale = useLocale();
@@ -167,11 +168,11 @@ export function UnifiedLoginPage() {
           sessionStorage.removeItem("oriens.newSignupOnboarding");
         }
         setError(
-          regResult.error.message.includes("User already registered")
-            ? isTr
-              ? "Bu e-posta adresi ile kayıtlı bir hesap zaten mevcut. Lütfen giriş yapın."
-              : "An account with this email already exists. Please log in."
-            : regResult.error.message || (isTr ? "Kayıt işlemi gerçekleştirilemedi." : "Registration could not be completed.")
+          localizeErrorMessage(
+            regResult.error,
+            locale,
+            isTr ? "Kayıt işlemi gerçekleştirilemedi." : "Registration could not be completed."
+          )
         );
         return;
       }

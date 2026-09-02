@@ -7,6 +7,7 @@ import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences } from 
 import { VERIFIED_OFFICIAL_UNIVERSITY_URLS } from "@/data/official-universities";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useAccount } from "@/lib/auth/account-context";
+import { pathForLocale } from "@/lib/routes";
 
 interface StudentOnboardingPersonalizationProps {
   studentId: string;
@@ -15,6 +16,7 @@ interface StudentOnboardingPersonalizationProps {
   initialUniversity?: string;
   onComplete: (exams: string[], countries: string[]) => void;
   onSkip?: () => void;
+  onClose?: () => void;
 }
 
 const ALL_UNIVERSITIES = Object.keys(VERIFIED_OFFICIAL_UNIVERSITY_URLS);
@@ -26,6 +28,7 @@ export function StudentOnboardingPersonalization({
   initialUniversity = "",
   onComplete,
   onSkip,
+  onClose,
 }: StudentOnboardingPersonalizationProps) {
   const locale = useLocale();
   const isTr = locale === "tr";
@@ -41,9 +44,13 @@ export function StudentOnboardingPersonalization({
   const [error, setError] = useState("");
 
   const filteredUniversities = useMemo(() => {
-    if (!universityQuery.trim()) return ALL_UNIVERSITIES.slice(0, 8);
-    const q = universityQuery.toLowerCase();
-    return ALL_UNIVERSITIES.filter((u) => u.toLowerCase().includes(q)).slice(0, 10);
+    const raw = universityQuery.trim();
+    if (!raw) return ALL_UNIVERSITIES.slice(0, 8);
+    const q = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return ALL_UNIVERSITIES.filter((u) => {
+      const norm = u.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return norm.includes(q);
+    }).slice(0, 10);
   }, [universityQuery]);
 
   const toggleExam = (id: string) => {
@@ -80,15 +87,21 @@ export function StudentOnboardingPersonalization({
       );
       if (!result.success) throw new Error(result.error || (isTr ? "Tercihler kaydedilemedi." : "Preferences could not be saved."));
 
-      if (selectedUniversity) {
+      const finalUniversity = (selectedUniversity || universityQuery).trim();
+      if (finalUniversity) {
         const supabase = getSupabaseClient();
         await supabase
           .from("student_profiles")
-          .update({ target_university: selectedUniversity })
+          .update({ target_university: finalUniversity })
           .eq("id", targetUserId);
       }
 
       onComplete(selectedExams, selectedCountries);
+
+      if (selectedLanguage !== locale && typeof window !== "undefined") {
+        const targetUrl = pathForLocale(window.location.pathname, selectedLanguage);
+        window.location.href = targetUrl;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : (isTr ? "Tercihler kaydedilemedi." : "Preferences could not be saved."));
     } finally {
@@ -106,9 +119,21 @@ export function StudentOnboardingPersonalization({
 
   return (
     <div className="mx-auto w-full max-w-2xl rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8 md:p-10">
-      <div className="flex items-center gap-2.5 text-xs font-bold tracking-[0.2em] text-primary uppercase">
-        <Sparkles className="size-4" />
-        <span>{isTr ? "Kişiselleştirme" : "Personalization"}</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5 text-xs font-bold tracking-[0.2em] text-primary uppercase">
+          <Sparkles className="size-4" />
+          <span>{isTr ? "Kişiselleştirme" : "Personalization"}</span>
+        </div>
+        {(onClose || onSkip) && (
+          <button
+            type="button"
+            onClick={onClose || onSkip}
+            aria-label={isTr ? "Kapat" : "Close"}
+            className="rounded-xl p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink transition-colors cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        )}
       </div>
 
       <h1 className="mt-3 font-heading text-2xl text-ink sm:text-3xl">

@@ -35,7 +35,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
             scroll={false}
             aria-current={active ? "page" : undefined}
             onClick={(event) => {
-              if (active || transitionActive || event.defaultPrevented) {
+              if (active || event.defaultPrevented) {
                 event.preventDefault();
                 return;
               }
