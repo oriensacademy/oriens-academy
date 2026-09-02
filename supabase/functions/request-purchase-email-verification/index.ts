@@ -8,11 +8,24 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const MAX_REQUESTS_PER_HOUR = 10;
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-async function hashOtp(otp: string, email: string): Promise<string> {
+async function computeOtpHmac(
+  userId: string,
+  email: string,
+  otp: string,
+  secret: string
+): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(`${email}:${otp}:oriens_purchase_otp_salt_2026`);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
+  const keyData = encoder.encode(secret);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const messageData = encoder.encode(`${userId}:${email}:${otp}`);
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  return Array.from(new Uint8Array(signature))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
@@ -39,7 +52,8 @@ Deno.serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!supabaseUrl || !serviceRoleKey) {
+  const hmacSecret = Deno.env.get("PURCHASE_OTP_HMAC_SECRET") ?? "";
+  if (!supabaseUrl || !serviceRoleKey || !hmacSecret) {
     console.error("[request-purchase-email-verification] Required server configuration is missing.");
     return buildJsonResponse(
       { error_code: "SERVER_CONFIG_ERROR", message: "Sunucu yapılandırma hatası." },
@@ -141,7 +155,7 @@ Deno.serve(async (req: Request) => {
     .gt("expires_at", now.toISOString());
 
   const otp = generateSecureOtp();
-  const codeHash = await hashOtp(otp, candidateEmail);
+  const codeHash = await computeOtpHmac(user.id, candidateEmail, otp, hmacSecret);
   const expiresAt = new Date(now.getTime() + OTP_EXPIRATION_MS).toISOString();
   const resendAvailableAt = new Date(now.getTime() + RESEND_COOLDOWN_MS).toISOString();
 

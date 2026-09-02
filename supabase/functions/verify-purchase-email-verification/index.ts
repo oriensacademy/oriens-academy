@@ -1,13 +1,35 @@
 import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 
-async function hashOtp(otp: string, email: string): Promise<string> {
+async function computeOtpHmac(
+  userId: string,
+  email: string,
+  otp: string,
+  secret: string
+): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(`${email}:${otp}:oriens_purchase_otp_salt_2026`);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
+  const keyData = encoder.encode(secret);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const messageData = encoder.encode(`${userId}:${email}:${otp}`);
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  return Array.from(new Uint8Array(signature))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }
 
 Deno.serve(async (req: Request) => {
@@ -26,7 +48,8 @@ Deno.serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!supabaseUrl || !serviceRoleKey) {
+  const hmacSecret = Deno.env.get("PURCHASE_OTP_HMAC_SECRET") ?? "";
+  if (!supabaseUrl || !serviceRoleKey || !hmacSecret) {
     console.error("[verify-purchase-email-verification] Required server configuration is missing.");
     return buildJsonResponse(
       { error_code: "SERVER_CONFIG_ERROR", message: "Sunucu yapılandırma hatası." },
@@ -132,8 +155,8 @@ Deno.serve(async (req: Request) => {
     .update({ attempt_count: newAttemptCount, updated_at: now.toISOString() })
     .eq("id", challenge.id);
 
-  const inputHash = await hashOtp(code, candidateEmail);
-  if (inputHash !== challenge.code_hash) {
+  const expectedHash = await computeOtpHmac(user.id, candidateEmail, code, hmacSecret);
+  if (!timingSafeEqual(challenge.code_hash, expectedHash)) {
     const remaining = Math.max(0, 5 - newAttemptCount);
     return buildJsonResponse(
       {
