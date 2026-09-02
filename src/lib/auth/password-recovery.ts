@@ -1,29 +1,31 @@
 import type { Locale } from "@/content/dictionaries";
-import { resetPasswordPath } from "@/lib/routes";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
 export interface RequestPasswordRecoveryParams {
   email: string;
   locale?: Locale;
+  turnstileToken?: string;
 }
 
 export interface PasswordRecoveryResult {
   success: boolean;
   error?: string;
-  errorCode?: "RATE_LIMIT" | "INVALID_EMAIL" | "NETWORK_ERROR" | "GENERIC";
+  errorCode?: "RATE_LIMIT" | "INVALID_EMAIL" | "NETWORK_ERROR" | "GENERIC" | "BOT_VERIFICATION";
+  message?: string;
 }
 
 /**
  * Shared canonical helper for dispatching Supabase Auth password recovery emails.
  * Used by both the public "Şifremi Unuttum" flow and the Admin CRM Student Detail action.
  *
- * Directs the user to the dedicated localized reset-password page (/sifre-yenile or /reset-password)
- * via Supabase Auth GoTrue recovery link. Does NOT generate temporary plaintext passwords.
+ * Exclusively dispatches through the hardened server-side `request-password-recovery` Edge Function.
+ * Direct GoTrue fallback has been permanently removed to eliminate duplicate email dispatch,
+ * ensure single-language (TR/EN) delivery guarantees, and prevent Turnstile/rate-limit bypass.
  */
 export async function requestPasswordRecovery(
   params: RequestPasswordRecoveryParams
 ): Promise<PasswordRecoveryResult> {
-  const { email, locale = "tr" } = params;
+  const { email, locale = "tr", turnstileToken } = params;
   const cleanEmail = email.trim().toLowerCase();
 
   if (!cleanEmail || !cleanEmail.includes("@")) {
@@ -39,102 +41,80 @@ export async function requestPasswordRecovery(
 
   try {
     const supabase = getSupabaseClient();
-    const origin =
-      typeof window !== "undefined" && window.location?.origin
-        ? window.location.origin
-        : "https://oriens-academy.com";
 
-    const redirectTo = `${origin}${resetPasswordPath(locale)}`;
-
-    // 1. Primary: invoke canonical localized Edge Function
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke(
-        "request-password-recovery",
-        {
-          body: { email: cleanEmail, locale },
-        }
-      );
-
-      if (!fnError && data?.success) {
-        return { success: true };
+    // Canonical single dispatch path: invoke hardened Edge Function
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "request-password-recovery",
+      {
+        body: {
+          email: cleanEmail,
+          locale,
+          turnstileToken,
+        },
       }
+    );
 
-      if (fnError) {
-        console.warn(
-          `[password-recovery] Edge function reported: ${fnError.message}, falling back to GoTrue`
-        );
-      }
-    } catch (edgeErr) {
-      console.warn(
-        "[password-recovery] Edge function unreachable, falling back to GoTrue:",
-        edgeErr
-      );
+    if (!fnError && data?.success) {
+      return {
+        success: true,
+        message: data.message,
+      };
     }
 
-    // 2. Fallback: direct Supabase Auth GoTrue recovery
-    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-      redirectTo,
-    });
+    if (fnError) {
+      const errMsg = fnError.message?.toLowerCase() || "";
+      const status = fnError.context?.status || fnError.status;
 
-    if (error) {
-      const msg = error.message?.toLowerCase() || "";
-      const status = error.status;
-
-      // Rate limit detection
-      if (
-        status === 429 ||
-        msg.includes("rate limit") ||
-        msg.includes("too many requests") ||
-        msg.includes("security purposes")
-      ) {
+      // Rate limit detection (HTTP 429)
+      if (status === 429 || errMsg.includes("rate limit") || errMsg.includes("429")) {
         return {
           success: false,
           errorCode: "RATE_LIMIT",
           error:
             locale === "tr"
-              ? "Çok fazla istek gönderildi. Lütfen birkaç dakika sonra tekrar deneyin."
-              : "Too many requests. Please try again in a few minutes.",
+              ? "Çok fazla deneme yapıldı. Lütfen biraz bekleyip tekrar deneyiniz."
+              : "Too many requests. Please wait a moment and try again.",
         };
       }
 
-      // Network / connection detection
+      // Security verification detection
       if (
-        msg.includes("fetch") ||
-        msg.includes("network") ||
-        msg.includes("failed to fetch")
+        errMsg.includes("bot_verification") ||
+        errMsg.includes("security verification") ||
+        errMsg.includes("turnstile")
       ) {
         return {
           success: false,
-          errorCode: "NETWORK_ERROR",
+          errorCode: "BOT_VERIFICATION",
           error:
             locale === "tr"
-              ? "Bağlantı sırasında bir sorun oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin."
-              : "A connection error occurred. Please check your network and try again.",
+              ? "Güvenlik doğrulaması tamamlanamadı. Lütfen sayfayı yenileyip tekrar deneyiniz."
+              : "Security verification could not be completed. Please refresh and try again.",
         };
       }
 
-      console.warn(`[password-recovery] Supabase resetPasswordForEmail reported: ${error.message}`);
-
-      return {
-        success: false,
-        errorCode: "GENERIC",
-        error:
-          locale === "tr"
-            ? "Şifre sıfırlama bağlantısı şu anda gönderilemedi. Lütfen daha sonra tekrar deneyin."
-            : "Could not send the password reset link at this time. Please try again later.",
-      };
+      console.warn(`[password-recovery] Edge function reported error (${status}): ${fnError.message}`);
     }
 
-    return { success: true };
-  } catch (err) {
-    console.error("[password-recovery] Unexpected recovery error:", err);
+    // Controlled failure without secondary dispatch
     return {
       success: false,
       errorCode: "NETWORK_ERROR",
       error:
         locale === "tr"
-          ? "Bağlantı sırasında bir sorun oluştu. Lütfen tekrar deneyin."
-          : "A connection error occurred. Please try again.",
+          ? "İstek durumunu doğrulayamadık. Lütfen e-posta kutunuzu kontrol edin; bağlantı gelmediyse kısa bir süre sonra tekrar deneyin."
+          : "We could not verify the request status. Please check your inbox; if no link arrives, try again shortly.",
+    };
+  } catch (err) {
+    console.error("[password-recovery] Unexpected recovery error:", err);
+    // Never trigger secondary fallback mail on network or runtime exceptions
+    return {
+      success: false,
+      errorCode: "NETWORK_ERROR",
+      error:
+        locale === "tr"
+          ? "İstek durumunu doğrulayamadık. Lütfen e-posta kutunuzu kontrol edin; bağlantı gelmediyse kısa bir süre sonra tekrar deneyin."
+          : "We could not verify the request status. Please check your inbox; if no link arrives, try again shortly.",
     };
   }
 }

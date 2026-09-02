@@ -41,6 +41,7 @@ export function ForgotPasswordPage() {
       const res = await requestPasswordRecovery({
         email: email.trim().toLowerCase(),
         locale,
+        turnstileToken: token,
       });
 
       if (!res.success) {

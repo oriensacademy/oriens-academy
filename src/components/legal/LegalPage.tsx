@@ -166,7 +166,7 @@ export function LegalPage({ kind }: { kind: LegalDocKey }) {
             {isTr ? "Bu Sayfadaki Bölümler" : "Sections on this Page"}
           </div>
           <div className="flex flex-wrap gap-2">
-            {group.sections.map((sub, idx) => (
+            {group.sections.map((sub) => (
               <a
                 key={sub.id}
                 href={`#${sub.id}`}
