@@ -117,6 +117,17 @@ function render(row: OutboxRow) {
         ? "You can manage lessons, packages and payments from your account."
         : "Ders, paket ve ödeme işlemlerinizi hesabınızdan yönetebilirsiniz.",
     );
+  } else if (row.template === "lesson_rights_decreased") {
+    channel = "support";
+    subject = isEn ? "Lesson rights updated" : "Ders hakkınız güncellendi";
+    const studentName = String(p.student_name || (isEn ? "Student" : "Öğrenci"));
+    lines.push(
+      isEn ? `Dear ${studentName},` : `Sayın ${studentName},`,
+      isEn
+        ? "Your lesson rights have been updated by an administrator."
+        : "Ders hakkınız yönetici tarafından güncellendi.",
+      `${isEn ? "Remaining lesson rights" : "Kalan ders hakkınız"}: ${p.remaining_lessons ?? 0}`,
+    );
   } else {
     throw new Error("UNSUPPORTED_OUTBOX_TEMPLATE");
   }

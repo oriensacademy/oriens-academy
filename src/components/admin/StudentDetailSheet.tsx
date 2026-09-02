@@ -17,9 +17,12 @@ import {
   CheckCircle2,
   Edit3,
   Lock,
+  History,
+  MinusCircle,
+  Clock,
 } from "lucide-react";
 import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
-import { completeStudentAppointment } from "@/lib/admin/student-learning";
+import { completeStudentAppointment, recordCompletedLesson, adjustStudentPackageLessons } from "@/lib/admin/student-learning";
 import { updateAdminBookingStatus } from "@/lib/admin/bookings";
 import {
   sendStudentPasswordReset,
@@ -58,6 +61,8 @@ export function StudentDetailSheet({
   const [errorMessage, setErrorMessage] = useState("");
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [recordLessonModalOpen, setRecordLessonModalOpen] = useState(false);
+  const [decreaseRightsModalOpen, setDecreaseRightsModalOpen] = useState(false);
   const [isResetting, startResetTransition] = useTransition();
 
   const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
@@ -66,7 +71,9 @@ export function StudentDetailSheet({
     if (!student) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (editModalOpen) setEditModalOpen(false);
+        if (decreaseRightsModalOpen) setDecreaseRightsModalOpen(false);
+        else if (recordLessonModalOpen) setRecordLessonModalOpen(false);
+        else if (editModalOpen) setEditModalOpen(false);
         else if (resetModalOpen) setResetModalOpen(false);
         else onClose();
       }
@@ -175,6 +182,16 @@ export function StudentDetailSheet({
             <Overview
               student={student}
               onCreateBooking={onCreateBooking}
+              onOpenRecordPastLesson={() => {
+                setMessage("");
+                setErrorMessage("");
+                setRecordLessonModalOpen(true);
+              }}
+              onOpenDecreaseRights={() => {
+                setMessage("");
+                setErrorMessage("");
+                setDecreaseRightsModalOpen(true);
+              }}
               onOpenPasswordReset={() => {
                 setErrorMessage("");
                 setResetModalOpen(true);
@@ -190,6 +207,16 @@ export function StudentDetailSheet({
             <Appointments
               student={student}
               onCreateBooking={onCreateBooking}
+              onOpenRecordPastLesson={() => {
+                setMessage("");
+                setErrorMessage("");
+                setRecordLessonModalOpen(true);
+              }}
+              onOpenDecreaseRights={() => {
+                setMessage("");
+                setErrorMessage("");
+                setDecreaseRightsModalOpen(true);
+              }}
               onSelectTab={(t) => setTab(t)}
               onDone={(text) => {
                 setMessage(text);
@@ -281,6 +308,32 @@ export function StudentDetailSheet({
           }}
         />
       )}
+
+      {/* Record Past Lesson Modal */}
+      {recordLessonModalOpen && (
+        <RecordPastLessonModal
+          student={student}
+          onClose={() => setRecordLessonModalOpen(false)}
+          onSuccess={(msg) => {
+            setMessage(msg);
+            setRecordLessonModalOpen(false);
+            onChanged?.();
+          }}
+        />
+      )}
+
+      {/* Decrease Lesson Rights Modal */}
+      {decreaseRightsModalOpen && (
+        <DecreaseLessonRightsModal
+          student={student}
+          onClose={() => setDecreaseRightsModalOpen(false)}
+          onSuccess={(msg) => {
+            setMessage(msg);
+            setDecreaseRightsModalOpen(false);
+            onChanged?.();
+          }}
+        />
+      )}
     </div>,
     document.body
   );
@@ -289,11 +342,15 @@ export function StudentDetailSheet({
 function Overview({
   student,
   onCreateBooking,
+  onOpenRecordPastLesson,
+  onOpenDecreaseRights,
   onOpenPasswordReset,
   onOpenEditIdentity,
 }: {
   student: StudentProfile;
   onCreateBooking: () => void;
+  onOpenRecordPastLesson: () => void;
+  onOpenDecreaseRights: () => void;
   onOpenPasswordReset: () => void;
   onOpenEditIdentity: () => void;
 }) {
@@ -425,6 +482,30 @@ function Overview({
 
       {/* QUICK ACTIONS */}
       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
+        <button
+          type="button"
+          onClick={onOpenRecordPastLesson}
+          className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors shadow-2xs"
+        >
+          <History className="size-4 text-primary" />
+          Geçmiş Ders Gir
+        </button>
+        <button
+          type="button"
+          onClick={onOpenDecreaseRights}
+          disabled={!student.activePackage || (student.activePackage.lessonCount - student.activePackage.lessonsUsed) <= 0}
+          className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3.5 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+        >
+          <MinusCircle className="size-4 text-rose-700" />
+          Ders Hakkı Azalt
+        </button>
+        <button
+          onClick={onCreateBooking}
+          className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors"
+        >
+          <CalendarPlus className="size-4" />
+          Ders Planla
+        </button>
         <a href={`mailto:${student.email}`} className={action}>
           <Mail className="size-4" />
           E-posta Gönder
@@ -436,18 +517,11 @@ function Overview({
           </a>
         )}
         <button
-          onClick={onCreateBooking}
-          className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors"
-        >
-          <CalendarPlus className="size-4" />
-          Ders / Görüşme Planla
-        </button>
-        <button
           onClick={onOpenPasswordReset}
           className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 cursor-pointer transition-colors"
         >
           <KeyRound className="size-4 text-amber-700" />
-          Şifre Sıfırlama Bağlantısı Gönder
+          Şifre Sıfırlama
         </button>
       </div>
 
@@ -464,11 +538,15 @@ function Overview({
 function Appointments({
   student,
   onCreateBooking,
+  onOpenRecordPastLesson,
+  onOpenDecreaseRights,
   onSelectTab,
   onDone,
 }: {
   student: StudentProfile;
   onCreateBooking: () => void;
+  onOpenRecordPastLesson: () => void;
+  onOpenDecreaseRights: () => void;
   onSelectTab?: (tab: Tab) => void;
   onDone: (text: string) => void;
 }) {
@@ -524,22 +602,41 @@ function Appointments({
 
   return (
     <div className="space-y-5">
-      {/* Top Header with ONE single CTA */}
+      {/* Top Header with Quick Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4">
         <div>
           <h3 className="font-heading text-lg font-bold text-ink">Ders & Randevu Yönetimi</h3>
           <p className="text-xs text-muted-foreground">
-            Öğrencinin yaklaşan ve geçmiş ders/görüşme seanslarını yönetin ve yeni seans planlayın.
+            Öğrencinin yaklaşan ve geçmiş ders seanslarını yönetin ve hızlı işlem yapın.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onCreateBooking}
-          className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors shadow-xs"
-        >
-          <CalendarPlus className="size-4" />
-          Ders / Görüşme Planla
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenRecordPastLesson}
+            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors shadow-2xs"
+          >
+            <History className="size-4 text-primary" />
+            Geçmiş Ders Gir
+          </button>
+          <button
+            type="button"
+            onClick={onOpenDecreaseRights}
+            disabled={!hasActivePackage || remainingLessons <= 0}
+            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3.5 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
+          >
+            <MinusCircle className="size-4 text-rose-700" />
+            Ders Hakkı Azalt
+          </button>
+          <button
+            type="button"
+            onClick={onCreateBooking}
+            className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors shadow-xs"
+          >
+            <CalendarPlus className="size-4" />
+            Ders Planla
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -981,6 +1078,316 @@ function EditStudentIdentityModal({
             </div>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+function RecordPastLessonModal({
+  student,
+  onClose,
+  onSuccess,
+}: {
+  student: StudentProfile;
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}) {
+  const [lessonDate, setLessonDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [subject, setSubject] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lessonDate) {
+      setError("Tarih seçilmelidir.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+
+    const hasActivePkg = Boolean(student.activePackage);
+    const remaining = student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
+
+    const res = await recordCompletedLesson({
+      studentId: student.userId || student.id,
+      lessonDate: new Date(`${lessonDate}T12:00:00`).toISOString(),
+      durationMinutes,
+      title: subject.trim() || "Tamamlanan Ders",
+      subject: subject.trim() || (student.targetExam ? `${student.targetExam} Dersi` : "Birebir Ders"),
+      packagePurchaseId: hasActivePkg && remaining > 0 ? (student.activePackage?.id || null) : null,
+      idempotencyKey: `past-lesson-${student.id}-${Date.now()}`,
+    });
+
+    setBusy(false);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      const msg = hasActivePkg && remaining > 0
+        ? "Geçmiş ders başarıyla kaydedildi ve paketten 1 ders düşüldü."
+        : "Geçmiş ders başarıyla kaydedildi.";
+      onSuccess(msg);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-primary">
+              <History className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-heading text-base font-bold text-ink">Geçmiş Ders Gir</h3>
+              <p className="text-xs text-muted-foreground">{student.fullName}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-border p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <label className="block text-xs font-semibold text-ink">
+            Ders Tarihi
+            <input
+              type="date"
+              required
+              value={lessonDate}
+              onChange={(e) => setLessonDate(e.target.value)}
+              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+            />
+          </label>
+
+          <label className="block text-xs font-semibold text-ink">
+            Ders Süresi
+            <select
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(Number(e.target.value))}
+              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary cursor-pointer"
+            >
+              <option value={30}>30 dakika</option>
+              <option value={45}>45 dakika</option>
+              <option value={60}>60 dakika (1 saat)</option>
+              <option value={90}>90 dakika (1.5 saat)</option>
+              <option value={120}>120 dakika (2 saat)</option>
+            </select>
+          </label>
+
+          <label className="block text-xs font-semibold text-ink">
+            Ders / Konu <span className="font-normal text-muted-foreground">(İsteğe Bağlı)</span>
+            <input
+              type="text"
+              placeholder="Örn: SAT Math — Türev ve İntegral"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+            />
+          </label>
+
+          {student.activePackage && (
+            <p className="text-[11px] text-muted-foreground bg-surface-muted/60 rounded-xl p-2.5">
+              💡 Öğrencinin aktif <strong>{student.activePackage.name}</strong> paketi bulunmaktadır. Ders kaydedildiğinde paketten 1 ders hakkı düşülecektir.
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onClose}
+              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
+            >
+              {busy ? "Kaydediliyor..." : "Geçmiş Dersi Kaydet"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DecreaseLessonRightsModal({
+  student,
+  onClose,
+  onSuccess,
+}: {
+  student: StudentProfile;
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}) {
+  const currentRemaining = student.activePackage
+    ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed)
+    : 0;
+
+  const [amount, setAmount] = useState(1);
+  const [reason, setReason] = useState("Ders tamamlandı");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const newRemaining = Math.max(0, currentRemaining - amount);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student.activePackage?.id) {
+      setError("Öğrencinin aktif bir paketi bulunmamaktadır.");
+      return;
+    }
+    if (amount <= 0) {
+      setError("Azaltılacak ders adedi en az 1 olmalıdır.");
+      return;
+    }
+    if (amount > currentRemaining) {
+      setError(`Kalan ders adedinden (${currentRemaining}) daha fazla hak azaltılamaz.`);
+      return;
+    }
+    if (reason.trim().length < 3) {
+      setError("Lütfen en az 3 karakterlik bir gerekçe belirtin.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    const res = await adjustStudentPackageLessons({
+      purchaseId: student.activePackage.id,
+      lessonDelta: -amount,
+      reason: reason.trim(),
+    });
+
+    setBusy(false);
+    if (!res.success) {
+      setError(res.error || "Ders hakkı azaltılamadı.");
+    } else {
+      onSuccess(`Ders hakkı ${amount} adet azaltıldı. Yeni kalan hak: ${res.newRemaining}. Öğrenciye bildirim iletildi.`);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-rose-100 text-rose-800">
+              <MinusCircle className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-heading text-base font-bold text-ink">Ders Hakkı Azalt</h3>
+              <p className="text-xs text-muted-foreground">{student.fullName}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-border p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Status summary */}
+          <div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-surface-muted/50 p-3 text-center">
+            <div>
+              <span className="block text-[10px] uppercase font-semibold text-muted-foreground">Mevcut Hak</span>
+              <strong className="text-sm font-bold text-ink">{currentRemaining}</strong>
+            </div>
+            <div className="border-x border-border">
+              <span className="block text-[10px] uppercase font-semibold text-rose-700">Azaltılacak</span>
+              <strong className="text-sm font-bold text-rose-700">-{amount}</strong>
+            </div>
+            <div>
+              <span className="block text-[10px] uppercase font-semibold text-muted-foreground">Yeni Hak</span>
+              <strong className="text-sm font-bold text-emerald-800">{newRemaining}</strong>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-ink mb-1.5">
+              Azaltılacak Ders Adedi
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={Math.max(1, currentRemaining)}
+                required
+                value={amount}
+                onChange={(e) => setAmount(Math.max(1, Math.min(currentRemaining, Number(e.target.value) || 1)))}
+                className="min-h-10 flex-1 rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+              />
+              <button
+                type="button"
+                onClick={() => setAmount(1)}
+                className="min-h-10 rounded-xl border border-border bg-white px-3 text-xs font-semibold text-ink hover:bg-surface-muted transition-colors cursor-pointer"
+              >
+                -1 Ders
+              </button>
+            </div>
+          </div>
+
+          <label className="block text-xs font-semibold text-ink">
+            Gerekçe / Neden
+            <input
+              type="text"
+              required
+              minLength={3}
+              placeholder="Örn: Ders tamamlandı, Öğrenci talebi..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+            />
+          </label>
+
+          <p className="text-[11px] text-muted-foreground bg-blue-50/60 border border-blue-100 rounded-xl p-2.5">
+            📧 İşlem başarıyla tamamlandığında öğrenciye <strong>"Ders hakkınız güncellendi"</strong> başlığıyla güncel kalan hakkını belirten bildirim iletilecektir.
+          </p>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onClose}
+              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              disabled={busy || currentRemaining <= 0}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-rose-700 px-5 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
+            >
+              {busy ? "İşleniyor..." : "Ders Hakkını Azalt"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

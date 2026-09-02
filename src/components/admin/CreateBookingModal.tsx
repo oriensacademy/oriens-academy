@@ -1,11 +1,8 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { CalendarPlus, X, AlertCircle, UserCheck } from "lucide-react";
+import { CalendarPlus, X, AlertCircle, UserCheck, Search, Clock, Check, ChevronDown } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
-import {
-  createManualAdminBooking,
-  type BookingStatus,
-} from "@/lib/admin/bookings";
+import { createManualAdminBooking } from "@/lib/admin/bookings";
 import { listAdminStudents, type StudentProfile } from "@/lib/admin/students";
 
 const emptySubscribe = () => () => {};
@@ -27,6 +24,27 @@ interface CreateBookingModalProps {
   initialStudentUserId?: string | null;
 }
 
+const DURATION_OPTIONS = [
+  { value: 30, label: "30 dakika" },
+  { value: 45, label: "45 dakika" },
+  { value: 60, label: "60 dakika (1 saat)" },
+  { value: 90, label: "90 dakika (1.5 saat)" },
+  { value: 120, label: "120 dakika (2 saat)" },
+];
+
+function calculateEndTime(startTime: string, durationMinutes: number): string {
+  if (!startTime || !startTime.includes(":")) return "14:00";
+  const [hStr, mStr] = startTime.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return "14:00";
+
+  const total = h * 60 + m + durationMinutes;
+  const endH = Math.floor(total / 60) % 24;
+  const endM = total % 60;
+  return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+}
+
 export function CreateBookingModal({
   isOpen,
   onClose,
@@ -37,39 +55,44 @@ export function CreateBookingModal({
   initialStudentUserId = null,
 }: CreateBookingModalProps) {
   const isHydrated = useIsHydrated();
-  const isStudentLocked = Boolean(initialStudentUserId || initialName);
+  const comboboxId = useId();
 
   const [students, setStudents] = useState<StudentProfile[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
 
-  const [eventType, setEventType] = useState<"lesson" | "discovery" | "additional_consultation" | "consultation" | "other">("lesson");
-  const [fullName, setFullName] = useState(initialName);
-  const [email, setEmail] = useState(initialEmail);
-  const [phone, setPhone] = useState(initialPhone);
-  const [studentUserId, setStudentUserId] = useState<string | null>(initialStudentUserId);
+  // Combobox state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const comboboxRef = useRef<HTMLDivElement>(null);
 
-  const [exam, setExam] = useState("");
-  const [subject, setSubject] = useState("");
+  // Form Fields
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [startTime, setStartTime] = useState("13:00");
-  const [endTime, setEndTime] = useState("14:00");
-  const [liveMeetingUrl, setLiveMeetingUrl] = useState("");
-  const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<BookingStatus>("confirmed");
-  const [privacyConsent, setPrivacyConsent] = useState(isStudentLocked);
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [subject, setSubject] = useState("");
+
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [errors, setErrors] = useState<{
-    fullName?: string;
-    email?: string;
-    phone?: string;
-    exam?: string;
-    subject?: string;
-    date?: string;
-    startTime?: string;
-    endTime?: string;
-    privacyConsent?: string;
-  }>({});
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Calculate dynamic end time
+  const computedEndTime = useMemo(
+    () => calculateEndTime(startTime, durationMinutes),
+    [startTime, durationMinutes]
+  );
+
+  // Filter students based on search query
+  const filteredStudents = useMemo(() => {
+    const q = searchQuery.trim().toLocaleLowerCase("tr-TR");
+    if (!q) return students;
+    return students.filter((s) => {
+      const name = (s.fullName || "").toLocaleLowerCase("tr-TR");
+      const email = (s.email || "").toLocaleLowerCase("tr-TR");
+      const phone = (s.phone || "").toLocaleLowerCase("tr-TR");
+      return name.includes(q) || email.includes(q) || phone.includes(q);
+    });
+  }, [students, searchQuery]);
 
   // Body scroll lock & Escape handler
   useEffect(() => {
@@ -91,116 +114,99 @@ export function CreateBookingModal({
     };
   }, [isOpen, onClose]);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (comboboxRef.current && !comboboxRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Fetch student list when modal opens
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
+    setLoadingStudents(true);
     listAdminStudents().then((res) => {
       if (!active) return;
       const list = res.data || [];
       setStudents(list);
+      setLoadingStudents(false);
 
-      // Auto-bind student if initial student ID or email is provided
+      // Pre-bind if student ID or email is provided
       if (initialStudentUserId || initialEmail) {
         const found = list.find(
-          (s) => (initialStudentUserId && (s.userId === initialStudentUserId || s.id === initialStudentUserId)) ||
-                 (initialEmail && s.email.toLowerCase() === initialEmail.toLowerCase())
+          (s) =>
+            (initialStudentUserId && (s.userId === initialStudentUserId || s.id === initialStudentUserId)) ||
+            (initialEmail && s.email.toLowerCase() === initialEmail.toLowerCase())
         );
         if (found) {
-          setSelectedStudentId(found.id);
-          setFullName(found.fullName || initialName);
-          setEmail(found.email || initialEmail);
-          setPhone(found.phone || initialPhone);
-          setStudentUserId(found.userId || initialStudentUserId);
-          if (found.targetExam) setExam(found.targetExam);
-          setPrivacyConsent(true);
+          setSelectedStudent(found);
+          setSearchQuery(found.fullName || found.email);
         }
       }
     });
     return () => {
       active = false;
     };
-  }, [isOpen, initialStudentUserId, initialEmail, initialName, initialPhone]);
-
-  const handleStudentSelect = (val: string) => {
-    setSelectedStudentId(val);
-    if (!val) {
-      setFullName(initialName);
-      setEmail(initialEmail);
-      setPhone(initialPhone);
-      setStudentUserId(initialStudentUserId);
-      setPrivacyConsent(false);
-      return;
-    }
-
-    const student = students.find((s) => s.id === val || s.userId === val);
-    if (student) {
-      setFullName(student.fullName || "");
-      setEmail(student.email || "");
-      setPhone(student.phone || "");
-      setStudentUserId(student.userId || null);
-      if (student.targetExam) setExam(student.targetExam);
-      setPrivacyConsent(true);
-    }
-  };
+  }, [isOpen, initialStudentUserId, initialEmail]);
 
   if (!isOpen || !isHydrated || typeof document === "undefined") return null;
+
+  const handleSelectStudent = (student: StudentProfile) => {
+    setSelectedStudent(student);
+    setSearchQuery(student.fullName || student.email);
+    setIsDropdownOpen(false);
+    setValidationError(null);
+  };
+
+  const handleClearStudent = () => {
+    setSelectedStudent(null);
+    setSearchQuery("");
+    setIsDropdownOpen(false);
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMsg(null);
+    setValidationError(null);
 
-    const newErrors: typeof errors = {};
-    if (!fullName.trim()) newErrors.fullName = "Ad Soyad alanı gereklidir.";
-    if (!email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())) newErrors.email = "Geçerli bir e-posta adresi giriniz.";
-    if (!phone.trim()) newErrors.phone = "Telefon numarası gereklidir.";
-    if (!exam.trim()) newErrors.exam = "Sınav veya alan bilgisi gereklidir.";
-    if (!subject.trim()) newErrors.subject = "Ders veya konu başlığı gereklidir.";
-    if (!date) newErrors.date = "Tarih seçilmelidir.";
-    if (!startTime) newErrors.startTime = "Başlangıç saati gereklidir.";
-    if (!endTime) newErrors.endTime = "Bitiş saati gereklidir.";
-    if (!selectedStudentId && !studentUserId && !privacyConsent && !isStudentLocked) {
-      newErrors.privacyConsent = "Gizlilik onayını doğrulamanız gerekmektedir.";
-    }
-
-    if (liveMeetingUrl.trim() && !/^https?:\/\/.+/i.test(liveMeetingUrl.trim())) {
-      setErrorMsg("Canlı ders bağlantısı geçerli bir https:// URL adresi olmalıdır.");
+    if (!selectedStudent) {
+      setValidationError("Lütfen kayıtlı bir öğrenci seçin.");
       return;
     }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!date) {
+      setValidationError("Tarih seçilmelidir.");
+      return;
+    }
+    if (!startTime) {
+      setValidationError("Başlangıç saati gereklidir.");
       return;
     }
 
     setSubmitting(true);
 
-    const eventPrefix =
-      eventType === "lesson"
-        ? "[Ders]"
-        : eventType === "discovery"
-        ? "[Ön Görüşme]"
-        : eventType === "additional_consultation"
-        ? "[Ek Görüşme]"
-        : eventType === "consultation"
-        ? "[Danışmanlık]"
-        : "[Diğer]";
-
-    const combinedSubject = subject.startsWith("[") ? subject : `${eventPrefix} ${subject.trim()}`;
+    const lessonSubject = subject.trim()
+      ? `[Ders] ${subject.trim()}`
+      : `[Ders] ${selectedStudent.fullName || "Öğrenci"} Birebir Ders Seansı`;
 
     const { error } = await createManualAdminBooking({
-      fullName: fullName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      exam: exam.trim(),
-      subject: combinedSubject,
+      fullName: selectedStudent.fullName || "Kayıtlı Öğrenci",
+      email: selectedStudent.email,
+      phone: selectedStudent.phone || "",
+      exam: selectedStudent.targetExam || "Genel",
+      subject: lessonSubject,
       startsAt: new Date(`${date}T${startTime}:00`).toISOString(),
-      endsAt: new Date(`${date}T${endTime}:00`).toISOString(),
-      notes: notes.trim(),
-      status,
-      privacyConsent: Boolean(privacyConsent || studentUserId || isStudentLocked),
-      studentUserId,
-      liveMeetingUrl: liveMeetingUrl.trim() || null,
-      eventType,
+      endsAt: new Date(`${date}T${computedEndTime}:00`).toISOString(),
+      notes: `Süre: ${durationMinutes} dakika`,
+      status: "confirmed",
+      privacyConsent: true,
+      studentUserId: selectedStudent.userId || selectedStudent.id,
+      liveMeetingUrl: null,
+      eventType: "lesson",
     });
 
     setSubmitting(false);
@@ -208,29 +214,34 @@ export function CreateBookingModal({
       setErrorMsg(error);
       return;
     }
+
     onCreated();
     onClose();
   };
 
-  const inputClass = (hasError?: boolean) =>
-    `w-full rounded-lg border bg-white px-3 py-2 text-xs text-foreground outline-hidden transition-colors ${
-      hasError
-        ? "border-red-400 bg-red-50/20 focus:border-red-500"
-        : "border-input focus:border-[#10271B]"
-    }`;
-
   return createPortal(
-    <div className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto" role="dialog" aria-modal="true">
-      <div className="relative my-auto w-full max-w-xl rounded-3xl border border-border bg-white p-6 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2">
-            <CalendarPlus className="size-5 text-[#819586]" />
-            <h2 className="text-base font-bold text-ink">Ders / Görüşme Planla</h2>
+    <div
+      className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative my-auto w-full max-w-lg rounded-3xl border border-border bg-white p-6 sm:p-7 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="mb-5 flex items-center justify-between border-b border-border pb-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-primary">
+              <CalendarPlus className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-ink">Ders / Görüşme Planla</h2>
+              <p className="text-[11px] text-muted-foreground">Kayıtlı öğrenci için yeni ders seansı oluşturun</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-border p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+            className="rounded-xl border border-border p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer transition-colors"
+            aria-label="Kapat"
           >
             <X className="size-4" />
           </button>
@@ -238,267 +249,208 @@ export function CreateBookingModal({
 
         {errorMsg && (
           <div className="mb-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-            <AlertCircle className="size-4 shrink-0" />
-            {errorMsg}
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {validationError && (
+          <div className="mb-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span>{validationError}</span>
           </div>
         )}
 
         <form noValidate onSubmit={submit} className="space-y-4">
-          {/* Event Type Selector */}
-          <div>
-            <span className="block text-xs font-semibold text-muted-foreground mb-1.5">Etkinlik Türü</span>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-              {[
-                { id: "lesson", label: "Ders" },
-                { id: "discovery", label: "Ön Görüşme" },
-                { id: "additional_consultation", label: "Ek Görüşme" },
-                { id: "consultation", label: "Danışmanlık" },
-                { id: "other", label: "Diğer" },
-              ].map((t) => (
+          {/* 1. Kayıtlı Öğrenci Seç (Searchable Combobox) */}
+          <div className="space-y-1.5" ref={comboboxRef}>
+            <label htmlFor={comboboxId} className="flex items-center justify-between text-xs font-semibold text-ink">
+              <span className="flex items-center gap-1.5">
+                <UserCheck className="size-3.5 text-primary" />
+                Kayıtlı Öğrenci Seç
+              </span>
+              {selectedStudent && (
                 <button
-                  key={t.id}
                   type="button"
-                  onClick={() => setEventType(t.id as typeof eventType)}
-                  className={`rounded-xl border py-2 text-xs font-semibold cursor-pointer transition-colors ${
-                    eventType === t.id
-                      ? "border-[#10271B] bg-[#10271B] text-white shadow-xs"
-                      : "border-border bg-surface-muted text-muted-foreground hover:bg-white hover:text-ink"
-                  }`}
+                  onClick={handleClearStudent}
+                  className="text-[11px] text-muted-foreground hover:text-red-600 transition-colors cursor-pointer"
                 >
-                  {t.label}
+                  Değiştir
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Student Identity Card or Selector */}
-          {isStudentLocked ? (
-            <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-3.5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-forest/10 font-heading text-sm font-bold text-primary">
-                  {fullName?.slice(0, 2).toUpperCase() || "ÖG"}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <strong className="text-xs font-bold text-ink">{fullName}</strong>
-                    <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.2 text-[10px] font-bold text-emerald-800">
-                      Kayıtlı Öğrenci
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {email} {phone ? `· ${phone}` : ""}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-primary/20 bg-forest/5 p-3.5">
-              <label className="block space-y-1">
-                <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
-                  <UserCheck className="size-3.5 text-primary" />
-                  Kayıtlı Öğrenci Seç (Otomatik Bağlama)
-                </span>
-                <select
-                  value={selectedStudentId}
-                  onChange={(e) => handleStudentSelect(e.target.value)}
-                  className={inputClass()}
-                >
-                  <option value="">-- Yeni / Manuel Ziyaretçi (Seçim Yok) --</option>
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.fullName} — {s.email} {s.targetExam ? `(${s.targetExam})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {!isStudentLocked && (
-              <>
-                <Field label="Ad Soyad" error={errors.fullName}>
-                  <input
-                    value={fullName}
-                    onChange={(e) => {
-                      setFullName(e.target.value);
-                      if (errors.fullName) setErrors({ ...errors, fullName: undefined });
-                    }}
-                    placeholder="Öğrenci Adı Soyadı"
-                    className={inputClass(Boolean(errors.fullName))}
-                  />
-                </Field>
-                <Field label="E-posta" error={errors.email}>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (errors.email) setErrors({ ...errors, email: undefined });
-                    }}
-                    placeholder="E-posta adresi"
-                    className={inputClass(Boolean(errors.email))}
-                  />
-                </Field>
-                <Field label="Telefon" error={errors.phone}>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      if (errors.phone) setErrors({ ...errors, phone: undefined });
-                    }}
-                    className={inputClass(Boolean(errors.phone))}
-                  />
-                </Field>
-              </>
-            )}
-
-            <Field label="Sınav / Alan" error={errors.exam}>
-              <input
-                value={exam}
-                onChange={(e) => {
-                  setExam(e.target.value);
-                  if (errors.exam) setErrors({ ...errors, exam: undefined });
-                }}
-                placeholder="SAT, IB, AP, Danışmanlık vb."
-                className={inputClass(Boolean(errors.exam))}
-              />
-            </Field>
-
-            <Field label="Ders / Konu Başlığı" error={errors.subject}>
-              <input
-                value={subject}
-                onChange={(e) => {
-                  setSubject(e.target.value);
-                  if (errors.subject) setErrors({ ...errors, subject: undefined });
-                }}
-                placeholder="Örn: Birebir Matematik Görüşmesi"
-                className={inputClass(Boolean(errors.subject))}
-              />
-            </Field>
-
-            <Field label="Durum">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as BookingStatus)}
-                className={inputClass()}
-              >
-                <option value="confirmed">Onaylandı</option>
-                <option value="pending">Bekliyor</option>
-                <option value="completed">Tamamlandı</option>
-                <option value="cancelled">İptal</option>
-                <option value="no_show">Gelmedi</option>
-              </select>
-            </Field>
-
-            <Field label="Tarih" error={errors.date}>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  if (errors.date) setErrors({ ...errors, date: undefined });
-                }}
-                className={inputClass(Boolean(errors.date))}
-              />
-            </Field>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Başlangıç" error={errors.startTime}>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => {
-                    setStartTime(e.target.value);
-                    if (errors.startTime) setErrors({ ...errors, startTime: undefined });
-                  }}
-                  className={inputClass(Boolean(errors.startTime))}
-                />
-              </Field>
-              <Field label="Bitiş" error={errors.endTime}>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => {
-                    setEndTime(e.target.value);
-                    if (errors.endTime) setErrors({ ...errors, endTime: undefined });
-                  }}
-                  className={inputClass(Boolean(errors.endTime))}
-                />
-              </Field>
-            </div>
-          </div>
-
-          {/* Optional Live Meeting Link */}
-          <Field label="Canlı Ders / Görüşme Bağlantısı (İsteğe Bağlı)">
-            <div className="relative">
-              <input
-                type="url"
-                value={liveMeetingUrl}
-                onChange={(e) => setLiveMeetingUrl(e.target.value)}
-                placeholder="https://meet.google.com/abc-defg-hij"
-                className={inputClass()}
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground">
-              Bağlantı girilirse onay e-postasında ve öğrenci panelinde &ldquo;Görüşmeye Katıl&rdquo; butonu olarak sunulur.
-            </span>
-          </Field>
-
-          <Field label="Yönetici Notu (İsteğe Bağlı)">
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Randevu ile ilgili özel notlar..."
-              className={inputClass()}
-            />
-          </Field>
-
-          {!selectedStudentId && (
-            <div className="space-y-1">
-              <label className="flex items-start gap-2 rounded-lg border border-border bg-background-soft/50 p-2.5 text-xs text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={privacyConsent}
-                  onChange={(e) => {
-                    setPrivacyConsent(e.target.checked);
-                    if (errors.privacyConsent) setErrors({ ...errors, privacyConsent: undefined });
-                  }}
-                  className="mt-0.5"
-                />
-                <span>Kişinin verilerinin bu randevu için işlenmesine ilişkin gizlilik onayının alındığını doğruluyorum.</span>
-              </label>
-              {errors.privacyConsent && (
-                <p className="flex items-center gap-1 text-[11px] font-medium text-red-600">
-                  <AlertCircle className="size-3 shrink-0" />
-                  {errors.privacyConsent}
-                </p>
               )}
-            </div>
-          )}
+            </label>
 
-          <div className="flex justify-end gap-2 border-t border-border pt-3">
+            {selectedStudent ? (
+              <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-[#F4F6F0] p-3 shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-forest/10 font-heading text-xs font-bold text-primary">
+                    {selectedStudent.fullName?.slice(0, 2).toUpperCase() || "ÖG"}
+                  </div>
+                  <div>
+                    <strong className="block text-xs font-bold text-ink">{selectedStudent.fullName}</strong>
+                    <span className="text-[11px] text-muted-foreground">{selectedStudent.email}</span>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                  <Check className="size-3" /> Seçildi
+                </span>
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                  <input
+                    id={comboboxId}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setIsDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    placeholder={loadingStudents ? "Öğrenciler yükleniyor..." : "Öğrenci adı veya e-posta ile arayın..."}
+                    className="w-full rounded-xl border border-input bg-white pl-9 pr-9 py-2 text-xs text-foreground outline-hidden transition-colors focus:border-primary"
+                    autoComplete="off"
+                  />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+
+                {/* Dropdown list */}
+                {isDropdownOpen && (
+                  <div className="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-xl border border-border bg-white p-1 shadow-xl">
+                    {loadingStudents ? (
+                      <div className="p-3 text-center text-xs text-muted-foreground">Yükleniyor...</div>
+                    ) : filteredStudents.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-muted-foreground">
+                        {students.length === 0 ? "Kayıtlı öğrenci bulunamadı." : "Eşleşen öğrenci bulunamadı."}
+                      </div>
+                    ) : (
+                      filteredStudents.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => handleSelectStudent(s)}
+                          className="flex w-full items-center justify-between rounded-lg p-2 text-left text-xs hover:bg-surface-muted transition-colors cursor-pointer"
+                        >
+                          <div>
+                            <strong className="block font-semibold text-ink">{s.fullName}</strong>
+                            <span className="text-[11px] text-muted-foreground">{s.email}</span>
+                          </div>
+                          {s.targetExam && (
+                            <span className="rounded-md border border-border bg-surface px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {s.targetExam}
+                            </span>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Tarih */}
+          <div className="space-y-1">
+            <label htmlFor="booking-date" className="block text-xs font-semibold text-ink">
+              Tarih
+            </label>
+            <input
+              id="booking-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-foreground outline-hidden transition-colors focus:border-primary"
+              required
+            />
+          </div>
+
+          {/* 3. Başlangıç Saati & 4. Ders Süresi + Otomatik Bitiş Saati */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label htmlFor="booking-start-time" className="block text-xs font-semibold text-ink">
+                Başlangıç Saati
+              </label>
+              <input
+                id="booking-start-time"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-foreground outline-hidden transition-colors focus:border-primary"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="booking-duration" className="block text-xs font-semibold text-ink">
+                Ders Süresi
+              </label>
+              <select
+                id="booking-duration"
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-foreground outline-hidden transition-colors focus:border-primary cursor-pointer"
+              >
+                {DURATION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Otomatik Bitiş Saati Kartı */}
+          <div className="flex items-center justify-between rounded-xl border border-border bg-surface-muted/60 px-3.5 py-2 text-xs">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Clock className="size-3.5 text-primary" />
+              Hesaplanan Bitiş Saati:
+            </span>
+            <strong className="font-bold text-ink">
+              {startTime} → {computedEndTime}
+            </strong>
+          </div>
+
+          {/* 5. Ders / Konu Başlığı (İsteğe Bağlı) */}
+          <div className="space-y-1">
+            <label htmlFor="booking-subject" className="block text-xs font-semibold text-ink">
+              Ders / Konu Başlığı <span className="font-normal text-muted-foreground">(İsteğe Bağlı)</span>
+            </label>
+            <input
+              id="booking-subject"
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Örn: SAT Math — Fonksiyonlar ve Paraboller"
+              className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-foreground outline-hidden transition-colors focus:border-primary"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-input px-4 py-2 text-xs font-medium hover:bg-surface-muted cursor-pointer"
+              disabled={submitting}
+              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer transition-colors"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50 hover:bg-forest cursor-pointer"
+              className="inline-flex min-h-9 items-center justify-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white shadow-xs hover:bg-forest cursor-pointer disabled:opacity-50 transition-colors"
             >
               {submitting ? (
                 <>
-                  <Wave className="h-4 w-8 text-amber-400" />
-                  <span>Oluşturuluyor…</span>
+                  <Wave className="size-3.5 text-white" />
+                  <span>Planlanıyor...</span>
                 </>
               ) : (
-                "Etkinliği Planla"
+                <>
+                  <CalendarPlus className="size-3.5" />
+                  <span>Dersi Planla</span>
+                </>
               )}
             </button>
           </div>
@@ -506,28 +458,5 @@ export function CreateBookingModal({
       </div>
     </div>,
     document.body
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-xs font-semibold text-muted-foreground">{label}</span>
-      {children}
-      {error && (
-        <span className="flex items-center gap-1 text-[11px] font-medium text-red-600">
-          <AlertCircle className="size-3 shrink-0" />
-          {error}
-        </span>
-      )}
-    </label>
   );
 }

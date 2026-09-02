@@ -392,6 +392,10 @@ export async function adjustStudentPackageLessons(input: {
           : errorCode,
     };
   }
+  if (value?.success && input.lessonDelta < 0) {
+    void kickNotificationOutbox(String(value.purchase_id));
+  }
+
   return {
     success: true,
     error: null,
