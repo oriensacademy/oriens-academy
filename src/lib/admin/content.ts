@@ -55,7 +55,7 @@ export async function getPublicTestimonials(locale?: string): Promise<PublicTest
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any).rpc("get_public_testimonials_v2", {
       p_locale: locale || null,
-      p_limit: 16,
+      p_limit: 20,
     });
     if (error) return { data: [], error: error.message };
     return { data: (data || []) as TestimonialRow[], error: null };

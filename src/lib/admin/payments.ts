@@ -156,7 +156,8 @@ export async function listAdminPaymentsPaginated(
       .select(
         "id,public_reference,package_id,payer_name,payer_email,payer_phone,amount,currency,payment_method,provider,provider_transaction_id,status,created_at,paid_at,metadata,refunded_amount,refund_status,last_refunded_at,last_refund_reason,paytr_refund_reference",
         { count: "exact" }
-      );
+      )
+      .eq("is_archived", false);
 
     // Apply Search
     if (params.search?.trim()) {
@@ -247,7 +248,8 @@ export async function getAdminFinancialMetrics(
     const client = getSupabaseClient();
     let query = client
       .from("payment_transactions")
-      .select("amount,status,payment_method,created_at,paid_at,metadata,package_id");
+      .select("amount,status,payment_method,created_at,paid_at,metadata,package_id,refunded_amount,refund_status")
+      .eq("is_archived", false);
 
     // Apply Search
     if (params.search?.trim()) {
@@ -326,7 +328,6 @@ export async function getAdminFinancialMetrics(
 
     (data ?? []).forEach((row) => {
       const amount = Number(row.amount) || 0;
-      filteredTotalVolume += amount;
       if (row.package_id) pkgSet.add(row.package_id);
 
       const meta = (row.metadata as Record<string, unknown>) ?? {};
@@ -338,24 +339,25 @@ export async function getAdminFinancialMetrics(
 
       if (row.status === "paid") {
         totalCollected += amount;
+        filteredTotalVolume += amount;
         paidPackagesCount += 1;
         if (isThisMonth) {
           currentMonthCollected += amount;
         }
-      } else if (
-        row.status === "pending" ||
-        row.status === "requires_action" ||
-        row.status === "processing"
-      ) {
-        totalPendingAmount += amount;
-        pendingCount += 1;
-        if (row.payment_method === "bank_transfer") {
-          bankTransferPendingAmount += amount;
-          bankTransferPendingCount += 1;
+        const rowRefunded = Number((row as Record<string, unknown>).refunded_amount) || 0;
+        if (rowRefunded > 0) {
+          refundedAmount += rowRefunded;
+          refundedCount += 1;
         }
       } else if (row.status === "refunded") {
         refundedAmount += amount;
         refundedCount += 1;
+      } else if (row.status === "pending" && row.payment_method === "bank_transfer") {
+        totalPendingAmount += amount;
+        pendingCount += 1;
+        bankTransferPendingAmount += amount;
+        bankTransferPendingCount += 1;
+        filteredTotalVolume += amount;
       }
     });
 

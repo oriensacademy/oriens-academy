@@ -38,7 +38,7 @@ export async function listStudentLearning(userId: string) {
     supabase.from("student_lessons").select("*").eq("student_user_id", userId).order("lesson_date", { ascending: false }),
     supabase.from("student_homework").select("*").eq("student_user_id", userId).order("due_date", { ascending: true, nullsFirst: false }),
     supabase.from("student_package_purchases").select("*,pricing_packages(name_tr,name_en)").eq("student_user_id", userId).order("created_at", { ascending: false }),
-    supabase.from("payment_transactions").select("id,public_reference,package_id,amount,currency,payment_method,status,created_at").eq("student_user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("payment_transactions").select("id,public_reference,package_id,amount,currency,payment_method,status,created_at").eq("student_user_id", userId).eq("is_archived", false).order("created_at", { ascending: false }),
     supabase.from("student_admin_notes").select("*").eq("student_user_id", userId).order("created_at", { ascending: false }),
     supabase.from("pricing_packages").select("id,name_tr,name_en,lesson_count,current_total,price_amount,currency,active").eq("active", true).order("display_order"),
     supabase.from("student_package_adjustments" as "student_admin_notes").select("*").eq("student_user_id", userId).order("created_at", { ascending: false }),

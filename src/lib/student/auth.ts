@@ -152,13 +152,13 @@ export async function updateStudentPassword(password: string) {
   return getSupabaseClient().auth.updateUser({ password });
 }
 
-export async function updateGuardianProfile(input: { fullName: string; phone: string; contactAddress: string; preferredLanguage: Locale }) {
+export async function updateGuardianProfile(input: { fullName: string; phone: string; contactAddress?: string; preferredLanguage: Locale }) {
   const phone = validateStudentPhone(input.phone, input.preferredLanguage === "tr");
   if (!phone.valid) return { data: null, error: new Error(phone.error || "Invalid phone") };
   return getSupabaseClient().rpc("update_guardian_profile", {
     p_full_name: input.fullName.trim().replace(/\s+/g, " "),
     p_phone: phone.normalized,
-    p_contact_address: input.contactAddress.trim().replace(/\s+/g, " "),
+    p_contact_address: input.contactAddress ? input.contactAddress.trim().replace(/\s+/g, " ") : undefined,
     p_preferred_language: input.preferredLanguage,
   });
 }

@@ -78,6 +78,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
         anySupabase
           .from("payment_transactions")
           .select("id, amount, currency, payment_method, payer_email, created_at, status")
+          .eq("is_archived", false)
           .in("status", ["pending", "requires_action"])
           .order("created_at", { ascending: false })
           .limit(10),

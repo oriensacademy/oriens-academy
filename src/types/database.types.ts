@@ -1433,6 +1433,9 @@ export type Database = {
           created_at: string
           updated_at: string
           paid_at: string | null
+          is_archived: boolean
+          archived_at: string | null
+          archive_reason: string | null
         }
         Insert: {
           id?: string
@@ -1463,6 +1466,9 @@ export type Database = {
           created_at?: string
           updated_at?: string
           paid_at?: string | null
+          is_archived?: boolean
+          archived_at?: string | null
+          archive_reason?: string | null
         }
         Update: {
           id?: string
@@ -1493,6 +1499,9 @@ export type Database = {
           created_at?: string
           updated_at?: string
           paid_at?: string | null
+          is_archived?: boolean
+          archived_at?: string | null
+          archive_reason?: string | null
         }
         Relationships: []
       }
@@ -1791,7 +1800,7 @@ export type Database = {
         Returns: Json
       }
       update_guardian_profile: {
-        Args: { p_full_name: string; p_phone: string; p_contact_address: string; p_preferred_language?: string }
+        Args: { p_full_name: string; p_phone: string; p_contact_address?: string | null; p_preferred_language?: string }
         Returns: Json
       }
       admin_retry_email_notification: { Args: { p_delivery_id: string }; Returns: Json }

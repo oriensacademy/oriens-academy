@@ -459,10 +459,12 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
     if (guardianForm.fullName.trim().length < 2 || guardianForm.fullName.trim().length > 100) {
       setGuardianBusy(false); setErr(locale === "tr" ? "Ad soyad 2–100 karakter olmalıdır." : "Full name must be 2–100 characters."); return;
     }
-    if (guardianForm.contactAddress.trim().length < 10 || guardianForm.contactAddress.trim().length > 300) {
-      setGuardianBusy(false); setErr(locale === "tr" ? "Geçerli iletişim adresinizi girin." : "Enter a valid contact address."); return;
-    }
-    const result = await updateGuardianProfile({ ...guardianForm, preferredLanguage: locale });
+    const result = await updateGuardianProfile({
+      fullName: guardianForm.fullName,
+      phone: guardianForm.phone,
+      contactAddress: guardianForm.contactAddress || undefined,
+      preferredLanguage: locale,
+    });
     setGuardianBusy(false);
     if (result.error) setErr(result.error.message);
     else setMsg(locale === "tr" ? "Hesap bilgileri güncellendi." : "Account details updated.");
@@ -547,8 +549,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
         <form onSubmit={saveGuardian} className="grid gap-4 sm:grid-cols-2">
           <label className="text-xs font-medium text-muted-foreground">{locale === "tr" ? "Ad Soyad" : "Full Name"}<input required minLength={2} maxLength={100} value={guardianForm.fullName} onChange={(event) => setGuardianForm({...guardianForm,fullName:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
           <label className="text-xs font-medium text-muted-foreground">{locale === "tr" ? "Telefon" : "Phone"}<input required type="tel" value={guardianForm.phone} onChange={(event) => setGuardianForm({...guardianForm,phone:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
-          <label className="text-xs font-medium text-muted-foreground sm:col-span-2">{locale === "tr" ? "İletişim Adresi" : "Contact Address"}<textarea required minLength={10} maxLength={300} value={guardianForm.contactAddress} onChange={(event) => setGuardianForm({...guardianForm,contactAddress:event.target.value})} className="mt-1 min-h-20 w-full rounded-xl border border-input bg-surface p-3 text-sm text-ink" /></label>
-          <div className="sm:col-span-2"><p className="text-xs text-muted-foreground">{locale === "tr" ? `Doğrulanmış e-posta: ${guardian?.email || "—"}. E-posta değişikliği ayrı doğrulama gerektirir.` : `Verified email: ${guardian?.email || "—"}. Email changes require separate verification.`}</p><button disabled={guardianBusy} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"><Save className="size-4" />{guardianBusy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Hesap Bilgilerini Kaydet" : "Save Account Details")}</button></div>
+          <div className="sm:col-span-2"><button disabled={guardianBusy} className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"><Save className="size-4" />{guardianBusy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Hesap Bilgilerini Kaydet" : "Save Account Details")}</button></div>
         </form>
       </Panel>
 
@@ -1153,22 +1154,59 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
 
 function Metric({label,value}:{label:string;value:string|number}){return <div className="rounded-xl border border-border bg-surface-muted p-4"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold text-ink">{value}</dd></div>;}
 
+function getHumanPackageName(packageId: string, metadata: Record<string, unknown> | null, locale: "tr" | "en"): string {
+  if (metadata) {
+    if (typeof metadata.package_name === "string" && metadata.package_name.trim()) {
+      return metadata.package_name;
+    }
+    if (typeof metadata.package_name_tr === "string" && locale === "tr" && metadata.package_name_tr.trim()) {
+      return metadata.package_name_tr;
+    }
+    if (typeof metadata.package_name_en === "string" && locale === "en" && metadata.package_name_en.trim()) {
+      return metadata.package_name_en;
+    }
+  }
+
+  const normalized = (packageId || "").toLowerCase().trim();
+  const slugMap: Record<string, { tr: string; en: string }> = {
+    single: { tr: "1 Derslik Paket", en: "Single Lesson Package" },
+    package1: { tr: "1 Derslik Paket", en: "Single Lesson Package" },
+    package5: { tr: "5 Derslik Paket", en: "5-Lesson Package" },
+    package10: { tr: "10 Derslik Paket", en: "10-Lesson Package" },
+    package20: { tr: "20 Derslik Paket", en: "20-Lesson Package" },
+    package30: { tr: "30 Derslik Paket", en: "30-Lesson Package" },
+  };
+
+  if (slugMap[normalized]) {
+    return locale === "tr" ? slugMap[normalized].tr : slugMap[normalized].en;
+  }
+
+  const match = normalized.match(/^(?:package|pkg)(\d+)$/);
+  if (match) {
+    return locale === "tr" ? `${match[1]} Derslik Paket` : `${match[1]}-Lesson Package`;
+  }
+
+  return packageId || (locale === "tr" ? "Eğitim Paketi" : "Education Package");
+}
+
 function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
   const refundCopy = getPaymentRefundCopy(locale);
+  const visiblePayments = data.payments.filter((p) => !(p as { is_archived?: boolean }).is_archived);
   return (
     <div className="space-y-5">
       <Panel title={locale === "tr" ? "Ödemelerim" : "My Payments"}>
-        {data.payments.length ? (
+        {visiblePayments.length ? (
           <div className="grid gap-3">
-            {data.payments.map((p) => {
+            {visiblePayments.map((p) => {
               const meta = (p.metadata ?? {}) as Record<string, unknown>;
               const discount = Number(meta.discount_amount ?? 0);
               const couponCode = meta.coupon_code ? String(meta.coupon_code) : null;
+              const packageName = getHumanPackageName(p.package_id, meta, locale);
               return (
                 <article key={p.id} className="grid gap-2 rounded-2xl border border-border p-4 sm:grid-cols-[1fr_auto_auto]">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-ink">{p.package_id}</p>
+                      <p className="font-semibold text-ink">{packageName}</p>
                       {couponCode && (
                         <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-emerald-800">
                           {couponCode} (-{new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: p.currency }).format(discount)})

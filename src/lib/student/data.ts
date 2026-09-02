@@ -187,6 +187,7 @@ export async function getStudentPortalData(
           "id,package_id,amount,currency,payment_method,status,created_at,public_reference,metadata,refunded_amount,refund_status"
         )
         .eq("student_user_id", userId)
+        .eq("is_archived", false)
         .order("created_at", { ascending: false }),
       supabase
         .from("student_package_adjustments" as never)
