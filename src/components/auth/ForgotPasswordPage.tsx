@@ -139,11 +139,6 @@ export function ForgotPasswordPage() {
                       autoComplete="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      placeholder={
-                        locale === "tr"
-                          ? "ornek@oriens-academy.com"
-                          : "student@example.com"
-                      }
                       className="min-h-12 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-xs sm:text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all"
                     />
                   </span>
