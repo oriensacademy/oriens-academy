@@ -54,6 +54,7 @@ export function UnifiedLoginPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const navigatedRef = useRef(false);
+  const isRegisteringRef = useRef(false);
   const requested = safeReturnPath(searchParams.get("next"));
 
   // Check URL query for register mode
@@ -72,11 +73,13 @@ export function UnifiedLoginPage() {
   const tryClaimPendingResult = async () => {
     try {
       if (typeof window !== "undefined") {
-        const pendingClaimToken = sessionStorage.getItem("oriens.pendingExamClaimToken");
-        if (pendingClaimToken) {
-          await claimAnonymousExamResult(pendingClaimToken);
-          sessionStorage.removeItem("oriens.pendingExamClaimToken");
-          sessionStorage.removeItem("oriens.pendingSignupEmail");
+        const claimToken = sessionStorage.getItem("oriens.pendingExamClaimToken");
+        if (claimToken) {
+          const res = await claimAnonymousExamResult(claimToken);
+          if (res.success) {
+            sessionStorage.removeItem("oriens.pendingExamClaimToken");
+            sessionStorage.removeItem("oriens.pendingSignupEmail");
+          }
         }
       }
     } catch {
@@ -85,7 +88,7 @@ export function UnifiedLoginPage() {
   };
 
   useEffect(() => {
-    if (isInitializing || navigatedRef.current || !["admin", "student"].includes(accountType)) return;
+    if (isInitializing || navigatedRef.current || isRegisteringRef.current || !["admin", "student"].includes(accountType)) return;
     navigatedRef.current = true;
     const destination = user?.user_metadata?.force_password_change === true
       ? changePasswordPath(locale)
@@ -143,6 +146,10 @@ export function UnifiedLoginPage() {
       return;
     }
     setSubmitting(true);
+    isRegisteringRef.current = true;
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("oriens.newSignupOnboarding", "true");
+    }
 
     try {
       const regResult = await registerStudent({
@@ -155,6 +162,10 @@ export function UnifiedLoginPage() {
 
       if (regResult.error) {
         setSubmitting(false);
+        isRegisteringRef.current = false;
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("oriens.newSignupOnboarding");
+        }
         setError(
           regResult.error.message.includes("User already registered")
             ? isTr
@@ -169,7 +180,7 @@ export function UnifiedLoginPage() {
       if (regResult.data?.session) {
         await tryClaimPendingResult();
         navigatedRef.current = true;
-        const targetPath = `${localizedPath("studentAccount", locale)}?onboarding=personalization`;
+        const targetPath = `${localizedPath("studentAccount", locale)}/?onboarding=personalization`;
         router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
         setSubmitting(false);
         return;
@@ -180,13 +191,14 @@ export function UnifiedLoginPage() {
       if (!signInResult.error && signInResult.accountType !== "unknown") {
         await tryClaimPendingResult();
         navigatedRef.current = true;
-        const targetPath = `${localizedPath("studentAccount", locale)}?onboarding=personalization`;
+        const targetPath = `${localizedPath("studentAccount", locale)}/?onboarding=personalization`;
         router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
         setSubmitting(false);
         return;
       }
 
       setSubmitting(false);
+      isRegisteringRef.current = false;
       if (regResult.data?.user) {
         setPendingConfirmation(true);
         setResendCooldown(60);

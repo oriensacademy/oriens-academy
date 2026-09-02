@@ -338,7 +338,7 @@ function AdminStudentsContent() {
 
       <StudentDetailSheet
         key={selected?.id || "closed"}
-        student={selected}
+        student={bookingStudent ? null : selected}
         onClose={() => setSelected(null)}
         onChanged={() => void refresh()}
         onCreateBooking={() => {
@@ -356,11 +356,12 @@ function AdminStudentsContent() {
           initialStudentUserId={bookingStudent.userId}
           onClose={() => setBookingStudent(null)}
           onCreated={async () => {
+            const currentSelected = selected;
             setBookingStudent(null);
             const res = await listAdminStudents();
             setStudents(res.data);
-            if (selected) {
-              const updated = res.data.find((s) => s.id === selected.id);
+            if (currentSelected) {
+              const updated = res.data.find((s) => s.id === currentSelected.id);
               if (updated) setSelected(updated);
             }
           }}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LockKeyhole, Mail, Tag, X } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getPaymentCopy } from "@/content/payment";
@@ -31,12 +31,12 @@ export function PaymentPage() {
   const isTr = locale === "tr";
   const copy = getPaymentCopy(locale);
   const router = useRouter();
-  const { accountType, user, isInitializing } = useAccount();
+  const searchParams = useSearchParams();
+  const { accountType, user, isInitializing, refreshAccount } = useAccount();
   const { items: cartItems } = useCart();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
   const [directPackageId, setDirectPackageId] = useState("");
-  const [isCartCheckout, setIsCartCheckout] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [learners, setLearners] = useState<Learner[]>([]);
@@ -62,10 +62,31 @@ export function PaymentPage() {
 
   const initializedForUserRef = useRef("");
 
+  // Reactive Cart Mode determination (compatible with static export)
+  const sourceParam = searchParams.get("source");
+  const packageParam = searchParams.get("package");
+  const isCartCheckout = sourceParam === "cart" || (!packageParam && cartItems.length > 0);
+  const verifiedHandledRef = useRef(false);
+
+  const refreshGuardianData = useCallback(async () => {
+    if (!user?.id) return;
+    const supabase = getSupabaseClient();
+    const { data } = await supabase.from("guardian_accounts").select("*").eq("user_id", user.id).maybeSingle();
+    if (data) {
+      setGuardians((prev) => {
+        const exists = prev.some((g) => g.user_id === data.user_id);
+        return exists ? prev.map((g) => (g.user_id === data.user_id ? data : g)) : [...prev, data];
+      });
+      if (!guardianId) {
+        setGuardianId(data.user_id);
+      }
+    }
+  }, [user, guardianId]);
+
   useEffect(() => {
     if (isInitializing) return;
     if (accountType !== "student" && accountType !== "admin") {
-      const next = `${localizedPath("payment", locale)}${window.location.search}`;
+      const next = `${localizedPath("payment", locale)}/${window.location.search}`;
       router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
     }
   }, [accountType, isInitializing, locale, router]);
@@ -75,9 +96,7 @@ export function PaymentPage() {
     if (initializedForUserRef.current === user.id) return;
     initializedForUserRef.current = user.id;
     const supabase = getSupabaseClient();
-    const params = new URLSearchParams(window.location.search);
-    const requested = params.get("package") ?? "";
-    setIsCartCheckout(params.get("source") === "cart");
+    const requested = packageParam ?? "";
     void Promise.all([
       getPublicPricingPackages(),
       supabase.from("guardian_accounts").select("*").eq("active", true),
@@ -102,7 +121,42 @@ export function PaymentPage() {
       }
       setDataLoading(false);
     });
-  }, [accountType, user?.id]);
+  }, [accountType, user?.id, packageParam]);
+
+  // Listen to window focus & visibilitychange to refresh guardian state if verified in another tab/device
+  useEffect(() => {
+    const handleCheck = () => {
+      if (document.visibilityState === "visible") {
+        void refreshGuardianData();
+        void refreshAccount();
+      }
+    };
+    window.addEventListener("focus", handleCheck);
+    document.addEventListener("visibilitychange", handleCheck);
+    return () => {
+      window.removeEventListener("focus", handleCheck);
+      document.removeEventListener("visibilitychange", handleCheck);
+    };
+  }, [refreshGuardianData, refreshAccount]);
+
+  // Handle returning from one-click email verification (?verified=true)
+  useEffect(() => {
+    const verified = searchParams.get("verified");
+    const status = searchParams.get("email_verify_status");
+    if (verified === "true" && !verifiedHandledRef.current) {
+      verifiedHandledRef.current = true;
+      setTimeout(() => {
+        void refreshGuardianData();
+        void refreshAccount();
+        setOtpSuccess(isTr ? "E-posta adresiniz başarıyla doğrulandı!" : "Email address verified successfully!");
+      }, 0);
+    } else if (status === "expired" && !verifiedHandledRef.current) {
+      verifiedHandledRef.current = true;
+      setTimeout(() => {
+        setOtpError(isTr ? "Doğrulama bağlantısının süresi dolmuş. Lütfen yeni kod isteyiniz." : "Verification link has expired. Please request a new code.");
+      }, 0);
+    }
+  }, [searchParams, isTr, refreshGuardianData, refreshAccount]);
 
   const selectedGuardian = guardians.find((item) => item.user_id === guardianId) ?? null;
   const targetCandidateEmail = (customEmail || selectedGuardian?.email || user?.email || "").trim().toLowerCase();
@@ -148,7 +202,7 @@ export function PaymentPage() {
     setOtpSent(true);
     setIsEditingEmail(false);
     setResendSeconds(60);
-    setOtpSuccess(isTr ? `${targetCandidateEmail} adresine 6 haneli doğrulama kodu gönderildi.` : `6-digit verification code sent to ${targetCandidateEmail}.`);
+    setOtpSuccess(isTr ? `${targetCandidateEmail} adresine 6 haneli doğrulama kodu ve bağlantısı gönderildi.` : `6-digit verification code and link sent to ${targetCandidateEmail}.`);
   }
 
   async function handleVerifyOtp() {
@@ -168,7 +222,7 @@ export function PaymentPage() {
     setOtpSuccess(isTr ? "E-posta adresiniz başarıyla doğrulandı!" : "Email address verified successfully!");
     setOtpSent(false);
     setOtpCode("");
-    // Update local guardian state
+    // Update local guardian state and refresh account context
     setGuardians((prev) =>
       prev.map((g) =>
         g.user_id === guardianId
@@ -176,6 +230,8 @@ export function PaymentPage() {
           : g
       )
     );
+    await refreshGuardianData();
+    await refreshAccount();
   }
 
   async function applyCoupon() {

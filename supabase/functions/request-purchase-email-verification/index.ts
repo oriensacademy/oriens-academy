@@ -30,6 +30,23 @@ async function computeOtpHmac(
     .join("");
 }
 
+async function computeTokenHmac(rawToken: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const messageData = encoder.encode(`purchase_link:${rawToken}`);
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function generateSecureOtp(): string {
   const buffer = new Uint32Array(1);
   crypto.getRandomValues(buffer);
@@ -156,6 +173,13 @@ Deno.serve(async (req: Request) => {
 
   const otp = generateSecureOtp();
   const codeHash = await computeOtpHmac(user.id, candidateEmail, otp, hmacSecret);
+
+  // Generate high-entropy 256-bit opaque token for one-click email verification
+  const rawTokenBytes = new Uint8Array(32);
+  crypto.getRandomValues(rawTokenBytes);
+  const rawLinkToken = Array.from(rawTokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const linkTokenHash = await computeTokenHmac(rawLinkToken, hmacSecret);
+
   const expiresAt = new Date(now.getTime() + OTP_EXPIRATION_MS).toISOString();
   const resendAvailableAt = new Date(now.getTime() + RESEND_COOLDOWN_MS).toISOString();
 
@@ -165,6 +189,7 @@ Deno.serve(async (req: Request) => {
       user_id: user.id,
       candidate_email: candidateEmail,
       code_hash: codeHash,
+      verification_token_hash: linkTokenHash,
       expires_at: expiresAt,
       resend_available_at: resendAvailableAt,
       attempt_count: 0,
@@ -181,12 +206,16 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Render & dispatch email
+  // Build secure one-click verification URL pointing to the edge function callback
+  const verificationUrl = `${supabaseUrl}/functions/v1/verify-purchase-email-link?token=${rawLinkToken}&locale=${locale}`;
+
+  // Render & dispatch email with both 6-digit OTP and one-click verification button
   const template = renderPurchaseEmailVerificationOtpEmail({
     candidateEmail,
     otp,
     locale,
     expiresInMinutes: 10,
+    verificationUrl,
   });
 
   const delivery = await sendTransactionalEmail({

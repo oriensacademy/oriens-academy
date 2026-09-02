@@ -515,48 +515,56 @@ function LessonsPanel({
         </form>
       )}
 
-      {/* Confirmation Modal for Marking Lesson Completed */}
+      {/* Coordinated In-Place Action View: Marking Lesson Completed */}
       {completeTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-emerald-700">
-              <CheckCircle2 className="size-6 shrink-0" />
-              <h3 className="font-heading text-lg text-ink font-bold">Dersi Tamamlandı Olarak İşaretle</h3>
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50/60 p-5 space-y-4 shadow-sm animate-in fade-in duration-150">
+          <div className="flex items-center justify-between border-b border-emerald-200 pb-3">
+            <div className="flex items-center gap-2.5 text-emerald-800 font-bold text-sm">
+              <CheckCircle2 className="size-5 shrink-0" />
+              <span>Dersi Tamamlandı Olarak İşaretle</span>
             </div>
-            <p className="text-xs text-muted-foreground leading-5">
-              <strong>{completeTarget.title}</strong> dersini tamamlandı olarak kaydetmek üzeresiniz.
-            </p>
-            <div className="rounded-lg bg-surface-muted p-3 text-xs space-y-1 text-ink/80">
-              <div>• Öğrencinin ilişkili paketinden <strong>1 ders hakkı güvenli şekilde düşülecektir</strong>.</div>
-              <div>• <strong>Hesap sahibine</strong> ilişki türüne uygun ders tamamlandı e-postası iletilecektir.</div>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Tamamlama / Değerlendirme Notu (İsteğe Bağlı)</label>
-              <textarea
-                placeholder="Ders sırasında işlenen konular veya öğrencinin performansı..."
-                value={completionNote}
-                onChange={(e) => setCompletionNote(e.target.value)}
-                className={`${field} min-h-16`}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setCompleteTarget(null)}
-                className="rounded-lg border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted cursor-pointer"
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={handleConfirmComplete}
-                className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 cursor-pointer disabled:opacity-50"
-              >
-                {busy ? "İşleniyor…" : "Onayla ve Dersi Bitir"}
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setCompleteTarget(null)}
+              className="rounded-lg border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 cursor-pointer"
+            >
+              ← Vazgeç
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground leading-5">
+            <strong>{completeTarget.title}</strong> dersini tamamlandı olarak kaydetmek üzeresiniz.
+          </p>
+          <div className="rounded-xl bg-white p-3 text-xs space-y-1 text-ink/80 border border-emerald-100 shadow-xs">
+            <div>• Öğrencinin ilişkili paketinden <strong>1 ders hakkı güvenli şekilde düşülecektir</strong>.</div>
+            <div>• <strong>Hesap sahibine</strong> ilişki türüne uygun ders tamamlandı e-postası iletilecektir.</div>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Tamamlama / Değerlendirme Notu (İsteğe Bağlı)</label>
+            <textarea
+              placeholder="Ders sırasında işlenen konular veya öğrencinin performansı..."
+              value={completionNote}
+              onChange={(e) => setCompletionNote(e.target.value)}
+              className={`${field} min-h-16`}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setCompleteTarget(null)}
+              className="rounded-lg border border-border bg-white px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted cursor-pointer"
+            >
+              Vazgeç
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleConfirmComplete}
+              className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800 cursor-pointer disabled:opacity-50"
+            >
+              {busy ? "İşleniyor…" : "Onayla ve Dersi Bitir"}
+            </button>
           </div>
         </div>
       )}
@@ -1082,11 +1090,10 @@ function PackagePanel({
         </button>
       </div>
 
-      {/* CENTERED MODAL: Paket Tanımla */}
+      {/* COÖRDINATED IN-PLACE ACTION VIEW: Paket Tanımla */}
       {activeModal === "assign_package" && (
-        <div className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" role="dialog" aria-modal="true">
-          <div className="relative my-auto w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+        <div className="rounded-3xl border border-primary/30 bg-white p-6 shadow-md space-y-4 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between border-b border-border pb-3">
               <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
                 <PackagePlus className="size-4 text-primary" />
                 Yeni Paket Tanımla
@@ -1266,15 +1273,13 @@ function PackagePanel({
                 </button>
               </div>
             </form>
-          </div>
         </div>
       )}
 
-      {/* CENTERED MODAL: Ders hakkı ekle / azalt */}
+      {/* COÖRDINATED IN-PLACE ACTION VIEW: Ders hakkı ekle / azalt */}
       {activeModal === "adjust_lessons" && selectedAdjustmentPurchase && (
-        <div className="fixed inset-0 z-[150] min-h-[100dvh] w-screen flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto" role="dialog" aria-modal="true">
-          <div className="relative my-auto w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+        <div className="rounded-3xl border border-primary/30 bg-white p-6 shadow-md space-y-4 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between border-b border-border pb-3">
               <h4 className="flex items-center gap-2 text-sm font-bold text-ink">
                 {adjustmentMode === "add" ? <Plus className="size-4 text-emerald-700" /> : <Minus className="size-4 text-rose-700" />}
                 {adjustmentMode === "add" ? "Ders Hakkı Ekle" : "Ders Hakkı Azalt"}
@@ -1416,7 +1421,6 @@ function PackagePanel({
                 </button>
               </div>
             </form>
-          </div>
         </div>
       )}
 

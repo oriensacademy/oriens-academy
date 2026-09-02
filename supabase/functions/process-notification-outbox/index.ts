@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
+import { renderEmailShell, actionButton } from "../_shared/email/templates.ts";
 
 type OutboxRow = {
   id: string;
@@ -106,17 +107,42 @@ function render(row: OutboxRow) {
     );
   } else if (row.template === "guardian_welcome") {
     channel = "support";
-    subject = isEn ? "Welcome to your Oriens Academy Account" : "Oriens Academy hesabınıza hoş geldiniz";
+    const guardianName = String(p.guardian_name || (isEn ? "Student" : "Öğrenci"));
+    subject = isEn ? "Your Oriens Academy account is ready" : "Oriens Academy hesabınız hazır";
     lines.push(
-      isEn ? `Dear ${p.guardian_name}, your verified account is ready.` : `Sayın ${p.guardian_name}, doğrulanmış hesabınız hazır.`,
-      isEn ? "You can now set up learner information and manage lessons, packages, and payments." : "Öğrenci bilgilerini tanımlayabilir; ders, paket ve ödemeleri hesabınızdan yönetebilirsiniz.",
+      isEn
+        ? `Dear ${guardianName}, your Oriens Academy account has been created successfully.`
+        : `Sayın ${guardianName}, Oriens Academy hesabınız başarıyla oluşturuldu.`,
+      isEn
+        ? "You can manage lessons, packages and payments from your account."
+        : "Ders, paket ve ödeme işlemlerinizi hesabınızdan yönetebilirsiniz.",
     );
   } else {
     throw new Error("UNSUPPORTED_OUTBOX_TEMPLATE");
   }
 
   const text = lines.join("\n");
-  const html = `<div style="font-family:Arial,sans-serif;color:#10271B;line-height:1.65"><h1 style="font-size:20px">${escapeHtml(subject)}</h1>${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}<p style="margin-top:24px;color:#68756C">Oriens Academy</p></div>`;
+  const portalUrl = isEn ? "https://oriens-academy.com/en/account/" : "https://oriens-academy.com/tr/hesabim/";
+  const ctaButton = actionButton(isEn ? "Go to My Account" : "Hesabıma Git", portalUrl);
+  const bodyHtml = `
+    <div style="font-size:14px;line-height:1.65;color:#10271B;">
+      ${lines.map((line) => `<p style="margin:0 0 12px 0;">${escapeHtml(line)}</p>`).join("")}
+      <div style="margin-top:20px;">
+        ${ctaButton}
+      </div>
+    </div>
+  `;
+  const html = renderEmailShell({
+    locale: isEn ? "en" : "tr",
+    eyebrow: isEn ? "Oriens Academy" : "Oriens Academy",
+    title: subject,
+    bodyHtml,
+    footerEmail: "info@oriens-academy.com",
+    footerNote: isEn
+      ? "This is an automated notification from Oriens Academy."
+      : "Bu otomatik bir bilgilendirme e-postasıdır.",
+  });
+
   return { subject, text, html, channel };
 }
 

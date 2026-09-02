@@ -1971,6 +1971,7 @@ export type PurchaseEmailVerificationOtpData = {
   otp: string;
   locale: "tr" | "en";
   expiresInMinutes?: number;
+  verificationUrl?: string;
 };
 
 export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerificationOtpData): {
@@ -1990,8 +1991,8 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
   const bodyHtml = `
     <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;">
       ${isTr
-        ? "Oriens Academy üzerinden eğitim paketi satın alımınızı tamamlamak için e-posta doğrulama kodunuz aşağıdadır:"
-        : "Below is your verification code to complete your educational package purchase on Oriens Academy:"}
+        ? "Oriens Academy üzerinden eğitim paketi satın alımınızı tamamlamak için ödemenize devam etmek üzere e-posta adresinizi doğrulayınız:"
+        : "To proceed with your educational package purchase on Oriens Academy, please verify your email address:"}
     </p>
 
     <div style="background-color:${PALETTE.surfaceGold};border:1px solid ${PALETTE.borderGold};border-radius:12px;padding:24px 20px;text-align:center;margin:20px 0;">
@@ -2003,10 +2004,21 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
       </div>
       <div style="font-size:12px;color:${PALETTE.textMuted};margin-top:10px;">
         ${isTr
-          ? `Bu kod <strong>${minutes} dakika</strong> boyunca geçerlidir.`
-          : `This code is valid for <strong>${minutes} minutes</strong>.`}
+          ? `Bu kod ve bağlantı <strong>${minutes} dakika</strong> boyunca geçerlidir.`
+          : `This code and link are valid for <strong>${minutes} minutes</strong>.`}
       </div>
     </div>
+
+    ${data.verificationUrl ? `
+    <div style="text-align:center;margin:20px 0 12px 0;">
+      ${actionButton(isTr ? "E-posta Adresimi Doğrula" : "Verify My Email Address", data.verificationUrl)}
+    </div>
+    <p style="margin:0 0 16px 0;font-size:12px;line-height:1.5;text-align:center;color:${PALETTE.textMuted};">
+      ${isTr
+        ? "Ödeme ekranında 6 haneli kodu girebilir veya yukarıdaki butona tıklayarak tek tıkla doğrulayabilirsiniz."
+        : "You can enter the 6-digit code on the checkout screen or click the button above to verify in one click."}
+    </p>
+    ` : ""}
 
     <p style="margin:16px 0 0 0;font-size:13px;line-height:1.5;color:${PALETTE.textMuted};">
       ${isTr
@@ -2029,8 +2041,9 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
     `ORIENS ACADEMY - ${subject}`,
     "",
     isTr
-      ? `E-posta doğrulama kodunuz: ${data.otp}\nBu kod ${minutes} dakika boyunca geçerlidir.\nEğer bu işlemi siz başlatmadıysanız lütfen dikkate almayınız.`
-      : `Your email verification code: ${data.otp}\nThis code is valid for ${minutes} minutes.\nIf you did not initiate this request, please disregard this email.`,
+      ? `E-posta doğrulama kodunuz: ${data.otp}\nBu kod ve bağlantı ${minutes} dakika boyunca geçerlidir.\nEğer bu işlemi siz başlatmadıysanız lütfen dikkate almayınız.`
+      : `Your email verification code: ${data.otp}\nThis code and link are valid for ${minutes} minutes.\nIf you did not initiate this request, please disregard this email.`,
+    ...(data.verificationUrl ? ["", isTr ? `E-posta Doğrulama Bağlantısı: ${data.verificationUrl}` : `Verification Link: ${data.verificationUrl}`] : []),
   ]);
 
   return { subject, html, text };

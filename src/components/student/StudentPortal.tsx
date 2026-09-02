@@ -40,7 +40,8 @@ export function StudentPortal() {
   const [learners, setLearners] = useState<Tables<"student_profiles">[]>([]);
   const [selectedLearnerId, setSelectedLearnerId] = useState("");
   const [personalizationOpen, setPersonalizationOpen] = useState<boolean | null>(null);
-  const showPersonalization = personalizationOpen ?? (searchParams?.get("onboarding") === "personalization");
+  const isNewSignup = typeof window !== "undefined" && sessionStorage.getItem("oriens.newSignupOnboarding") === "true";
+  const showPersonalization = personalizationOpen ?? (searchParams?.get("onboarding") === "personalization" || isNewSignup);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const navigatedRef = useRef(false);
@@ -150,10 +151,28 @@ export function StudentPortal() {
           initialCountries={data?.profile?.target_countries || []}
           initialUniversity={data?.profile?.target_university || ""}
           onComplete={async () => {
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("oriens.newSignupOnboarding");
+              if (window.location.search.includes("onboarding=personalization")) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete("onboarding");
+                window.history.replaceState(null, "", url.toString());
+              }
+            }
             setPersonalizationOpen(false);
             if (selectedLearnerId) await load(selectedLearnerId, true);
           }}
-          onSkip={() => setPersonalizationOpen(false)}
+          onSkip={() => {
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("oriens.newSignupOnboarding");
+              if (window.location.search.includes("onboarding=personalization")) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete("onboarding");
+                window.history.replaceState(null, "", url.toString());
+              }
+            }
+            setPersonalizationOpen(false);
+          }}
         />
       </div>
     </div>
