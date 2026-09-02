@@ -21,7 +21,7 @@ export const page = {
     "Program yeterliliğinden lisans ve lisansüstü kabule kadar her sınavı kendi ölçme mantığı içinde ele alıyoruz.",
   groupsEyebrow: "Akademik navigasyon",
   groupsTitle: "Hedefinize göre sınavları keşfedin.",
-  supportLabel: "Oriens desteği",
+  supportLabel: "Oriens Desteği",
   purposeLabel: "Kullanım amacı",
   subjectsLabel: "Çalışma alanları",
   audienceLabel: "Kimler için",

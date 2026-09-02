@@ -21,7 +21,7 @@ export const page = {
     "From programme qualifications to undergraduate and graduate admissions, we approach each exam through its own assessment logic.",
   groupsEyebrow: "Academic navigation",
   groupsTitle: "Explore exams by destination.",
-  supportLabel: "Oriens support",
+  supportLabel: "Oriens Support",
   purposeLabel: "Used for",
   subjectsLabel: "Focus areas",
   audienceLabel: "Designed for",
