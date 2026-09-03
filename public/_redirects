@@ -3,3 +3,11 @@
 /    /tr/    302
 /tr/sinavlar/ukcat/    /tr/sinavlar/ucat/    301
 /en/exams/ukcat/       /en/exams/ucat/       301
+
+# Blog detail pages: static export can't pre-render unbounded slugs, so any
+# /{locale}/blog/{slug}/ request that has no matching static file (Cloudflare
+# Pages only consults this file after that check fails) is rewritten -- not
+# redirected -- to the fixed blog/post shell, which reads the real slug from
+# window.location client-side. Status 200 keeps the pretty URL in the browser.
+/tr/blog/:slug/    /tr/blog/post/    200
+/en/blog/:slug/    /en/blog/post/    200

@@ -236,10 +236,10 @@ export function UnifiedLoginPage() {
   const isFromCheckout = searchParams.get("source") === "checkout" || (requested && (requested.includes("payment") || requested.includes("cart") || requested.includes("odeme") || requested.includes("sepet")));
 
   return (
-    <section className="min-h-screen bg-background px-4 pt-28 pb-16 sm:pt-36">
+    <section className="min-h-screen bg-background px-3 pt-28 pb-16 sm:px-4 sm:pt-36">
       <div className="mx-auto w-full max-w-md">
         {/* Single clean card without redundant secondary logo */}
-        <div className="rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8">
+        <div className="rounded-3xl border border-border bg-surface p-5 shadow-editorial sm:p-8">
           {isFromCheckout && (
             <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
               <p className="text-xs font-semibold text-primary sm:text-sm">

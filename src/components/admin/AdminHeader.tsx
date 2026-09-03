@@ -181,7 +181,7 @@ export function AdminHeader() {
             {notificationsOpen && (
               <div
                 ref={notificationsDropdownRef}
-                className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[#DDE5DC] bg-white shadow-2xl z-50 overflow-hidden animate-[admin-content-in_160ms_ease-out]"
+                className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 rounded-2xl border border-[#DDE5DC] bg-white shadow-2xl z-50 overflow-hidden animate-[admin-content-in_160ms_ease-out]"
               >
                 {/* Popover Header */}
                 <div className="flex items-center justify-between border-b border-[#DDE5DC] bg-[#F8FAF7] px-4 py-3">

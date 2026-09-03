@@ -88,7 +88,7 @@ export function ExamTestPage() {
   }
 
   return (
-    <section className="min-h-[calc(100vh-5rem)] border-b border-border bg-background pt-28 pb-20 md:pt-36 md:pb-28">
+    <section className="min-h-[calc(100dvh-5rem)] border-b border-border bg-background pt-28 pb-20 md:pt-36 md:pb-28">
       <div className="public-container">
         <div className="mx-auto max-w-4xl">
           <header className="max-w-2xl">

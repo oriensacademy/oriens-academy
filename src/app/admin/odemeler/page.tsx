@@ -19,8 +19,6 @@ import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import {
   listAdminPaymentsPaginated,
   processPaytrRefund,
-  reviewManualBankTransfer,
-  sendPaymentReminder,
   type AdminPaymentRow,
 } from "@/lib/admin/payments";
 import { PaymentRefundDialog, type RefundReviewRequest } from "@/components/admin/PaymentRefundDialog";
@@ -53,8 +51,6 @@ export default function AdminPaymentsPage() {
   const [pageCount, setPageCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [reviewing, setReviewing] = useState("");
-  const [reminding, setReminding] = useState("");
   const [refundRow, setRefundRow] = useState<AdminPaymentRow | null>(null);
   const [refunding, setRefunding] = useState("");
   const [message, setMessage] = useState("");
@@ -121,51 +117,6 @@ export default function AdminPaymentsPage() {
     search || status !== "all" || paymentMethod !== "all" || provider !== "all" || packageId !== "all" || period !== "all"
   );
 
-  function review(row: AdminPaymentRow, decision: "approved" | "rejected") {
-    const description =
-      decision === "approved"
-        ? `"${row.payer_name || row.payer_email}" adlı öğrencinin "${row.public_reference}" numaralı havale tahsilatını onaylıyor musunuz? Bu işlem paketi otomatik olarak etkinleştirecektir.`
-        : `"${row.public_reference}" numaralı havale talebini reddetmek istediğinize emin misiniz?`;
-    requestConfirmation({
-      title: decision === "approved" ? "Havale ödemesini onayla" : "Havale talebini reddet",
-      description,
-      confirmLabel: decision === "approved" ? "Onayla" : "Reddet",
-      destructive: decision === "rejected",
-      action: async () => {
-        setReviewing(row.id);
-        setMessage("");
-        const r = await reviewManualBankTransfer(row.id, decision);
-        setReviewing("");
-        if (r.error) setError(r.error);
-        else {
-          setMessage(`"${row.public_reference}" işlemi başarıyla ${decision === "approved" ? "onaylandı ve paket aktif edildi" : "reddedildi"}.`);
-          refresh();
-        }
-      },
-    });
-  }
-
-  function handleSendReminder(row: AdminPaymentRow) {
-    requestConfirmation({
-      title: "Ödeme hatırlatması gönder",
-      description: `"${row.payer_email || row.payer_name}" adresine "${row.public_reference}" numaralı işlem için banka havalesi hatırlatması gönderilecek.`,
-      confirmLabel: "Gönder",
-      destructive: false,
-      action: async () => {
-        setReminding(row.id);
-        setMessage("");
-        setError("");
-        const r = await sendPaymentReminder(row.id);
-        setReminding("");
-        if (r.error) setError(r.error);
-        else {
-          setMessage(`"${row.public_reference}" işlemi için ödeme hatırlatma e-postası başarıyla gönderildi (Toplam ${r.reminderCount}. hatırlatma).`);
-          refresh();
-        }
-      },
-    });
-  }
-
   function reviewRefund(request: RefundReviewRequest) {
     const { context, refundAmount, lessonsToRevoke, reason, idempotencyKey } = request;
     requestConfirmation({
@@ -209,7 +160,7 @@ export default function AdminPaymentsPage() {
             <h1 className="text-xl font-bold text-[#10271B]">Ödemeler</h1>
           </div>
           <p className="mt-1 text-xs text-[#68756C]">
-            Öğrenci paket satın alma ve ödeme işlemlerini sunucu taraflı filtreleyin; havaleleri doğrulayın veya hatırlatma gönderin.
+            Öğrenci paket satın alma ve ödeme işlemlerini sunucu taraflı filtreleyin.
           </p>
         </div>
         <button
@@ -282,7 +233,6 @@ export default function AdminPaymentsPage() {
           >
             <option value="all">Tüm Ödeme Yöntemleri</option>
             <option value="card">Kredi / Banka Kartı</option>
-            <option value="bank_transfer">Banka Havalesi / EFT</option>
           </select>
 
           {/* Provider */}
@@ -293,7 +243,6 @@ export default function AdminPaymentsPage() {
           >
             <option value="all">Tüm Sağlayıcılar</option>
             <option value="paytr">PayTR</option>
-            <option value="manual_bank_transfer">Manuel Havale</option>
             <option value="local_mock">Local Mock Simulator</option>
           </select>
 
@@ -391,11 +340,6 @@ export default function AdminPaymentsPage() {
                     : row.refund_status === "full"
                       ? { label: refundCopy.refunded, bg: "bg-purple-50 border-purple-200", text: "text-purple-800" }
                       : st;
-                  const reviewable =
-                    row.payment_method === "bank_transfer" &&
-                    row.provider === "manual_bank_transfer" &&
-                    ["pending", "processing", "requires_action"].includes(row.status);
-
                   return (
                     <tr key={row.id} className="hover:bg-[#F7F9F6] transition-colors">
                       <td className="px-4 py-3.5">
@@ -447,34 +391,6 @@ export default function AdminPaymentsPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="font-mono font-bold text-[11px] text-[#10271B]">{row.public_reference}</span>
-                        {reviewable && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            <button
-                              type="button"
-                              disabled={reviewing === row.id || reminding === row.id}
-                              onClick={() => void review(row, "approved")}
-                              className="rounded-lg bg-[#10271B] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs hover:bg-[#203D2D] disabled:opacity-50 cursor-pointer"
-                            >
-                              {reviewing === row.id ? "İşleniyor…" : "Tahsilatı Onayla"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={reviewing === row.id || reminding === row.id}
-                              onClick={() => void handleSendReminder(row)}
-                              className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50 cursor-pointer"
-                            >
-                              {reminding === row.id ? "Gönderiliyor…" : "Hatırlatma Gönder"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={reviewing === row.id || reminding === row.id}
-                              onClick={() => void review(row, "rejected")}
-                              className="rounded-lg border border-[#DDE4DC] px-2 py-1 text-[11px] text-rose-700 hover:bg-rose-50 disabled:opacity-50 cursor-pointer"
-                            >
-                              Reddet
-                            </button>
-                          </div>
-                        )}
                         {row.status === "paid" && row.payment_method === "card" && row.provider === "paytr" && row.refund_status !== "full" ? <div className="mt-2"><button type="button" disabled={refunding === row.id} onClick={() => setRefundRow(row)} className="inline-flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-2.5 py-1 text-[11px] font-semibold text-purple-900 hover:bg-purple-100 disabled:opacity-50"><RotateCcw className="size-3" />{refunding === row.id ? "İşleniyor…" : refundCopy.action}</button>{row.paytr_refund_reference ? <span className="mt-1 block font-mono text-[9px] text-purple-700">{row.paytr_refund_reference}</span> : null}{row.last_refund_reason ? <span className="mt-1 block text-[9px] text-muted-foreground">{row.last_refund_reason}</span> : null}</div> : null}
                       </td>
                     </tr>

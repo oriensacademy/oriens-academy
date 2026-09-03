@@ -250,7 +250,7 @@ export function StudentDetailSheet({
       {/* Password Reset Confirmation Dialog */}
       {resetModalOpen && (
         <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="alertdialog">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
                 <KeyRound className="size-5" />
@@ -273,12 +273,12 @@ export function StudentDetailSheet({
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <div className="flex flex-col-reverse gap-2 pt-2 border-t border-border sm:flex-row sm:justify-end">
               <button
                 type="button"
                 disabled={isResetting}
                 onClick={() => setResetModalOpen(false)}
-                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-surface-muted cursor-pointer"
+                className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold hover:bg-surface-muted cursor-pointer sm:w-auto"
               >
                 İptal
               </button>
@@ -286,7 +286,7 @@ export function StudentDetailSheet({
                 type="button"
                 disabled={isResetting}
                 onClick={handlePasswordReset}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer sm:w-auto"
               >
                 <KeyRound className="size-3.5" />
                 {isResetting ? "Gönderiliyor..." : "Bağlantıyı Gönder"}
@@ -1014,17 +1014,17 @@ function EditStudentIdentityModal({
               <span>Kimlik değişiklikleri denetim kaydına yazılır ve yönetici şifre doğrulaması gerektirir.</span>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <div className="flex flex-col-reverse gap-2 pt-2 border-t border-border sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer sm:w-auto"
               >
                 İptal
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest cursor-pointer shadow-xs"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest cursor-pointer shadow-xs sm:w-auto"
               >
                 Devam Et &rarr;
               </button>
@@ -1055,28 +1055,28 @@ function EditStudentIdentityModal({
               />
             </label>
 
-            <div className="flex justify-between items-center pt-2 border-t border-border">
+            <div className="flex flex-col gap-2 pt-2 border-t border-border sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => { setStep("edit"); setAdminPassword(""); setError(""); }}
-                className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer sm:w-auto"
               >
                 &larr; Geri Dön
               </button>
-              <div className="flex gap-2">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
                 <button
                   type="button"
                   disabled={busy}
                   onClick={onClose}
-                  className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                  className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer sm:w-auto"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
                   disabled={busy}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs"
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs sm:w-auto"
                 >
                   <ShieldCheck className="size-3.5" />
                   {busy ? "Doğrulanıyor ve Kaydediliyor..." : "Doğrula ve Güncelle"}
@@ -1215,19 +1215,19 @@ function RecordPastLessonModal({
             </p>
           )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+          <div className="flex flex-col-reverse gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
             <button
               type="button"
               disabled={busy}
               onClick={onClose}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+              className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer sm:w-auto"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors sm:w-auto"
             >
               {busy ? "Kaydediliyor..." : "Geçmiş Dersi Kaydet"}
             </button>
@@ -1381,19 +1381,19 @@ function DecreaseLessonRightsModal({
             📧 İşlem başarıyla tamamlandığında öğrenciye <strong>&quot;Ders hakkınız güncellendi&quot;</strong> başlığıyla güncel kalan hakkını belirten bildirim iletilecektir.
           </p>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border">
+          <div className="flex flex-col-reverse gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
             <button
               type="button"
               disabled={busy}
               onClick={onClose}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
+              className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer sm:w-auto"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={busy || currentRemaining <= 0}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-rose-700 px-5 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:opacity-50 cursor-pointer shadow-xs transition-colors"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-700 px-5 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:opacity-50 cursor-pointer shadow-xs transition-colors sm:w-auto"
             >
               {busy ? "İşleniyor..." : "Ders Hakkını Azalt"}
             </button>

@@ -80,9 +80,9 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
   }
 
   return (
-    <section className="min-h-screen bg-background px-4 pt-28 pb-16 sm:pt-36">
+    <section className="min-h-screen bg-background px-3 pt-28 pb-16 sm:px-4 sm:pt-36">
       <div className="mx-auto w-full max-w-md">
-        <div className="rounded-3xl border border-border bg-surface p-6 text-center shadow-editorial sm:p-8">
+        <div className="rounded-3xl border border-border bg-surface p-5 text-center shadow-editorial sm:p-8">
           <Mail className="mx-auto size-10 text-primary" />
           <h1 className="mt-4 font-heading text-2xl text-ink">
             {isTr ? "E-posta Adresinizi Doğrulayın" : "Verify Your Email Address"}

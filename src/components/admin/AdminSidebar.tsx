@@ -15,6 +15,7 @@ import {
   WalletCards,
   TrendingUp,
   ListChecks,
+  Newspaper,
 } from "lucide-react";
 import { useAdminNotifications } from "@/lib/admin/admin-notifications-context";
 
@@ -40,6 +41,13 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     label: "Gösterge Paneli",
     href: "/admin",
     icon: LayoutDashboard,
+    enabled: true,
+    group: "GENEL",
+  },
+  {
+    label: "Blog",
+    href: "/admin/blog",
+    icon: Newspaper,
     enabled: true,
     group: "GENEL",
   },

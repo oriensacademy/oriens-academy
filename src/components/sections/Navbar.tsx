@@ -183,7 +183,7 @@ export function Navbar() {
           </nav>
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <LanguageSwitch />
               {showPricing && (cartCount > 0 || isStudent) && (
                 <Link

@@ -9,6 +9,7 @@ export type LocalizedRouteId =
   | "about"
   | "contact"
   | "universitySupport"
+  | "blog"
   | "booking"
   | "assessment"
   | "examTest"
@@ -34,6 +35,7 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   about: { tr: "hakkimizda", en: "about" },
   contact: { tr: "iletisim", en: "contact" },
   universitySupport: { tr: "universite-destegi", en: "university-support" },
+  blog: { tr: "blog", en: "blog" },
   booking: { tr: "randevu", en: "booking" },
   assessment: { tr: "degerlendirme", en: "assessment" },
   examTest: { tr: "kendini-dene", en: "test-yourself" },
@@ -64,6 +66,18 @@ export function examHubSegment(locale: Locale): string {
 
 export function universitySupportSegment(locale: Locale): string {
   return localizedSegments.universitySupport[locale];
+}
+
+export function blogSegment(locale: Locale): string {
+  return localizedSegments.blog[locale];
+}
+
+export function blogPath(locale: Locale): string {
+  return localizedPath("blog", locale);
+}
+
+export function blogDetailPath(locale: Locale, slug: string): string {
+  return `${localizedPath("blog", locale)}/${slug}`;
 }
 
 export function pricingSegment(locale: Locale): string {

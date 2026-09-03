@@ -172,6 +172,10 @@ export function PricingPage() {
             </div>
           </div>
         )}
+
+        <p className="mt-10 text-center text-xs text-[#819586]/70">
+          {locale === "tr" ? "Tüm ödeme süreci vergi mevzuatına uygundur." : "The entire payment process complies with applicable tax regulations."}
+        </p>
       </section>
 
       <section className="border-y border-border bg-surface-muted py-20 md:py-28">

@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FilterX,
-  Landmark,
   PiggyBank,
   RefreshCw,
   Search,
@@ -162,7 +161,7 @@ export default function AdminFinancialFlowPage() {
             <h1 className="text-xl font-bold text-ink">Mali Akış</h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Akademinin tüm paket tahsilatlarını, bekleyen havalelerini, kupon indirimlerini ve finansal akışını sunucu taraflı izleyin.
+            Akademinin tüm paket tahsilatlarını, kupon indirimlerini ve finansal akışını sunucu taraflı izleyin.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -185,7 +184,7 @@ export default function AdminFinancialFlowPage() {
       )}
 
       {/* Financial Metric Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <MetricCard
           title="Toplam Tahsilat"
           value={formatMoney(metrics.totalCollected)}
@@ -205,13 +204,6 @@ export default function AdminFinancialFlowPage() {
           value={formatMoney(metrics.totalPendingAmount)}
           subtext={`${metrics.pendingCount} işlem beklemede`}
           icon={WalletCards}
-          accent="amber"
-        />
-        <MetricCard
-          title="Banka Havalesi Bekleyen"
-          value={formatMoney(metrics.bankTransferPendingAmount)}
-          subtext={`${metrics.bankTransferPendingCount} manuel havale onayı`}
-          icon={Landmark}
           accent="amber"
         />
         <MetricCard
@@ -273,7 +265,6 @@ export default function AdminFinancialFlowPage() {
             className="min-h-9 rounded-lg border border-input bg-white px-2.5 text-xs text-ink focus:border-primary focus:outline-hidden"
           >
             <option value="all">Tüm Yöntemler</option>
-            <option value="bank_transfer">Banka Havalesi / EFT</option>
             <option value="card">Kredi / Banka Kartı</option>
           </select>
 

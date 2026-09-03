@@ -175,9 +175,6 @@ export function StudentLearningManager({
         ) : (
           <Empty>Bu öğrenciyle bağlantılı ödeme kaydı yok.</Empty>
         )}
-        <p className="text-[11px] text-muted-foreground">
-          Bekleyen manuel havaleler yalnızca Ödemeler ekranındaki açık onay işlemiyle ödendi durumuna geçer.
-        </p>
       </div>
     );
   }

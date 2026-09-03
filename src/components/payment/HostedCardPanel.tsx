@@ -272,7 +272,7 @@ export function HostedCardPanel({
             id="paytriframe"
             title="PayTR Secure Payment"
             src={`https://www.paytr.com/odeme/guvenli/${prepared.token}`}
-            className="min-h-[480px] w-full border-0"
+            className="min-h-[70dvh] w-full border-0 sm:min-h-[480px]"
             scrolling="no"
           />
         </div>

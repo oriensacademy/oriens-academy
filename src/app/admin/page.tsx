@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   ChevronRight,
   ListChecks,
+  Newspaper,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -195,13 +196,19 @@ function DashboardContent() {
             title="Ödemeler & Finans"
             href="/admin/odemeler"
             icon={WalletCards}
-            description="Ödeme işlemlerini ve banka havalelerini inceleyin."
+            description="Ödeme işlemlerini inceleyin."
           />
           <ModuleLinkCard
             title="Değerlendirmeler"
             href="/admin/degerlendirmeler"
             icon={ListChecks}
             description="Öğrenci ve veli yorumlarını, öne çıkan değerlendirmeleri yönetin."
+          />
+          <ModuleLinkCard
+            title="Blog"
+            href="/admin/blog"
+            icon={Newspaper}
+            description="TR/EN blog yazılarını oluşturun, düzenleyin ve yayınlayın."
           />
           <ModuleLinkCard
             title="E-Posta Bildirimleri"

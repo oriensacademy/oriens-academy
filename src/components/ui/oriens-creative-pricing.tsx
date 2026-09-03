@@ -121,9 +121,9 @@ export function CreativePricing({
                   ) : <span aria-hidden="true" className="block h-7" />}
                 </div>
 
-                <div data-pricing-slot="icon" className="mb-5 flex items-center justify-between gap-3">
+                <div data-pricing-slot="icon" className="mb-5 flex min-w-0 flex-wrap items-center justify-between gap-3">
                   <div className={cn(
-                    "flex size-11 items-center justify-center rounded-2xl border",
+                    "flex size-11 shrink-0 items-center justify-center rounded-2xl border",
                     isInverted
                       ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
                       : "border-[#CAD5CB] bg-[#F4F7F4] text-[#10271B]"
@@ -133,7 +133,7 @@ export function CreativePricing({
 
                   {tier.discount ? (
                     <span className={cn(
-                      "rounded-full border px-2.5 py-1 font-ui text-xs font-bold",
+                      "max-w-full rounded-full border px-2.5 py-1 font-ui text-xs font-bold whitespace-normal",
                       isInverted
                         ? "border-primary-foreground/25 bg-primary-foreground/15 text-primary-foreground"
                         : "border-transparent bg-[#E5ECE5] text-[#10271B]"
@@ -142,7 +142,7 @@ export function CreativePricing({
                     </span>
                   ) : (
                     <span className={cn(
-                      "rounded-full border px-2.5 py-1 font-ui text-xs font-semibold",
+                      "max-w-full rounded-full border px-2.5 py-1 font-ui text-xs font-semibold whitespace-normal",
                       isInverted
                         ? "border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground/80"
                         : "border-transparent bg-[#EFF4EE] text-[#55675A]"
