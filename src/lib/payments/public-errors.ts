@@ -19,6 +19,18 @@ const PAYMENT_ERROR_COPY: Record<string, Record<PaymentLocale, string>> = {
     tr: "Bu ödeme için hesap ve öğrenci bilgileri doğrulanamadı.",
     en: "The account and learner details for this payment could not be verified.",
   },
+  PHONE_REQUIRED: {
+    tr: "Ödeme için 3D Secure telefon numarası gereklidir.",
+    en: "A 3D Secure phone number is required to make a payment.",
+  },
+  INVALID_PHONE: {
+    tr: "Lütfen geçerli bir telefon numarası girin.",
+    en: "Please enter a valid phone number.",
+  },
+  UNSUPPORTED_CURRENCY: {
+    tr: "Bu para birimiyle ödeme şu anda desteklenmiyor.",
+    en: "Payment in this currency is not currently supported.",
+  },
 };
 
 export function paymentErrorMessage(

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LockKeyhole, Mail, Tag, X } from "lucide-react";
+import { LockKeyhole, Tag, X } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getPaymentCopy } from "@/content/payment";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
@@ -14,8 +14,7 @@ import { useAccount } from "@/lib/auth/account-context";
 import { useCart } from "@/lib/cart/cart-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { requestPurchaseEmailVerification, verifyPurchaseEmailVerification } from "@/lib/payments/email-verification";
-import { localizeErrorMessage } from "@/lib/utils/error-messages";
+import { validateStudentPhone } from "@/lib/student/auth";
 import type { Tables } from "@/types/database.types";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { ButtonLink } from "@/components/ui/button";
@@ -51,13 +50,8 @@ export function PaymentPage() {
   const [couponError, setCouponError] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationSuccess | null>(null);
 
-  // OTP Verification State
-  const [otpCode, setOtpCode] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpError, setOtpError] = useState("");
-  const [otpSuccess, setOtpSuccess] = useState("");
-  const [resendSeconds, setResendSeconds] = useState(0);
+  // Transient checkout-only 3D Secure phone (never persisted to a profile)
+  const [paymentPhone, setPaymentPhone] = useState("");
 
   const initializedForUserRef = useRef("");
 
@@ -66,7 +60,6 @@ export function PaymentPage() {
   const packageParam = searchParams.get("package");
   const isDirectPackageMode = Boolean(packageParam) && sourceParam !== "cart";
   const isCartCheckout = sourceParam === "cart" || (!isDirectPackageMode && cartItems.length > 0);
-  const verifiedHandledRef = useRef(false);
 
   const refreshGuardianData = useCallback(async () => {
     if (!user?.id) return;
@@ -144,33 +137,7 @@ export function PaymentPage() {
     };
   }, [refreshGuardianData, refreshAccount]);
 
-  // Handle returning from one-click email verification (?verified=true)
-  useEffect(() => {
-    const verified = searchParams.get("verified");
-    const status = searchParams.get("email_verify_status");
-    if (verified === "true" && !verifiedHandledRef.current) {
-      verifiedHandledRef.current = true;
-      setTimeout(() => {
-        void refreshGuardianData();
-        void refreshAccount();
-        setOtpSuccess(isTr ? "E-posta adresiniz başarıyla doğrulandı!" : "Email address verified successfully!");
-      }, 0);
-    } else if (status === "expired" && !verifiedHandledRef.current) {
-      verifiedHandledRef.current = true;
-      setTimeout(() => {
-        setOtpError(isTr ? "Doğrulama bağlantısının süresi dolmuş. Lütfen yeni kod isteyiniz." : "Verification link has expired. Please request a new code.");
-      }, 0);
-    }
-  }, [searchParams, isTr, refreshGuardianData, refreshAccount]);
-
   const selectedGuardian = guardians.find((item) => item.user_id === guardianId) ?? null;
-  const targetCandidateEmail = (selectedGuardian?.email || user?.email || "").trim().toLowerCase();
-
-  useEffect(() => {
-    if (resendSeconds <= 0) return;
-    const timer = setInterval(() => setResendSeconds((s) => s - 1), 1000);
-    return () => clearInterval(timer);
-  }, [resendSeconds]);
 
   const availableLearners = useMemo(() => {
     const allowed = new Set(links.filter((row) => row.guardian_user_id === guardianId).map((row) => row.student_id));
@@ -188,55 +155,9 @@ export function PaymentPage() {
   const currency = checkoutPackages[0]?.currency || "TRY";
   const money = (value: number, code = "TRY") => formatCurrency(value, { currency: code, locale });
   const emailVerified = accountType === "admin" || Boolean(selectedGuardian?.email_verified_at);
-  const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch);
-
-  async function handleSendOtp() {
-    if (!targetCandidateEmail || !targetCandidateEmail.includes("@")) {
-      setOtpError(isTr ? "Lütfen geçerli bir e-posta adresi giriniz." : "Please enter a valid email address.");
-      return;
-    }
-    setOtpLoading(true);
-    setOtpError("");
-    setOtpSuccess("");
-    const res = await requestPurchaseEmailVerification(targetCandidateEmail, locale);
-    setOtpLoading(false);
-    if (!res.success) {
-      setOtpError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama kodu gönderilemedi." : "Failed to send verification code."));
-      return;
-    }
-    setOtpSent(true);
-    setResendSeconds(60);
-    setOtpSuccess(isTr ? `${targetCandidateEmail} adresine 6 haneli doğrulama kodu gönderildi.` : `6-digit verification code sent to ${targetCandidateEmail}.`);
-  }
-
-  async function handleVerifyOtp() {
-    if (!otpCode.trim() || !/^\d{6}$/.test(otpCode.trim())) {
-      setOtpError(isTr ? "Lütfen 6 haneli kodu eksiksiz giriniz." : "Please enter the 6-digit code.");
-      return;
-    }
-    setOtpLoading(true);
-    setOtpError("");
-    const res = await verifyPurchaseEmailVerification(targetCandidateEmail, otpCode.trim(), locale);
-    setOtpLoading(false);
-    if (!res.success) {
-      setOtpError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama başarısız oldu." : "Verification failed."));
-      return;
-    }
-    const verifiedAt = res.verified_at || new Date().toISOString();
-    setOtpSuccess(isTr ? "E-posta adresiniz başarıyla doğrulandı!" : "Email address verified successfully!");
-    setOtpSent(false);
-    setOtpCode("");
-    // Update local guardian state and refresh account context
-    setGuardians((prev) =>
-      prev.map((g) =>
-        g.user_id === guardianId
-          ? { ...g, email: targetCandidateEmail, email_verified_at: verifiedAt }
-          : g
-      )
-    );
-    await refreshGuardianData();
-    await refreshAccount();
-  }
+  const phoneCheck = validateStudentPhone(paymentPhone, isTr);
+  const isPhoneValid = paymentPhone.trim().length > 0 && phoneCheck.valid;
+  const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch && isPhoneValid);
 
   async function applyCoupon() {
     if (!couponInput.trim() || !packageIds.length) return;
@@ -377,79 +298,43 @@ export function PaymentPage() {
         
         {!emailVerified ? (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
-            <div className="flex items-center gap-2 text-xs font-bold text-amber-900 tracking-wider uppercase">
-              <Mail className="size-4 text-amber-700" />
-              <span>{isTr ? "E-posta Doğrulaması Gereklidir" : "Email Verification Required"}</span>
-            </div>
+            <p className="text-xs font-bold text-amber-900 tracking-wider uppercase">
+              {isTr ? "E-posta Doğrulaması Gereklidir" : "Email Verification Required"}
+            </p>
             <p className="mt-1.5 text-xs text-amber-800">
               {isTr
-                ? "Ödemenizi tamamlamak için lütfen e-posta adresinizi doğrulayınız."
-                : "Please verify your email address to complete checkout."}
+                ? "Ödeme yapabilmek için önce hesabınızdan e-posta adresinizi doğrulayınız."
+                : "Please verify your email address from your account before making a payment."}
             </p>
-
-            <div className="mt-3.5 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200/80 bg-white px-3.5 py-2.5">
-                <span className="text-xs font-mono font-medium text-ink break-all">
-                  {targetCandidateEmail || "—"}
-                </span>
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
-                  {isTr ? "Doğrulanmamış" : "Unverified"}
-                </span>
-              </div>
-
-              {otpError && (
-                <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-800">
-                  {otpError}
-                </p>
-              )}
-              {otpSuccess && (
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-800">
-                  {otpSuccess}
-                </p>
-              )}
-
-              {!otpSent ? (
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={otpLoading}
-                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
-                >
-                  {otpLoading ? (isTr ? "Gönderiliyor..." : "Sending...") : (isTr ? "Doğrulama Kodu Gönder" : "Send Verification Code")}
-                </button>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder={isTr ? "6 Haneli Kod" : "6-Digit Code"}
-                    className="min-h-10 w-32 rounded-xl border border-input bg-white px-3 text-center text-xs font-mono font-bold tracking-widest outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleVerifyOtp}
-                    disabled={otpLoading || otpCode.length !== 6}
-                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-white hover:bg-forest transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
-                  >
-                    {otpLoading ? (isTr ? "Doğrulanıyor..." : "Verifying...") : (isTr ? "Kodu Onayla" : "Confirm Code")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={otpLoading || resendSeconds > 0}
-                    className="text-xs text-primary underline hover:text-forest ml-2 cursor-pointer disabled:opacity-50 disabled:no-underline"
-                  >
-                    {resendSeconds > 0
-                      ? (isTr ? `Yeniden gönder (${resendSeconds}s)` : `Resend (${resendSeconds}s)`)
-                      : (isTr ? "Tekrar Gönder" : "Resend")}
-                  </button>
-                </div>
-              )}
-            </div>
+            <ButtonLink href={localizedPath("studentAccount", locale)} className="mt-3.5">
+              {isTr ? "Hesabıma Git" : "Go to My Account"}
+            </ButtonLink>
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-6">
+            <label className="block text-xs font-semibold text-ink" htmlFor="payment-phone">
+              {isTr ? "3D Secure Telefon Numarası" : "3D Secure Phone Number"}
+              <input
+                id="payment-phone"
+                type="tel"
+                required
+                autoComplete="tel"
+                value={paymentPhone}
+                onChange={(event) => setPaymentPhone(event.target.value)}
+                placeholder={isTr ? "+90 5xx xxx xx xx" : "+1 xxx xxx xxxx"}
+                className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+            </label>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {isTr
+                ? "Bu numara yalnızca ödeme/3D Secure işlemi için kullanılır."
+                : "This number is used only for the payment/3D Secure transaction."}
+            </p>
+            {paymentPhone.trim() && !isPhoneValid ? (
+              <p role="alert" className="mt-1.5 text-xs text-red-700">{phoneCheck.error}</p>
+            ) : null}
+          </div>
+        )}
 
         <div className="mt-6 space-y-3 rounded-2xl border bg-[#F9FAF8] p-4 text-xs">
           <label className="flex gap-3">
@@ -477,6 +362,7 @@ export function PaymentPage() {
             couponCode={appliedCoupon?.code}
             learnerId={learnerId}
             guardianUserId={accountType === "admin" ? guardianId : undefined}
+            paymentPhone={phoneCheck.normalized}
             contextReady={contextReady}
             emailVerified={emailVerified}
             termsAccepted={termsAccepted}

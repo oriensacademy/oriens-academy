@@ -8,6 +8,29 @@
  * accessed server-side and never logged or exposed.
  */
 
+/**
+ * Maps the application's internal/canonical currency code (as stored in
+ * pricing_packages / payment_transactions) to the exact code the PayTR
+ * get-token protocol expects. PayTR uses "TL" for Turkish lira, not the
+ * ISO 4217 "TRY" code used everywhere else in this application.
+ */
+const PAYTR_CURRENCY_MAP: Record<string, string> = {
+  TRY: "TL",
+  USD: "USD",
+  EUR: "EUR",
+  GBP: "GBP",
+  RUB: "RUB",
+};
+
+export function mapCurrencyToPaytr(code: string): string {
+  const key = String(code || "").trim().toUpperCase();
+  const mapped = PAYTR_CURRENCY_MAP[key];
+  if (!mapped) {
+    throw new Error(`UNSUPPORTED_CURRENCY:${key}`);
+  }
+  return mapped;
+}
+
 export interface PaytrCallbackPayload {
   merchant_oid: string;
   status: "success" | "failed" | string;

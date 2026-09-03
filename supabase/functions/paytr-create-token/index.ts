@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
-import { calculatePaytrToken, encodePaytrUserBasket } from "../_shared/payments/paytr.ts";
+import { calculatePaytrToken, encodePaytrUserBasket, mapCurrencyToPaytr } from "../_shared/payments/paytr.ts";
 import { createStatusCredential, generatePaytrMerchantOid, sha256 } from "../_shared/payments/security.ts";
 
 const PHONE_RE = /^\+[1-9][0-9]{6,14}$/;
@@ -54,7 +54,7 @@ Deno.serve(async (req: Request) => {
     const purchaserGuardianId = isAdminActor ? selectedGuardianId : actor.id;
     const selectionMethod = isAdminActor ? "admin_explicit_guardian_learner" : "account_holder_linked_learner";
     const [{ data: guardian }, { data: relation }, { data: learner }] = await Promise.all([
-      admin.from("guardian_accounts").select("user_id,full_name,email,phone,email_verified_at,active,preferred_language").eq("user_id", purchaserGuardianId).maybeSingle(),
+      admin.from("guardian_accounts").select("user_id,full_name,email,email_verified_at,active,preferred_language").eq("user_id", purchaserGuardianId).maybeSingle(),
       admin.from("guardian_students").select("active").eq("guardian_user_id", purchaserGuardianId).eq("student_id", learnerId).eq("active", true).maybeSingle(),
       admin.from("student_profiles").select("id,full_name,active,legacy_auth_user_id").eq("id", learnerId).maybeSingle(),
     ]);
@@ -65,15 +65,31 @@ Deno.serve(async (req: Request) => {
     const verifiedEmail = authGuardian?.email?.trim().toLowerCase() || "";
     if (!guardian.email_verified_at || !verifiedEmail || verifiedEmail !== String(guardian.email).trim().toLowerCase()) return validationError(req, locale, "EMAIL_NOT_VERIFIED", "E-posta adresinizi doğrulayın ve tekrar deneyin.", "Verify your email address and try again.");
     const payerName = String(guardian.full_name || "").trim().replace(/\s+/g, " ");
-    const payerPhone = String(guardian.phone || "").trim().replace(/[\s().-]+/g, "");
     if (payerName.length < 2 || payerName.length > 100) return validationError(req, locale, "PAYER_NAME_REQUIRED", "Profilinizde geçerli ad soyad bulunamadı.", "A valid full name is missing from your profile.");
-    if (!PHONE_RE.test(payerPhone)) return validationError(req, locale, "PHONE_REQUIRED", "Ödeme için profilinizde geçerli telefon numarası bulunamadı.", "A valid phone number is missing from your profile.");
+
+    // Transient, checkout-only 3D Secure phone number. Never read from or written to
+    // guardian_accounts/student_profiles/auth metadata — used only for this PayTR request
+    // and the resulting transaction's payer_phone snapshot.
+    const payerPhone = String(payload.paymentPhone ?? "").trim().replace(/[\s().-]+/g, "");
+    if (!payerPhone) return validationError(req, locale, "PHONE_REQUIRED", "Ödeme için 3D Secure telefon numarası gereklidir.", "A 3D Secure phone number is required to make a payment.");
+    if (!PHONE_RE.test(payerPhone)) return validationError(req, locale, "INVALID_PHONE", "Lütfen geçerli bir telefon numarası girin.", "Please enter a valid phone number.");
 
     const { data: packageRows, error: packageError } = await admin.from("pricing_packages").select("id,name_tr,name_en,current_total,price_amount,currency,lesson_count,unit_price,purchase_mode,active").in("id", packageIds);
     if (packageError || !packageRows || packageRows.length !== packageIds.length) return validationError(req, locale, "PACKAGE_NOT_PURCHASABLE", "Siparişteki paketlerden biri satın almaya açık değil.", "One of the packages in this order is not available for purchase.");
     const packages = packageIds.map((id) => packageRows.find((row) => row.id === id)!);
     const currencies = new Set(packages.map((row) => String(row.currency || "TRY").toUpperCase()));
     if (currencies.size !== 1 || packages.some((row) => !row.active || row.purchase_mode !== "purchasable")) return validationError(req, locale, "PACKAGE_NOT_PURCHASABLE", "Siparişteki paketlerden biri satın almaya açık değil.", "One of the packages in this order is not available for purchase.");
+    // `currency` is the app's internal/canonical code (e.g. "TRY"), stored as-is on the
+    // transaction. `paytrCurrency` is the exact code the PayTR protocol expects (e.g. "TL")
+    // and is only ever used at the PayTR request boundary below. Fail closed on anything
+    // unsupported rather than silently forwarding an arbitrary currency code to PayTR.
+    const currency = [...currencies][0];
+    let paytrCurrency: string;
+    try {
+      paytrCurrency = mapCurrencyToPaytr(currency);
+    } catch {
+      return validationError(req, locale, "UNSUPPORTED_CURRENCY", "Bu para birimiyle ödeme şu anda desteklenmiyor.", "Payment in this currency is not currently supported.");
+    }
     const baseAmounts = packages.map((row) => Number(row.current_total ?? row.price_amount));
     if (packages.some((row, index) => !Number.isFinite(baseAmounts[index]) || baseAmounts[index] <= 0 || !row.lesson_count)) return validationError(req, locale, "PACKAGE_NOT_CONFIGURED", "Paket ödeme bilgileri eksik.", "Package payment data is incomplete.");
 
@@ -141,7 +157,6 @@ Deno.serve(async (req: Request) => {
     const { token: statusToken } = createStatusCredential(merchantOid);
     const statusTokenHash = await sha256(statusToken);
     const nowIso = new Date().toISOString();
-    const currency = [...currencies][0];
     const userIp = (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "").slice(0, 39);
     if (finalAmount > 0 && !userIp) return validationError(req, locale, "CUSTOMER_IP_REQUIRED", "Ödeme isteği doğrulanamadı. Sayfayı yenileyip tekrar deneyin.", "The payment request could not be verified. Refresh the page and try again.");
     const { data: singlePkg } = await admin.from("pricing_packages").select("price_amount,current_total,unit_price").eq("id", "single").maybeSingle();
@@ -225,11 +240,24 @@ Deno.serve(async (req: Request) => {
     const merchantOkUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/success" : "tr/odeme/basarili"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
     const merchantFailUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/failed" : "tr/odeme/basarisiz"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
     const paymentAmount = Math.round(finalAmount * 100).toString();
-    const paytrToken = await calculatePaytrToken({ merchantId, userIp, merchantOid, email: verifiedEmail, paymentAmount, userBasket, noInstallment: "0", maxInstallment: "12", currency, testMode, merchantSalt, merchantKey });
-    const formData = new URLSearchParams({ merchant_id: merchantId, user_ip: userIp, merchant_oid: merchantOid, email: verifiedEmail, payment_amount: paymentAmount, paytr_token: paytrToken, user_basket: userBasket, debug_on: debugOn, no_installment: "0", max_installment: "12", user_name: payerName, user_address: PAYTR_DEFAULT_ADDRESS, user_phone: payerPhone, merchant_ok_url: merchantOkUrl, merchant_fail_url: merchantFailUrl, timeout_limit: "30", currency, test_mode: testMode, lang: locale === "en" ? "en" : "tr" });
+    const paytrToken = await calculatePaytrToken({ merchantId, userIp, merchantOid, email: verifiedEmail, paymentAmount, userBasket, noInstallment: "0", maxInstallment: "12", currency: paytrCurrency, testMode, merchantSalt, merchantKey });
+    const formData = new URLSearchParams({ merchant_id: merchantId, user_ip: userIp, merchant_oid: merchantOid, email: verifiedEmail, payment_amount: paymentAmount, paytr_token: paytrToken, user_basket: userBasket, debug_on: debugOn, no_installment: "0", max_installment: "12", user_name: payerName, user_address: PAYTR_DEFAULT_ADDRESS, user_phone: payerPhone, merchant_ok_url: merchantOkUrl, merchant_fail_url: merchantFailUrl, timeout_limit: "30", currency: paytrCurrency, test_mode: testMode, lang: locale === "en" ? "en" : "tr" });
     const paytrRes = await fetch("https://www.paytr.com/odeme/api/get-token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString() });
     const paytrData = paytrRes.ok ? await paytrRes.json() : null;
-    if (!paytrRes.ok || paytrData?.status !== "success" || !paytrData?.token) { await admin.from("payment_transactions").update({ status: "failed" }).eq("id", transaction.id); return buildJsonResponse({ error_code: "PAYTR_SESSION_FAILED", message: locale === "tr" ? "Güvenli ödeme oturumu başlatılamadı. Tekrar deneyin." : "The secure payment session could not be started. Try again." }, 502, req); }
+    if (!paytrRes.ok || paytrData?.status !== "success" || !paytrData?.token) {
+      // Safe, non-secret observability: PayTR's own rejection reason, HTTP status, and our
+      // internal identifiers only. Never log merchant_key/merchant_salt/Authorization/the
+      // full request body.
+      const safeReason = typeof paytrData?.reason === "string" ? paytrData.reason.slice(0, 500) : null;
+      console.error(
+        `[paytr-create-token] PAYTR_SESSION_FAILED httpStatus=${paytrRes.status} merchantOid=${merchantOid} transactionId=${transaction.id} reason=${safeReason ?? "(none)"}`
+      );
+      await admin.from("payment_transactions").update({
+        status: "failed",
+        metadata: { ...initialMetadata, failure_reason: safeReason, failure_http_status: paytrRes.status },
+      }).eq("id", transaction.id);
+      return buildJsonResponse({ error_code: "PAYTR_SESSION_FAILED", message: locale === "tr" ? "Güvenli ödeme oturumu başlatılamadı. Tekrar deneyin." : "The secure payment session could not be started. Try again." }, 502, req);
+    }
 
     // Persist iframe token to metadata for idempotency reuse
     await admin.from("payment_transactions").update({

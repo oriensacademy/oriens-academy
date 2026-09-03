@@ -31,6 +31,7 @@ interface HostedCardPanelProps {
   couponCode?: string;
   learnerId: string;
   guardianUserId?: string;
+  paymentPhone: string;
   termsAccepted: boolean;
   refundPolicyAccepted: boolean;
   onTokenReady?: (result: CreatePaytrTokenResult) => void;
@@ -44,6 +45,7 @@ export function HostedCardPanel({
   couponCode,
   learnerId,
   guardianUserId,
+  paymentPhone,
   termsAccepted,
   refundPolicyAccepted,
   onTokenReady,
@@ -82,7 +84,7 @@ export function HostedCardPanel({
       return;
     }
 
-    const currentContextKey = `${sortedPackagesKey}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${locale}:${attempt}`;
+    const currentContextKey = `${sortedPackagesKey}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${paymentPhone}:${locale}:${attempt}`;
 
     // Single-flight lock: If already in-flight or prepared for this exact checkout context, do not duplicate
     if (inFlightKeyRef.current === currentContextKey || preparedKeyRef.current === currentContextKey) {
@@ -106,6 +108,7 @@ export function HostedCardPanel({
       couponCode,
       learnerId,
       guardianUserId,
+      paymentPhone,
       locale,
       termsAccepted: false,
       refundPolicyAccepted: false,
@@ -148,7 +151,7 @@ export function HostedCardPanel({
     };
     // sortedPackagesKey represents stable identity of packageIds without object reference recreation
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt, contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onTokenReady, sortedPackagesKey]);
+  }, [attempt, contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onTokenReady, paymentPhone, sortedPackagesKey]);
 
   // 2. AUDITABLE LEGAL ACCEPTANCE CONFIRMATION
   // When user checks both agreements, persist legal timestamp server-side if not already recorded

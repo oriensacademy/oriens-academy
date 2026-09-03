@@ -4,7 +4,6 @@ import type { Locale } from "@/content/dictionaries";
 export interface StudentRegistrationInput {
   fullName: string;
   email: string;
-  phone: string;
   password: string;
   locale: Locale;
   school?: string;
@@ -105,16 +104,7 @@ export async function sendStudentWelcomeEmail(params: {
 
 export async function registerStudent(input: StudentRegistrationInput) {
   const supabase = getSupabaseClient();
-  const phoneCheck = validateStudentPhone(input.phone, input.locale === "tr");
-  if (!phoneCheck.valid) {
-    return {
-      data: { user: null, session: null },
-      error: new Error(phoneCheck.error || (input.locale === "tr" ? "Geçersiz telefon numarası." : "Invalid phone number.")),
-    };
-  }
-
   const redirectTo = `${window.location.origin}/${input.locale}/${input.locale === "tr" ? "hesabim" : "account"}`;
-  const normalizedPhone = phoneCheck.normalized;
 
   const result = await supabase.auth.signUp({
     email: input.email.trim().toLowerCase(),
@@ -124,7 +114,6 @@ export async function registerStudent(input: StudentRegistrationInput) {
       captchaToken: input.captchaToken,
       data: {
         full_name: input.fullName.trim(),
-        phone: normalizedPhone,
         preferred_language: input.locale,
         school: input.school?.trim() || null,
         target_exam: input.targetExam?.trim() || null,

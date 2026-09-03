@@ -19,6 +19,7 @@ import { listStudentThreads, createSupportThread, listThreadMessages, sendStuden
 import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
 import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
+import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
 import { LogoutConfirmationModal } from "@/components/auth/LogoutConfirmationModal";
 import { StudentOnboardingPersonalization } from "@/components/student/StudentOnboardingPersonalization";
 import { cn } from "@/lib/utils";
@@ -136,6 +137,17 @@ export function StudentPortal() {
 
   if (isInitializing || accountType !== "student") return <AccountWaveLoader />;
   if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Hesabınız yükleniyor…" : "Loading your account…")}</div></div></section>;
+
+  if (guardian && !guardian.email_verified_at) {
+    return (
+      <EmailOtpGate
+        email={(guardian.email || user?.email || "").trim().toLowerCase()}
+        locale={locale}
+        onVerified={() => setGuardian((prev) => (prev ? { ...prev, email_verified_at: new Date().toISOString() } : prev))}
+        onLogout={handleConfirmLogout}
+      />
+    );
+  }
 
   const handleDismissPersonalization = () => {
     if (typeof window !== "undefined") {

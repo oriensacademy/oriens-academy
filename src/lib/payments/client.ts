@@ -12,6 +12,7 @@ export interface CreatePaytrTokenInput {
   couponCode?: string;
   learnerId: string;
   guardianUserId?: string;
+  paymentPhone: string;
   locale: "tr" | "en";
   termsAccepted?: boolean;
   refundPolicyAccepted?: boolean;

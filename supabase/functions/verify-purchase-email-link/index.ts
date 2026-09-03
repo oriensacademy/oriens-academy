@@ -21,12 +21,12 @@ async function computeTokenHmac(rawToken: string, secret: string): Promise<strin
 function getSafeRedirectUrl(locale: string, status: "success" | "expired" | "invalid"): string {
   const isTr = locale !== "en";
   const baseUrl = "https://oriens-academy.com";
-  const checkoutSegment = isTr ? "/tr/odeme/" : "/en/checkout/";
+  const accountSegment = isTr ? "/tr/hesabim/" : "/en/account/";
 
   if (status === "success") {
-    return `${baseUrl}${checkoutSegment}?source=cart&verified=true`;
+    return `${baseUrl}${accountSegment}?verified=true`;
   }
-  return `${baseUrl}${checkoutSegment}?source=cart&email_verify_status=${status}`;
+  return `${baseUrl}${accountSegment}?email_verify_status=${status}`;
 }
 
 Deno.serve(async (req: Request) => {

@@ -2051,8 +2051,8 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
   const bodyHtml = `
     <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;">
       ${isTr
-        ? "Oriens Academy üzerinden eğitim paketi satın alımınızı tamamlamak için ödemenize devam etmek üzere e-posta adresinizi doğrulayınız:"
-        : "To proceed with your educational package purchase on Oriens Academy, please verify your email address:"}
+        ? "Oriens Academy hesabınızı etkinleştirmek için e-posta adresinizi doğrulayınız:"
+        : "To activate your Oriens Academy account, please verify your email address:"}
     </p>
 
     <div style="background-color:${PALETTE.surfaceGold};border:1px solid ${PALETTE.borderGold};border-radius:12px;padding:24px 20px;text-align:center;margin:20px 0;">
@@ -2075,8 +2075,8 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
     </div>
     <p style="margin:0 0 16px 0;font-size:12px;line-height:1.5;text-align:center;color:${PALETTE.textMuted};">
       ${isTr
-        ? "Ödeme ekranında 6 haneli kodu girebilir veya yukarıdaki butona tıklayarak tek tıkla doğrulayabilirsiniz."
-        : "You can enter the 6-digit code on the checkout screen or click the button above to verify in one click."}
+        ? "Hesap ekranında 6 haneli kodu girebilir veya yukarıdaki butona tıklayarak tek tıkla doğrulayabilirsiniz."
+        : "You can enter the 6-digit code on the account screen or click the button above to verify in one click."}
     </p>
     ` : ""}
 

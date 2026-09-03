@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User as UserIcon } from "lucide-react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, User as UserIcon } from "lucide-react";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
 import { AuthSwitch } from "@/components/ui/auth-switch";
 import { useLocale } from "@/content/locale-context";
 import { useAccount } from "@/lib/auth/account-context";
 import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routing";
 import { changePasswordPath, forgotPasswordPath, localizedPath } from "@/lib/routes";
-import { registerStudent, resendGuardianConfirmation, validateStudentPhone } from "@/lib/student/auth";
+import { registerStudent } from "@/lib/student/auth";
 import { claimAnonymousExamResult } from "@/lib/student/exam-history";
 import { localizeErrorMessage } from "@/lib/utils/error-messages";
 
@@ -18,7 +19,7 @@ export function UnifiedLoginPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { accountType, user, isInitializing, signIn } = useAccount();
+  const { accountType, user, isInitializing, signIn, signOut } = useAccount();
   const isTr = locale === "tr";
 
   const [mode, setMode] = useState<"login" | "register">(() => {
@@ -45,14 +46,12 @@ export function UnifiedLoginPage() {
 
   // Register fields
   const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [pendingConfirmation, setPendingConfirmation] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  const [awaitingOtpVerification, setAwaitingOtpVerification] = useState(false);
 
   const navigatedRef = useRef(false);
   const isRegisteringRef = useRef(false);
@@ -64,12 +63,6 @@ export function UnifiedLoginPage() {
       queueMicrotask(() => setMode("register"));
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const timer = window.setInterval(() => setResendCooldown((value) => Math.max(0, value - 1)), 1000);
-    return () => window.clearInterval(timer);
-  }, [resendCooldown]);
 
   const tryClaimPendingResult = async () => {
     try {
@@ -133,11 +126,6 @@ export function UnifiedLoginPage() {
       setError(isTr ? "Lütfen gizlilik politikasını ve kullanım koşullarını onaylayın." : "Please accept the privacy policy and terms of service.");
       return;
     }
-    const phoneCheck = validateStudentPhone(phone, isTr);
-    if (!phoneCheck.valid) {
-      setError(phoneCheck.error || (isTr ? "Lütfen geçerli bir telefon numarası girin." : "Please enter a valid phone number."));
-      return;
-    }
     if (password !== confirmPassword) {
       setError(isTr ? "Girilen şifreler birbiriyle eşleşmiyor." : "The passwords do not match.");
       return;
@@ -156,7 +144,6 @@ export function UnifiedLoginPage() {
       const regResult = await registerStudent({
         fullName,
         email,
-        phone,
         password,
         locale,
       });
@@ -177,35 +164,32 @@ export function UnifiedLoginPage() {
         return;
       }
 
-      // Seamless frictionless signup: If session is present or direct login succeeds, enter portal
+      // Frictionless signup returns a session immediately (Confirm Email is OFF).
+      // Do not enter onboarding/portal until the signup OTP below is verified.
       if (regResult.data?.session) {
-        await tryClaimPendingResult();
-        navigatedRef.current = true;
-        const targetPath = `${localizedPath("studentAccount", locale)}/?onboarding=personalization`;
-        router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
         setSubmitting(false);
+        setAwaitingOtpVerification(true);
         return;
       }
 
       // Fallback sign-in attempt if session was not returned in signUp
       const signInResult = await signIn(email, password);
       if (!signInResult.error && signInResult.accountType !== "unknown") {
-        await tryClaimPendingResult();
-        navigatedRef.current = true;
-        const targetPath = `${localizedPath("studentAccount", locale)}/?onboarding=personalization`;
-        router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
         setSubmitting(false);
+        setAwaitingOtpVerification(true);
         return;
       }
 
       setSubmitting(false);
       isRegisteringRef.current = false;
-      if (regResult.data?.user) {
-        setPendingConfirmation(true);
-        setResendCooldown(60);
-      } else {
-        setError(isTr ? "Hesap oluşturulamadı." : "Account could not be created.");
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("oriens.newSignupOnboarding");
       }
+      setError(
+        isTr
+          ? "Hesabınız oluşturuldu ancak oturum başlatılamadı. Lütfen giriş yapmayı deneyin."
+          : "Your account was created but a session could not be started. Please try signing in."
+      );
     } catch (err: unknown) {
       setSubmitting(false);
       const msg = err instanceof Error ? err.message : "";
@@ -213,38 +197,40 @@ export function UnifiedLoginPage() {
     }
   }
 
-  if (isInitializing || accountType !== "unauthenticated") {
-    return <AccountWaveLoader />;
+  async function handleOtpVerified() {
+    await tryClaimPendingResult();
+    navigatedRef.current = true;
+    const targetPath = `${localizedPath("studentAccount", locale)}/?onboarding=personalization`;
+    router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
   }
 
-  if (pendingConfirmation) {
+  async function handleChangeEmail() {
+    setSubmitting(true);
+    try {
+      await signOut();
+    } finally {
+      isRegisteringRef.current = false;
+      navigatedRef.current = false;
+      setAwaitingOtpVerification(false);
+      setPassword("");
+      setConfirmPassword("");
+      setSubmitting(false);
+    }
+  }
+
+  if (awaitingOtpVerification) {
     return (
-      <section className="min-h-screen bg-background px-4 pt-28 pb-16 sm:pt-36">
-        <div className="mx-auto max-w-md rounded-3xl border border-border bg-surface p-7 text-center shadow-editorial">
-          <Mail className="mx-auto size-10 text-primary" />
-          <h1 className="mt-4 font-heading text-2xl text-ink">{isTr ? "E-postanızı doğrulayın" : "Verify your email"}</h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            {isTr ? `${email.trim()} adresine gönderilen bağlantıyı açın. Doğrulama tamamlanmadan hesabınız ve ödeme işlemleri kullanılamaz.` : `Open the link sent to ${email.trim()}. Your account and checkout remain unavailable until verification.`}
-          </p>
-          <button
-            type="button"
-            disabled={resendCooldown > 0 || submitting}
-            onClick={async () => {
-              setSubmitting(true);
-              setError("");
-              const result = await resendGuardianConfirmation(email, locale);
-              setSubmitting(false);
-              if (result.error) setError(isTr ? "Doğrulama e-postası gönderilemedi veya bağlantı süresi doldu." : "The verification email could not be resent or the request expired.");
-              else setResendCooldown(60);
-            }}
-            className="mt-6 min-h-11 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
-          >
-            {resendCooldown > 0 ? (isTr ? `${resendCooldown} sn sonra yeniden gönder` : `Resend in ${resendCooldown}s`) : (isTr ? "Doğrulama e-postasını yeniden gönder" : "Resend verification email")}
-          </button>
-          {error ? <p role="alert" className="mt-4 text-xs text-red-700">{error}</p> : null}
-        </div>
-      </section>
+      <EmailOtpGate
+        email={email.trim().toLowerCase()}
+        locale={locale}
+        onVerified={handleOtpVerified}
+        onChangeEmail={handleChangeEmail}
+      />
     );
+  }
+
+  if (isInitializing || accountType !== "unauthenticated") {
+    return <AccountWaveLoader />;
   }
 
   const isFromCheckout = searchParams.get("source") === "checkout" || (requested && (requested.includes("payment") || requested.includes("cart") || requested.includes("odeme") || requested.includes("sepet")));
@@ -431,22 +417,6 @@ export function UnifiedLoginPage() {
                 </span>
               </label>
 
-              <label className="block text-xs font-semibold text-ink" htmlFor="register-phone">
-                {isTr ? "Telefon" : "Phone"}
-                <span className="relative mt-1 block">
-                  <Phone className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    id="register-phone"
-                    type="tel"
-                    required
-                    autoComplete="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                  />
-                </span>
-              </label>
-
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="block text-xs font-semibold text-ink" htmlFor="register-password">
                   {isTr ? "Şifre" : "Password"}
@@ -511,7 +481,7 @@ export function UnifiedLoginPage() {
 
               <button
                 type="submit"
-                disabled={!fullName.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword || !termsAccepted || submitting}
+                disabled={!fullName.trim() || !email.trim() || !password || !confirmPassword || !termsAccepted || submitting}
                 className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
               >
                 {submitting ? (
