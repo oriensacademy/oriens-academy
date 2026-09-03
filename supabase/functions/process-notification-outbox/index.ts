@@ -79,9 +79,20 @@ function render(row: OutboxRow) {
     } else {
       lines.push(isEn ? `Dear ${p.account_holder_name}, 1 lesson right remains for your linked learner ${p.learner_name}.` : `Sayın ${p.account_holder_name}, hesabınıza bağlı ${p.learner_name} için 1 ders hakkı kaldı.`);
     }
+    lines.push(`${isEn ? "Package" : "Paket"}: ${p.package_name || "-"}`);
+  } else if (row.template === "package_completed_renewal_account_holder") {
+    const role = String(p.relationship_role || "other");
+    subject = isEn ? "Your lesson package has been completed" : "Paketiniz sona erdi";
+    if (role === "self") {
+      lines.push(isEn ? `Hello ${p.account_holder_name}, your lesson package has been completed.` : `Merhaba ${p.account_holder_name}, paketiniz sona erdi.`);
+    } else if (role === "parent" || role === "guardian") {
+      lines.push(isEn ? `Dear ${p.account_holder_name}, the lesson package for your learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, öğrenciniz ${p.learner_name} için paket sona erdi.`);
+    } else {
+      lines.push(isEn ? `Dear ${p.account_holder_name}, the lesson package for your linked learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, hesabınıza bağlı ${p.learner_name} için paket sona erdi.`);
+    }
     lines.push(
       `${isEn ? "Package" : "Paket"}: ${p.package_name || "-"}`,
-      isEn ? "The package can be renewed and paid through Oriens Academy." : "Paketinizi Oriens Academy üzerinden yenileyebilir ve ödeyebilirsiniz.",
+      isEn ? "You can review our pricing packages to continue." : "Akademik hedeflerinize devam etmek için ücretlerimizi inceleyebilirsiniz.",
     );
   } else if (row.template === "payment_refunded_account_holder") {
     const role = String(p.relationship_role || "other");
@@ -133,8 +144,12 @@ function render(row: OutboxRow) {
   }
 
   const text = lines.join("\n");
-  const portalUrl = isEn ? "https://oriens-academy.com/en/account/" : "https://oriens-academy.com/tr/hesabim/";
-  const ctaButton = actionButton(isEn ? "Go to My Account" : "Hesabıma Git", portalUrl);
+  const isPricingCta = row.template === "package_low_balance_account_holder" || row.template === "package_completed_renewal_account_holder";
+  const ctaUrl = isPricingCta
+    ? (isEn ? "https://oriens-academy.com/en/pricing/" : "https://oriens-academy.com/tr/ucretler/")
+    : (isEn ? "https://oriens-academy.com/en/account/" : "https://oriens-academy.com/tr/hesabim/");
+  const ctaLabel = isPricingCta ? (isEn ? "View Pricing" : "Ücretleri İncele") : (isEn ? "Go to My Account" : "Hesabıma Git");
+  const ctaButton = actionButton(ctaLabel, ctaUrl);
   const bodyHtml = `
     <div style="font-size:14px;line-height:1.65;color:#10271B;">
       ${lines.map((line) => `<p style="margin:0 0 12px 0;">${escapeHtml(line)}</p>`).join("")}

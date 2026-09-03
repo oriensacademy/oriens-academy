@@ -13,7 +13,6 @@ export function AssessmentForm() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [targetExam, setTargetExam] = useState("IB");
   const [schoolGrade, setSchoolGrade] = useState("");
   const [targetUniversity, setTargetUniversity] = useState("");
@@ -45,7 +44,6 @@ Hedef Sınav: ${targetExam}
 Okul / Sınıf: ${schoolGrade || "-"}
 Hedef Ülke/Üniversite: ${targetUniversity || "-"}
 Hedef Tarih: ${targetDate || "-"}
-Telefon: ${phone || "-"}
 Notlar / Hedef: ${notes || "-"}
         `.trim()
         : `
@@ -54,14 +52,12 @@ Target Exam: ${targetExam}
 School / Grade: ${schoolGrade || "-"}
 Target Country / University: ${targetUniversity || "-"}
 Target Date: ${targetDate || "-"}
-Phone: ${phone || "-"}
 Notes / Goals: ${notes || "-"}
         `.trim();
 
       const { error } = await supabase.from("contact_requests").insert({
         full_name: fullName.trim(),
         email: email.trim(),
-        phone: phone.trim() || null,
         subject: `${isTr ? "Ön Değerlendirme" : "Academic Assessment"} — ${targetExam}`,
         message: payloadMessage,
         locale,
@@ -206,19 +202,6 @@ Notes / Goals: ${notes || "-"}
             className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
           />
         </div>
-      </div>
-
-      <div>
-        <label htmlFor="assessment-phone" className="block text-xs font-bold text-foreground uppercase tracking-wider font-ui mb-2">
-          {isTr ? "Telefon Numarası (İsteğe Bağlı)" : "Phone Number (Optional)"}
-        </label>
-        <input
-          id="assessment-phone"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/20 font-sans"
-        />
       </div>
 
       <div>

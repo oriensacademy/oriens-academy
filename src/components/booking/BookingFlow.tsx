@@ -36,7 +36,6 @@ export function BookingFlow() {
 
   const [fullName, setFullName] = useState(() => user?.user_metadata?.full_name || "");
   const [email, setEmail] = useState(() => user?.email || "");
-  const [phone, setPhone] = useState(() => user?.user_metadata?.phone || "");
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
 
@@ -47,7 +46,6 @@ export function BookingFlow() {
         if (res.data?.profile) {
           if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
           if (res.data.profile.email) setEmail(res.data.profile.email);
-          if (res.data.profile.phone) setPhone(res.data.profile.phone);
           if (res.data.profile.target_exam) {
             setExam({ type: "exam", code: res.data.profile.target_exam.toLowerCase() });
           }
@@ -166,7 +164,6 @@ export function BookingFlow() {
         slotId: selectedSlotId,
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
-        phone: phone.trim() || undefined,
         supportType,
         examCode,
         customExam,
@@ -221,7 +218,6 @@ export function BookingFlow() {
     setSelectedSlotId(null);
     setFullName("");
     setEmail("");
-    setPhone("");
     setPrivacyConsent(false);
     setMarketingConsent(false);
     setTurnstileToken("");
@@ -509,19 +505,6 @@ export function BookingFlow() {
                   className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
                 />
                 {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="phone" className="block text-sm font-medium text-ink">
-                  {bookingFlow.step3.phoneLabel} <span className="font-normal text-muted-foreground">{bookingFlow.step3.phoneOptional}</span>
-                </label>
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
-                />
               </div>
 
               <div className="sm:col-span-2 space-y-4 pt-2 border-t border-border">

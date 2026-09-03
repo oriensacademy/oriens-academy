@@ -141,13 +141,66 @@ export async function updateStudentPassword(password: string) {
   return getSupabaseClient().auth.updateUser({ password });
 }
 
-export async function updateGuardianProfile(input: { fullName: string; phone: string; contactAddress?: string; preferredLanguage: Locale }) {
-  const phone = validateStudentPhone(input.phone, input.preferredLanguage === "tr");
-  if (!phone.valid) return { data: null, error: new Error(phone.error || "Invalid phone") };
+export async function updateGuardianProfile(input: { fullName: string; contactAddress?: string; preferredLanguage: Locale }) {
   return getSupabaseClient().rpc("update_guardian_profile", {
     p_full_name: input.fullName.trim().replace(/\s+/g, " "),
-    p_phone: phone.normalized,
     p_contact_address: input.contactAddress ? input.contactAddress.trim().replace(/\s+/g, " ") : undefined,
     p_preferred_language: input.preferredLanguage,
   });
+}
+
+export interface DeleteAccountResult {
+  success: boolean;
+  mode?: "deleted" | "anonymized";
+  error_code?: string;
+  message?: string;
+}
+
+export async function deleteOwnAccount(password: string, locale: Locale): Promise<DeleteAccountResult> {
+  const supabase = getSupabaseClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    return {
+      success: false,
+      error_code: "UNAUTHORIZED",
+      message: locale === "tr" ? "Lütfen tekrar giriş yapın." : "Please sign in again.",
+    };
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    return {
+      success: false,
+      error_code: "CONFIG_ERROR",
+      message: locale === "tr" ? "Sistem yapılandırma hatası." : "System configuration error.",
+    };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/delete-student-account`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ password, locale }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return {
+        success: false,
+        error_code: data.error_code || `HTTP_${res.status}`,
+        message: data.message || (locale === "tr" ? "Üyelik silme işlemi gerçekleştirilemedi." : "Your account could not be deleted."),
+      };
+    }
+    return { success: true, mode: data.mode };
+  } catch {
+    return {
+      success: false,
+      error_code: "NETWORK_ERROR",
+      message: locale === "tr" ? "Bağlantı hatası oluştu. Lütfen tekrar deneyiniz." : "Network error. Please try again.",
+    };
+  }
 }

@@ -34,7 +34,6 @@ export function BookingCTA() {
   // Form field states for controlled prefill
   const [nameVal, setNameVal] = useState(() => user?.user_metadata?.full_name || "");
   const [emailVal, setEmailVal] = useState(() => user?.email || "");
-  const [phoneVal, setPhoneVal] = useState(() => user?.user_metadata?.phone || "");
 
   const summaryRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -46,7 +45,6 @@ export function BookingCTA() {
         if (res.data?.profile) {
           if (res.data.profile.full_name) setNameVal(res.data.profile.full_name);
           if (res.data.profile.email) setEmailVal(res.data.profile.email);
-          if (res.data.profile.phone) setPhoneVal(res.data.profile.phone);
           if (res.data.profile.target_exam) {
             setExam({ type: "exam", code: res.data.profile.target_exam.toLowerCase() });
           }
@@ -68,7 +66,6 @@ export function BookingCTA() {
     event.preventDefault();
     const name = nameVal.trim();
     const email = emailVal.trim();
-    const phone = phoneVal.trim();
     const form = event.currentTarget;
     const data = new FormData(form);
     const interest = String(data.get("interest") ?? "");
@@ -77,7 +74,6 @@ export function BookingCTA() {
 
     if (!name || name.length < 2) nextErrors.name = bookingCTA.form.nameRequired;
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextErrors.email = bookingCTA.form.emailRequired;
-    if (!phone || phone.length < 5) nextErrors.phone = isTr ? "Geçerli bir telefon numarası girin." : "Enter a valid phone number.";
     if (!privacyConsent) nextErrors.privacy = isTr ? "Gizlilik onayı zorunludur." : "Privacy consent is required.";
 
     setErrors(nextErrors);
@@ -95,7 +91,6 @@ export function BookingCTA() {
       const result = await submitContact({
         fullName: name,
         email: email.toLowerCase(),
-        phone,
         subject: subject || undefined,
         message: message || (isTr ? "Tanışma görüşmesi talebi." : "Introductory consultation request."),
         locale,
@@ -198,8 +193,7 @@ export function BookingCTA() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div><label htmlFor="consultation-name" className="text-sm font-medium text-ink">{bookingCTA.form.name} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-name" data-locale-field="consultation-name" name="name" type="text" value={nameVal} onChange={(e) => { setNameVal(e.target.value); clearError("name"); }} placeholder={isTr ? "Adınız Soyadınız" : "Your full name"} required autoComplete="name" className={fieldClass} />{errors.name && <p className="mt-2 text-sm text-destructive">{errors.name}</p>}</div>
                 <div><label htmlFor="consultation-email" className="text-sm font-medium text-ink">{bookingCTA.form.email} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-email" data-locale-field="consultation-email" name="email" type="email" value={emailVal} onChange={(e) => { setEmailVal(e.target.value); clearError("email"); }} placeholder={isTr ? "E-posta adresiniz" : "Your email address"} required autoComplete="email" className={fieldClass} />{errors.email && <p className="mt-2 text-sm text-destructive">{errors.email}</p>}</div>
-                <div><label htmlFor="interest" className="text-sm font-medium text-ink">{bookingCTA.form.interestLabel}</label><select id="interest" data-locale-field="consultation-interest" name="interest" defaultValue={bookingCTA.form.interestOptions[0].value} className={fieldClass}>{bookingCTA.form.interestOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-                <div><label htmlFor="consultation-phone" className="text-sm font-medium text-ink">{isTr ? "Telefon" : "Phone"} <span className="font-normal text-muted-foreground">({bookingCTA.form.requiredLabel})</span></label><input id="consultation-phone" data-locale-field="consultation-phone" name="phone" type="tel" value={phoneVal} onChange={(e) => { setPhoneVal(e.target.value); clearError("phone"); }} required autoComplete="tel" className={fieldClass} />{errors.phone && <p className="mt-2 text-sm text-destructive">{errors.phone}</p>}</div>
+                <div className="sm:col-span-2"><label htmlFor="interest" className="text-sm font-medium text-ink">{bookingCTA.form.interestLabel}</label><select id="interest" data-locale-field="consultation-interest" name="interest" defaultValue={bookingCTA.form.interestOptions[0].value} className={fieldClass}>{bookingCTA.form.interestOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
                 <div className="sm:col-span-2"><ExamSelector value={exam} onChange={setExam} /></div>
                 <div className="sm:col-span-2"><label htmlFor="consultation-message" className="text-sm font-medium text-ink">{bookingCTA.form.messageLabel} <span className="font-normal text-muted-foreground">{bookingCTA.form.messageOptional}</span></label><textarea id="consultation-message" data-locale-field="consultation-message" name="message" rows={3} className={`${fieldClass} resize-y py-2.5`} /></div>
                 <div className="sm:col-span-2 border-t border-border pt-4"><label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-ink/75"><input type="checkbox" data-locale-field="consultation-privacy" checked={privacyConsent} onChange={(event) => { setPrivacyConsent(event.target.checked); clearError("privacy"); }} className="mt-1 size-4" /><span>{isTr ? "Tanışma görüşmesi talebimin yanıtlanması için iletişim bilgilerimin işlenmesini kabul ediyorum." : "I agree to the processing of my contact details for this consultation request."}</span></label>{errors.privacy && <p className="mt-2 text-sm text-destructive">{errors.privacy}</p>}</div>

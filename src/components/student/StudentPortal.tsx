@@ -21,6 +21,7 @@ import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAtte
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
 import { LogoutConfirmationModal } from "@/components/auth/LogoutConfirmationModal";
+import { DeleteAccountModal } from "@/components/student/DeleteAccountModal";
 import { StudentOnboardingPersonalization } from "@/components/student/StudentOnboardingPersonalization";
 import { cn } from "@/lib/utils";
 import { VISIBLE_STUDENT_NAVIGATION, type StudentSectionId } from "@/lib/student/navigation";
@@ -162,9 +163,9 @@ export function StudentPortal() {
   };
 
   return <section className="min-h-screen bg-background pt-24 pb-28 md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
-    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Hesabım" : "My Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1><p className="mt-2 text-xs text-muted-foreground">{locale === "tr" ? "Öğrenci" : "Learner"}: <strong className="text-ink">{data.profile.full_name}</strong></p>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></header>
+    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Hesabım" : "My Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} onOpenPersonalization={() => setPersonalizationOpen(true)} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} onOpenPersonalization={() => setPersonalizationOpen(true)} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} onAccountDeleted={handleConfirmLogout} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
     </div>
   </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</div></nav>
   <LogoutConfirmationModal open={logoutModalOpen} signingOut={signingOut} locale={locale} onCancel={() => setLogoutModalOpen(false)} onConfirm={handleConfirmLogout} />
@@ -472,7 +473,7 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
   );
 }
 
-function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPortalData; guardian: Tables<"guardian_accounts"> | null; userId: string; locale: "tr" | "en"; onReload: () => void }) {
+function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }: { data: StudentPortalData; guardian: Tables<"guardian_accounts"> | null; userId: string; locale: "tr" | "en"; onReload: () => void; onAccountDeleted: () => void }) {
   const [form, setForm] = useState({
     school: data.profile.school || "",
     targetUniversity: data.profile.target_university || "",
@@ -500,10 +501,10 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
   const [err, setErr] = useState("");
   const [guardianForm, setGuardianForm] = useState({
     fullName: guardian?.full_name || "",
-    phone: guardian?.phone || "",
     contactAddress: guardian?.contact_address || "",
   });
   const [guardianBusy, setGuardianBusy] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const [optEmailBusy, setOptEmailBusy] = useState(false);
   const [optOtpSent, setOptOtpSent] = useState(false);
@@ -560,7 +561,6 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
     }
     const result = await updateGuardianProfile({
       fullName: guardianForm.fullName,
-      phone: guardianForm.phone,
       contactAddress: guardianForm.contactAddress || undefined,
       preferredLanguage: locale,
     });
@@ -646,8 +646,7 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
 
       <Panel title={locale === "tr" ? "Hesap Sahibi Bilgileri" : "Account Holder Details"}>
         <form onSubmit={saveGuardian} className="grid gap-4 sm:grid-cols-2">
-          <label className="text-xs font-medium text-muted-foreground">{locale === "tr" ? "Ad Soyad" : "Full Name"}<input required minLength={2} maxLength={100} value={guardianForm.fullName} onChange={(event) => setGuardianForm({...guardianForm,fullName:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
-          <label className="text-xs font-medium text-muted-foreground">{locale === "tr" ? "Telefon" : "Phone"}<input required type="tel" value={guardianForm.phone} onChange={(event) => setGuardianForm({...guardianForm,phone:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
+          <label className="text-xs font-medium text-muted-foreground sm:col-span-2">{locale === "tr" ? "Ad Soyad" : "Full Name"}<input required minLength={2} maxLength={100} value={guardianForm.fullName} onChange={(event) => setGuardianForm({...guardianForm,fullName:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
           <div className="sm:col-span-2"><button disabled={guardianBusy} className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"><Save className="size-4" />{guardianBusy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Hesap Bilgilerini Kaydet" : "Save Account Details")}</button></div>
         </form>
       </Panel>
@@ -936,6 +935,28 @@ function Profile({ data, guardian, userId, locale, onReload }: { data: StudentPo
           </form>
         </div>
       </Panel>
+
+      <Panel title={locale === "tr" ? "Üyeliğimi Sil" : "Delete My Account"}>
+        <p className="text-xs leading-5 text-muted-foreground">
+          {locale === "tr"
+            ? "Bu işlem geri alınamaz. Hesabınız ve kişisel profil bilgileriniz kalıcı olarak kaldırılır; yasal olarak saklanması gereken ödeme kayıtları ayrıca korunur."
+            : "This action cannot be undone. Your account and personal profile details are permanently removed; payment records required by law are preserved separately."}
+        </p>
+        <button
+          type="button"
+          onClick={() => setDeleteModalOpen(true)}
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-red-700 bg-white px-5 text-xs font-semibold text-red-700 hover:bg-red-50 cursor-pointer"
+        >
+          {locale === "tr" ? "Üyeliğimi Sil" : "Delete My Account"}
+        </button>
+      </Panel>
+
+      <DeleteAccountModal
+        open={deleteModalOpen}
+        locale={locale}
+        onClose={() => setDeleteModalOpen(false)}
+        onDeleted={onAccountDeleted}
+      />
     </div>
   );
 }

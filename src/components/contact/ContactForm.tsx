@@ -18,7 +18,6 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
 
   const [fullName, setFullName] = useState(() => user?.user_metadata?.full_name || "");
   const [email, setEmail] = useState(() => user?.email || "");
-  const [phone, setPhone] = useState(() => user?.user_metadata?.phone || "");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -31,7 +30,6 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
         if (res.data?.profile) {
           if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
           if (res.data.profile.email) setEmail(res.data.profile.email);
-          if (res.data.profile.phone) setPhone(res.data.profile.phone);
         }
       });
     }
@@ -50,9 +48,6 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
     }
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       nextErrors.email = isTr ? "Geçerli bir e-posta adresi girin." : "Enter a valid email address.";
-    }
-    if (!phone.trim() || phone.trim().length < 5) {
-      nextErrors.phone = isTr ? "Telefon alanı zorunludur." : "Phone is required.";
     }
     if (!message.trim() || message.trim().length < 5) {
       nextErrors.message = isTr ? "Mesaj alanı en az 5 karakter olmalıdır." : "Message must be at least 5 characters.";
@@ -75,7 +70,6 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
       const res = await submitContact({
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
-        phone: phone.trim(),
         subject: subject.trim() || undefined,
         message: message.trim(),
         locale: locale as "tr" | "en",
@@ -96,7 +90,6 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   function resetForm() {
     setFullName("");
     setEmail("");
-    setPhone("");
     setSubject("");
     setMessage("");
     setPrivacyConsent(false);
@@ -186,24 +179,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
           {errors.email && <p className="mt-1 text-xs text-destructive">{errors.email}</p>}
         </div>
 
-        <div className="sm:col-span-1">
-          <label htmlFor="phone" className="block text-sm font-medium text-ink">
-            {isTr ? "Telefon (zorunlu)" : "Phone (required)"} <span className="text-destructive">*</span>
-          </label>
-          <input
-            id="phone"
-            data-locale-field="contact-phone"
-            type="tel"
-            required
-            autoComplete="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="mt-2 w-full border border-border bg-background p-3 text-base sm:text-sm outline-none transition-colors focus:border-ink"
-          />
-          {errors.phone && <p className="mt-1 text-xs text-destructive">{errors.phone}</p>}
-        </div>
-
-        <div className="sm:col-span-1">
+        <div className="sm:col-span-2">
           <label htmlFor="subject" className="block text-sm font-medium text-ink">
             {isTr ? "Konu" : "Subject"} <span className="font-normal text-muted-foreground">({isTr ? "isteğe bağlı" : "optional"})</span>
           </label>

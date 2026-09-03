@@ -326,7 +326,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "2. İşlenen Kişisel Veriler",
           paragraphs: [
-            "Kimlik bilgileri (ad, soyad), iletişim bilgileri (e-posta, telefon numarası, adres), müşteri işlem ve sipariş verileri, öğrenci eğitim takip ve değerlendirme verileri ile web sitesi kullanım/log kayıtları işlenmektedir.",
+            "Kimlik bilgileri (ad, soyad) ve iletişim bilgileri (e-posta) hesap oluşturma ve iletişim süreçlerinde işlenir. Telefon numarası genel bir profil/iletişim bilgisi olarak toplanmaz; yalnızca kart ile ödeme yapıldığında ilgili işleme özel 3D Secure doğrulaması için istenir ve öğrenci/hesap profiline kaydedilmez. Ayrıca müşteri işlem ve sipariş verileri, öğrenci eğitim takip ve değerlendirme verileri ile web sitesi kullanım/log kayıtları işlenmektedir.",
           ],
         },
         {
@@ -338,13 +338,14 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "4. Verilerin Aktarılması",
           paragraphs: [
-            "Kişisel verileriniz, yalnızca hizmetin gerektirdiği ölçüde yetkili kamu kurumlarına, ödeme altyapısı sağlayıcımız PayTR'a ve bilişim altyapı hizmeti aldığımız güvenli bulut sağlayıcılarına aktarılabilmektedir.",
+            "Kişisel verileriniz, yalnızca hizmetin gerektirdiği ölçüde yetkili kamu kurumlarına; ödeme altyapısı sağlayıcımız PayTR'a; kimlik doğrulama, veritabanı ve uygulama altyapısı için Supabase'e; işlemsel e-postaların gönderimi için Google Workspace'e; ve web sitesi güvenliği ile bot/istismar önleme amacıyla Cloudflare (Turnstile) hizmetine aktarılabilmektedir.",
           ],
         },
         {
-          heading: "5. İlgili Kişinin Hakları (Madde 11)",
+          heading: "5. İlgili Kişinin Hakları (Madde 11) ve Hesap Silme",
           paragraphs: [
             "KVKK'nın 11. maddesi uyarınca; verilerinizin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme, işlenme amacına uygun kullanılıp kullanılmadığını öğrenme, eksik/yanlış verilerin düzeltilmesini ve silinmesini isteme haklarına sahipsiniz.",
+            "Öğrenci panelinizden \"Üyeliğimi Sil\" seçeneğiyle hesabınızı doğrudan silme/anonimleştirme talebinde bulunabilirsiniz. Aktif ders hakkı, yaklaşan ders veya devam eden bir ödeme/iade işlemi bulunmadığı sürece kimlik bilgileriniz silinir veya geri döndürülemez şekilde anonimleştirilir. Kanunen saklanması zorunlu mali/hukuki kayıtlar (ör. ödeme işlemleri) ise ilgili mevzuatta öngörülen süre boyunca ayrıca ve kimliğinizden bağımsız olarak saklanmaya devam eder.",
             "Taleplerinizi info@oriens-academy.com e-posta adresine iletebilirsiniz.",
           ],
         },
@@ -391,7 +392,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "1. Bilgi Toplama ve Kullanım",
           paragraphs: [
-            "Sitemiz üzerinden hesap oluşturma, randevu alma veya ödeme yapma süreçlerinde adınız, e-posta adresiniz ve telefon numaranız gibi temel bilgiler toplanır. Bu bilgiler sadece eğitim hizmetinizin ifası için kullanılır.",
+            "Sitemiz üzerinden hesap oluşturma sürecinde adınız ve e-posta adresiniz gibi temel bilgiler toplanır. Bu bilgiler sadece eğitim hizmetinizin ifası için kullanılır. Telefon numaranız genel bir profil bilgisi olarak istenmez; yalnızca kart ile ödeme yaptığınızda o işleme özel 3D Secure doğrulaması için sorulur ve hesap/öğrenci profilinize kaydedilmez.",
           ],
         },
         {
@@ -403,11 +404,17 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "3. Üçüncü Taraf Entegrasyonları",
           paragraphs: [
-            "Hizmet sunumu için gerekli olan güvenli altyapı sağlayıcıları (Supabase, PayTR, Google Takvim/Meet) haricinde verileriniz üçüncü taraflarla paylaşılmaz veya ticari amaçla satılmaz.",
+            "Hizmet sunumu için gerekli olan güvenli altyapı sağlayıcıları (kimlik doğrulama ve veritabanı için Supabase, ödeme için PayTR, işlemsel e-postalar için Google Workspace, ders takvimi/görüşme için Google Takvim/Meet, güvenlik ve bot önleme için Cloudflare Turnstile) haricinde verileriniz üçüncü taraflarla paylaşılmaz veya ticari amaçla satılmaz.",
           ],
         },
         {
-          heading: "4. İletişim",
+          heading: "4. Hesap Silme ve Veri Saklama",
+          paragraphs: [
+            "Öğrenci panelinizden hesabınızı doğrudan silebilir veya anonimleştirebilirsiniz. Aktif ders hakkı, yaklaşan ders ya da devam eden bir ödeme/iade işlemi bulunmadığı sürece kişisel profil bilgileriniz silinir ya da geri döndürülemez şekilde anonimleştirilir. Ödeme işlemleri gibi kanunen saklanması zorunlu mali/hukuki kayıtlar, kimliğinizden bağımsız olarak ve ilgili mevzuatta öngörülen süre boyunca ayrıca saklanır.",
+          ],
+        },
+        {
+          heading: "5. İletişim",
           paragraphs: [
             "Gizlilik politikamızla ilgili tüm sorularınız için info@oriens-academy.com adresinden bize ulaşabilirsiniz.",
           ],
@@ -687,7 +694,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "2. Categories of Processed Data",
           paragraphs: [
-            "Identity data (name, surname), contact data (email, phone number, address), transaction and order records, student learning logs, and web log data.",
+            "Identity data (name, surname) and contact data (email) are processed for account creation and communication. Phone number is not collected as a general profile/contact field; it is requested only at the card-payment step for that transaction's 3D Secure verification and is not saved to your student/account profile. We also process transaction and order records, student learning logs, and web log data.",
           ],
         },
         {
@@ -699,13 +706,15 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "4. Data Transfers",
           paragraphs: [
-            "Data is shared strictly to the extent necessary with authorized public institutions, our licensed payment processor PayTR, and secure cloud infrastructure providers.",
+            "Data is shared strictly to the extent necessary with authorized public institutions; our licensed payment processor PayTR; Supabase for authentication, database, and application infrastructure; Google Workspace for transactional email delivery; and Cloudflare (Turnstile) for website security and bot/abuse prevention.",
           ],
         },
         {
-          heading: "5. Data Subject Rights",
+          heading: "5. Data Subject Rights and Account Deletion",
           paragraphs: [
-            "You possess the right to learn whether your data is processed, request information, request correction or deletion, and object to unlawful processing. Requests can be submitted to info@oriens-academy.com.",
+            "You possess the right to learn whether your data is processed, request information, request correction or deletion, and object to unlawful processing.",
+            "You can request deletion or anonymization of your account directly from the student portal's \"Delete My Account\" option. As long as you have no active lesson rights, no upcoming lesson, and no payment/refund in progress, your identifying details are deleted or irreversibly anonymized. Financial/legal records that must be retained by law (e.g. payment transactions) continue to be kept separately, independent of your identity, for the period required by applicable regulation.",
+            "Requests can be submitted to info@oriens-academy.com.",
           ],
         },
       ],
@@ -751,7 +760,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "1. Information Collection",
           paragraphs: [
-            "We collect basic contact and academic information (name, email, phone) when you create an account, book a consultation, or enroll in a course.",
+            "We collect basic information (name, email) when you create an account. Your phone number is not requested as a general profile field; it is only asked when paying by card, solely for that transaction's 3D Secure verification, and is not saved to your account or student profile.",
           ],
         },
         {
@@ -763,11 +772,17 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "3. Third-Party Integrations",
           paragraphs: [
-            "We only partner with trusted service providers (Supabase, PayTR, Google Calendar/Meet) necessary for service fulfillment. We do not sell user data.",
+            "We only partner with trusted service providers necessary for service fulfillment: Supabase (authentication and database), PayTR (payments), Google Workspace (transactional email), Google Calendar/Meet (lesson scheduling and video), and Cloudflare Turnstile (security and bot prevention). We do not sell user data.",
           ],
         },
         {
-          heading: "4. Contact",
+          heading: "4. Account Deletion and Data Retention",
+          paragraphs: [
+            "You can delete or anonymize your account directly from the student portal. As long as you have no active lesson rights, no upcoming lesson, and no payment/refund in progress, your personal profile details are deleted or irreversibly anonymized. Financial/legal records such as payment transactions that must be retained by law are kept separately, independent of your identity, for the period required by applicable regulation.",
+          ],
+        },
+        {
+          heading: "5. Contact",
           paragraphs: [
             "For questions regarding our privacy practices, contact info@oriens-academy.com.",
           ],

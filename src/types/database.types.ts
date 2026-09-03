@@ -1806,7 +1806,7 @@ export type Database = {
         Returns: Json
       }
       update_guardian_profile: {
-        Args: { p_full_name: string; p_phone: string; p_contact_address?: string | null; p_preferred_language?: string }
+        Args: { p_full_name: string; p_phone?: string | null; p_contact_address?: string | null; p_preferred_language?: string }
         Returns: Json
       }
       admin_retry_email_notification: { Args: { p_delivery_id: string }; Returns: Json }
@@ -1829,7 +1829,7 @@ export type Database = {
         Returns: Json
       }
       admin_update_student_profile: {
-        Args: { p_student_id: string; p_full_name: string; p_phone: string; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean }
+        Args: { p_student_id: string; p_full_name: string; p_phone?: string | null; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean }
         Returns: Json
       }
       admin_create_student_booking: {

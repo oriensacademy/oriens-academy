@@ -97,14 +97,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if ((source === "contact_form" || source === "consultation") && (!phone || phone.length < 5)) {
-      return buildJsonResponse(
-        { error_code: "INVALID_PHONE", message: "A valid phone number is required for the contact form." },
-        400,
-        req
-      );
-    }
-
     if (subject && subject.length > 200) {
       return buildJsonResponse(
         { error_code: "INVALID_SUBJECT", message: "Subject exceeds maximum allowable length of 200 characters." },

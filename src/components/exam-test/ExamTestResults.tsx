@@ -81,7 +81,6 @@ export function ExamTestResults({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [reportEmail, setReportEmail] = useState(() => user?.email || "");
   const [reportName, setReportName] = useState(() => user?.user_metadata?.full_name || "");
-  const [reportPhone, setReportPhone] = useState(() => user?.user_metadata?.phone || "");
   const [emailSuccess, setEmailSuccess] = useState(false);
   const [claimToken, setClaimToken] = useState<string | null>(null);
   const [emailError, setEmailError] = useState("");
@@ -91,7 +90,6 @@ export function ExamTestResults({
   const [showConsultModal, setShowConsultModal] = useState(false);
   const [consultName, setConsultName] = useState(() => user?.user_metadata?.full_name || "");
   const [consultEmail, setConsultEmail] = useState(() => user?.email || "");
-  const [consultPhone, setConsultPhone] = useState(() => user?.user_metadata?.phone || "");
   const [consultSuccess, setConsultSuccess] = useState(false);
   const [consultError, setConsultError] = useState("");
   const [isSendingConsult, startConsultTransition] = useTransition();
@@ -197,7 +195,6 @@ export function ExamTestResults({
       const res = await sendExamResultEmail({
         email: reportEmail.trim().toLowerCase(),
         fullName: reportName.trim() || undefined,
-        phone: reportPhone.trim() || undefined,
         examCode: safeResult.examCode,
         locale,
         result: safeResult,
@@ -254,7 +251,6 @@ export function ExamTestResults({
         `Sınav: ${examName}`,
         `Doğru/Toplam: ${correctCount}/${totalQuestions} (%${accuracy})`,
         `Konu Dağılımı: ${topicSummary}`,
-        consultPhone ? `Telefon: ${consultPhone}` : "",
       ]
         .filter(Boolean)
         .join("\n");
@@ -262,7 +258,6 @@ export function ExamTestResults({
       const res = await submitContact({
         fullName: consultName.trim(),
         email: consultEmail.trim().toLowerCase(),
-        phone: consultPhone.trim() || "Belirtilmedi",
         subject: `${examName} Kendini Dene Sonuç Analizi (${correctCount}/${totalQuestions})`,
         message: resultPayloadMessage,
         locale: locale as "tr" | "en",
@@ -496,7 +491,6 @@ export function ExamTestResults({
               onClick={() => {
                 setReportName(user?.user_metadata?.full_name || "");
                 setReportEmail(user?.email || "");
-                setReportPhone(user?.user_metadata?.phone || "");
                 setShowEmailModal(true);
                 setEmailSuccess(false);
                 setEmailError("");
@@ -513,7 +507,6 @@ export function ExamTestResults({
               onClick={() => {
                 setConsultName(user?.user_metadata?.full_name || "");
                 setConsultEmail(user?.email || "");
-                setConsultPhone(user?.user_metadata?.phone || "");
                 setShowConsultModal(true);
                 setConsultSuccess(false);
                 setConsultError("");
@@ -652,15 +645,6 @@ export function ExamTestResults({
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-ink">{copy.phone} ({isTr ? "İsteğe Bağlı" : "Optional"})</label>
-                        <input
-                          type="tel"
-                          value={reportPhone}
-                          onChange={(e) => setReportPhone(e.target.value)}
-                          className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                        />
-                      </div>
                     </>
                   )}
 
@@ -753,16 +737,6 @@ export function ExamTestResults({
                       value={consultEmail}
                       onChange={(e) => setConsultEmail(e.target.value)}
                       placeholder={isTr ? "E-posta adresiniz" : "Your email address"}
-                      className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-ink">{copy.phone}</label>
-                    <input
-                      type="tel"
-                      value={consultPhone}
-                      onChange={(e) => setConsultPhone(e.target.value)}
                       className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
                     />
                   </div>
