@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { BlogModal } from "@/components/admin/BlogModal";
+import Link from "next/link";
 import type { BlogPostRow, BlogPostStatus } from "@/lib/admin/blog";
-import { listAdminBlogPosts, updateAdminBlogPost, deleteAdminBlogPost } from "@/lib/admin/blog";
+import { listAdminBlogPosts, deleteAdminBlogPost } from "@/lib/admin/blog";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
 import {
@@ -14,9 +14,6 @@ import {
   Pencil,
   Trash2,
   Inbox,
-  Archive,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 
 import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
@@ -43,19 +40,18 @@ function BlogContent() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<BlogPostRow | null>(null);
-
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
-    const { data, error } = await listAdminBlogPosts();
-    setLoading(false);
-    if (error) setErrorMsg(error);
-    else setPosts(data);
+    try {
+      const { data, error } = await listAdminBlogPosts();
+      if (error) setErrorMsg(error);
+      else setPosts(data);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -78,24 +74,19 @@ function BlogContent() {
     };
   }, []);
 
-  const handleStatusChange = async (post: BlogPostRow, status: BlogPostStatus) => {
-    setStatusChangingId(post.id);
-    const { success, error } = await updateAdminBlogPost(post.id, { status });
-    setStatusChangingId(null);
-    if (error) setErrorMsg(error);
-    else if (success) fetchPosts();
-  };
-
   const handleDelete = (post: BlogPostRow) => {
     requestConfirmation({
       title: "Blog yazısını sil",
       description: `"${post.title}" başlıklı yazı kalıcı olarak silinecek.`,
       action: async () => {
         setDeletingId(post.id);
-        const { success, error } = await deleteAdminBlogPost(post.id);
-        setDeletingId(null);
-        if (error) setErrorMsg(error);
-        else if (success) await fetchPosts();
+        try {
+          const { success, error } = await deleteAdminBlogPost(post.id);
+          if (error) setErrorMsg(error);
+          else if (success) await fetchPosts();
+        } finally {
+          setDeletingId(null);
+        }
       },
     });
   };
@@ -126,17 +117,13 @@ function BlogContent() {
             <span>Yenile</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setEditingPost(null);
-              setIsModalOpen(true);
-            }}
+          <Link
+            href="/admin/blog/editor/"
             className="inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C]"
           >
             <Plus className="size-4" />
             <span>Yeni Yazı Ekle</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -170,17 +157,13 @@ function BlogContent() {
           <p className="mt-1 text-xs text-muted-foreground max-w-sm">
             &quot;Yeni Yazı Ekle&quot; butonunu kullanarak ilk blog yazınızı oluşturabilirsiniz.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingPost(null);
-              setIsModalOpen(true);
-            }}
+          <Link
+            href="/admin/blog/editor/"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C]"
           >
             <Plus className="size-4" />
             <span>İlk Yazıyı Oluştur</span>
-          </button>
+          </Link>
         </div>
       )}
 
@@ -216,51 +199,13 @@ function BlogContent() {
                       {post.published_at ? new Date(post.published_at).toLocaleDateString("tr-TR") : "—"}
                     </td>
                     <td className="px-4 py-3.5 text-right space-x-2 whitespace-nowrap">
-                      {post.status !== "published" ? (
-                        <button
-                          type="button"
-                          disabled={statusChangingId === post.id}
-                          onClick={() => handleStatusChange(post, "published")}
-                          className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
-                        >
-                          <Eye className="size-3" />
-                          <span>Yayınla</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={statusChangingId === post.id}
-                          onClick={() => handleStatusChange(post, "draft")}
-                          className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50"
-                        >
-                          <EyeOff className="size-3" />
-                          <span>Taslağa Al</span>
-                        </button>
-                      )}
-
-                      {post.status !== "archived" && (
-                        <button
-                          type="button"
-                          disabled={statusChangingId === post.id}
-                          onClick={() => handleStatusChange(post, "archived")}
-                          className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                        >
-                          <Archive className="size-3" />
-                          <span>Arşivle</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingPost(post);
-                          setIsModalOpen(true);
-                        }}
+                      <Link
+                        href={`/admin/blog/editor/?id=${post.id}`}
                         className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted"
                       >
                         <Pencil className="size-3 text-muted-foreground" />
                         <span>Düzenle</span>
-                      </button>
+                      </Link>
 
                       <button
                         type="button"
@@ -280,16 +225,6 @@ function BlogContent() {
         </div>
       )}
 
-      {/* Modal */}
-      <BlogModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingPost(null);
-        }}
-        onSaved={fetchPosts}
-        editingPost={editingPost}
-      />
     </div>
   );
 }

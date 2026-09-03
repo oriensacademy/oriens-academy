@@ -98,7 +98,7 @@ export function CartPage() {
 
   const isAuthenticated = accountType === "student" || accountType === "admin";
   const directPaymentHref = cartPackages.length > 0
-    ? `${localizedPath("payment", locale)}/?source=cart`
+    ? `${localizedPath("payment", locale)}?source=cart`
     : localizedPath("pricing", locale);
 
   const checkoutHref = isAuthenticated

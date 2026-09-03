@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
+import { ensureTrailingSlash } from "@/lib/routes";
 
 interface NotificationDetailSheetProps {
   delivery: NotificationDeliveryRow | null;
@@ -57,15 +58,16 @@ export function NotificationDetailSheet({
     (typeof payload.name === "string" && payload.name.trim()) ||
     null;
 
-  const targetStudentUrl = isStudent && delivery.entity_id
+  const targetStudentUrl = ensureTrailingSlash(isStudent && delivery.entity_id
     ? `/admin/ogrenciler?student=${delivery.entity_id}`
-    : `/admin/ogrenciler?search=${encodeURIComponent(delivery.recipient)}`;
+    : `/admin/ogrenciler?search=${encodeURIComponent(delivery.recipient)}`);
 
-  const moduleUrl = isContact
+  const rawModuleUrl = isContact
     ? `/admin/iletisim-destek?view=web&id=${delivery.entity_id}`
     : isBooking
     ? "/admin/randevular"
     : null;
+  const moduleUrl = rawModuleUrl ? ensureTrailingSlash(rawModuleUrl) : null;
 
   const copyEmail = () => {
     navigator.clipboard.writeText(delivery.recipient);

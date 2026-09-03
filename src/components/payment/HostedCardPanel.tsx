@@ -6,7 +6,7 @@ import { AlertCircle, ArrowRight, FileCheck2, Loader2, RefreshCw, ShieldCheck } 
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
 import { confirmPaymentAgreements, createPaytrToken, type CreatePaytrTokenResult } from "@/lib/payments/client";
-import { localizedPath, unifiedLoginPath } from "@/lib/routes";
+import { localizedPath, paymentSuccessPath, unifiedLoginPath } from "@/lib/routes";
 import { paymentErrorRequiresLogin } from "@/lib/payments/public-errors";
 
 interface ErrorState {
@@ -119,7 +119,6 @@ export function HostedCardPanel({
         }
         return;
       }
-      setLoading(false);
       inFlightKeyRef.current = "";
 
       if (result.success && (result.iframe_token || result.zero_payment)) {
@@ -143,6 +142,17 @@ export function HostedCardPanel({
           requiresLogin: paymentErrorRequiresLogin(result.errorCode),
         });
       }
+    }).catch(() => {
+      if (!isActive || abortCtrl.signal.aborted) return;
+      setError({
+        message: isTr ? "Ödeme ekranı şu anda hazırlanamadı." : "Payment screen could not be prepared.",
+        retryable: true,
+        requiresLogin: false,
+      });
+    }).finally(() => {
+      if (!isActive || abortCtrl.signal.aborted) return;
+      setLoading(false);
+      if (inFlightKeyRef.current === currentContextKey) inFlightKeyRef.current = "";
     });
 
     return () => {
@@ -159,7 +169,7 @@ export function HostedCardPanel({
     if (!isAgreementsAccepted || !prepared || !prepared.merchantOid) return;
 
     if (prepared.zeroPayment && prepared.reference && prepared.statusToken) {
-      const path = locale === "en" ? "/en/payment/success" : "/tr/odeme/basarili";
+      const path = paymentSuccessPath(locale);
       router.push(`${path}?reference=${encodeURIComponent(prepared.reference)}&token=${encodeURIComponent(prepared.statusToken)}`);
       return;
     }

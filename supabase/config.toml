@@ -261,6 +261,10 @@ otp_expiry = 3600
 subject = "Oriens Academy — Şifre Sıfırlama Bağlantısı"
 content_path = "./supabase/templates/recovery.html"
 
+[auth.email.template.email_change]
+subject = "{{ if eq .Data.preferred_language \"en\" }}Oriens Academy — Confirm Your New Email Address{{ else }}Oriens Academy — Yeni E-posta Adresinizi Onaylayın{{ end }}"
+content_path = "./supabase/templates/email_change.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true

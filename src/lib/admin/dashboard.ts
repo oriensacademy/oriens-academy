@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database.types";
+import { ADMIN_PAYMENT_VISIBILITY_FILTER } from "@/lib/admin/payments";
 
 export interface DashboardMetrics {
   activeStudents: number;
@@ -45,7 +46,7 @@ export async function getAdminDashboardMetrics(): Promise<{
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (supabase.from as any)("support_threads").select("id", { count: "exact", head: true }).in("status", ["open", "waiting_support"]),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (supabase.from as any)("payment_transactions").select("id", { count: "exact", head: true }).in("status", ["pending", "requires_action", "processing"]),
+      (supabase.from as any)("payment_transactions").select("id", { count: "exact", head: true }).eq("is_archived", false).or(ADMIN_PAYMENT_VISIBILITY_FILTER),
       supabase
         .from("notification_deliveries")
         .select("id", { count: "exact", head: true })

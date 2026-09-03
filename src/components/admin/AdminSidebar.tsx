@@ -18,6 +18,7 @@ import {
   Newspaper,
 } from "lucide-react";
 import { useAdminNotifications } from "@/lib/admin/admin-notifications-context";
+import { ensureTrailingSlash } from "@/lib/routes";
 
 export interface NavItem {
   label: string;
@@ -170,16 +171,16 @@ export function AdminSidebar({ className = "", onNavigate }: AdminSidebarProps) 
             <div className="space-y-0.5">
         {ADMIN_NAV_ITEMS.filter((item) => item.group === group).map((item) => {
           const Icon = item.icon;
+          const normalizedHref = item.href !== "/" ? item.href.replace(/\/+$/, "") : item.href;
           const isActive =
-            normalizedPathname === item.href ||
-            (item.href !== "/admin" &&
-              normalizedPathname.startsWith(`${item.href}/`));
+            normalizedPathname === normalizedHref ||
+            (normalizedHref !== "/admin" && normalizedPathname.startsWith(`${normalizedHref}/`));
           const dynamicBadge = getItemBadge(item.href);
 
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={ensureTrailingSlash(item.href)}
               prefetch
               onClick={onNavigate}
               aria-current={isActive ? "page" : undefined}

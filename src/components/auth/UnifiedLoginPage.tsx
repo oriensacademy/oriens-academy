@@ -96,25 +96,31 @@ export function UnifiedLoginPage() {
     setSubmitting(true);
     setError("");
 
-    const result = await signIn(email, password);
-    if (result.error) {
-      setSubmitting(false);
-      setError(isTr ? "E-posta adresi veya şifre doğrulanamadı." : "The email address or password could not be verified.");
-      return;
-    }
-    if (result.accountType === "unknown") {
-      setSubmitting(false);
-      setError(isTr ? "Bu hesap için aktif bir Oriens Academy profili bulunamadı." : "No active Oriens Academy profile was found for this account.");
-      return;
-    }
+    let navigationStarted = false;
+    try {
+      const result = await signIn(email, password);
+      if (result.error) {
+        setError(isTr ? "E-posta adresi veya şifre doğrulanamadı." : "The email address or password could not be verified.");
+        return;
+      }
+      if (result.accountType === "unknown") {
+        setError(isTr ? "Bu hesap için aktif bir Oriens Academy profili bulunamadı." : "No active Oriens Academy profile was found for this account.");
+        return;
+      }
 
-    await tryClaimPendingResult();
-
-    navigatedRef.current = true;
-    const destination = result.user?.user_metadata?.force_password_change === true
-      ? changePasswordPath(locale)
-      : destinationForAccount(result.accountType, locale, requested);
-    router.replace(destination);
+      await tryClaimPendingResult();
+      const destination = result.user?.user_metadata?.force_password_change === true
+        ? changePasswordPath(locale)
+        : destinationForAccount(result.accountType, locale, requested);
+      router.replace(destination);
+      navigationStarted = true;
+      navigatedRef.current = true;
+      window.setTimeout(() => setSubmitting(false), 5000);
+    } catch {
+      setError(isTr ? "Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin." : "An error occurred while signing in. Please try again.");
+    } finally {
+      if (!navigationStarted) setSubmitting(false);
+    }
   }
 
   async function handleRegister(event: FormEvent) {
@@ -200,7 +206,7 @@ export function UnifiedLoginPage() {
   async function handleOtpVerified() {
     await tryClaimPendingResult();
     navigatedRef.current = true;
-    const targetPath = `${localizedPath("studentAccount", locale)}/?onboarding=personalization`;
+    const targetPath = `${localizedPath("studentAccount", locale)}?onboarding=personalization`;
     router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
   }
 

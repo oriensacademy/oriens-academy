@@ -28,25 +28,23 @@ export async function requestPurchaseEmailVerification(
   candidateEmail: string,
   locale: "tr" | "en" = "tr"
 ): Promise<RequestVerificationResponse> {
-  const token = await getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error_code: "UNAUTHORIZED",
-      message: locale === "tr" ? "Lütfen önce giriş yapınız." : "Please sign in first.",
-    };
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) {
-    return {
-      success: false,
-      error_code: "CONFIG_ERROR",
-      message: locale === "tr" ? "Sistem yapılandırma hatası." : "System configuration error.",
-    };
-  }
-
   try {
+    const token = await getAuthToken();
+    if (!token) {
+      return {
+        success: false,
+        error_code: "UNAUTHORIZED",
+        message: locale === "tr" ? "Lütfen önce giriş yapınız." : "Please sign in first.",
+      };
+    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      return {
+        success: false,
+        error_code: "CONFIG_ERROR",
+        message: locale === "tr" ? "Sistem yapılandırma hatası." : "System configuration error.",
+      };
+    }
     const res = await fetch(`${supabaseUrl}/functions/v1/request-purchase-email-verification`, {
       method: "POST",
       headers: {
@@ -72,7 +70,7 @@ export async function requestPurchaseEmailVerification(
       resend_available_at: data.resend_available_at,
       expires_at: data.expires_at,
     };
-  } catch (_err) {
+  } catch {
     return {
       success: false,
       error_code: "NETWORK_ERROR",
@@ -86,25 +84,23 @@ export async function verifyPurchaseEmailVerification(
   code: string,
   locale: "tr" | "en" = "tr"
 ): Promise<VerifyOtpResponse> {
-  const token = await getAuthToken();
-  if (!token) {
-    return {
-      success: false,
-      error_code: "UNAUTHORIZED",
-      message: locale === "tr" ? "Lütfen önce giriş yapınız." : "Please sign in first.",
-    };
-  }
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) {
-    return {
-      success: false,
-      error_code: "CONFIG_ERROR",
-      message: locale === "tr" ? "Sistem yapılandırma hatası." : "System configuration error.",
-    };
-  }
-
   try {
+    const token = await getAuthToken();
+    if (!token) {
+      return {
+        success: false,
+        error_code: "UNAUTHORIZED",
+        message: locale === "tr" ? "Lütfen önce giriş yapınız." : "Please sign in first.",
+      };
+    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      return {
+        success: false,
+        error_code: "CONFIG_ERROR",
+        message: locale === "tr" ? "Sistem yapılandırma hatası." : "System configuration error.",
+      };
+    }
     const res = await fetch(`${supabaseUrl}/functions/v1/verify-purchase-email-verification`, {
       method: "POST",
       headers: {
@@ -130,7 +126,7 @@ export async function verifyPurchaseEmailVerification(
       verified_at: data.verified_at,
       message: data.message,
     };
-  } catch (_err) {
+  } catch {
     return {
       success: false,
       error_code: "NETWORK_ERROR",

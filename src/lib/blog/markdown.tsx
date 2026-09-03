@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 
 /**
  * Minimal, safe Markdown-to-JSX renderer for blog post bodies.
@@ -112,6 +113,20 @@ export function renderBlogMarkdown(content: string): ReactNode[] {
         <HeadingTag key={`h-${key++}`} className={className}>
           {renderInline(text, `h${key}`)}
         </HeadingTag>
+      );
+      continue;
+    }
+
+    const imageMatch = /^!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)(?:\s+"([^"]*)")?$/.exec(trimmed);
+    if (imageMatch) {
+      flushParagraph();
+      flushList();
+      const [, alt, src, caption] = imageMatch;
+      blocks.push(
+        <figure key={`image-${key++}`} className="my-7 overflow-hidden rounded-2xl border border-border bg-surface-muted">
+          <Image src={src} alt={alt || caption || "Blog görseli"} width={1400} height={900} unoptimized className="h-auto w-full object-cover" />
+          {caption ? <figcaption className="px-4 py-3 text-center text-xs text-muted-foreground">{caption}</figcaption> : null}
+        </figure>
       );
       continue;
     }

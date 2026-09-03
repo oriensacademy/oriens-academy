@@ -74,7 +74,7 @@ export function BlogDetailPage() {
       canonical.setAttribute("rel", "canonical");
       document.head.appendChild(canonical);
     }
-    canonical.setAttribute("href", `https://oriens-academy.com${localizedPath("blog", locale)}/${post.slug}/`);
+    canonical.setAttribute("href", `https://oriens-academy.com${localizedPath("blog", locale)}${post.slug}/`);
   }, [post, locale]);
 
   if (slug && post === null) {

@@ -84,7 +84,7 @@ export function PaymentPage() {
         search.set("source", "cart");
       }
       const qs = search.toString();
-      const next = `${localizedPath("payment", locale)}/${qs ? `?${qs}` : ""}`;
+      const next = `${localizedPath("payment", locale)}${qs ? `?${qs}` : ""}`;
       router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
     }
   }, [accountType, isInitializing, locale, router, isCartCheckout, sourceParam, isDirectPackageMode, cartItems.length]);
@@ -294,7 +294,7 @@ export function PaymentPage() {
       </aside>
       <div className="rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8"><h2 className="font-heading text-2xl text-ink">{isTr ? "Kart ile Ödeme" : "Pay by Card"}</h2>
         {accountType === "admin" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-900">{isTr ? "Yönetici işlemi için hesap sahibi ve öğrenci bağlamını seçin." : "Select the account holder and learner for this admin-assisted payment."}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><select value={guardianId} onChange={(event) => { setGuardianId(event.target.value); setLearnerId(""); }} className="min-h-11 rounded-xl border bg-white px-3 text-xs"><option value="">{isTr ? "Hesap sahibi seçin" : "Select account holder"}</option>{guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}</select><select value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className="min-h-11 rounded-xl border bg-white px-3 text-xs disabled:opacity-50"><option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></div></div> : null}
-        <div className="mt-6 border-t border-border pt-6"><h3 className="text-sm font-semibold text-ink">{isTr ? "İletişim Bilgileri" : "Contact Information"}</h3><dl className="mt-3 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "Ad Soyad" : "Full Name"}</dt><dd className="mt-1 text-xs font-semibold">{selectedGuardian?.full_name || "—"}</dd></div><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "Telefon" : "Phone"}</dt><dd className="mt-1 text-xs font-semibold">{selectedGuardian?.phone || "—"}</dd></div><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "E-posta" : "Email"}</dt><dd className="mt-1 break-all text-xs font-semibold">{selectedGuardian?.email || "—"}</dd></div></dl></div>
+        <div className="mt-6 border-t border-border pt-6"><h3 className="text-sm font-semibold text-ink">{isTr ? "İletişim Bilgileri" : "Contact Information"}</h3><dl className="mt-3 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "Ad Soyad" : "Full Name"}</dt><dd className="mt-1 text-xs font-semibold">{selectedGuardian?.full_name || "—"}</dd></div><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "E-posta" : "Email"}</dt><dd className="mt-1 break-all text-xs font-semibold">{selectedGuardian?.email || "—"}</dd></div></dl></div>
         
         {!emailVerified ? (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
@@ -313,7 +313,7 @@ export function PaymentPage() {
         ) : (
           <div className="mt-6">
             <label className="block text-xs font-semibold text-ink" htmlFor="payment-phone">
-              {isTr ? "3D Secure Telefon Numarası" : "3D Secure Phone Number"}
+              {isTr ? "Ödeme Telefonu" : "Payment Phone"}
               <input
                 id="payment-phone"
                 type="tel"
@@ -327,8 +327,8 @@ export function PaymentPage() {
             </label>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               {isTr
-                ? "Bu numara yalnızca ödeme/3D Secure işlemi için kullanılır."
-                : "This number is used only for the payment/3D Secure transaction."}
+                ? "PayTR ödeme işlemi için gereklidir. 3D Secure doğrulaması bankanız tarafından, bankanızda kayıtlı iletişim kanalına gönderilir."
+                : "Required for the PayTR payment. Your bank sends 3D Secure verification to the contact channel registered with the bank."}
             </p>
             {paymentPhone.trim() && !isPhoneValid ? (
               <p role="alert" className="mt-1.5 text-xs text-red-700">{phoneCheck.error}</p>

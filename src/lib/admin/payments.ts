@@ -1,5 +1,11 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 
+// One source of truth for records that represent an actual admin-visible
+// payment. Card token preloads/abandoned/expired/failed-before-payment rows
+// stay in the database for audit purposes but are not normal payments.
+export const ADMIN_PAYMENT_VISIBILITY_FILTER =
+  "status.in.(paid,refunded),and(payment_method.eq.bank_transfer,status.in.(pending,requires_action))";
+
 export interface AdminPaymentRow {
   id: string;
   public_reference: string;
@@ -158,8 +164,7 @@ export async function listAdminPaymentsPaginated(
         { count: "exact" }
       )
       .eq("is_archived", false)
-      // Exclude unattempted pure preloads (status=pending and is_preload=true)
-      .or("is_preload.eq.false,is_preload.is.null,status.neq.pending");
+      .or(ADMIN_PAYMENT_VISIBILITY_FILTER);
 
     // Apply Search
     if (params.search?.trim()) {
@@ -251,7 +256,8 @@ export async function getAdminFinancialMetrics(
     let query = client
       .from("payment_transactions")
       .select("amount,status,payment_method,created_at,paid_at,metadata,package_id,refunded_amount,refund_status")
-      .eq("is_archived", false);
+      .eq("is_archived", false)
+      .or(ADMIN_PAYMENT_VISIBILITY_FILTER);
 
     // Apply Search
     if (params.search?.trim()) {

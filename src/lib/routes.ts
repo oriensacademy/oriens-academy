@@ -55,9 +55,24 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   cookie: { tr: "cerez-politikasi", en: "cookie-policy" },
 };
 
+/**
+ * Canonicalizes internal static-export routes without touching external or
+ * protocol links. Query strings and fragments stay after the trailing slash.
+ */
+export function ensureTrailingSlash(path: string): string {
+  if (!path || path === "/" || path.startsWith("#")) return path || "/";
+  if (/^[a-z][a-z\d+.-]*:/i.test(path) || path.startsWith("//")) return path;
+
+  const suffixIndex = path.search(/[?#]/);
+  const pathname = suffixIndex === -1 ? path : path.slice(0, suffixIndex);
+  const suffix = suffixIndex === -1 ? "" : path.slice(suffixIndex);
+  if (!pathname.startsWith("/") || pathname === "/") return `${pathname}${suffix}`;
+  return `${pathname.replace(/\/+$/, "")}/${suffix}`;
+}
+
 export function localizedPath(route: LocalizedRouteId, locale: Locale): string {
   const segment = localizedSegments[route][locale];
-  return segment ? `/${locale}/${segment}` : `/${locale}`;
+  return ensureTrailingSlash(segment ? `/${locale}/${segment}` : `/${locale}`);
 }
 
 export function examHubSegment(locale: Locale): string {
@@ -77,7 +92,7 @@ export function blogPath(locale: Locale): string {
 }
 
 export function blogDetailPath(locale: Locale, slug: string): string {
-  return `${localizedPath("blog", locale)}/${slug}`;
+  return ensureTrailingSlash(`${localizedPath("blog", locale)}${slug}`);
 }
 
 export function pricingSegment(locale: Locale): string {
@@ -165,11 +180,11 @@ export function studentRegisterSegment(locale: Locale): string {
 }
 
 export function studentLoginPath(locale: Locale): string {
-  return `/${locale}/${studentAuthRootSegment(locale)}/${studentLoginSegment(locale)}`;
+  return ensureTrailingSlash(`/${locale}/${studentAuthRootSegment(locale)}/${studentLoginSegment(locale)}`);
 }
 
 export function studentRegisterPath(locale: Locale): string {
-  return `/${locale}/${studentAuthRootSegment(locale)}/${studentRegisterSegment(locale)}`;
+  return ensureTrailingSlash(`/${locale}/${studentAuthRootSegment(locale)}/${studentRegisterSegment(locale)}`);
 }
 
 export function paymentResultSegment(locale: Locale): string {
@@ -185,15 +200,15 @@ export function paymentFailedSegment(locale: Locale): string {
 }
 
 export function paymentSuccessPath(locale: Locale): string {
-  return `${localizedPath("payment", locale)}/${paymentSuccessSegment(locale)}`;
+  return ensureTrailingSlash(`${localizedPath("payment", locale)}${paymentSuccessSegment(locale)}`);
 }
 
 export function paymentFailedPath(locale: Locale): string {
-  return `${localizedPath("payment", locale)}/${paymentFailedSegment(locale)}`;
+  return ensureTrailingSlash(`${localizedPath("payment", locale)}${paymentFailedSegment(locale)}`);
 }
 
 export function paymentResultPath(locale: Locale, reference?: string, token?: string): string {
-  const path = `${localizedPath("payment", locale)}/${paymentResultSegment(locale)}`;
+  const path = ensureTrailingSlash(`${localizedPath("payment", locale)}${paymentResultSegment(locale)}`);
   if (!reference || !token) return path;
   return `${path}?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(token)}`;
 }
@@ -270,7 +285,7 @@ const primaryNavigationRoutes: Partial<Record<string, LocalizedRouteId>> = {
 };
 
 function normalizedPath(pathname: string): string {
-  return pathname.replace(/\/$/, "") || "/";
+  return pathname.replace(/\/+$/, "") || "/";
 }
 
 /**
@@ -286,8 +301,8 @@ export function isPrimaryNavigationActive(
   const current = normalizedPath(pathname);
   const route = primaryNavigationRoutes[destination];
   const target = normalizedPath(route ? localizedPath(route, locale) : destination);
-  const home = localizedPath("home", locale);
-  const exams = localizedPath("exams", locale);
+  const home = normalizedPath(localizedPath("home", locale));
+  const exams = normalizedPath(localizedPath("exams", locale));
 
   if (target === home) return current === home;
   if (
@@ -358,7 +373,7 @@ export function resolveExamSlug(input?: string | null): string | null {
 export function resolveExamRoute(locale: Locale, input?: string | null): string {
   const resolved = resolveExamSlug(input);
   if (resolved) {
-    return `${localizedPath("exams", locale)}/${resolved}`;
+    return ensureTrailingSlash(`${localizedPath("exams", locale)}${resolved}`);
   }
   return localizedPath("exams", locale);
 }
@@ -407,5 +422,5 @@ export function pathForLocale(pathname: string, target: Locale): string {
   }
 
   const rest = cleanPath.replace(/^\/(tr|en)/, "");
-  return `/${target}${rest}`;
+  return ensureTrailingSlash(`/${target}${rest}`);
 }

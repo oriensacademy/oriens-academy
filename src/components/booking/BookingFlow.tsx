@@ -90,9 +90,14 @@ export function BookingFlow() {
   useEffect(() => {
     async function loadAvailability() {
       setLoadingSlots(true);
-      const availableSlots = await getPublicAvailability();
-      setSlots(availableSlots);
-      setLoadingSlots(false);
+      try {
+        const availableSlots = await getPublicAvailability();
+        setSlots(availableSlots);
+      } catch {
+        setSlots([]);
+      } finally {
+        setLoadingSlots(false);
+      }
     }
     loadAvailability();
   }, []);
@@ -157,39 +162,43 @@ export function BookingFlow() {
     }
 
     startTransition(async () => {
-      const examCode = exam?.type === "exam" ? exam.code : undefined;
-      const customExam = exam?.type === "other" ? exam.label : undefined;
+      try {
+        const examCode = exam?.type === "exam" ? exam.code : undefined;
+        const customExam = exam?.type === "other" ? exam.label : undefined;
 
-      const res = await submitBooking({
-        slotId: selectedSlotId,
-        fullName: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        supportType,
-        examCode,
-        customExam,
-        notes: notes.trim() || undefined,
-        locale: locale as "tr" | "en",
-        privacyConsent,
-        marketingConsent,
-        turnstileToken,
-      });
+        const res = await submitBooking({
+          slotId: selectedSlotId,
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          supportType,
+          examCode,
+          customExam,
+          notes: notes.trim() || undefined,
+          locale: locale as "tr" | "en",
+          privacyConsent,
+          marketingConsent,
+          turnstileToken,
+        });
 
-      if (res.success) {
-        setBookingResult(res);
-      } else {
-        // Reset turnstile token for retry
+        if (res.success) {
+          setBookingResult(res);
+        } else {
+          setTurnstileToken("");
+          turnstileRef.current?.reset();
+          if (res.errorCode === "SLOT_UNAVAILABLE" || res.errorCode === "SLOT_NOT_FOUND") {
+            setSlotUnavailableMessage(bookingFlow.slotUnavailableNotice);
+            const refreshedSlots = await getPublicAvailability();
+            setSlots(refreshedSlots);
+            setSelectedSlotId(null);
+            setCurrentStep(1);
+          } else {
+            setErrors({ submit: res.message });
+          }
+        }
+      } catch {
         setTurnstileToken("");
         turnstileRef.current?.reset();
-
-        if (res.errorCode === "SLOT_UNAVAILABLE" || res.errorCode === "SLOT_NOT_FOUND") {
-          setSlotUnavailableMessage(bookingFlow.slotUnavailableNotice);
-          const refreshedSlots = await getPublicAvailability();
-          setSlots(refreshedSlots);
-          setSelectedSlotId(null);
-          setCurrentStep(1);
-        } else {
-          setErrors({ submit: res.message });
-        }
+        setErrors({ submit: locale === "tr" ? "Randevu talebi gönderilemedi. Lütfen tekrar deneyin." : "The booking request could not be sent. Please try again." });
       }
     });
   }

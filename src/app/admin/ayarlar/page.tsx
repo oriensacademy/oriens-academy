@@ -18,7 +18,7 @@ export default function AdminSettingsPage() {
         <p className="mt-1 text-xs text-muted-foreground">Yönetici hesap güvenliğini ve sistem kayıtlarını yönetin.</p>
       </header>
 
-      <Link href="/admin/denetim" className="group flex items-center justify-between rounded-xl border border-border bg-white p-5 shadow-xs transition-colors hover:bg-surface-muted">
+      <Link href="/admin/denetim/" className="group flex items-center justify-between rounded-xl border border-border bg-white p-5 shadow-xs transition-colors hover:bg-surface-muted">
         <div className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-xl bg-forest/10 text-primary"><ScrollText className="size-5" /></span>
           <span>

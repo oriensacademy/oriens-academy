@@ -7,6 +7,7 @@ import { CountingNumber } from "@/components/ui/counting-number";
 import { useAdminAuth } from "@/lib/admin/auth-context";
 import type { DashboardMetrics } from "@/lib/admin/dashboard";
 import { getAdminDashboardMetrics } from "@/lib/admin/dashboard";
+import { ensureTrailingSlash } from "@/lib/routes";
 import {
   ShieldCheck,
   CalendarCheck,
@@ -97,7 +98,7 @@ function DashboardContent() {
             </div>
           </div>
           <Link
-            href="/admin/bildirimler?status=failed"
+            href={ensureTrailingSlash("/admin/bildirimler?status=failed")}
             className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 shrink-0"
           >
             <span>İncele</span>
@@ -246,7 +247,7 @@ function MetricCard({
 }) {
   return (
     <Link
-      href={href}
+      href={ensureTrailingSlash(href)}
       className={`flex flex-col justify-between rounded-xl border p-3.5 shadow-2xs transition-all hover:shadow-md ${
         alert
           ? "border-red-300 bg-red-50/60"
@@ -292,7 +293,7 @@ function ModuleLinkCard({
 }) {
   return (
     <Link
-      href={href}
+      href={ensureTrailingSlash(href)}
       className="flex flex-col justify-between rounded-xl border border-border bg-white p-4 shadow-2xs transition-colors hover:border-[#10271B] hover:bg-background-soft/50"
     >
       <div className="space-y-2">

@@ -76,7 +76,7 @@ export function StudentPortal() {
     if (accountType === "unauthenticated" || accountType === "unknown") {
       navigatedRef.current = true; router.replace(loginPathWithReturn(locale, localizedPath("studentAccount", locale))); return;
     }
-    if (accountType === "admin") { navigatedRef.current = true; router.replace("/admin"); return; }
+    if (accountType === "admin") { navigatedRef.current = true; router.replace("/admin/"); return; }
     if (accountType === "student" && user && loadedUserRef.current !== user.id) {
       loadedUserRef.current = user.id;
       const supabase = getSupabaseClient();
@@ -619,10 +619,15 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
     setEmailBusy(true);
     setMsg("");
     setErr("");
-    const r = await updateStudentEmail(emailForm.email.trim());
-    setEmailBusy(false);
-    if (r.error) setErr(localizeErrorMessage(r.error, locale, locale === "tr" ? "E-posta güncellenemedi." : "Email could not be updated."));
-    else setMsg(locale === "tr" ? "Doğrulama bağlantısı e-posta adresinize gönderildi." : "Confirmation email sent.");
+    try {
+      const r = await updateStudentEmail(emailForm.email.trim(), locale);
+      if (r.error) setErr(localizeErrorMessage(r.error, locale, locale === "tr" ? "E-posta güncellenemedi." : "Email could not be updated."));
+      else setMsg(locale === "tr" ? "Doğrulama bağlantısı e-posta adresinize gönderildi." : "Confirmation email sent.");
+    } catch (error) {
+      setErr(localizeErrorMessage(error, locale, locale === "tr" ? "E-posta güncellenemedi." : "Email could not be updated."));
+    } finally {
+      setEmailBusy(false);
+    }
   }
 
   async function savePassword(e: React.FormEvent) {
@@ -630,12 +635,17 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
     setPasswordBusy(true);
     setMsg("");
     setErr("");
-    const r = await updateStudentPassword(passwordForm.password);
-    setPasswordBusy(false);
-    if (r.error) setErr(localizeErrorMessage(r.error, locale, locale === "tr" ? "Şifre güncellenemedi." : "Password could not be updated."));
-    else {
-      setPasswordForm({ password: "" });
-      setMsg(locale === "tr" ? "Şifre güncellendi." : "Password updated.");
+    try {
+      const r = await updateStudentPassword(passwordForm.password);
+      if (r.error) setErr(localizeErrorMessage(r.error, locale, locale === "tr" ? "Şifre güncellenemedi." : "Password could not be updated."));
+      else {
+        setPasswordForm({ password: "" });
+        setMsg(locale === "tr" ? "Şifre güncellendi." : "Password updated.");
+      }
+    } catch (error) {
+      setErr(localizeErrorMessage(error, locale, locale === "tr" ? "Şifre güncellenemedi." : "Password could not be updated."));
+    } finally {
+      setPasswordBusy(false);
     }
   }
 

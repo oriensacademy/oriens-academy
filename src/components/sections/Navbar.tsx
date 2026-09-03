@@ -55,7 +55,7 @@ export function Navbar() {
     () => publicNavigation(locale, showPricing).filter((item) => item.id !== "contact").map((item) => ({ id: item.href, label: item.label })),
     [locale, showPricing],
   );
-  const accountHref = accountType === "admin" ? "/admin" : accountType === "student" ? localizedPath("studentAccount", locale) : unifiedLoginPath(locale);
+  const accountHref = accountType === "admin" ? "/admin/" : accountType === "student" ? localizedPath("studentAccount", locale) : unifiedLoginPath(locale);
   const accountLabel = accountType === "student" ? (locale === "tr" ? "Hesabım" : "My Account") : accountType === "admin" ? (locale === "tr" ? "Hesap" : "Account") : (locale === "tr" ? "Giriş Yap" : "Sign In");
   const mobileItems = useMemo(() => [
     ...publicNavigation(locale, showPricing),

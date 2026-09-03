@@ -133,8 +133,11 @@ export async function resendGuardianConfirmation(email: string, locale: Locale) 
   });
 }
 
-export async function updateStudentEmail(email: string) {
-  return getSupabaseClient().auth.updateUser({ email: email.trim().toLowerCase() });
+export async function updateStudentEmail(email: string, locale: Locale) {
+  return getSupabaseClient().auth.updateUser({
+    email: email.trim().toLowerCase(),
+    data: { preferred_language: locale },
+  });
 }
 
 export async function updateStudentPassword(password: string) {

@@ -37,19 +37,24 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
       setError("");
       setInfo("");
     }
-    const res = await requestPurchaseEmailVerification(email, locale);
-    setSending(false);
-    if (!res.success) {
-      if (res.error_code === "RESEND_COOLDOWN" && res.resend_available_at) {
-        const seconds = Math.max(0, Math.round((new Date(res.resend_available_at).getTime() - Date.now()) / 1000));
-        setResendCooldown(seconds);
-      } else if (!silent) {
-        setError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama kodu gönderilemedi." : "The verification code could not be sent."));
+    try {
+      const res = await requestPurchaseEmailVerification(email, locale);
+      if (!res.success) {
+        if (res.error_code === "RESEND_COOLDOWN" && res.resend_available_at) {
+          const seconds = Math.max(0, Math.round((new Date(res.resend_available_at).getTime() - Date.now()) / 1000));
+          setResendCooldown(seconds);
+        } else if (!silent) {
+          setError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama kodu gönderilemedi." : "The verification code could not be sent."));
+        }
+        return;
       }
-      return;
+      setResendCooldown(60);
+      if (!silent) setInfo(isTr ? "Yeni bir kod gönderildi." : "A new code has been sent.");
+    } catch {
+      if (!silent) setError(isTr ? "Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin." : "The verification code could not be sent. Please try again.");
+    } finally {
+      setSending(false);
     }
-    setResendCooldown(60);
-    if (!silent) setInfo(isTr ? "Yeni bir kod gönderildi." : "A new code has been sent.");
   }
 
   useEffect(() => {
@@ -70,13 +75,18 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
     if (!/^\d{6}$/.test(code) || verifying) return;
     setVerifying(true);
     setError("");
-    const res = await verifyPurchaseEmailVerification(email, code, locale);
-    setVerifying(false);
-    if (!res.success) {
-      setError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama başarısız oldu." : "Verification failed."));
-      return;
+    try {
+      const res = await verifyPurchaseEmailVerification(email, code, locale);
+      if (!res.success) {
+        setError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama başarısız oldu." : "Verification failed."));
+        return;
+      }
+      onVerified();
+    } catch {
+      setError(isTr ? "Doğrulama başarısız oldu. Lütfen tekrar deneyin." : "Verification failed. Please try again.");
+    } finally {
+      setVerifying(false);
     }
-    onVerified();
   }
 
   return (

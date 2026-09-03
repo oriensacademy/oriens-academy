@@ -224,7 +224,7 @@ export function PaymentResultPage() {
 
               <div className="mt-8 flex justify-center">
                 <Link
-                  href={accountType === "admin" ? "/admin" : localizedPath("studentAccount", locale)}
+                  href={accountType === "admin" ? "/admin/" : localizedPath("studentAccount", locale)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest"
                 >
                   <User className="size-4" />
@@ -305,7 +305,7 @@ export function PaymentResultPage() {
                   {isTr ? "Durumu Yeniden Kontrol Et" : "Recheck Status"}
                 </button>
                 <Link
-                  href={accountType === "admin" ? "/admin" : localizedPath("studentAccount", locale)}
+                  href={accountType === "admin" ? "/admin/" : localizedPath("studentAccount", locale)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border px-6 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted"
                 >
                   <User className="size-4" />

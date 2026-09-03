@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { humanizeNotificationSubject, humanizeEventType } from "./notifications";
+import { ADMIN_PAYMENT_VISIBILITY_FILTER } from "./payments";
+import { ensureTrailingSlash } from "@/lib/routes";
 
 export interface AdminActionNotification {
   id: string;
@@ -77,9 +79,9 @@ export function AdminNotificationsProvider({ children }: { children: React.React
         // 3. Pending payments (e.g. bank transfer pending)
         anySupabase
           .from("payment_transactions")
-          .select("id, amount, currency, payment_method, payer_email, created_at, status")
+          .select("id, amount, currency, payment_method, payer_email, created_at, status", { count: "exact" })
           .eq("is_archived", false)
-          .in("status", ["pending", "requires_action"])
+          .or(ADMIN_PAYMENT_VISIBILITY_FILTER)
           .order("created_at", { ascending: false })
           .limit(10),
 
@@ -113,7 +115,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           subtitle: `${c.full_name || c.email} · Yeni Talep`,
           timestamp: c.created_at,
           isRead: false,
-          link: `/admin/iletisim-destek?view=web&id=${c.id}`,
+          link: ensureTrailingSlash(`/admin/iletisim-destek?view=web&id=${c.id}`),
           severity: "normal",
         });
       });
@@ -131,7 +133,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           subtitle: `${name} · Yanıt Bekliyor`,
           timestamp: s.last_message_at || new Date().toISOString(),
           isRead: false,
-          link: `/admin/iletisim-destek?view=support&id=${s.id}`,
+          link: ensureTrailingSlash(`/admin/iletisim-destek?view=support&id=${s.id}`),
           severity: "urgent",
         });
       });
@@ -144,11 +146,11 @@ export function AdminNotificationsProvider({ children }: { children: React.React
         items.push({
           id: `payment-${p.id}`,
           type: "payment",
-          title: "Onay Bekleyen Ödeme",
+          title: p.status === "paid" ? "Başarılı Ödeme" : p.status === "refunded" ? "İade Edilen Ödeme" : "Onay Bekleyen Ödeme",
           subtitle: `${p.payer_email || "Öğrenci"} · ${p.amount} ${p.currency} (${method})`,
           timestamp: p.created_at,
           isRead: false,
-          link: `/admin/odemeler?search=${encodeURIComponent(p.id)}`,
+          link: ensureTrailingSlash(`/admin/odemeler?search=${encodeURIComponent(p.id)}`),
           severity: "warning",
         });
       });
@@ -166,7 +168,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           subtitle: `${d.recipient} · ${subject}`,
           timestamp: d.created_at,
           isRead: Boolean(d.is_read),
-          link: `/admin/bildirimler?status=failed`,
+          link: ensureTrailingSlash(`/admin/bildirimler?status=failed`),
           severity: "warning",
         });
       });
@@ -184,7 +186,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           subtitle: `${name} · ${h.title}`,
           timestamp: h.created_at,
           isRead: false,
-          link: `/admin/odevler`,
+          link: ensureTrailingSlash(`/admin/odevler`),
           severity: "normal",
         });
       });
@@ -193,7 +195,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
       items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       const communicationCount = contacts.length + support.length;
-      const paymentsCount = payments.length;
+      const paymentsCount = paymentsRes.count ?? payments.length;
       const notificationsCount = deliveries.length;
       const homeworkCount = homework.length;
       const totalUnread = communicationCount + paymentsCount + notificationsCount + homeworkCount;

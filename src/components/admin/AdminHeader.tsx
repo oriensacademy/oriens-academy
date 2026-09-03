@@ -117,7 +117,7 @@ export function AdminHeader() {
     if (signingOut) return;
     setSigningOut(true);
     await signOut();
-    router.replace("/tr");
+    router.replace("/tr/");
   };
 
   const displayName = profile?.display_name || "Oriens Academy Yöneticisi";
@@ -268,7 +268,7 @@ export function AdminHeader() {
                 {/* Popover Footer */}
                 <div className="border-t border-[#DDE5DC] bg-[#F8FAF7] p-2.5 text-center">
                   <Link
-                    href="/admin/bildirimler"
+                    href="/admin/bildirimler/"
                     onClick={() => setNotificationsOpen(false)}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#10271B] hover:underline"
                   >

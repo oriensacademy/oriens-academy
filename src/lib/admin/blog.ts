@@ -135,6 +135,15 @@ export async function listAdminBlogPosts(): Promise<{ data: BlogPostRow[]; error
   }
 }
 
+export async function getAdminBlogPost(id: string): Promise<{ data: BlogPostRow | null; error: string | null }> {
+  try {
+    const { data, error } = await getSupabaseClient().from("blog_posts").select("*").eq("id", id).single();
+    return error ? { data: null, error: error.message } : { data, error: null };
+  } catch {
+    return { data: null, error: "Blog yazısı yüklenirken bir hata oluştu." };
+  }
+}
+
 export async function createAdminBlogPost(
   input: BlogPostInput
 ): Promise<{ data: BlogPostRow | null; error: string | null }> {
@@ -148,8 +157,8 @@ export async function createAdminBlogPost(
       locale: input.locale,
       slug,
       title: input.title.trim(),
-      excerpt: input.excerpt.trim(),
-      content: input.content,
+      excerpt: input.excerpt.trim() || (input.status === "draft" ? " " : ""),
+      content: input.content || (input.status === "draft" ? " " : ""),
       cover_image_url: input.cover_image_url?.trim() || null,
       author_name: input.author_name?.trim() || null,
       status: input.status,
@@ -176,6 +185,55 @@ export async function createAdminBlogPost(
   }
 }
 
+export async function publishAdminBlogPost(
+  id: string,
+  scheduledAt: string | null
+): Promise<{ success: boolean; publishedAt: string | null; error: string | null }> {
+  try {
+    // The RPC uses Postgres now() when scheduledAt is null, avoiding client-clock races.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (getSupabaseClient() as any).rpc("admin_publish_blog_post", {
+      p_post_id: id,
+      p_scheduled_at: scheduledAt,
+    });
+    if (error) return { success: false, publishedAt: null, error: error.message };
+    const result = data as { success?: boolean; published_at?: string; error_code?: string } | null;
+    return result?.success
+      ? { success: true, publishedAt: result.published_at || null, error: null }
+      : { success: false, publishedAt: null, error: result?.error_code || "Yayın işlemi tamamlanamadı." };
+  } catch {
+    return { success: false, publishedAt: null, error: "Yayın işlemi tamamlanamadı." };
+  }
+}
+
+const BLOG_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const BLOG_FILE_TYPES = new Set(["application/pdf"]);
+
+export async function uploadAdminBlogMedia(
+  file: File,
+  kind: "image" | "file"
+): Promise<{ url: string | null; error: string | null }> {
+  const allowed = kind === "image" ? BLOG_IMAGE_TYPES : BLOG_FILE_TYPES;
+  const maxBytes = kind === "image" ? 8 * 1024 * 1024 : 15 * 1024 * 1024;
+  if (!allowed.has(file.type)) return { url: null, error: kind === "image" ? "Yalnızca JPG, PNG veya WEBP yükleyin." : "Yalnızca PDF yükleyin." };
+  if (file.size <= 0 || file.size > maxBytes) return { url: null, error: `Dosya en fazla ${kind === "image" ? "8" : "15"} MB olabilir.` };
+
+  const extension = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "pdf";
+  const objectName = `${kind}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extension}`;
+  try {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.storage.from("blog-media").upload(objectName, file, {
+      cacheControl: "31536000",
+      contentType: file.type,
+      upsert: false,
+    });
+    if (error) return { url: null, error: error.message };
+    return { url: supabase.storage.from("blog-media").getPublicUrl(objectName).data.publicUrl, error: null };
+  } catch {
+    return { url: null, error: "Dosya yüklenemedi." };
+  }
+}
+
 export async function updateAdminBlogPost(
   id: string,
   input: Partial<BlogPostInput>
@@ -187,7 +245,8 @@ export async function updateAdminBlogPost(
     const updatePayload: TablesUpdate<"blog_posts"> = { ...input };
     if (input.slug) updatePayload.slug = normalizeBlogSlug(input.slug);
     if (input.title) updatePayload.title = input.title.trim();
-    if (input.excerpt) updatePayload.excerpt = input.excerpt.trim();
+    if (input.excerpt !== undefined) updatePayload.excerpt = input.excerpt.trim() || (input.status === "draft" ? " " : "");
+    if (input.content !== undefined) updatePayload.content = input.content || (input.status === "draft" ? " " : "");
     if (input.author_name !== undefined) updatePayload.author_name = input.author_name?.trim() || null;
     if (input.cover_image_url !== undefined) updatePayload.cover_image_url = input.cover_image_url?.trim() || null;
     // Auto-stamp published_at the first time a post is transitioned to published,

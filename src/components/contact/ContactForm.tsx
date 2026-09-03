@@ -67,22 +67,26 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
     if (!validate()) return;
 
     startTransition(async () => {
-      const res = await submitContact({
-        fullName: fullName.trim(),
-        email: email.trim().toLowerCase(),
-        subject: subject.trim() || undefined,
-        message: message.trim(),
-        locale: locale as "tr" | "en",
-        privacyConsent,
-        company_website: honeypot.trim() || undefined,
-        source: "contact_form",
-      });
+      try {
+        const res = await submitContact({
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          subject: subject.trim() || undefined,
+          message: message.trim(),
+          locale: locale as "tr" | "en",
+          privacyConsent,
+          company_website: honeypot.trim() || undefined,
+          source: "contact_form",
+        });
 
-      if (res.success) {
-        setSubmissionMessage(res.message);
-        setSubmitted(true);
-      } else {
-        setErrors({ submit: res.message });
+        if (res.success) {
+          setSubmissionMessage(res.message);
+          setSubmitted(true);
+        } else {
+          setErrors({ submit: res.message });
+        }
+      } catch {
+        setErrors({ submit: isTr ? "Talebiniz gönderilemedi. Lütfen tekrar deneyin." : "Your request could not be sent. Please try again." });
       }
     });
   }

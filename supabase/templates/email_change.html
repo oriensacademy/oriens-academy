@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Oriens Academy</title></head>
+<body style="margin:0;background:#f4f6f2;color:#10271b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 14px;background:#f4f6f2"><tr><td align="center">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;overflow:hidden;border:1px solid #dde4dc;border-radius:24px;background:#fff;box-shadow:0 6px 24px rgba(16,39,27,.06)">
+      <tr><td align="center" style="padding:30px 28px 22px;border-bottom:1px solid #eef2ec"><img src="https://oriens-academy.com/brand/oriens-logo-v2.png" width="170" alt="Oriens Academy" style="display:block;width:170px;max-width:70%;height:auto;border:0"></td></tr>
+      <tr><td style="padding:32px 34px">
+        {{ if eq .Data.preferred_language "en" }}
+        <div style="margin-bottom:10px;color:#819586;font-size:11px;font-weight:700;letter-spacing:.14em">ACCOUNT SECURITY</div>
+        <h1 style="margin:0 0 14px;color:#10271b;font-size:24px;line-height:1.3">Confirm your new email address</h1>
+        <p style="margin:0 0 25px;color:#405046;font-size:14px;line-height:1.7">Use the button below to confirm <strong>{{ .NewEmail }}</strong> as the new email address for your account.</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center"><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;border-radius:12px;background:#10271b;color:#fff;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 3px 10px rgba(16,39,27,.2)">Confirm New Email</a></td></tr></table>
+        <p style="margin:25px 0 0;padding-top:20px;border-top:1px solid #eef2ec;color:#738277;font-size:11px;line-height:1.55">If you did not request this change, ignore this email.</p>
+        {{ else }}
+        <div style="margin-bottom:10px;color:#819586;font-size:11px;font-weight:700;letter-spacing:.14em">HESAP GÜVENLİĞİ</div>
+        <h1 style="margin:0 0 14px;color:#10271b;font-size:24px;line-height:1.3">Yeni e-posta adresinizi onaylayın</h1>
+        <p style="margin:0 0 25px;color:#405046;font-size:14px;line-height:1.7">Hesabınızın e-posta adresini <strong>{{ .NewEmail }}</strong> olarak değiştirmek için aşağıdaki butona tıklayın.</p>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center"><a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;border-radius:12px;background:#10271b;color:#fff;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 3px 10px rgba(16,39,27,.2)">Yeni E-postamı Onayla</a></td></tr></table>
+        <p style="margin:25px 0 0;padding-top:20px;border-top:1px solid #eef2ec;color:#738277;font-size:11px;line-height:1.55">Bu değişikliği siz talep etmediyseniz bu e-postayı dikkate almayın.</p>
+        {{ end }}
+      </td></tr>
+      <tr><td align="center" style="padding:20px 28px;border-top:1px solid #eef2ec;background:#f9faf8;color:#819586;font-size:11px">© 2026 Oriens Academy · <a href="https://oriens-academy.com" style="color:#10271b">oriens-academy.com</a></td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>
