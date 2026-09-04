@@ -4,8 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, CalendarClock, Check, Eye, FileText, ImagePlus, Save, Send, UploadCloud, X } from "lucide-react";
-import { renderBlogMarkdown } from "@/lib/blog/markdown";
+import { ArrowLeft, CalendarClock, Check, Eye, Save, Send, UploadCloud, X } from "lucide-react";
 import {
   createAdminBlogPost,
   getAdminBlogPost,
@@ -17,6 +16,8 @@ import {
   type BlogPostInput,
   type BlogPostStatus,
 } from "@/lib/admin/blog";
+import { BlockEditor } from "@/components/admin/blog/BlockEditor";
+import { sanitizeBlogContentJson, deriveLegacyContentFallback, type BlogBlock } from "@/lib/blog/blockSchema";
 import { Wave } from "@/components/ui/wave";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -24,7 +25,7 @@ interface EditorForm {
   locale: BlogLocale;
   title: string;
   excerpt: string;
-  content: string;
+  blocks: BlogBlock[];
   coverImageUrl: string;
   authorName: string;
   status: BlogPostStatus;
@@ -32,7 +33,7 @@ interface EditorForm {
 }
 
 const EMPTY_FORM: EditorForm = {
-  locale: "tr", title: "", excerpt: "", content: "", coverImageUrl: "", authorName: "", status: "draft", publishedAt: "",
+  locale: "tr", title: "", excerpt: "", blocks: [], coverImageUrl: "", authorName: "", status: "draft", publishedAt: "",
 };
 
 function toLocalDatetime(iso: string | null): string {
@@ -50,13 +51,10 @@ export function BlogEditorPage() {
   const [loading, setLoading] = useState(Boolean(queryId));
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState("");
-  const [preview, setPreview] = useState(false);
-  const [uploading, setUploading] = useState<"cover" | "image" | "file" | null>(null);
-  const [imageAlt, setImageAlt] = useState("");
-  const [imageCaption, setImageCaption] = useState("");
+  const [previewing, setPreviewing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [renderTime] = useState(() => Date.now());
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const postIdRef = useRef<string | null>(queryId);
   const existingSlugRef = useRef("");
   const wasPublishedRef = useRef(false);
@@ -80,11 +78,12 @@ export function BlogEditorPage() {
         wasPublishedRef.current = data.status === "published";
         persistedStatusRef.current = data.status as BlogPostStatus;
         persistedPublishedAtRef.current = data.published_at;
+        const sanitized = sanitizeBlogContentJson(data.content_json);
         setForm({
           locale: data.locale as BlogLocale,
           title: data.title || "",
           excerpt: data.excerpt?.trim() || "",
-          content: data.content?.trim() || "",
+          blocks: sanitized ? sanitized.blocks : [],
           coverImageUrl: data.cover_image_url || "",
           authorName: data.author_name || "",
           status: data.status as BlogPostStatus,
@@ -106,21 +105,43 @@ export function BlogEditorPage() {
         ? existingSlugRef.current
         : normalizeBlogSlug(snapshot.title);
       if (!slug) throw new Error("Başlıktan geçerli bir URL oluşturulamadı.");
-      const input: BlogPostInput = {
-        locale: snapshot.locale,
-        title: snapshot.title,
-        slug,
-        excerpt: snapshot.excerpt,
-        content: snapshot.content,
-        cover_image_url: snapshot.coverImageUrl || null,
-        author_name: snapshot.authorName || null,
-        status: persistedStatusRef.current,
-        published_at: persistedPublishedAtRef.current,
-      };
+
+      // Only touch content/content_json when the block editor actually has
+      // content. Editing an existing post without adding any blocks (e.g. an
+      // untouched legacy Markdown post opened in the new editor) must never
+      // clobber its existing content -- see BLOG VISUAL BLOCK EDITOR V3 plan.
+      const sanitized = snapshot.blocks.length ? sanitizeBlogContentJson({ version: 1, blocks: snapshot.blocks }) : null;
+
       if (postIdRef.current) {
+        const input: Partial<BlogPostInput> = {
+          locale: snapshot.locale,
+          title: snapshot.title,
+          slug,
+          excerpt: snapshot.excerpt,
+          cover_image_url: snapshot.coverImageUrl || null,
+          author_name: snapshot.authorName || null,
+          status: persistedStatusRef.current,
+          published_at: persistedPublishedAtRef.current,
+        };
+        if (sanitized) {
+          input.content_json = sanitized;
+          input.content = deriveLegacyContentFallback(sanitized);
+        }
         const result = await updateAdminBlogPost(postIdRef.current, input);
         if (!result.success) throw new Error(result.error || "Taslak kaydedilemedi.");
       } else {
+        const input: BlogPostInput = {
+          locale: snapshot.locale,
+          title: snapshot.title,
+          slug,
+          excerpt: snapshot.excerpt,
+          content: sanitized ? deriveLegacyContentFallback(sanitized) : "",
+          content_json: sanitized,
+          cover_image_url: snapshot.coverImageUrl || null,
+          author_name: snapshot.authorName || null,
+          status: persistedStatusRef.current,
+          published_at: persistedPublishedAtRef.current,
+        };
         let result = await createAdminBlogPost(input);
         if (!result.data && result.error?.includes("aynı slug")) {
           result = await createAdminBlogPost({ ...input, slug: `${slug}-${Date.now().toString(36)}` });
@@ -157,33 +178,35 @@ export function BlogEditorPage() {
 
   const setField = <K extends keyof EditorForm>(key: K, value: EditorForm[K]) => setForm((current) => ({ ...current, [key]: value }));
 
-  async function upload(file: File, target: "cover" | "image" | "file") {
-    setUploading(target);
+  async function uploadCover(file: File) {
+    setUploading(true);
     setError("");
     try {
-      const result = await uploadAdminBlogMedia(file, target === "file" ? "file" : "image");
+      const result = await uploadAdminBlogMedia(file, "image");
       if (!result.url) throw new Error(result.error || "Dosya yüklenemedi.");
-      if (target === "cover") setField("coverImageUrl", result.url);
-      else {
-        const label = target === "image" ? (imageAlt.trim() || file.name.replace(/\.[^.]+$/, "")) : file.name;
-        const markdown = target === "image"
-          ? `\n![${label}](${result.url})${imageCaption.trim() ? ` "${imageCaption.trim().replace(/"/g, "'")}"` : ""}\n`
-          : `\n[${label}](${result.url})\n`;
-        const textarea = textareaRef.current;
-        const start = textarea?.selectionStart ?? form.content.length;
-        const end = textarea?.selectionEnd ?? start;
-        setField("content", `${form.content.slice(0, start)}${markdown}${form.content.slice(end)}`);
-        window.setTimeout(() => textareaRef.current?.focus(), 0);
-      }
+      setField("coverImageUrl", result.url);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Dosya yüklenemedi.");
     } finally {
-      setUploading(null);
+      setUploading(false);
     }
   }
 
+  async function openPreview() {
+    await persist(form);
+    await saveChainRef.current;
+    if (!postIdRef.current) {
+      setError("Önizlemeden önce yazı kaydedilemedi.");
+      return;
+    }
+    setPreviewing(true);
+    window.open(`/admin/blog/preview/?id=${postIdRef.current}`, "_blank", "noopener,noreferrer");
+    setPreviewing(false);
+  }
+
   async function publish(schedule: boolean) {
-    if (!form.title.trim() || !form.excerpt.trim() || !form.content.trim()) {
+    const sanitized = form.blocks.length ? sanitizeBlogContentJson({ version: 1, blocks: form.blocks }) : null;
+    if (!form.title.trim() || !form.excerpt.trim() || !sanitized) {
       setError("Yayınlamak için başlık, özet ve içerik zorunludur.");
       return;
     }
@@ -222,7 +245,7 @@ export function BlogEditorPage() {
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">{saveState === "saving" ? <><Wave className="h-3 w-7" />Kaydediliyor…</> : saveState === "saved" ? <><Check className="size-3 text-emerald-700" />Taslak kaydedildi</> : <><Save className="size-3" />Kayda hazır</>}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setPreview((value) => !value)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-3 text-xs font-semibold"><Eye className="size-4" />{preview ? "Editöre dön" : "Önizle"}</button>
+          <button type="button" onClick={() => void openPreview()} disabled={previewing} className="inline-flex min-h-10 items-center gap-2 rounded-xl border bg-white px-3 text-xs font-semibold disabled:opacity-50"><Eye className="size-4" />Önizle</button>
           <button type="button" onClick={() => void publish(true)} disabled={saveState === "saving"} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-semibold text-amber-900 disabled:opacity-50"><CalendarClock className="size-4" />Planla</button>
           <button type="button" onClick={() => void publish(false)} disabled={saveState === "saving"} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#10271B] px-4 text-xs font-semibold text-white disabled:opacity-50"><Send className="size-4" />Şimdi yayınla</button>
         </div>
@@ -233,40 +256,37 @@ export function BlogEditorPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <main className="rounded-2xl border border-border bg-white p-5 shadow-xs sm:p-7">
           <div className="mb-6 flex gap-2">{(["tr", "en"] as const).map((locale) => <button key={locale} type="button" onClick={() => setField("locale", locale)} className={`rounded-xl border px-4 py-2 text-xs font-bold ${form.locale === locale ? "border-[#10271B] bg-[#10271B] text-white" : "bg-white text-muted-foreground"}`}>{locale === "tr" ? "Türkçe" : "English"}</button>)}</div>
-          {preview ? (
-            <article className="mx-auto max-w-3xl py-8">
-              {form.coverImageUrl ? <Image src={form.coverImageUrl} alt="" width={1400} height={900} unoptimized className="mb-8 max-h-[28rem] w-full rounded-2xl object-cover" /> : null}
-              <p className="text-xs font-bold uppercase tracking-widest text-primary">{form.locale}</p>
-              <h1 className="mt-3 font-heading text-4xl text-ink">{form.title || "Başlıksız yazı"}</h1>
-              <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{form.excerpt}</p>
-              <div className="mt-9">{renderBlogMarkdown(form.content)}</div>
-            </article>
-          ) : (
-            <div className="space-y-6">
-              <label className="block"><span className="text-xs font-bold text-muted-foreground">Başlık</span><input value={form.title} onChange={(event) => setField("title", event.target.value)} placeholder={form.locale === "tr" ? "Yazı başlığı" : "Post title"} className="mt-2 w-full border-0 border-b border-border bg-transparent px-0 pb-3 font-heading text-3xl text-ink outline-none focus:border-primary" /></label>
-              <label className="block"><span className="text-xs font-bold text-muted-foreground">Özet</span><textarea value={form.excerpt} onChange={(event) => setField("excerpt", event.target.value)} rows={3} maxLength={500} className="mt-2 w-full rounded-xl border border-input p-3 text-sm leading-relaxed outline-none focus:border-primary" /></label>
-              <div>
-                <div className="mb-2 flex flex-wrap items-end gap-2">
-                  <div className="mr-auto"><p className="text-xs font-bold text-muted-foreground">İçerik (Markdown)</p><p className="mt-1 text-[10px] text-muted-foreground">Görsel ve PDF seçildiği anda imleç konumuna eklenir.</p></div>
-                  <input value={imageAlt} onChange={(event) => setImageAlt(event.target.value)} placeholder="Görsel alt metni" className="h-9 rounded-lg border px-2 text-[11px]" />
-                  <input value={imageCaption} onChange={(event) => setImageCaption(event.target.value)} placeholder="Açıklama (opsiyonel)" className="h-9 rounded-lg border px-2 text-[11px]" />
-                  <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border bg-white px-3 text-[11px] font-semibold"><ImagePlus className="size-3.5" />{uploading === "image" ? "Yükleniyor…" : "Görsel Ekle"}<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={Boolean(uploading)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "image"); event.currentTarget.value = ""; }} /></label>
-                  <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border bg-white px-3 text-[11px] font-semibold"><FileText className="size-3.5" />{uploading === "file" ? "Yükleniyor…" : "PDF/Dosya Ekle"}<input type="file" accept="application/pdf" className="sr-only" disabled={Boolean(uploading)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "file"); event.currentTarget.value = ""; }} /></label>
-                </div>
-                <textarea ref={textareaRef} value={form.content} onChange={(event) => setField("content", event.target.value)} rows={24} placeholder="# Başlık\n\nYazınıza başlayın…" className="w-full resize-y rounded-xl border border-input p-4 font-mono text-sm leading-7 outline-none focus:border-primary" />
+          <div className="space-y-6">
+            <label className="block"><span className="text-xs font-bold text-muted-foreground">Başlık</span><input value={form.title} onChange={(event) => setField("title", event.target.value)} placeholder={form.locale === "tr" ? "Yazı başlığı" : "Post title"} className="mt-2 w-full border-0 border-b border-border bg-transparent px-0 pb-3 font-heading text-3xl text-ink outline-none focus:border-primary" /></label>
+            <label className="block"><span className="text-xs font-bold text-muted-foreground">Özet</span><textarea value={form.excerpt} onChange={(event) => setField("excerpt", event.target.value)} rows={3} maxLength={500} className="mt-2 w-full rounded-xl border border-input p-3 text-sm leading-relaxed outline-none focus:border-primary" /></label>
+            <div>
+              <p className="mb-2 text-xs font-bold text-muted-foreground">İçerik</p>
+              <div className="rounded-xl border border-input p-3 sm:p-4">
+                <BlockEditor
+                  blocks={form.blocks}
+                  onChange={(blocks) => setField("blocks", blocks)}
+                  onUploadImage={(file) => uploadAdminBlogMedia(file, "image")}
+                  onUploadFile={(file) => uploadAdminBlogMedia(file, "file")}
+                  onError={setError}
+                />
               </div>
             </div>
-          )}
+          </div>
         </main>
 
         <aside className="space-y-5">
           <section className="rounded-2xl border border-border bg-white p-4">
             <h2 className="text-xs font-bold text-ink">Kapak Görseli</h2>
-            <label onDragEnter={() => setDragging(true)} onDragLeave={() => setDragging(false)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files?.[0]; if (file) void upload(file, "cover"); }} className={`mt-3 flex min-h-36 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed text-center ${dragging ? "border-primary bg-primary/5" : "border-input bg-muted/30"}`}>
-              {form.coverImageUrl ? <Image src={form.coverImageUrl} alt="Kapak önizlemesi" width={480} height={240} unoptimized className="h-36 w-full object-cover" /> : <><UploadCloud className="size-6 text-muted-foreground" /><span className="mt-2 text-[11px] font-semibold">Dosya Seç veya sürükleyip bırak</span><span className="mt-1 text-[10px] text-muted-foreground">JPG, PNG, WEBP · en fazla 8 MB</span></>}
-              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={Boolean(uploading)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file, "cover"); event.currentTarget.value = ""; }} />
+            <label onDragEnter={() => setDragging(true)} onDragLeave={() => setDragging(false)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files?.[0]; if (file) void uploadCover(file); }} className={`mt-3 flex min-h-48 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed text-center ${dragging ? "border-primary bg-primary/5" : "border-input bg-muted/30"}`}>
+              {form.coverImageUrl ? <Image src={form.coverImageUrl} alt="Kapak önizlemesi" width={640} height={360} unoptimized className="h-48 w-full object-cover" /> : <><UploadCloud className="size-7 text-muted-foreground" /><span className="mt-2 text-[11px] font-semibold">Dosya Seç veya sürükleyip bırak</span><span className="mt-1 text-[10px] text-muted-foreground">JPG, PNG, WEBP · en fazla 8 MB</span></>}
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCover(file); event.currentTarget.value = ""; }} />
             </label>
-            {form.coverImageUrl ? <button type="button" onClick={() => setField("coverImageUrl", "")} className="mt-2 text-[11px] font-semibold text-red-700">Görseli kaldır/değiştir</button> : null}
+            {form.coverImageUrl ? (
+              <div className="mt-2 flex items-center gap-3">
+                <label className="cursor-pointer text-[11px] font-semibold text-primary">Değiştir<input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCover(file); event.currentTarget.value = ""; }} /></label>
+                <button type="button" onClick={() => setField("coverImageUrl", "")} className="text-[11px] font-semibold text-red-700">Kaldır</button>
+              </div>
+            ) : null}
           </section>
           <section className="space-y-4 rounded-2xl border border-border bg-white p-4">
             <label className="block text-xs font-bold text-muted-foreground">Yazar<input value={form.authorName} onChange={(event) => setField("authorName", event.target.value)} className="mt-2 h-10 w-full rounded-lg border px-3 text-xs font-normal text-ink" /></label>

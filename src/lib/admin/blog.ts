@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Tables, TablesInsert, TablesUpdate } from "@/types/database.types";
+import type { BlogContentJson } from "@/lib/blog/blockSchema";
 
 export type BlogPostRow = Tables<"blog_posts">;
 export type BlogPostStatus = "draft" | "published" | "archived";
@@ -24,6 +25,7 @@ export interface BlogPostInput {
   title: string;
   excerpt: string;
   content: string;
+  content_json?: BlogContentJson | null;
   cover_image_url?: string | null;
   author_name?: string | null;
   status: BlogPostStatus;
@@ -66,7 +68,7 @@ export async function getPublicBlogPosts(locale: BlogLocale): Promise<BlogPostRo
     if (!supabaseUrl || !publishableKey) return [];
 
     const query = new URLSearchParams({
-      select: "id,slug,locale,title,excerpt,content,cover_image_url,author_name,status,published_at,created_at,updated_at",
+      select: "id,slug,locale,title,excerpt,content,content_json,cover_image_url,author_name,status,published_at,created_at,updated_at",
       locale: `eq.${locale}`,
       status: "eq.published",
       order: "published_at.desc",
@@ -100,7 +102,7 @@ export async function getPublicBlogPost(locale: BlogLocale, slug: string): Promi
     if (!supabaseUrl || !publishableKey || !slug) return null;
 
     const query = new URLSearchParams({
-      select: "id,slug,locale,title,excerpt,content,cover_image_url,author_name,status,published_at,created_at,updated_at",
+      select: "id,slug,locale,title,excerpt,content,content_json,cover_image_url,author_name,status,published_at,created_at,updated_at",
       locale: `eq.${locale}`,
       slug: `eq.${slug}`,
       status: "eq.published",
@@ -159,6 +161,7 @@ export async function createAdminBlogPost(
       title: input.title.trim(),
       excerpt: input.excerpt.trim() || (input.status === "draft" ? " " : ""),
       content: input.content || (input.status === "draft" ? " " : ""),
+      content_json: (input.content_json ?? null) as TablesInsert<"blog_posts">["content_json"],
       cover_image_url: input.cover_image_url?.trim() || null,
       author_name: input.author_name?.trim() || null,
       status: input.status,
@@ -212,11 +215,11 @@ const BLOG_FILE_TYPES = new Set(["application/pdf"]);
 export async function uploadAdminBlogMedia(
   file: File,
   kind: "image" | "file"
-): Promise<{ url: string | null; error: string | null }> {
+): Promise<{ url: string | null; size: number; error: string | null }> {
   const allowed = kind === "image" ? BLOG_IMAGE_TYPES : BLOG_FILE_TYPES;
   const maxBytes = kind === "image" ? 8 * 1024 * 1024 : 15 * 1024 * 1024;
-  if (!allowed.has(file.type)) return { url: null, error: kind === "image" ? "Yalnızca JPG, PNG veya WEBP yükleyin." : "Yalnızca PDF yükleyin." };
-  if (file.size <= 0 || file.size > maxBytes) return { url: null, error: `Dosya en fazla ${kind === "image" ? "8" : "15"} MB olabilir.` };
+  if (!allowed.has(file.type)) return { url: null, size: 0, error: kind === "image" ? "Yalnızca JPG, PNG veya WEBP yükleyin." : "Yalnızca PDF yükleyin." };
+  if (file.size <= 0 || file.size > maxBytes) return { url: null, size: 0, error: `Dosya en fazla ${kind === "image" ? "8" : "15"} MB olabilir.` };
 
   const extension = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "pdf";
   const objectName = `${kind}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extension}`;
@@ -227,10 +230,10 @@ export async function uploadAdminBlogMedia(
       contentType: file.type,
       upsert: false,
     });
-    if (error) return { url: null, error: error.message };
-    return { url: supabase.storage.from("blog-media").getPublicUrl(objectName).data.publicUrl, error: null };
+    if (error) return { url: null, size: 0, error: error.message };
+    return { url: supabase.storage.from("blog-media").getPublicUrl(objectName).data.publicUrl, size: file.size, error: null };
   } catch {
-    return { url: null, error: "Dosya yüklenemedi." };
+    return { url: null, size: 0, error: "Dosya yüklenemedi." };
   }
 }
 
@@ -242,11 +245,15 @@ export async function updateAdminBlogPost(
 
   try {
     const { data: userData } = await supabase.auth.getUser();
-    const updatePayload: TablesUpdate<"blog_posts"> = { ...input };
+    const { content_json: inputContentJson, ...restInput } = input;
+    const updatePayload: TablesUpdate<"blog_posts"> = { ...restInput };
     if (input.slug) updatePayload.slug = normalizeBlogSlug(input.slug);
     if (input.title) updatePayload.title = input.title.trim();
     if (input.excerpt !== undefined) updatePayload.excerpt = input.excerpt.trim() || (input.status === "draft" ? " " : "");
     if (input.content !== undefined) updatePayload.content = input.content || (input.status === "draft" ? " " : "");
+    if (inputContentJson !== undefined) {
+      updatePayload.content_json = (inputContentJson ?? null) as TablesUpdate<"blog_posts">["content_json"];
+    }
     if (input.author_name !== undefined) updatePayload.author_name = input.author_name?.trim() || null;
     if (input.cover_image_url !== undefined) updatePayload.cover_image_url = input.cover_image_url?.trim() || null;
     // Auto-stamp published_at the first time a post is transitioned to published,

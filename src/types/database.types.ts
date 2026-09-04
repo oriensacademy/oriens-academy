@@ -1778,6 +1778,7 @@ export type Database = {
         Row: {
           author_name: string | null
           content: string
+          content_json: Json | null
           cover_image_url: string | null
           created_at: string
           excerpt: string
@@ -1792,6 +1793,7 @@ export type Database = {
         Insert: {
           author_name?: string | null
           content: string
+          content_json?: Json | null
           cover_image_url?: string | null
           created_at?: string
           excerpt: string
@@ -1806,6 +1808,7 @@ export type Database = {
         Update: {
           author_name?: string | null
           content?: string
+          content_json?: Json | null
           cover_image_url?: string | null
           created_at?: string
           excerpt?: string

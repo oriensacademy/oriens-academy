@@ -2,26 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowLeft, CalendarDays, UserRound } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { localizedPath, blogPath } from "@/lib/routes";
 import { getPublicBlogPost, type BlogPostRow } from "@/lib/admin/blog";
-import { renderBlogMarkdown } from "@/lib/blog/markdown";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
-
-function formatDate(iso: string | null, locale: "tr" | "en"): string {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  } catch {
-    return "";
-  }
-}
+import { ArticleShell } from "@/components/blog/ArticleShell";
 
 /**
  * Reads the actual slug from the browser URL. This page is served for every
@@ -96,36 +82,6 @@ export function BlogDetailPage() {
 
   if (!post) return <AccountWaveLoader />;
 
-  return (
-    <article className="bg-background pt-28 pb-24 md:pt-36">
-      {post.cover_image_url ? (
-        <div className="relative mx-auto mb-10 h-[260px] w-full max-w-[1100px] overflow-hidden rounded-[26px] bg-[#EFF4EE] px-0 sm:h-[360px] sm:px-6">
-          <Image src={post.cover_image_url} alt="" fill sizes="100vw" className="object-cover sm:rounded-[26px]" priority />
-        </div>
-      ) : null}
-
-      <div className="mx-auto max-w-[760px] px-6">
-        <Link href={blogPath(locale)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-          <ArrowLeft className="size-4" />
-          {isTr ? "Blog'a Dön" : "Back to Blog"}
-        </Link>
-
-        <h1 className="mt-5 font-heading text-[clamp(2rem,4vw,2.75rem)] leading-[1.1] text-ink">{post.title}</h1>
-
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" />{formatDate(post.published_at, locale)}</span>
-          {post.author_name ? <span className="inline-flex items-center gap-1.5"><UserRound className="size-3.5" />{post.author_name}</span> : null}
-        </div>
-
-        <div className="mt-8">{renderBlogMarkdown(post.content)}</div>
-
-        <div className="mt-12 border-t border-border pt-6">
-          <Link href={blogPath(locale)} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-            <ArrowLeft className="size-4" />
-            {isTr ? "Tüm Yazılar" : "All Posts"}
-          </Link>
-        </div>
-      </div>
-    </article>
-  );
+  const articleUrl = `https://oriens-academy.com${localizedPath("blog", locale)}${post.slug}/`;
+  return <ArticleShell post={post} locale={locale} articleUrl={articleUrl} />;
 }
