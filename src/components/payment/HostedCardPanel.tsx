@@ -1,29 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, FileCheck2, Loader2, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
-import { confirmPaymentAgreements, createPaytrToken, type CreatePaytrTokenResult } from "@/lib/payments/client";
+import { confirmPaymentAgreements, createPaytrToken } from "@/lib/payments/client";
 import { localizedPath, paymentSuccessPath, unifiedLoginPath } from "@/lib/routes";
-import { paymentErrorRequiresLogin } from "@/lib/payments/public-errors";
+import { paymentErrorMessage, paymentErrorRequiresLogin } from "@/lib/payments/public-errors";
+import { LEGAL_VERSIONS } from "@/config/legal";
+import type { LegalDocKey } from "@/config/legal";
 
 interface ErrorState {
   message: string;
-  retryable: boolean;
   requiresLogin: boolean;
 }
 
 interface PreparedPayment {
   token: string;
-  merchantOid: string;
-  reference: string;
-  statusToken?: string;
-  zeroPayment?: boolean;
-  legalAccepted: boolean;
-  finalAmount?: number;
-  currency?: string;
 }
 
 interface HostedCardPanelProps {
@@ -32,182 +26,109 @@ interface HostedCardPanelProps {
   learnerId: string;
   guardianUserId?: string;
   paymentPhone: string;
-  termsAccepted: boolean;
-  refundPolicyAccepted: boolean;
-  onTokenReady?: (result: CreatePaytrTokenResult) => void;
   contextReady: boolean;
   emailVerified?: boolean;
   locale: Locale;
+  onOpenLegalDoc: (key: LegalDocKey) => void;
 }
 
+/**
+ * The single "Ödemeye Geç" action is the legal acceptance: no checkboxes,
+ * no separate confirmation step. One click runs, in order: create the PayTR
+ * session (the edge function commits legal-acceptance metadata to the new
+ * payment_transactions row BEFORE it ever calls PayTR's API -- see
+ * supabase/functions/paytr-create-token/index.ts), then confirm that
+ * acceptance via the existing confirm_payment_agreements RPC, then show the
+ * iframe. No PayTR session is ever created just from the page loading.
+ */
 export function HostedCardPanel({
   packageIds,
   couponCode,
   learnerId,
   guardianUserId,
   paymentPhone,
-  termsAccepted,
-  refundPolicyAccepted,
-  onTokenReady,
   contextReady,
   emailVerified = true,
   locale,
+  onOpenLegalDoc,
 }: HostedCardPanelProps) {
   const copy = getPaymentCopy(locale);
   const router = useRouter();
   const isTr = locale === "tr";
 
-  const isAgreementsAccepted = Boolean(termsAccepted && refundPolicyAccepted);
-  const [loading, setLoading] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [prepared, setPrepared] = useState<PreparedPayment | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const inFlightRef = useRef(false);
 
-  // Stable sorted packages key to prevent array reference recreation triggers
-  const sortedPackagesKey = useMemo(() => [...packageIds].sort().join(","), [packageIds]);
-  const inFlightKeyRef = useRef<string>("");
-  const preparedKeyRef = useRef<string>("");
-  const activeAbortRef = useRef<AbortController | null>(null);
-  const confirmedAgreementOidRef = useRef<string>("");
-
-  const retry = useCallback(() => {
-    inFlightKeyRef.current = "";
-    preparedKeyRef.current = "";
-    setPrepared(null);
-    setError(null);
-    setAttempt((v) => v + 1);
-  }, []);
-
-  // 1. PAYMENT PRELOAD: Prepare early in the background once context is ready
-  useEffect(() => {
-    if (!contextReady || !sortedPackagesKey || !learnerId) {
-      return;
-    }
-
-    const currentContextKey = `${sortedPackagesKey}:${couponCode || ""}:${learnerId}:${guardianUserId || ""}:${paymentPhone}:${locale}:${attempt}`;
-
-    // Single-flight lock: If already in-flight or prepared for this exact checkout context, do not duplicate
-    if (inFlightKeyRef.current === currentContextKey || preparedKeyRef.current === currentContextKey) {
-      return;
-    }
-
-    // Cancel any previous in-flight preload for a stale context
-    if (activeAbortRef.current) {
-      activeAbortRef.current.abort();
-    }
-    const abortCtrl = new AbortController();
-    activeAbortRef.current = abortCtrl;
-    inFlightKeyRef.current = currentContextKey;
-
-    let isActive = true;
-    setLoading(true);
+  const handleProceedToPayment = useCallback(async () => {
+    // Belt-and-suspenders re-entrancy guard on top of the disabled button --
+    // covers a rapid double-click landing between React's disabled-state
+    // paint and the actual click handler running.
+    if (inFlightRef.current || !contextReady) return;
+    inFlightRef.current = true;
+    setStarting(true);
     setError(null);
 
-    void createPaytrToken({
-      packageIds,
-      couponCode,
-      learnerId,
-      guardianUserId,
-      paymentPhone,
-      locale,
-      termsAccepted: false,
-      refundPolicyAccepted: false,
-    }).then((result) => {
-      if (!isActive || abortCtrl.signal.aborted) {
-        if (inFlightKeyRef.current === currentContextKey) {
-          inFlightKeyRef.current = "";
+    try {
+      const legalVersions = {
+        salesAgreement: LEGAL_VERSIONS.salesAgreement,
+        preInformation: LEGAL_VERSIONS.preInformation,
+        refundPolicy: LEGAL_VERSIONS.refundPolicy,
+      };
+
+      const result = await createPaytrToken({
+        packageIds,
+        couponCode,
+        learnerId,
+        guardianUserId,
+        paymentPhone,
+        locale,
+        // The click itself is the acceptance -- see plan "PayTR Legal
+        // Acceptance + Payment Start Flow Repair".
+        termsAccepted: true,
+        refundPolicyAccepted: true,
+        legalVersions,
+      });
+
+      if (!result.success || (!result.iframe_token && !result.zero_payment)) {
+        setError({
+          message: result.message || (isTr ? "Ödeme ekranı şu anda hazırlanamadı." : "Payment screen could not be prepared."),
+          requiresLogin: paymentErrorRequiresLogin(result.errorCode),
+        });
+        return;
+      }
+
+      if (result.zero_payment) {
+        // Zero-amount (100% coupon) orders are finalized server-side in the
+        // same request once legal acceptance is true -- nothing left to show.
+        if (result.reference && result.statusToken) {
+          const path = paymentSuccessPath(locale);
+          router.push(`${path}?reference=${encodeURIComponent(result.reference)}&token=${encodeURIComponent(result.statusToken)}`);
         }
         return;
       }
-      inFlightKeyRef.current = "";
 
-      if (result.success && (result.iframe_token || result.zero_payment)) {
-        preparedKeyRef.current = currentContextKey;
-        const prep: PreparedPayment = {
-          token: result.iframe_token || "",
-          merchantOid: result.merchant_oid || result.reference || "",
-          reference: result.reference || result.merchant_oid || "",
-          statusToken: result.statusToken,
-          zeroPayment: Boolean(result.zero_payment),
-          legalAccepted: false,
-          finalAmount: result.final_amount,
-          currency: result.currency,
-        };
-        setPrepared(prep);
-        onTokenReady?.(result);
-      } else {
-        setError({
-          message: result.message || (isTr ? "Ödeme ekranı şu anda hazırlanamadı." : "Payment screen could not be prepared."),
-          retryable: ["NETWORK_ERROR", "TOKEN_ERROR", "PAYTR_SESSION_FAILED", "INTERNAL_ERROR"].includes(result.errorCode || ""),
-          requiresLogin: paymentErrorRequiresLogin(result.errorCode),
-        });
+      // Required, not fire-and-forget: if this fails, no actionable payment
+      // session is shown, even though a pending transaction row now exists
+      // (it will simply expire via the existing 30-minute stale-pending TTL).
+      const confirmed = await confirmPaymentAgreements(result.merchant_oid || result.reference || "", legalVersions);
+      if (!confirmed) {
+        setError({ message: paymentErrorMessage("AGREEMENT_RECORD_FAILED", locale), requiresLogin: false });
+        return;
       }
-    }).catch(() => {
-      if (!isActive || abortCtrl.signal.aborted) return;
-      setError({
-        message: isTr ? "Ödeme ekranı şu anda hazırlanamadı." : "Payment screen could not be prepared.",
-        retryable: true,
-        requiresLogin: false,
-      });
-    }).finally(() => {
-      if (!isActive || abortCtrl.signal.aborted) return;
-      setLoading(false);
-      if (inFlightKeyRef.current === currentContextKey) inFlightKeyRef.current = "";
-    });
 
-    return () => {
-      isActive = false;
-      abortCtrl.abort();
-    };
-    // sortedPackagesKey represents stable identity of packageIds without object reference recreation
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt, contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onTokenReady, paymentPhone, sortedPackagesKey]);
-
-  // 2. AUDITABLE LEGAL ACCEPTANCE CONFIRMATION
-  // When user checks both agreements, persist legal timestamp server-side if not already recorded
-  useEffect(() => {
-    if (!isAgreementsAccepted || !prepared || !prepared.merchantOid) return;
-
-    if (prepared.zeroPayment && prepared.reference && prepared.statusToken) {
-      const path = paymentSuccessPath(locale);
-      router.push(`${path}?reference=${encodeURIComponent(prepared.reference)}&token=${encodeURIComponent(prepared.statusToken)}`);
-      return;
+      setPrepared({ token: result.iframe_token || "" });
+    } catch {
+      setError({ message: paymentErrorMessage("NETWORK_ERROR", locale), requiresLogin: false });
+    } finally {
+      inFlightRef.current = false;
+      setStarting(false);
     }
-
-    if (!prepared.legalAccepted && confirmedAgreementOidRef.current !== prepared.merchantOid) {
-      confirmedAgreementOidRef.current = prepared.merchantOid;
-      void confirmPaymentAgreements(prepared.merchantOid).then((ok) => {
-        if (ok) {
-          setPrepared((prev) => (prev ? { ...prev, legalAccepted: true } : prev));
-        }
-      });
-    }
-  }, [isAgreementsAccepted, prepared, locale, router]);
-
-  // 3. PAYTR IFRAME RESIZER
-  useEffect(() => {
-    if (!prepared?.token || !isAgreementsAccepted) return;
-    const scriptId = "paytr-iframe-resizer";
-    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-    const initialize = () => {
-      const resize = (window as unknown as { iFrameResize?: (options: Record<string, unknown>, target: string) => void }).iFrameResize;
-      if (typeof resize === "function") resize({}, "#paytriframe");
-    };
-    if (!script) {
-      script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://www.paytr.com/js/iframeResizer.min.js";
-      script.async = true;
-      script.onload = initialize;
-      document.body.appendChild(script);
-    } else {
-      initialize();
-    }
-  }, [prepared?.token, isAgreementsAccepted]);
+  }, [contextReady, couponCode, guardianUserId, isTr, learnerId, locale, packageIds, paymentPhone, router]);
 
   return (
     <div className="space-y-4">
-      {/* Context Not Ready State */}
       {!contextReady ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#819586]/40 bg-[#F6F8F3] p-8 text-center sm:p-10">
           <FileCheck2 className="size-7 text-[#10271B]" />
@@ -226,57 +147,7 @@ export function HostedCardPanel({
                 : (isTr ? "Ödemeye devam etmek için lütfen sipariş ve iletişim adımlarını tamamlayınız." : "Please complete the required order and contact steps to proceed.")}
           </p>
         </div>
-      ) : loading && !prepared ? (
-        /* Preparing State: Early preload in background */
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-[#F6F8F3] p-12 text-center" role="status">
-          <Loader2 className="size-8 animate-spin text-[#819586]" />
-          <p className="mt-4 text-xs font-semibold text-[#10271B]">
-            {isTr ? "Güvenli ödeme altyapısı hazırlanıyor…" : "Preparing secure payment…"}
-          </p>
-        </div>
-      ) : error ? (
-        /* Error State with Retry / Re-login */
-        <div role="alert" aria-live="assertive" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-          <AlertCircle className="mx-auto size-6 text-red-600" />
-          <p className="mt-3 text-sm font-semibold text-red-900">{error.message}</p>
-          {error.requiresLogin ? (
-            <button
-              type="button"
-              onClick={() => {
-                const next = `${localizedPath("payment", locale)}${window.location.search}`;
-                router.push(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
-              }}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest"
-            >
-              {isTr ? "Yeniden Giriş Yap" : "Sign In Again"}
-              <ArrowRight className="size-3.5" />
-            </button>
-          ) : error.retryable ? (
-            <button
-              type="button"
-              onClick={retry}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-red-300 bg-white px-4 py-2 text-xs font-semibold text-red-900 hover:bg-red-50"
-            >
-              <RefreshCw className="size-3.5" />
-              {isTr ? "Tekrar Dene" : "Retry"}
-            </button>
-          ) : null}
-        </div>
-      ) : !isAgreementsAccepted ? (
-        /* Prepared in Background, but Locked Until Agreements Checked */
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#819586]/40 bg-[#F6F8F3] p-8 text-center sm:p-10">
-          <FileCheck2 className="size-7 text-[#10271B]" />
-          <h3 className="mt-4 font-heading text-base font-semibold text-[#10271B]">
-            {isTr ? "Sözleşme Onayı Bekleniyor" : "Agreement Acceptance Required"}
-          </h3>
-          <p className="mt-2 max-w-md text-xs leading-relaxed text-[#68756C]">
-            {isTr
-              ? "Güvenli ödeme altyapısı hazırlandı. Ödemeye geçmek için lütfen yukarıdaki sözleşme koşullarını onaylayınız."
-              : "Payment infrastructure is ready. Please accept the agreement terms above to proceed."}
-          </p>
-        </div>
       ) : prepared?.token ? (
-        /* Actionable / Unlocked State: Display PayTR iFrame Immediately */
         <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
           <iframe
             id="paytriframe"
@@ -286,7 +157,65 @@ export function HostedCardPanel({
             scrolling="no"
           />
         </div>
-      ) : null}
+      ) : (
+        <div className="space-y-3">
+          {error ? (
+            <div role="alert" aria-live="assertive" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-center">
+              <AlertCircle className="mx-auto size-5 text-red-600" />
+              <p className="mt-2 text-sm font-semibold text-red-900">{error.message}</p>
+              {error.requiresLogin ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = `${localizedPath("payment", locale)}${window.location.search}`;
+                    router.push(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
+                  }}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest"
+                >
+                  {isTr ? "Yeniden Giriş Yap" : "Sign In Again"}
+                  <ArrowRight className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          <p className="text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
+            {isTr ? "Ödemeye devam ederek " : "By continuing to payment, you confirm that you have read and accepted the "}
+            <button type="button" onClick={() => onOpenLegalDoc("preInformation")} className="font-semibold text-primary underline underline-offset-2 hover:no-underline">
+              {isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}
+            </button>
+            {", "}
+            <button type="button" onClick={() => onOpenLegalDoc("salesAgreement")} className="font-semibold text-primary underline underline-offset-2 hover:no-underline">
+              {isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}
+            </button>
+            {isTr ? " ve " : " and "}
+            <button type="button" onClick={() => onOpenLegalDoc("refundPolicy")} className="font-semibold text-primary underline underline-offset-2 hover:no-underline">
+              {isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}
+            </button>
+            {isTr
+              ? "'nı okuduğunuzu ve kabul ettiğinizi; siparişin ödeme yükümlülüğü doğurduğunu onaylarsınız."
+              : ", and acknowledge that placing the order creates a payment obligation."}
+          </p>
+
+          {error?.requiresLogin ? null : (
+            <button
+              type="button"
+              onClick={() => void handleProceedToPayment()}
+              disabled={starting}
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#6748D7] px-5 text-base font-bold text-white shadow-md shadow-violet-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#593BC8] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#6748D7]/30 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+            >
+              {starting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {isTr ? "Ödeme Hazırlanıyor…" : "Preparing Payment…"}
+                </>
+              ) : (
+                <>{isTr ? "Ödemeye Geç" : "Proceed to Payment"}</>
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex items-start gap-2 rounded-xl bg-surface-muted p-3 text-[11px] leading-relaxed text-[#68756C]">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />

@@ -43,8 +43,6 @@ export function PaymentPage() {
   const [links, setLinks] = useState<GuardianLink[]>([]);
   const [guardianId, setGuardianId] = useState("");
   const [learnerId, setLearnerId] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [refundPolicyAccepted, setRefundPolicyAccepted] = useState(false);
   const [activeModal, setActiveModal] = useState<LegalDocKey | null>(null);
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
@@ -336,25 +334,6 @@ export function PaymentPage() {
           </div>
         )}
 
-        <div className="mt-6 space-y-3 rounded-2xl border bg-[#F9FAF8] p-4 text-xs">
-          <label className="flex gap-3">
-            <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" />
-            <span>
-              <button type="button" onClick={() => setActiveModal("preInformation")} className="font-semibold text-primary underline">{isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}</button>
-              {isTr ? " ve " : " and "}
-              <button type="button" onClick={() => setActiveModal("salesAgreement")} className="font-semibold text-primary underline">{isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}</button>
-              {isTr ? " metinlerini kabul ediyorum." : "."}
-            </span>
-          </label>
-          <label className="flex gap-3">
-            <input type="checkbox" checked={refundPolicyAccepted} onChange={(event) => setRefundPolicyAccepted(event.target.checked)} className="mt-0.5 size-4 accent-primary" />
-            <span>
-              <button type="button" onClick={() => setActiveModal("refundPolicy")} className="font-semibold text-primary underline">{isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}</button>
-              {isTr ? " metnini kabul ediyorum." : "."}
-            </span>
-          </label>
-        </div>
-
         <div className="mt-6">
           <HostedCardPanel
             locale={locale}
@@ -365,8 +344,7 @@ export function PaymentPage() {
             paymentPhone={phoneCheck.normalized}
             contextReady={contextReady}
             emailVerified={emailVerified}
-            termsAccepted={termsAccepted}
-            refundPolicyAccepted={refundPolicyAccepted}
+            onOpenLegalDoc={setActiveModal}
           />
         </div>
       </div>

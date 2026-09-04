@@ -42,6 +42,11 @@ Deno.serve(async (req: Request) => {
     const refundPolicyAccepted = payload.refundPolicyAccepted === true;
     const legalAccepted = termsAccepted && refundPolicyAccepted;
     const legalVersions = (payload.legalVersions as Record<string, string>) || {};
+    // Defense-in-depth: the frontend only ever calls this endpoint from the
+    // single "Ödemeye Geç" action, which always sends both flags true (the
+    // click itself is the acceptance). A request missing either flag never
+    // reaches PayTR or creates a transaction row.
+    if (!legalAccepted) return validationError(req, locale, "LEGAL_ACCEPTANCE_REQUIRED", "Ödeme koşullarının onayı kaydedilemedi. Lütfen tekrar deneyin.", "Your acceptance of the payment terms could not be recorded. Please try again.");
     if (!packageIds.length || packageIds.length > 20 || new Set(packageIds).size !== packageIds.length) return validationError(req, locale, "INVALID_PACKAGES", "Siparişteki paketler geçersiz.", "The packages in this order are invalid.");
     if (!UUID_RE.test(learnerId)) return validationError(req, locale, "LEARNER_REQUIRED", "Ödeme yapılacak öğrenci bulunamadı.", "The learner for this payment could not be found.");
 

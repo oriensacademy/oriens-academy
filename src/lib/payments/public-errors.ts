@@ -31,6 +31,22 @@ const PAYMENT_ERROR_COPY: Record<string, Record<PaymentLocale, string>> = {
     tr: "Bu para birimiyle ödeme şu anda desteklenmiyor.",
     en: "Payment in this currency is not currently supported.",
   },
+  AGREEMENT_RECORD_FAILED: {
+    tr: "Ödeme koşullarının onayı kaydedilemedi. Lütfen tekrar deneyin.",
+    en: "Your acceptance of the payment terms could not be recorded. Please try again.",
+  },
+  LEGAL_ACCEPTANCE_REQUIRED: {
+    tr: "Ödeme koşullarının onayı kaydedilemedi. Lütfen tekrar deneyin.",
+    en: "Your acceptance of the payment terms could not be recorded. Please try again.",
+  },
+  PAYTR_SESSION_FAILED: {
+    tr: "Ödeme sağlayıcısına bağlanırken bir sorun oluştu. Lütfen tekrar deneyin.",
+    en: "There was a problem connecting to the payment provider. Please try again.",
+  },
+  NETWORK_ERROR: {
+    tr: "Bağlantı sırasında bir sorun oluştu.",
+    en: "A network error occurred.",
+  },
 };
 
 export function paymentErrorMessage(
