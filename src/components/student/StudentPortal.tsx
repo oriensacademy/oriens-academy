@@ -167,7 +167,7 @@ export function StudentPortal() {
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</nav>
       <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} onOpenPersonalization={() => setPersonalizationOpen(true)} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} onAccountDeleted={handleConfirmLogout} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
     </div>
-  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-x-auto overscroll-x-contain border-t border-border bg-background/95 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden"><div className="flex w-max min-w-full justify-start gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</div></nav>
+  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-hidden border-t border-border bg-background/95 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden">{/* Scroll happens on this inner wrapper, not the fixed nav itself -- an `overflow-x-auto` fixed element with a wider-than-viewport child can force mobile browsers to expand the whole layout viewport past device-width. See BLOG/MOBILE QA plan. */}<div className="overflow-x-auto overscroll-x-contain"><div className="flex w-max min-w-full justify-start gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</div></div></nav>
   <LogoutConfirmationModal open={logoutModalOpen} signingOut={signingOut} locale={locale} onCancel={() => setLogoutModalOpen(false)} onConfirm={handleConfirmLogout} />
   {showPersonalization && (
     <div
@@ -310,7 +310,12 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
   }, [data.lessons]);
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
+    // Explicit grid-cols-1 (not just the implicit single-column default) is
+    // load-bearing: Tailwind's grid-cols-N uses minmax(0,1fr) tracks, which
+    // cap card width at available space. Without it the implicit track is
+    // `auto`-sized and grows to the max-content width of the widest card
+    // (e.g. an unbroken truncated sentence), stretching the whole page.
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
       {/* Current Package / Total Remaining Lessons Banner */}
       <button onClick={() => onNavigate("package")} className="rounded-2xl border border-border bg-forest p-6 text-left text-white sm:col-span-2 cursor-pointer hover:border-border-strong transition-all">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -365,7 +370,11 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
           <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Sparkles className="size-4" />
           </div>
-          <div className="min-w-0">
+          {/* flex-1 gives this text column a definite width to truncate against --
+              without it, min-w-0 alone doesn't stop the `truncate` paragraph
+              below from growing to its full natural (nowrap) content width,
+              which was pushing the whole page wider than the viewport. */}
+          <div className="min-w-0 flex-1">
             <span className="block text-[10px] font-bold text-primary tracking-wider uppercase">
               {locale === "tr" ? "Akademik Hedefler & Kişiselleştirme" : "Academic Goals & Personalization"}
             </span>

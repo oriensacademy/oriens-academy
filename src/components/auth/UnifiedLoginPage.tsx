@@ -242,7 +242,10 @@ export function UnifiedLoginPage() {
   const isFromCheckout = searchParams.get("source") === "checkout" || (requested && (requested.includes("payment") || requested.includes("cart") || requested.includes("odeme") || requested.includes("sepet")));
 
   return (
-    <section className="min-h-screen bg-background px-3 pt-28 pb-16 sm:px-4 sm:pt-36">
+    // Extra bottom padding below `lg` clears the fixed mobile contact dock
+    // (SocialLinks, bottom-6 right-6, ~88px tall) so it never sits on top of
+    // the last form field when the page is scrolled to the bottom.
+    <section className="min-h-screen bg-background px-3 pt-28 pb-32 sm:px-4 sm:pt-36 lg:pb-16">
       <div className="mx-auto w-full max-w-md">
         {/* Single clean card without redundant secondary logo */}
         <div className="rounded-3xl border border-border bg-surface p-5 shadow-editorial sm:p-8">

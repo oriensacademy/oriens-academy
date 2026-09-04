@@ -177,10 +177,16 @@ export function PaymentPage() {
   if (isInitializing || settingsLoading || dataLoading || (accountType !== "student" && accountType !== "admin")) return <AccountWaveLoader />;
   if (!showPricing && accountType !== "admin") return <section className="pt-32 pb-24"><div className="mx-auto max-w-xl px-6 text-center"><h1 className="font-heading text-3xl text-ink">{isTr ? "Ödeme Sistemi Geçici Olarak Kapalı" : "Payment System Temporarily Unavailable"}</h1><ButtonLink href={localizedPath("home", locale)} className="mt-8">{isTr ? "Ana Sayfa" : "Home"}</ButtonLink></div></section>;
 
-  return <section className="pt-24 pb-20 md:pt-32 md:pb-28"><div className="mx-auto max-w-[1120px] px-4 sm:px-6">
+  // Extra bottom padding below `lg` clears the fixed mobile contact dock
+  // (SocialLinks, bottom-6 right-6, ~88px tall) so it never sits on top of
+  // the payment phone / Ödemeye Geç area when scrolled to the bottom.
+  return <section className="pt-24 pb-32 md:pt-32 md:pb-28 lg:pb-20"><div className="mx-auto max-w-[1120px] px-4 sm:px-6">
     <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary"><LockKeyhole className="size-3.5" />{isTr ? "Güvenli Ödeme" : "Secure Checkout"}</div>
     <h1 className="mt-4 font-heading text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
-    <div className="mt-9 grid gap-8 lg:grid-cols-[380px_1fr]">
+    {/* Explicit grid-cols-1 (minmax(0,1fr) track) instead of relying on the
+        implicit auto-sized single-column default -- see the matching fix and
+        comment in StudentPortal.tsx for why this is load-bearing on mobile. */}
+    <div className="mt-9 grid grid-cols-1 gap-8 lg:grid-cols-[380px_1fr]">
       <aside className="rounded-3xl border border-border bg-surface p-6 shadow-editorial">
         <h2 className="font-heading text-xl text-ink">{isTr ? "Sipariş Özeti" : "Order Summary"}</h2>
         

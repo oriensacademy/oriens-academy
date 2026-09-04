@@ -106,7 +106,10 @@ export function CartPage() {
     : `${unifiedLoginPath(locale)}?next=${encodeURIComponent(directPaymentHref)}&source=checkout`;
 
   return (
-    <section className="min-h-screen bg-background pt-28 pb-20 md:pt-36 md:pb-28">
+    // Extra bottom padding below `lg` clears the fixed mobile contact dock
+    // (SocialLinks, bottom-6 right-6, ~88px tall) so it never sits on top of
+    // the "Ödemeye Geç" CTA when the page is scrolled to the bottom.
+    <section className="min-h-screen bg-background pt-28 pb-32 md:pt-36 md:pb-28 lg:pb-20">
       <div className="public-container">
         <div className="mx-auto max-w-5xl">
           <header className="max-w-2xl">
@@ -145,7 +148,10 @@ export function CartPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-10 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
+            // Explicit grid-cols-1 -- see the fix/comment in PaymentPage.tsx
+            // and StudentPortal.tsx for why relying on the implicit
+            // auto-sized single-column default can blow out mobile width.
+            <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.5fr_1fr]">
               {/* CART ITEMS LIST */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border pb-3">

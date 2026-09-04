@@ -189,8 +189,12 @@ export function Navbar() {
                 <Link
                   href={localizedPath("cart", locale)}
                   aria-current={isCartActive ? "page" : undefined}
+                  // Hidden below 360px: at that width the logo + language switch +
+                  // cart + account icons don't all fit in the header, and the
+                  // hamburger menu already lists "Sepetim" as a fallback (see the
+                  // matching cartCount || isStudent condition in mobileNavItems).
                   className={cn(
-                    "relative flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    "relative hidden min-[360px]:flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     isCartActive
                       ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25 shadow-xs"
                       : "border-border text-ink hover:bg-surface-muted"
