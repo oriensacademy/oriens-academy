@@ -33,7 +33,7 @@ export function ContactPage() {
               <a
                 href={CONTACT.whatsappHref}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="flex min-h-12 items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/20"
               >
                 <MessageCircle className="size-5 shrink-0 text-[#71C285]" aria-hidden="true" />
@@ -56,7 +56,7 @@ export function ContactPage() {
               <a
                 href={CONTACT.instagramHref}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="flex min-h-12 items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/20"
               >
                 <FaInstagram className="size-5 shrink-0 text-[#E1306C]" aria-hidden="true" />

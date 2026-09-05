@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import type { BookingWithSlot, BookingStatus, ScheduleEventType } from "@/lib/admin/bookings";
-import { updateAdminBookingStatus, updateAdminBookingEvent } from "@/lib/admin/bookings";
+import {
+  updateAdminBookingStatus,
+  updateAdminBookingEvent,
+  sendAdminBookingNotification,
+} from "@/lib/admin/bookings";
 import {
   X,
   User,
@@ -20,9 +24,12 @@ import {
   Video,
   Save,
   RotateCcw,
+  Send,
+  BellRing,
 } from "lucide-react";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
+import { useToast } from "@/components/ui/toast";
 
 interface BookingDetailSheetProps {
   booking: BookingWithSlot | null;
@@ -52,9 +59,9 @@ const STATUS_LABELS: Record<BookingStatus, { label: string; bgClass: string; tex
     textClass: "text-red-800",
   },
   no_show: {
-    label: "Gelmedi",
-    bgClass: "bg-sage-soft border-input",
-    textClass: "text-muted-foreground",
+    label: "Katılmadı",
+    bgClass: "bg-gray-100 border-gray-300",
+    textClass: "text-gray-800",
   },
 };
 
@@ -71,12 +78,12 @@ export function BookingDetailSheet({
   onClose,
   onStatusUpdated,
 }: BookingDetailSheetProps) {
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [adminNotes, setAdminNotes] = useState(booking?.notes || "");
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Edit Form State
   const initialDate = booking?.availability_slots?.starts_at
@@ -102,7 +109,9 @@ export function BookingDetailSheet({
   const [editStatus, setEditStatus] = useState<BookingStatus>(
     (booking?.status as BookingStatus) || "confirmed"
   );
-  const [sendNotification, setSendNotification] = useState(true);
+  const [sendNotification, setSendNotification] = useState(false);
+  const [sendCancelNotification, setSendCancelNotification] = useState(false);
+  const [sendingManualEmail, setSendingManualEmail] = useState<string | null>(null);
 
   if (!booking) return null;
 
@@ -120,12 +129,12 @@ export function BookingDetailSheet({
 
     setUpdating(true);
     setErrorMsg(null);
-    setSuccessMsg(null);
 
-    const { success, error } = await updateAdminBookingStatus(
+    const { success, error, emailSent } = await updateAdminBookingStatus(
       booking.id,
       targetStatus,
-      adminNotes
+      adminNotes,
+      targetStatus === "cancelled" ? sendCancelNotification : false
     );
 
     setUpdating(false);
@@ -134,6 +143,11 @@ export function BookingDetailSheet({
     if (error) {
       setErrorMsg(error);
     } else if (success) {
+      toast.success(
+        emailSent
+          ? "Durum güncellendi ve hesap sahibine e-posta bildirimi gönderildi."
+          : "Durum başarıyla güncellendi."
+      );
       onStatusUpdated();
     }
   };
@@ -142,7 +156,6 @@ export function BookingDetailSheet({
     e.preventDefault();
     setUpdating(true);
     setErrorMsg(null);
-    setSuccessMsg(null);
 
     let startsAtIso: string | null = null;
     let endsAtIso: string | null = null;
@@ -176,10 +189,25 @@ export function BookingDetailSheet({
     if (error) {
       setErrorMsg(error);
     } else if (success) {
-      setSuccessMsg("Randevu detayları başarıyla güncellendi.");
+      toast.success("Randevu detayları başarıyla kaydedildi.");
       setIsEditing(false);
       onStatusUpdated();
-      setTimeout(() => setSuccessMsg(null), 3000);
+    }
+  };
+
+  const handleSendManualEmail = async (action: "confirm" | "remind") => {
+    setSendingManualEmail(action);
+    setErrorMsg(null);
+    const res = await sendAdminBookingNotification(booking.id, action);
+    setSendingManualEmail(null);
+    if (!res.success) {
+      setErrorMsg(res.error || "İşlem kaydedildi ancak e-posta gönderilemedi.");
+    } else {
+      toast.success(
+        action === "remind"
+          ? "Hatırlatma e-postası başarıyla gönderildi."
+          : "Bilgilendirme e-postası başarıyla gönderildi."
+      );
     }
   };
 
@@ -243,11 +271,6 @@ export function BookingDetailSheet({
           {errorMsg && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
               {errorMsg}
-            </div>
-          )}
-          {successMsg && (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-              {successMsg}
             </div>
           )}
 
@@ -377,16 +400,16 @@ export function BookingDetailSheet({
                 />
               </div>
 
-              {/* Notification Checkbox */}
+              {/* Notification Checkbox (Default: OFF) */}
               <div className="pt-2">
                 <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer">
                   <input
                     type="checkbox"
                     checked={sendNotification}
                     onChange={(e) => setSendNotification(e.target.checked)}
-                    className="size-4 rounded border-border text-primary focus:ring-primary"
+                    className="size-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
                   />
-                  <span>Öğrenciye güncelleme bilgilendirme e-postası gönder</span>
+                  <span>Hesap sahibine e-posta ile bildir</span>
                 </label>
               </div>
 
@@ -488,7 +511,7 @@ export function BookingDetailSheet({
               <div className="space-y-3">
                 <h3 className="text-xs font-bold text-foreground flex items-center gap-2">
                   <User className="size-4 text-[#10271B]" />
-                  <span>Öğrenci ve İletişim Bilgileri</span>
+                  <span>Hesap Sahibi ve İletişim Bilgileri</span>
                 </h3>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
@@ -515,15 +538,17 @@ export function BookingDetailSheet({
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2.5 rounded-lg border border-border bg-white p-3">
-                    <Phone className="size-4 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                      <div className="text-[11px] text-muted-foreground">Telefon</div>
-                      <div className="font-semibold text-foreground">
-                        {booking.phone || "—"}
+                  {booking.phone && (
+                    <div className="flex items-start gap-2.5 rounded-lg border border-border bg-white p-3">
+                      <Phone className="size-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">Telefon</div>
+                        <div className="font-semibold text-foreground">
+                          {booking.phone}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex items-start gap-2.5 rounded-lg border border-border bg-white p-3">
                     <BookOpen className="size-4 text-muted-foreground shrink-0 mt-0.5" />
@@ -576,6 +601,47 @@ export function BookingDetailSheet({
                 />
               </div>
 
+              {/* Manual Email Actions (Decoupled, On-Demand) */}
+              <div className="rounded-xl border border-border bg-[#F9FAF8] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Mail className="size-3.5 text-primary" />
+                    <span>E-posta Bildirimleri (İsteğe Bağlı)</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-medium">Manuel Gönderim</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Randevu işlemleri otomatik e-posta göndermez. Hesap sahibine bilgilendirme göndermek istediğinizde aşağıdaki seçenekleri kullanabilirsiniz.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={Boolean(sendingManualEmail) || updating}
+                    onClick={() => handleSendManualEmail("confirm")}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-40 cursor-pointer transition-colors shadow-2xs"
+                  >
+                    <Send className="size-3 text-primary" />
+                    <span>{booking.status === "confirmed" ? "Tekrar Gönder" : "E-posta Gönder"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={Boolean(sendingManualEmail) || updating}
+                    onClick={() => handleSendManualEmail("remind")}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40 cursor-pointer transition-colors shadow-2xs"
+                  >
+                    <BellRing className="size-3 text-amber-600" />
+                    <span>Hatırlatma E-postası Gönder</span>
+                  </button>
+                </div>
+                {sendingManualEmail && (
+                  <div className="text-[11px] text-primary flex items-center gap-1.5 pt-1">
+                    <Wave className="size-3 text-primary" />
+                    <span>E-posta gönderiliyor…</span>
+                  </div>
+                )}
+              </div>
+
               {/* Status Change Controls */}
               <div className="border-t border-border pt-4 space-y-3">
                 <div className="text-xs font-bold text-foreground">
@@ -591,19 +657,30 @@ export function BookingDetailSheet({
                     <p className="text-[11px]">
                       Bu işlem randevu durumunu &apos;cancelled&apos; yapacaktır.
                     </p>
-                    <div className="flex gap-2 pt-1">
+                    <div className="pt-1">
+                      <label className="flex items-center gap-2 text-xs text-amber-950 font-medium cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={sendCancelNotification}
+                          onChange={(e) => setSendCancelNotification(e.target.checked)}
+                          className="size-4 rounded border-amber-400 text-red-600 focus:ring-red-600 cursor-pointer"
+                        />
+                        <span>E-posta ile iptali bildir</span>
+                      </label>
+                    </div>
+                    <div className="flex gap-2 pt-2">
                       <button
                         type="button"
                         disabled={updating}
                         onClick={() => handleStatusChange("cancelled")}
-                        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 cursor-pointer"
                       >
                         {updating ? "İptal Ediliyor…" : "Evet, İptal Et"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setConfirmingCancel(false)}
-                        className="rounded-md border border-input bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+                        className="rounded-md border border-input bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted cursor-pointer"
                       >
                         Vazgeç
                       </button>

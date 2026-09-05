@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import {
   CalendarPlus,
   Mail,
-  Phone,
+  Info as InfoIcon,
   X,
   BookOpen,
   Package,
@@ -14,16 +14,17 @@ import {
   ExternalLink,
   ShieldCheck,
   AlertCircle,
-  CheckCircle2,
   Edit3,
   Lock,
   History,
   MinusCircle,
   Clock,
+  CheckCircle2,
 } from "lucide-react";
-import { StudentLearningManager, type LearningSection } from "@/components/admin/StudentLearningManager";
-import { completeStudentAppointment, recordCompletedLesson, adjustStudentPackageLessons } from "@/lib/admin/student-learning";
-import { updateAdminBookingStatus } from "@/lib/admin/bookings";
+import { StudentLearningManager } from "@/components/admin/StudentLearningManager";
+import { useToast } from "@/components/ui/toast";
+import { completeStudentAppointment, recordCompletedLesson, upsertStudentLesson, adjustStudentPackageLessons } from "@/lib/admin/student-learning";
+import { updateAdminBookingStatus, updateAdminBookingEvent, sendAdminBookingNotification, type BookingWithSlot } from "@/lib/admin/bookings";
 import {
   sendStudentPasswordReset,
   adminUpdateStudentProfile,
@@ -32,6 +33,7 @@ import {
 import { useAccount } from "@/lib/auth/account-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { formatExamBadges, formatDestinationBadges } from "@/lib/student/preferences";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 type Tab = "overview" | "education" | "packages" | "notes";
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -42,7 +44,7 @@ const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
 ];
 
 export function StudentDetailSheet({
-  student,
+  student: studentProp,
   initialTab = "overview",
   onClose,
   onCreateBooking,
@@ -56,46 +58,91 @@ export function StudentDetailSheet({
 }) {
   const { user: currentAdminUser } = useAccount();
   const adminEmail = currentAdminUser?.email || "admin@oriens-academy.com";
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [message, setMessage] = useState("");
+  // Every tab a user has actually opened stays mounted (hidden via CSS, not
+  // unmounted) for the lifetime of this sheet, so revisiting a tab is instant
+  // and never re-fetches -- see "TAB GEÇİŞLERİNDE FULL LOADING SORUNU".
+  const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(() => new Set([initialTab]));
   const [errorMessage, setErrorMessage] = useState("");
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [recordLessonModalOpen, setRecordLessonModalOpen] = useState(false);
   const [decreaseRightsModalOpen, setDecreaseRightsModalOpen] = useState(false);
+  const [rescheduleBooking, setRescheduleBooking] = useState<BookingWithSlot | null>(null);
   const [isResetting, startResetTransition] = useTransition();
+
+  // Optimistic local copy of the student: mutation handlers patch this
+  // immediately so the UI never waits on the parent list's full refetch
+  // (see "DERS İPTAL UI STATE BUG" / "DERS PLANLAMA PERFORMANSI"). It
+  // re-syncs whenever the parent hands us fresh authoritative data for the
+  // same student (background reconciliation), and resets on mount for a
+  // different student since <StudentDetailSheet key={selected.id}> remounts
+  // this component when the selection changes.
+  const [localStudent, setLocalStudent] = useState(studentProp);
+  // React's documented "adjust state during render" pattern (not an Effect):
+  // reconcile with the parent's latest data the moment the prop reference
+  // changes, in the same render pass -- avoids the extra render (and the
+  // set-state-in-effect lint error) a useEffect-based sync would cause.
+  const [reconciledStudentProp, setReconciledStudentProp] = useState(studentProp);
+  if (studentProp !== reconciledStudentProp) {
+    setReconciledStudentProp(studentProp);
+    if (studentProp) setLocalStudent(studentProp);
+  }
+
+  function patchBooking(bookingId: string, patch: Partial<BookingWithSlot> | null) {
+    setLocalStudent((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        bookings: patch === null
+          ? prev.bookings.filter((b) => b.id !== bookingId)
+          : prev.bookings.map((b) => (b.id === bookingId ? { ...b, ...patch } : b)),
+      };
+    });
+  }
+
+  function handleTabChange(next: Tab) {
+    setTab(next);
+    // Error banners are tab-scoped and must not follow the user to another
+    // tab -- see "CANCELLED LESSON HER TABDA MESAJ GÖSTERME BUG".
+    // Success feedback now uses the global toast system which is independent.
+    setErrorMessage("");
+    setVisitedTabs((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
+  }
 
   const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
 
   useEffect(() => {
-    if (!student) return;
+    if (!studentProp) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (decreaseRightsModalOpen) setDecreaseRightsModalOpen(false);
         else if (recordLessonModalOpen) setRecordLessonModalOpen(false);
         else if (editModalOpen) setEditModalOpen(false);
         else if (resetModalOpen) setResetModalOpen(false);
+        else if (rescheduleBooking) setRescheduleBooking(null);
         else onClose();
       }
     };
     document.addEventListener("keydown", onKeyDown);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockBodyScroll = lockBodyScroll();
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previous;
+      unlockBodyScroll();
     };
-  }, [student, onClose, resetModalOpen, editModalOpen]);
+  }, [studentProp, onClose, resetModalOpen, editModalOpen, decreaseRightsModalOpen, recordLessonModalOpen, rescheduleBooking]);
 
-  if (!student || !mounted || typeof document === "undefined") return null;
+  if (!studentProp || !localStudent || !mounted || typeof document === "undefined") return null;
+  // Everything below reads the optimistically-patched local copy.
+  const student = localStudent;
 
   const handlePasswordReset = () => {
     startResetTransition(async () => {
-      setMessage("");
       setErrorMessage("");
       const res = await sendStudentPasswordReset(student.email, (student.preferredLanguage as "tr" | "en") || "tr");
       if (res.success) {
-        setMessage(`Şifre sıfırlama bağlantısı başarıyla ${student.email} adresine iletildi.`);
+        toast.success(`Şifre sıfırlama bağlantısı başarıyla ${student.email} adresine iletildi.`);
         setResetModalOpen(false);
       } else {
         setErrorMessage(res.error || "Şifre sıfırlama bağlantısı gönderilemedi.");
@@ -129,7 +176,7 @@ export function StudentDetailSheet({
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {student.email} · {student.phone || "Telefon belirtilmemiş"}
+                  {student.email}
                 </p>
               </div>
             </div>
@@ -149,7 +196,7 @@ export function StudentDetailSheet({
               return (
                 <button
                   key={item.id}
-                  onClick={() => setTab(item.id)}
+                  onClick={() => handleTabChange(item.id)}
                   className={`inline-flex items-center gap-1.5 shrink-0 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                     tab === item.id
                       ? "border-primary bg-primary text-white shadow-xs"
@@ -165,12 +212,6 @@ export function StudentDetailSheet({
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-background">
-          {message && (
-            <div role="status" className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs text-emerald-800 font-medium animate-in fade-in">
-              <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
-              <span>{message}</span>
-            </div>
-          )}
           {errorMessage && (
             <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 font-medium animate-in fade-in">
               <AlertCircle className="size-4 shrink-0 text-red-700" />
@@ -178,67 +219,90 @@ export function StudentDetailSheet({
             </div>
           )}
 
-          {tab === "overview" && (
-            <Overview
-              student={student}
-              onCreateBooking={onCreateBooking}
-              onOpenRecordPastLesson={() => {
-                setMessage("");
-                setErrorMessage("");
-                setRecordLessonModalOpen(true);
-              }}
-              onOpenDecreaseRights={() => {
-                setMessage("");
-                setErrorMessage("");
-                setDecreaseRightsModalOpen(true);
-              }}
-              onOpenPasswordReset={() => {
-                setErrorMessage("");
-                setResetModalOpen(true);
-              }}
-              onOpenEditIdentity={() => {
-                setErrorMessage("");
-                setEditModalOpen(true);
-              }}
-            />
+          {/* Each tab mounts once (on first visit) and then stays mounted --
+              switching away just hides it with CSS, so previously-loaded
+              data and in-flight state are never lost and revisiting is
+              instant. See "TAB GEÇİŞLERİNDE FULL LOADING SORUNU". */}
+          {visitedTabs.has("overview") && (
+            <div className={tab === "overview" ? "" : "hidden"}>
+              <Overview
+                student={student}
+                onCreateBooking={onCreateBooking}
+                onOpenRecordPastLesson={() => {
+                  setErrorMessage("");
+                  setRecordLessonModalOpen(true);
+                }}
+                onOpenDecreaseRights={() => {
+                  setErrorMessage("");
+                  setDecreaseRightsModalOpen(true);
+                }}
+                onOpenPasswordReset={() => {
+                  setErrorMessage("");
+                  setResetModalOpen(true);
+                }}
+                onOpenEditIdentity={() => {
+                  setErrorMessage("");
+                  setEditModalOpen(true);
+                }}
+              />
+            </div>
           )}
 
-          {tab === "education" && (
-            <Appointments
-              student={student}
-              onCreateBooking={onCreateBooking}
-              onOpenRecordPastLesson={() => {
-                setMessage("");
-                setErrorMessage("");
-                setRecordLessonModalOpen(true);
-              }}
-              onOpenDecreaseRights={() => {
-                setMessage("");
-                setErrorMessage("");
-                setDecreaseRightsModalOpen(true);
-              }}
-              onSelectTab={(t) => setTab(t)}
-              onDone={(text) => {
-                setMessage(text);
-                onChanged?.();
-              }}
-            />
+          {visitedTabs.has("education") && (
+            <div className={tab === "education" ? "" : "hidden"}>
+              <Appointments
+                student={student}
+                onCreateBooking={onCreateBooking}
+                onOpenRecordPastLesson={() => {
+                  setErrorMessage("");
+                  setRecordLessonModalOpen(true);
+                }}
+                onOpenDecreaseRights={() => {
+                  setErrorMessage("");
+                  setDecreaseRightsModalOpen(true);
+                }}
+                onPatchBooking={patchBooking}
+                onOpenReschedule={(booking) => setRescheduleBooking(booking)}
+                onDone={(text) => {
+                  toast.success(text);
+                  onChanged?.();
+                }}
+              />
+
+              {/* Canlı ders kayıtları: MAIL-026 (bağlantı) ve MAIL-027 (ders
+                  bilgilendirme) manuel gönderim aksiyonları burada yaşar. Bu
+                  panel daha önce hiçbir yerde render edilmiyordu, dolayısıyla
+                  ilgili manuel e-posta butonlarına UI'dan erişilemiyordu. */}
+              {student.userId && (
+                <div className="mt-6">
+                  <StudentLearningManager
+                    userId={student.userId}
+                    studentName={student.fullName}
+                    section="lessons"
+                    onChanged={onChanged}
+                    onPlan={onCreateBooking}
+                  />
+                </div>
+              )}
+            </div>
           )}
 
-          {tab === "packages" && student.userId && (
-            <div className="space-y-6">
+          {visitedTabs.has("packages") && student.userId && (
+            <div className={tab === "packages" ? "space-y-6" : "hidden"}>
               <StudentLearningManager userId={student.userId} section="packages" onChanged={onChanged} />
               <StudentLearningManager userId={student.userId} section="payments" onChanged={onChanged} />
             </div>
           )}
 
-          {tab === "notes" && student.userId && (
-            <StudentLearningManager
-              userId={student.userId}
-              studentName={student.fullName}
-              section={tab as LearningSection}
-              onChanged={onChanged}
-            />
+          {visitedTabs.has("notes") && student.userId && (
+            <div className={tab === "notes" ? "" : "hidden"}>
+              <StudentLearningManager
+                userId={student.userId}
+                studentName={student.fullName}
+                section="notes"
+                onChanged={onChanged}
+              />
+            </div>
           )}
 
           {(["education", "packages", "notes"] as Tab[]).includes(tab) && !student.userId && (
@@ -303,7 +367,7 @@ export function StudentDetailSheet({
           adminEmail={adminEmail}
           onClose={() => setEditModalOpen(false)}
           onSuccess={(msg) => {
-            setMessage(msg);
+            toast.success(msg);
             onChanged?.();
           }}
         />
@@ -315,7 +379,7 @@ export function StudentDetailSheet({
           student={student}
           onClose={() => setRecordLessonModalOpen(false)}
           onSuccess={(msg) => {
-            setMessage(msg);
+            toast.success(msg);
             setRecordLessonModalOpen(false);
             onChanged?.();
           }}
@@ -328,8 +392,21 @@ export function StudentDetailSheet({
           student={student}
           onClose={() => setDecreaseRightsModalOpen(false)}
           onSuccess={(msg) => {
-            setMessage(msg);
+            toast.success(msg);
             setDecreaseRightsModalOpen(false);
+            onChanged?.();
+          }}
+        />
+      )}
+
+      {/* Reschedule Booking Modal ("Dersi Ertele") */}
+      {rescheduleBooking && (
+        <RescheduleBookingModal
+          booking={rescheduleBooking}
+          onClose={() => setRescheduleBooking(null)}
+          onSuccess={(patch) => {
+            patchBooking(rescheduleBooking.id, patch);
+            toast.success("Ders başarıyla ertelendi.");
             onChanged?.();
           }}
         />
@@ -387,10 +464,9 @@ function Overview({
             <span>Bilgileri Düzenle</span>
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Info label="Ad Soyad" value={val(student.fullName)} />
           <Info label="E-posta" value={val(student.email)} />
-          <Info label="Telefon" value={val(student.phone)} />
           <div className="rounded-xl border border-border bg-background-soft/50 p-3">
             <span className="block text-[9px] uppercase text-muted-foreground font-semibold">Öğrenci Durumu</span>
             <div className="mt-1">
@@ -517,12 +593,6 @@ function Overview({
           <Mail className="size-4" />
           E-posta Gönder
         </a>
-        {student.phone && (
-          <a href={`tel:${student.phone}`} className={action}>
-            <Phone className="size-4" />
-            Ara
-          </a>
-        )}
         <button
           onClick={onOpenPasswordReset}
           className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 cursor-pointer transition-colors"
@@ -542,23 +612,30 @@ function Overview({
   );
 }
 
+/** Manual, admin-triggered appointment emails: MAIL-021/023/024/025. */
+type ManualBookingEmail = "confirm" | "update" | "remind" | "cancel";
+
 function Appointments({
   student,
   onCreateBooking,
   onOpenRecordPastLesson,
   onOpenDecreaseRights,
-  onSelectTab,
+  onPatchBooking,
+  onOpenReschedule,
   onDone,
 }: {
   student: StudentProfile;
   onCreateBooking: () => void;
   onOpenRecordPastLesson: () => void;
   onOpenDecreaseRights: () => void;
-  onSelectTab?: (tab: Tab) => void;
+  onPatchBooking: (bookingId: string, patch: Partial<BookingWithSlot> | null) => void;
+  onOpenReschedule: (booking: BookingWithSlot) => void;
   onDone: (text: string) => void;
 }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [sendingEmail, setSendingEmail] = useState("");
+  const [sentEmails, setSentEmails] = useState<Set<string>>(new Set());
 
   const hasActivePackage = Boolean(student.activePackage);
   const remainingLessons = student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
@@ -579,6 +656,7 @@ function Appointments({
       if (r.error) {
         setError(r.error);
       } else {
+        if (!r.alreadyCompleted) onPatchBooking(id, { status: "completed" });
         onDone(
           r.alreadyCompleted
             ? "Bu randevu daha önce ders olarak tamamlanmış; paket yeniden düşülmedi."
@@ -589,8 +667,12 @@ function Appointments({
       }
     } else {
       const r = await updateAdminBookingStatus(id, "completed");
-      if (r.error) setError(r.error);
-      else onDone("Görüşme/randevu tamamlandı (Paket düşülmedi).");
+      if (r.error) {
+        setError(r.error);
+      } else {
+        onPatchBooking(id, { status: "completed" });
+        onDone("Görüşme/randevu tamamlandı (Paket düşülmedi).");
+      }
     }
     setBusy("");
   }
@@ -599,9 +681,67 @@ function Appointments({
     setBusy(id);
     setError("");
     const r = await updateAdminBookingStatus(id, "cancelled");
-    if (r.error) setError(r.error);
-    else onDone("Randevu iptal edildi.");
+    if (r.error) {
+      setError(r.error);
+    } else {
+      // Immediate, authoritative-once-confirmed local update: the booking
+      // moves from "Yaklaşan Seanslar" to "Geçmiş Seanslar" on this render,
+      // no refresh needed. See "DERS İPTAL UI STATE BUG".
+      onPatchBooking(id, { status: "cancelled" });
+      onDone("Randevu iptal edildi.");
+    }
     setBusy("");
+  }
+
+  // MAIL-021/023/024/025: explicit, admin-triggered only -- appointment
+  // creation, approval, reschedule and cancellation never send email on their
+  // own (see src/lib/admin/bookings.ts). One click = one email: only the
+  // clicked button disables for the duration of the request (covers
+  // double-click), the sheet stays open, and the server-side idempotency claim
+  // collapses network retries/replays inside the dedupe window while still
+  // allowing a deliberate later "Tekrar Gönder".
+  const EMAIL_LABELS: Record<ManualBookingEmail, { idle: string; again: string; done: string }> = {
+    confirm: {
+      idle: "Bilgilendirme E-postası Gönder",
+      again: "Bilgilendirme E-postasını Tekrar Gönder",
+      done: "Bilgilendirme e-postası gönderildi.",
+    },
+    update: {
+      idle: "Tarih Değişikliği E-postası Gönder",
+      again: "Tarih Değişikliği E-postasını Tekrar Gönder",
+      done: "Tarih değişikliği e-postası gönderildi.",
+    },
+    remind: {
+      idle: "Hatırlatma E-postası Gönder",
+      again: "Hatırlatma E-postasını Tekrar Gönder",
+      done: "Hatırlatma e-postası gönderildi.",
+    },
+    cancel: {
+      idle: "İptal E-postası Gönder",
+      again: "İptal E-postasını Tekrar Gönder",
+      done: "İptal e-postası gönderildi.",
+    },
+  };
+
+  async function sendManualEmail(id: string, action: ManualBookingEmail) {
+    const key = id + action;
+    if (sendingEmail === key) return;
+    setSendingEmail(key);
+    setError("");
+    const r = await sendAdminBookingNotification(id, action);
+    setSendingEmail("");
+    if (!r.success) {
+      setError(r.error || "Bilgilendirme e-postası gönderilemedi.");
+      return;
+    }
+    setSentEmails((prev) => new Set(prev).add(key));
+    onDone(EMAIL_LABELS[action].done);
+  }
+
+  function emailLabel(id: string, action: ManualBookingEmail) {
+    const key = id + action;
+    if (sendingEmail === key) return "Gönderiliyor…";
+    return sentEmails.has(key) ? EMAIL_LABELS[action].again : EMAIL_LABELS[action].idle;
   }
 
   const upcoming = student.bookings.filter((b) => !["completed", "cancelled", "no_show"].includes(b.status));
@@ -622,9 +762,10 @@ function Appointments({
             type="button"
             onClick={onOpenRecordPastLesson}
             className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors shadow-2xs"
+            title="Geçmiş veya gelecek ders tanımla"
           >
             <History className="size-4 text-primary" />
-            Geçmiş Ders Gir
+            Manuel Ders Ekle
           </button>
           <button
             type="button"
@@ -692,9 +833,17 @@ function Appointments({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Action buttons based on event type & entitlement */}
+                    {/* Minimal status badge only -- package/extra-lesson
+                        assignment lives in the Paket & Ödeme tab, not here. */}
+                    {isExplicitLesson && !(hasActivePackage && remainingLessons > 0) && (
+                      <span className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">
+                        {hasActivePackage ? "Paket Bakiyesi: 0 Ders" : "Aktif Paket Yok"}
+                      </span>
+                    )}
+
+                    {/* Main actions */}
                     {isExplicitLesson ? (
-                      hasActivePackage && remainingLessons > 0 ? (
+                      hasActivePackage && remainingLessons > 0 && (
                         <button
                           type="button"
                           disabled={busy === b.id}
@@ -703,30 +852,6 @@ function Appointments({
                         >
                           Dersi Tamamla (Paketten 1 Ders Düş)
                         </button>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-800">
-                            {hasActivePackage ? "Paket Bakiyesi: 0 Ders" : "Aktif Paket Yok"}
-                          </span>
-                          {onSelectTab && (
-                            <button
-                              type="button"
-                              onClick={() => onSelectTab("packages")}
-                              className="rounded-lg border border-primary bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 cursor-pointer transition-colors"
-                            >
-                              Paket / Ek Ders Tanımla
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={busy === b.id}
-                            onClick={() => void finish(b.id, true)}
-                            className="rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer disabled:opacity-50"
-                            title="Paketten düşmeden ders tamamlandı olarak kaydet"
-                          >
-                            Paketsiz Tamamla
-                          </button>
-                        </div>
                       )
                     ) : (
                       <button
@@ -742,11 +867,35 @@ function Appointments({
                     <button
                       type="button"
                       disabled={busy === b.id}
+                      onClick={() => onOpenReschedule(b)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      <Clock className="size-3.5 text-primary" />
+                      Dersi Ertele
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={busy === b.id}
                       onClick={() => void cancelAppointment(b.id)}
                       className="rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 cursor-pointer disabled:opacity-50 transition-colors"
                     >
-                      İptal Et
+                      Dersi İptal Et
                     </button>
+
+                    {(["confirm", "update", "remind"] as ManualBookingEmail[]).map((emailAction) => (
+                      <button
+                        key={emailAction}
+                        type="button"
+                        disabled={sendingEmail === b.id + emailAction}
+                        onClick={() => void sendManualEmail(b.id, emailAction)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer disabled:opacity-50 transition-colors"
+                        title="Ders/randevu oluşturma ve değişiklikler otomatik e-posta göndermez; bu butonlar dışında hiçbir işlem öğrenciye mail atmaz."
+                      >
+                        <Mail className="size-3.5 text-primary" />
+                        {emailLabel(b.id, emailAction)}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -759,7 +908,7 @@ function Appointments({
                       <a
                         href={b.live_meeting_url!}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="font-mono text-primary underline break-all flex items-center gap-1 hover:text-forest"
                       >
                         {b.live_meeting_url}
@@ -769,7 +918,7 @@ function Appointments({
                     <a
                       href={b.live_meeting_url!}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest"
                     >
                       <Video className="size-3.5" />
@@ -804,17 +953,30 @@ function Appointments({
                     {date(b.availability_slots?.starts_at || b.created_at)}
                   </p>
                 </div>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                    b.status === "completed"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : b.status === "cancelled"
-                      ? "bg-neutral-200 text-neutral-700"
-                      : "bg-amber-100 text-amber-800"
-                  }`}
-                >
-                  {b.status === "completed" ? "Tamamlandı" : b.status === "cancelled" ? "İptal Edildi" : b.status === "no_show" ? "Gelmedi" : b.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {b.status === "cancelled" && (
+                    <button
+                      type="button"
+                      disabled={sendingEmail === b.id + "cancel"}
+                      onClick={() => void sendManualEmail(b.id, "cancel")}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      <Mail className="size-3 text-primary" />
+                      {emailLabel(b.id, "cancel")}
+                    </button>
+                  )}
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                      b.status === "completed"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : b.status === "cancelled"
+                        ? "bg-neutral-200 text-neutral-700"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {b.status === "completed" ? "Tamamlandı" : b.status === "cancelled" ? "İptal Edildi" : b.status === "no_show" ? "Gelmedi" : b.status}
+                  </span>
+                </div>
               </div>
             </div>
           ))
@@ -868,7 +1030,6 @@ function EditStudentIdentityModal({
 }) {
   const [form, setForm] = useState({
     fullName: student.fullName || "",
-    phone: student.phone || "",
     school: student.school || "",
     targetUniversity: student.targetUniversity || "",
   });
@@ -914,7 +1075,6 @@ function EditStudentIdentityModal({
       const targetId = student.userId || student.id.replace("account-", "");
       const res = await adminUpdateStudentProfile(targetId, {
         fullName: form.fullName,
-        phone: form.phone || null,
         school: form.school || null,
         targetUniversity: form.targetUniversity || null,
       });
@@ -971,17 +1131,6 @@ function EditStudentIdentityModal({
                   type="text"
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </label>
-
-              <label className="text-xs font-semibold text-ink">
-                Telefon Numarası
-                <input
-                  type="tel"
-                  placeholder="05..."
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 />
               </label>
@@ -1099,55 +1248,98 @@ function RecordPastLessonModal({
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }) {
+  const [lessonType, setLessonType] = useState<"past" | "future" | null>(null);
   const [lessonDate, setLessonDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [lessonTime, setLessonTime] = useState("10:00");
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [subject, setSubject] = useState("");
+  const [meetingUrl, setMeetingUrl] = useState("");
+  const [teacherNote, setTeacherNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!lessonType) {
+      setError("Lütfen ders türünü seçiniz (Geçmiş Ders veya Gelecek Ders).");
+      return;
+    }
     if (!lessonDate) {
       setError("Tarih seçilmelidir.");
       return;
     }
+
+    const targetIso = new Date(`${lessonDate}T${lessonTime || "12:00"}:00`).toISOString();
+    const targetTimestamp = new Date(targetIso).getTime();
+    const nowTimestamp = Date.now();
+
+    if (lessonType === "past") {
+      if (targetTimestamp > nowTimestamp + 5 * 60_000) {
+        setError("Geçmiş ders için gelecekteki bir tarih/saat seçilemez. Lütfen geçmiş bir tarih giriniz veya 'Gelecek Ders' seçeneğini kullanınız.");
+        return;
+      }
+    } else {
+      if (targetTimestamp < nowTimestamp - 15 * 60_000) {
+        setError("Gelecek ders için geçmiş bir tarih/saat seçilemez. Lütfen ileri bir tarih giriniz veya 'Geçmiş Ders' seçeneğini kullanınız.");
+        return;
+      }
+    }
+
     setBusy(true);
     setError("");
 
-    const hasActivePkg = Boolean(student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0);
-    const remaining = hasActivePkg && student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
+    if (lessonType === "past") {
+      const hasActivePkg = Boolean(student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0);
+      const remaining = hasActivePkg && student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
 
-    const res = await recordCompletedLesson({
-      studentId: student.userId || student.id,
-      lessonDate: new Date(`${lessonDate}T12:00:00`).toISOString(),
-      durationMinutes,
-      title: subject.trim() || "Tamamlanan Ders",
-      subject: subject.trim() || (student.targetExam ? `${student.targetExam} Dersi` : "Birebir Ders"),
-      packagePurchaseId: hasActivePkg && remaining > 0 ? (student.activePackage?.id || null) : null,
-      idempotencyKey: `past-lesson-${student.id}-${Date.now()}`,
-    });
+      const res = await recordCompletedLesson({
+        studentId: student.userId || student.id,
+        lessonDate: targetIso,
+        durationMinutes,
+        title: subject.trim() || "Tamamlanan Ders",
+        subject: subject.trim() || (student.targetExam ? `${student.targetExam} Dersi` : "Birebir Ders"),
+        teacherNote: teacherNote.trim() || null,
+        packagePurchaseId: hasActivePkg && remaining > 0 ? (student.activePackage?.id || null) : null,
+        idempotencyKey: `past-lesson-${student.id}-${Date.now()}`,
+      });
 
-    setBusy(false);
-    if (res.error) {
-      setError(res.error);
+      setBusy(false);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        onSuccess("Geçmiş ders başarıyla kaydedildi ve paketten 1 ders hakkı düşüldü.");
+      }
     } else {
-      const msg = hasActivePkg && remaining > 0
-        ? "Geçmiş ders başarıyla kaydedildi ve paketten 1 ders düşüldü."
-        : "Geçmiş ders başarıyla kaydedildi.";
-      onSuccess(msg);
+      const res = await upsertStudentLesson({
+        studentId: student.userId || student.id,
+        title: subject.trim() || "Planlanan Ders",
+        subject: subject.trim() || (student.targetExam ? `${student.targetExam} Dersi` : "Birebir Ders"),
+        lessonDate: targetIso,
+        durationMinutes,
+        liveMeetingUrl: meetingUrl.trim() || null,
+        teacherNote: teacherNote.trim() || null,
+        status: "scheduled",
+      });
+
+      setBusy(false);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        onSuccess("Gelecek ders başarıyla takvime planlandı. Ders tamamlandığında paketten 1 hak düşülecektir.");
+      }
     }
   };
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2.5">
             <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-primary">
               <History className="size-5" />
             </div>
             <div>
-              <h3 className="font-heading text-base font-bold text-ink">Geçmiş Ders Gir</h3>
+              <h3 className="font-heading text-base font-bold text-ink">Manuel Ders Tanımla</h3>
               <p className="text-xs text-muted-foreground">{student.fullName}</p>
             </div>
           </div>
@@ -1167,72 +1359,187 @@ function RecordPastLessonModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          <label className="block text-xs font-semibold text-ink">
-            Ders Tarihi
-            <input
-              type="date"
-              required
-              value={lessonDate}
-              onChange={(e) => setLessonDate(e.target.value)}
-              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
-            />
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-ink">
+            Ders Türü <span className="text-rose-600">* (Zorunlu Seçim)</span>
           </label>
-
-          <label className="block text-xs font-semibold text-ink">
-            Ders Süresi
-            <select
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(Number(e.target.value))}
-              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary cursor-pointer"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <label
+              className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                lessonType === "past"
+                  ? "border-emerald-600 bg-emerald-50/70 shadow-xs ring-1 ring-emerald-600/30"
+                  : "border-border bg-surface hover:bg-surface-muted/50"
+              }`}
             >
-              <option value={30}>30 dakika</option>
-              <option value={45}>45 dakika</option>
-              <option value={60}>60 dakika (1 saat)</option>
-              <option value={90}>90 dakika (1.5 saat)</option>
-              <option value={120}>120 dakika (2 saat)</option>
-            </select>
-          </label>
+              <input
+                type="radio"
+                name="lessonTypeModal"
+                value="past"
+                checked={lessonType === "past"}
+                onChange={() => {
+                  setLessonType("past");
+                  setError("");
+                }}
+                className="mt-0.5 text-emerald-700 focus:ring-emerald-700 cursor-pointer"
+              />
+              <div>
+                <div className="text-xs font-bold text-ink flex items-center gap-1.5">
+                  <History className="size-3.5 text-emerald-700" />
+                  <span>○ Geçmiş Ders</span>
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  Gerçekleşmiş bir ders sisteme işlenir ve paketten 1 ders hakkı düşülür.
+                </div>
+              </div>
+            </label>
 
-          <label className="block text-xs font-semibold text-ink">
-            Ders / Konu <span className="font-normal text-muted-foreground">(İsteğe Bağlı)</span>
-            <input
-              type="text"
-              placeholder="Örn: SAT Math — Türev ve İntegral"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
-            />
-          </label>
-
-          {student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0 ? (
-            <p className="text-[11px] text-muted-foreground bg-surface-muted/60 rounded-xl p-2.5">
-              💡 Öğrencinin aktif <strong>{student.activePackage.name}</strong> paketi ({student.activePackage.lessonCount - student.activePackage.lessonsUsed} ders kaldı) bulunmaktadır. Ders kaydedildiğinde paketten 1 ders hakkı düşülecektir.
-            </p>
-          ) : (
-            <p className="text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200 rounded-xl p-2.5">
-              ℹ️ Öğrencinin aktif ders hakkı kalmamıştır. Ders bağımsız/ekstra geçmiş ders olarak kaydedilecektir.
-            </p>
-          )}
-
-          <div className="flex flex-col-reverse gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={onClose}
-              className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer sm:w-auto"
+            <label
+              className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                lessonType === "future"
+                  ? "border-primary bg-forest/5 shadow-xs ring-1 ring-primary/30"
+                  : "border-border bg-surface hover:bg-surface-muted/50"
+              }`}
             >
-              İptal
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors sm:w-auto"
-            >
-              {busy ? "Kaydediliyor..." : "Geçmiş Dersi Kaydet"}
-            </button>
+              <input
+                type="radio"
+                name="lessonTypeModal"
+                value="future"
+                checked={lessonType === "future"}
+                onChange={() => {
+                  setLessonType("future");
+                  setError("");
+                }}
+                className="mt-0.5 text-primary focus:ring-primary cursor-pointer"
+              />
+              <div>
+                <div className="text-xs font-bold text-ink flex items-center gap-1.5">
+                  <Video className="size-3.5 text-primary" />
+                  <span>○ Gelecek Ders</span>
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  Gelecekteki ders takvime planlanır. Ders hakkı bu aşamada düşülmez; ders tamamlandığında düşülecek ve 1 saat sonra kalan hak bildirimi gönderilecektir.
+                </div>
+              </div>
+            </label>
           </div>
-        </form>
+        </div>
+
+        {lessonType === null && (
+          <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-4 text-center text-xs text-amber-900">
+            Devam etmek için lütfen yukarıdan <strong>Geçmiş Ders</strong> veya <strong>Gelecek Ders</strong> seçeneğini belirleyiniz.
+          </div>
+        )}
+
+        {lessonType !== null && (
+          <form onSubmit={handleSubmit} className="space-y-3.5 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block text-xs font-semibold text-ink">
+                Ders Tarihi {lessonType === "past" ? "(Geçmiş Tarih)" : "(Gelecek Tarih)"}
+                <input
+                  type="date"
+                  required
+                  value={lessonDate}
+                  onChange={(e) => setLessonDate(e.target.value)}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+                />
+              </label>
+
+              <label className="block text-xs font-semibold text-ink">
+                Saat
+                <input
+                  type="time"
+                  required
+                  value={lessonTime}
+                  onChange={(e) => setLessonTime(e.target.value)}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block text-xs font-semibold text-ink">
+                Ders Süresi
+                <select
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary cursor-pointer"
+                >
+                  <option value={30}>30 dakika</option>
+                  <option value={45}>45 dakika</option>
+                  <option value={60}>60 dakika (1 saat)</option>
+                  <option value={90}>90 dakika (1.5 saat)</option>
+                  <option value={120}>120 dakika (2 saat)</option>
+                </select>
+              </label>
+
+              <label className="block text-xs font-semibold text-ink">
+                Ders / Konu
+                <input
+                  type="text"
+                  placeholder="Örn: SAT Math — Türev ve İntegral"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+                />
+              </label>
+            </div>
+
+            {lessonType === "future" && (
+              <label className="block text-xs font-semibold text-ink">
+                Görüşme Bağlantısı <span className="font-normal text-muted-foreground">(İsteğe Bağlı)</span>
+                <input
+                  type="url"
+                  placeholder="https://meet.google.com/..."
+                  value={meetingUrl}
+                  onChange={(e) => setMeetingUrl(e.target.value)}
+                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
+                />
+              </label>
+            )}
+
+            <label className="block text-xs font-semibold text-ink">
+              Eğitmen Notu <span className="font-normal text-muted-foreground">(İsteğe Bağlı)</span>
+              <textarea
+                placeholder="Ders notu..."
+                value={teacherNote}
+                onChange={(e) => setTeacherNote(e.target.value)}
+                rows={2}
+                className="mt-1 w-full rounded-xl border border-input bg-surface p-2.5 text-xs text-ink outline-none focus:border-primary"
+              />
+            </label>
+
+            {lessonType === "past" && (
+              student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0 ? (
+                <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground bg-surface-muted/60 rounded-xl p-2.5">
+                  <InfoIcon className="size-3.5 shrink-0 mt-0.5 text-primary" />
+                  <span>Öğrencinin aktif <strong>{student.activePackage.name}</strong> paketi ({student.activePackage.lessonCount - student.activePackage.lessonsUsed} ders kaldı) bulunmaktadır. Kaydedildiğinde paketten 1 ders hakkı düşülecektir.</span>
+                </p>
+              ) : (
+                <p className="text-[11px] text-amber-900 bg-amber-50/80 border border-amber-200 rounded-xl p-2.5">
+                  ℹ️ Öğrencinin aktif ders hakkı kalmamıştır. Ders bağımsız/ekstra geçmiş ders olarak kaydedilecektir.
+                </p>
+              )
+            )}
+
+            <div className="flex flex-col-reverse gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onClose}
+                className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer sm:w-auto"
+              >
+                İptal
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors sm:w-auto"
+              >
+                {busy ? "Kaydediliyor..." : (lessonType === "past" ? "Geçmiş Dersi Kaydet" : "Gelecek Dersi Planla")}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
@@ -1290,7 +1597,7 @@ function DecreaseLessonRightsModal({
     if (!res.success) {
       setError(res.error || "Ders hakkı azaltılamadı.");
     } else {
-      onSuccess(`Ders hakkı ${amount} adet azaltıldı. Yeni kalan hak: ${res.newRemaining}. Öğrenciye bildirim iletildi.`);
+      onSuccess(`Ders hakkı ${amount} adet azaltıldı. Yeni kalan hak: ${res.newRemaining}.`);
     }
   };
 
@@ -1377,8 +1684,13 @@ function DecreaseLessonRightsModal({
             />
           </label>
 
-          <p className="text-[11px] text-muted-foreground bg-blue-50/60 border border-blue-100 rounded-xl p-2.5">
-            📧 İşlem başarıyla tamamlandığında öğrenciye <strong>&quot;Ders hakkınız güncellendi&quot;</strong> başlığıyla güncel kalan hakkını belirten bildirim iletilecektir.
+          <p className="flex items-start gap-1.5 rounded-xl border border-border bg-surface-muted/60 p-2.5 text-[11px] text-muted-foreground">
+            <Mail className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            <span>
+              Bu işlem hesap sahibine e-posta göndermez. İşlemden sonra paket kartındaki
+              {" "}<strong>Ders Hakkı Güncelleme E-postası Gönder</strong> butonuyla
+              bilgilendirme yapabilirsiniz.
+            </span>
           </p>
 
           <div className="flex flex-col-reverse gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
@@ -1396,6 +1708,220 @@ function DecreaseLessonRightsModal({
               className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-700 px-5 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:opacity-50 cursor-pointer shadow-xs transition-colors sm:w-auto"
             >
               {busy ? "İşleniyor..." : "Ders Hakkını Azalt"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Dersi Ertele" -- updates the existing booking's own time slot via the
+ * canonical admin_update_booking_event RPC (no duplicate row created), see
+ * "DERSİ ERTELE AKIŞI". Duration defaults to the lesson's current length.
+ */
+function RescheduleBookingModal({
+  booking,
+  onClose,
+  onSuccess,
+}: {
+  booking: BookingWithSlot;
+  onClose: () => void;
+  onSuccess: (patch: Partial<BookingWithSlot>) => void;
+}) {
+  const currentStart = booking.availability_slots?.starts_at || null;
+  const currentEnd = booking.availability_slots?.ends_at || null;
+  const currentDurationMinutes = currentStart && currentEnd
+    ? Math.max(15, Math.round((new Date(currentEnd).getTime() - new Date(currentStart).getTime()) / 60000))
+    : 60;
+
+  const [date, setDate] = useState(() => (currentStart ? new Date(currentStart) : new Date()).toISOString().slice(0, 10));
+  const [time, setTime] = useState(() => {
+    const d = currentStart ? new Date(currentStart) : new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  });
+  const [durationMinutes, setDurationMinutes] = useState(currentDurationMinutes);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [succeeded, setSucceeded] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!date || !time) {
+      setError("Tarih ve saat seçilmelidir.");
+      return;
+    }
+    const newStart = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(newStart.getTime()) || newStart.getTime() < Date.now() - 5 * 60_000) {
+      setError("Lütfen geçerli, geçmişte olmayan bir tarih/saat seçiniz.");
+      return;
+    }
+    const newEnd = new Date(newStart.getTime() + durationMinutes * 60_000);
+
+    setBusy(true);
+    setError("");
+    const res = await updateAdminBookingEvent({
+      bookingId: booking.id,
+      startsAt: newStart.toISOString(),
+      endsAt: newEnd.toISOString(),
+    });
+    setBusy(false);
+    if (!res.success) {
+      setError(res.error || "Ders ertelenemedi.");
+      return;
+    }
+    onSuccess({
+      availability_slots: { id: booking.availability_slots?.id || "", starts_at: newStart.toISOString(), ends_at: newEnd.toISOString(), status: booking.availability_slots?.status || "booked" },
+    });
+    // Card updates instantly; keep the modal open one extra step so the admin
+    // can optionally notify the student -- MAIL-023 is explicit/manual only,
+    // never automatic (see "RANDEVU EMAIL'LERİ DE EXPLICIT/MANUEL OLMALI").
+    setSucceeded(true);
+  }
+
+  async function handleSendUpdateEmail() {
+    setEmailSending(true);
+    setError("");
+    const res = await sendAdminBookingNotification(booking.id, "update");
+    setEmailSending(false);
+    if (!res.success) {
+      setError(res.error || "Tarih değişikliği e-postası gönderilemedi.");
+      return;
+    }
+    setEmailSent(true);
+  }
+
+  if (succeeded) {
+    return (
+      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <CheckCircle2 className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-heading text-base font-bold text-ink">Ders Başarıyla Ertelendi</h3>
+              <p className="text-xs text-muted-foreground">Yeni tarih/saat kartta güncellendi.</p>
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Öğrenciye tarih değişikliği bilgilendirmesi göndermek isterseniz aşağıdaki butonu kullanabilirsiniz. Bu e-posta otomatik gönderilmez.
+          </p>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer sm:w-auto"
+            >
+              Kapat
+            </button>
+            <button
+              type="button"
+              disabled={emailSending}
+              onClick={() => void handleSendUpdateEmail()}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer sm:w-auto"
+            >
+              <Mail className="size-3.5" />
+              {emailSending
+                ? "Gönderiliyor..."
+                : emailSent
+                ? "Tarih Değişikliği E-postasını Tekrar Gönder"
+                : "Tarih Değişikliği E-postası Gönder"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-primary">
+              <Clock className="size-5" />
+            </div>
+            <div>
+              <h3 className="font-heading text-base font-bold text-ink">Dersi Ertele</h3>
+              <p className="text-xs text-muted-foreground">{booking.appointment_subject || booking.exam_code || "Birebir Seans"}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-border p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-xs font-semibold text-ink">
+              Yeni Tarih
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </label>
+            <label className="text-xs font-semibold text-ink">
+              Yeni Saat
+              <input
+                type="time"
+                required
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </label>
+          </div>
+          <label className="block text-xs font-semibold text-ink">
+            Süre (dakika)
+            <input
+              type="number"
+              min={15}
+              max={240}
+              step={15}
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(Number(e.target.value) || 60)}
+              className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
+          </label>
+
+          <div className="flex flex-col-reverse gap-2 pt-2 border-t border-border sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer sm:w-auto disabled:opacity-50"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs transition-colors sm:w-auto"
+            >
+              {busy ? "Erteleniyor..." : "Dersi Ertele"}
             </button>
           </div>
         </form>

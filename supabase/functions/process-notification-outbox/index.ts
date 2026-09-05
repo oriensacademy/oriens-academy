@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
-import { renderEmailShell, actionButton } from "../_shared/email/templates.ts";
+import { renderEmailShell, actionButton, normalizeLocale } from "../_shared/email/templates.ts";
 
 type OutboxRow = {
   id: string;
@@ -15,99 +15,74 @@ type OutboxRow = {
 
 const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] || char));
 
-function render(row: OutboxRow) {
+function render(row: OutboxRow, liveRemaining?: number) {
   const p = row.payload || {};
-  const isEn = p.locale === "en";
+  const isEn = normalizeLocale(p.locale) === "en";
   const lines: string[] = [];
   let subject = "Oriens Academy";
   let channel: "payments" | "support" = "payments";
 
   if (row.template === "payment_success_guardian") {
-    subject = isEn ? `Payment received — ${p.reference}` : `Ödemeniz alındı — ${p.reference}`;
+    subject = isEn ? `Payment Received & Lesson Rights Activated — ${p.reference}` : `Ödemeniz Alındı ve Ders Haklarınız Tanımlandı — ${p.reference}`;
     lines.push(
-      isEn ? `Dear ${p.payer_name}, your payment was completed successfully.` : `Sayın ${p.payer_name}, ödemeniz başarıyla tamamlandı.`,
+      isEn ? `Dear ${p.payer_name}, your payment was completed successfully and your purchased lesson rights have been credited to your account.` : `Sayın ${p.payer_name}, ödemeniz başarıyla alınmış ve satın aldığınız ders hakları hesabınıza tanımlanmıştır.`,
       `${isEn ? "Reference" : "Referans"}: ${p.reference}`,
-      `${isEn ? "Package" : "Paket"}: ${p.package_id}`,
+      `${isEn ? "Package" : "Paket"}: ${p.package_name || p.package_id}`,
       `${isEn ? "Amount" : "Tutar"}: ${p.amount} ${p.currency}`,
     );
   } else if (row.template === "payment_success_admin") {
     subject = `[ORIENS] Payment success — ${p.reference}`;
     lines.push(`Reference: ${p.reference}`, `Payer: ${p.payer_name} <${p.payer_email}>`, `Package: ${p.package_id}`, `Amount: ${p.amount} ${p.currency}`);
-  } else if (row.template === "package_activated_guardian") {
-    subject = isEn ? `Package activated for ${p.learner_name}` : `${p.learner_name} için paket aktif edildi`;
-    lines.push(
-      isEn ? `Dear ${p.guardian_name}, the learner package is now active.` : `Sayın ${p.guardian_name}, öğrenci paketi aktif edildi.`,
-      `${isEn ? "Learner" : "Öğrenci"}: ${p.learner_name}`,
-      `${isEn ? "Package" : "Paket"}: ${p.package_name}`,
-      `${isEn ? "Lessons granted" : "Tanımlanan ders"}: ${p.granted_lessons}`,
-      `${isEn ? "Lessons remaining" : "Kalan ders"}: ${p.remaining_lessons}`,
-      `${isEn ? "Activation date" : "Aktivasyon tarihi"}: ${p.activation_date}`,
-    );
-  } else if (row.template === "lesson_completed_account_holder" || row.template === "lesson_completed_guardian") {
+  } else if (
+    row.template === "lesson_completed_account_holder" ||
+    row.template === "lesson_completed_guardian" ||
+    row.template === "lesson_completed_student"
+  ) {
+    // MAIL-027: Strictly lesson and feedback only (No package info)
     channel = "support";
-    subject = isEn ? `Lesson completed — ${p.learner_name}` : `Ders tamamlandı — ${p.learner_name}`;
-    const role = String(p.relationship_role || "other");
-    if (role === "self") {
-      lines.push(
-        isEn ? `Hello ${p.account_holder_name || p.guardian_name}, your lesson has been completed.` : `Merhaba ${p.account_holder_name || p.guardian_name}, dersiniz tamamlandı.`,
-        `${isEn ? "Remaining lesson rights" : "Kalan ders hakkınız"}: ${p.remaining_lessons ?? "-"}.`,
-      );
-    } else if (role === "parent" || role === "guardian") {
-      lines.push(
-        isEn ? `Dear ${p.account_holder_name || p.guardian_name}, a lesson has been completed for your learner ${p.learner_name}.` : `Sayın ${p.account_holder_name || p.guardian_name}, öğrenciniz ${p.learner_name} için ders tamamlandı.`,
-        `${isEn ? "Remaining lesson rights" : "Kalan ders hakkı"}: ${p.remaining_lessons ?? "-"}.`,
-      );
-    } else {
-      lines.push(
-        isEn ? `Dear ${p.account_holder_name || p.guardian_name}, a lesson has been completed for your linked learner ${p.learner_name}.` : `Sayın ${p.account_holder_name || p.guardian_name}, hesabınıza bağlı ${p.learner_name} için ders tamamlandı.`,
-        `${isEn ? "Remaining lesson rights" : "Kalan ders hakkı"}: ${p.remaining_lessons ?? "-"}.`,
-      );
-    }
+    subject = isEn ? "Lesson Completed Notification | Oriens Academy" : "Ders Tamamlandı Bilgilendirmesi | Oriens Academy";
+    const name = String(p.account_holder_name || p.guardian_name || p.learner_name || (isEn ? "Account Owner" : "Hesap Sahibi"));
     lines.push(
+      isEn ? `Hello ${name}, your lesson has been completed.` : `Merhaba ${name}, dersiniz tamamlandı.`,
       `${isEn ? "Lesson" : "Ders"}: ${p.lesson_title}`,
       `${isEn ? "Date" : "Tarih"}: ${p.lesson_date}`,
-      `${isEn ? "Package" : "Paket"}: ${p.package_name || "-"}`,
     );
-    if (p.teacher_note) lines.push(`${isEn ? "Teacher note" : "Öğretmen notu"}: ${p.teacher_note}`);
-  } else if (row.template === "package_low_balance_account_holder") {
-    const role = String(p.relationship_role || "other");
-    subject = isEn ? "1 lesson right remains" : "1 ders hakkı kaldı";
-    if (role === "self") {
-      lines.push(isEn ? `Hello ${p.account_holder_name}, you have 1 lesson right remaining.` : `Merhaba ${p.account_holder_name}, 1 ders hakkınız kaldı.`);
-    } else if (role === "parent" || role === "guardian") {
-      lines.push(isEn ? `Dear ${p.account_holder_name}, 1 lesson right remains for your learner ${p.learner_name}.` : `Sayın ${p.account_holder_name}, öğrenciniz ${p.learner_name} için 1 ders hakkı kaldı.`);
-    } else {
-      lines.push(isEn ? `Dear ${p.account_holder_name}, 1 lesson right remains for your linked learner ${p.learner_name}.` : `Sayın ${p.account_holder_name}, hesabınıza bağlı ${p.learner_name} için 1 ders hakkı kaldı.`);
+    if (p.teacher_note && String(p.teacher_note).trim().length > 0) {
+      lines.push(`${isEn ? "Instructor feedback" : "Eğitmenimizin geri bildirimi"}: ${String(p.teacher_note).trim()}`);
     }
-    lines.push(`${isEn ? "Package" : "Paket"}: ${p.package_name || "-"}`);
-  } else if (row.template === "package_completed_renewal_account_holder") {
-    const role = String(p.relationship_role || "other");
-    subject = isEn ? "Your lesson package has been completed" : "Paketiniz sona erdi";
-    if (role === "self") {
-      lines.push(isEn ? `Hello ${p.account_holder_name}, your lesson package has been completed.` : `Merhaba ${p.account_holder_name}, paketiniz sona erdi.`);
-    } else if (role === "parent" || role === "guardian") {
-      lines.push(isEn ? `Dear ${p.account_holder_name}, the lesson package for your learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, öğrenciniz ${p.learner_name} için paket sona erdi.`);
-    } else {
-      lines.push(isEn ? `Dear ${p.account_holder_name}, the lesson package for your linked learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, hesabınıza bağlı ${p.learner_name} için paket sona erdi.`);
-    }
+  } else if (row.template === "lesson_remaining_rights_account_holder") {
+    // MAIL-040: Post-lesson total remaining rights automation (Includes zero & low-balance advisory)
+    channel = "support";
+    const remaining = typeof liveRemaining === "number" ? liveRemaining : Math.max(0, Number(p.total_remaining_lessons ?? 0));
+    subject = isEn ? `Lesson Completed | Remaining Lesson Rights: ${remaining}` : `Dersiniz Tamamlandı | Kalan Ders Hakkınız: ${remaining}`;
+    const name = String(p.account_holder_name || p.guardian_name || p.student_name || (isEn ? "Account Owner" : "Hesap Sahibi"));
     lines.push(
-      `${isEn ? "Package" : "Paket"}: ${p.package_name || "-"}`,
-      isEn ? "You can review our pricing packages to continue." : "Akademik hedeflerinize devam etmek için ücretlerimizi inceleyebilirsiniz.",
+      isEn ? `Hello ${name}, your lesson has been completed.` : `Merhaba ${name}, dersiniz tamamlandı.`,
+      `${isEn ? "Completed Lesson" : "Tamamlanan Ders"}: ${p.lesson_title}`,
+      `${isEn ? "Date" : "Tarih"}: ${p.lesson_date}`,
+      `${isEn ? "Total Usable Lesson Rights" : "Kalan Toplam Ders Hakkınız"}: ${remaining}`,
     );
+    if (remaining === 0) {
+      lines.push(
+        isEn
+          ? "Notice: You have 0 lesson rights remaining. Please purchase new lesson rights to continue your education seamlessly."
+          : "Bilgilendirme: Ders hakkınız kalmadı. Eğitiminize kesintisiz devam etmek için yeni ders hakkı satın alabilirsiniz."
+      );
+    } else if (remaining === 1) {
+      lines.push(
+        isEn
+          ? "Reminder: You have only 1 lesson right remaining. You may want to renew your lesson rights before scheduling your next lesson."
+          : "Hatırlatma: Kalan toplam ders hakkınız 1'e düştü. Yeni ders planlamadan önce ders haklarınızı yenilemek isteyebilirsiniz."
+      );
+    }
   } else if (row.template === "payment_refunded_account_holder") {
-    const role = String(p.relationship_role || "other");
+    const name = String(p.account_holder_name || p.guardian_name || p.learner_name || (isEn ? "Account Owner" : "Hesap Sahibi"));
     const full = p.refund_status === "full";
     subject = isEn
       ? `${full ? "Refund completed" : "Partial refund completed"} — ${p.reference}`
       : `${full ? "İade tamamlandı" : "Kısmi iade tamamlandı"} — ${p.reference}`;
-    if (role === "self") {
-      lines.push(isEn ? `Hello ${p.account_holder_name}, your refund has been completed.` : `Merhaba ${p.account_holder_name}, iade işleminiz tamamlandı.`);
-    } else if (role === "parent" || role === "guardian") {
-      lines.push(isEn ? `Dear ${p.account_holder_name}, the refund for your learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, öğrenciniz ${p.learner_name} için iade işlemi tamamlandı.`);
-    } else {
-      lines.push(isEn ? `Dear ${p.account_holder_name}, the refund for your linked learner ${p.learner_name} has been completed.` : `Sayın ${p.account_holder_name}, hesabınıza bağlı ${p.learner_name} ile ilgili iade işlemi tamamlandı.`);
-    }
     lines.push(
+      isEn ? `Hello ${name}, your refund has been completed.` : `Merhaba ${name}, iade işleminiz tamamlandı.`,
       `${isEn ? "Transaction reference" : "İşlem referansı"}: ${p.reference}`,
       `${isEn ? "Refund reference" : "İade referansı"}: ${p.refund_reference}`,
       `${isEn ? "Refund amount" : "İade tutarı"}: ${p.refund_amount} ${p.currency}`,
@@ -116,39 +91,94 @@ function render(row: OutboxRow) {
       `${isEn ? "Remaining active lesson rights" : "Aktif kalan ders hakkı"}: ${p.remaining_lessons}`,
       `${isEn ? "Refund status" : "İade durumu"}: ${full ? (isEn ? "Full" : "Tam") : (isEn ? "Partial" : "Kısmi")}`,
     );
-  } else if (row.template === "guardian_welcome") {
+  } else if (
+    row.template === "guardian_welcome" ||
+    row.template === "student_welcome" ||
+    row.template === "student.welcome_email" ||
+    row.template === "guardian.welcome"
+  ) {
     channel = "support";
-    const guardianName = String(p.guardian_name || (isEn ? "Student" : "Öğrenci"));
+    const name = String(
+      p.recipient_name || p.guardian_name || p.full_name || p.student_name || (isEn ? "Account Owner" : "Hesap Sahibi")
+    );
     subject = isEn ? "Your Oriens Academy account is ready" : "Oriens Academy hesabınız hazır";
     lines.push(
       isEn
-        ? `Dear ${guardianName}, your Oriens Academy account has been created successfully.`
-        : `Sayın ${guardianName}, Oriens Academy hesabınız başarıyla oluşturuldu.`,
+        ? `Dear ${name}, your Oriens Academy account has been created successfully.`
+        : `Sayın ${name}, Oriens Academy hesabınız başarıyla oluşturuldu.`,
       isEn
         ? "You can manage lessons, packages and payments from your account."
         : "Ders, paket ve ödeme işlemlerinizi hesabınızdan yönetebilirsiniz.",
     );
-  } else if (row.template === "lesson_rights_decreased") {
+  } else if (row.template === "package_assigned_manual") {
+    // MAIL-041: Paket tanimlama bilgilendirmesi. Otomatik DEGIL -- admin panelinden
+    // acik bir aksiyonla (admin_send_package_notification) kuyruga alinir.
     channel = "support";
-    subject = isEn ? "Lesson rights updated" : "Ders hakkınız güncellendi";
-    const studentName = String(p.student_name || (isEn ? "Student" : "Öğrenci"));
+    const name = String(p.account_holder_name || p.learner_name || (isEn ? "Account Owner" : "Hesap Sahibi"));
+    const remaining = Math.max(0, Number(p.remaining_lessons ?? 0));
+    subject = isEn ? "Your Lesson Package Is Ready | Oriens Academy" : "Ders Paketiniz Tanımlandı | Oriens Academy";
     lines.push(
-      isEn ? `Dear ${studentName},` : `Sayın ${studentName},`,
       isEn
-        ? "Your lesson rights have been updated by an administrator."
-        : "Ders hakkınız yönetici tarafından güncellendi.",
-      `${isEn ? "Remaining lesson rights" : "Kalan ders hakkınız"}: ${p.remaining_lessons ?? 0}`,
+        ? `Hello ${name}, the lesson package below has been defined for ${p.learner_name}.`
+        : `Merhaba ${name}, ${p.learner_name} için aşağıdaki ders paketi tanımlanmıştır.`,
+      `${isEn ? "Package" : "Paket"}: ${p.package_name}`,
+      `${isEn ? "Total lessons in package" : "Paketteki toplam ders"}: ${p.lesson_count}`,
+      `${isEn ? "Remaining lessons in this package" : "Bu paketten kalan ders"}: ${remaining}`,
+      `${isEn ? "Total usable lesson rights" : "Kullanılabilir toplam ders hakkınız"}: ${Math.max(0, Number(p.total_remaining_lessons ?? 0))}`,
     );
+    if (p.start_date) {
+      lines.push(`${isEn ? "Start date" : "Başlangıç tarihi"}: ${p.start_date}`);
+    }
+    if (p.end_date) {
+      lines.push(`${isEn ? "End date" : "Bitiş tarihi"}: ${p.end_date}`);
+    }
+    lines.push(
+      isEn
+        ? "You can follow your lessons and remaining rights from your account at any time."
+        : "Derslerinizi ve kalan haklarınızı dilediğiniz zaman hesabınızdan takip edebilirsiniz."
+    );
+  } else if (row.template === "lesson_rights_manual") {
+    // MAIL-042: Ders hakki guncelleme bilgilendirmesi. Otomatik DEGIL -- hak
+    // artirma/azaltma islemi kendi basina e-posta gondermez.
+    channel = "support";
+    const name = String(p.account_holder_name || p.learner_name || (isEn ? "Account Owner" : "Hesap Sahibi"));
+    const totalRemaining = Math.max(0, Number(p.total_remaining_lessons ?? 0));
+    subject = isEn
+      ? `Your Lesson Rights Have Been Updated | Remaining: ${totalRemaining}`
+      : `Ders Hakkınız Güncellendi | Kalan Ders Hakkınız: ${totalRemaining}`;
+    lines.push(
+      isEn
+        ? `Hello ${name}, the lesson rights of ${p.learner_name} have been updated.`
+        : `Merhaba ${name}, ${p.learner_name} adına tanımlı ders haklarınız güncellenmiştir.`,
+      `${isEn ? "Package" : "Paket"}: ${p.package_name}`,
+      `${isEn ? "Remaining lessons in this package" : "Bu paketten kalan ders"}: ${Math.max(0, Number(p.remaining_lessons ?? 0))}`,
+      `${isEn ? "Total usable lesson rights" : "Kullanılabilir toplam ders hakkınız"}: ${totalRemaining}`,
+    );
+    if (totalRemaining === 0) {
+      lines.push(
+        isEn
+          ? "Notice: You have 0 lesson rights remaining. Please purchase new lesson rights to continue your education seamlessly."
+          : "Bilgilendirme: Ders hakkınız kalmadı. Eğitiminize kesintisiz devam etmek için yeni ders hakkı satın alabilirsiniz."
+      );
+    } else if (totalRemaining === 1) {
+      lines.push(
+        isEn
+          ? "Reminder: You have only 1 lesson right remaining."
+          : "Hatırlatma: Kalan toplam ders hakkınız 1'e düştü."
+      );
+    }
   } else {
     throw new Error("UNSUPPORTED_OUTBOX_TEMPLATE");
   }
 
   const text = lines.join("\n");
-  const isPricingCta = row.template === "package_low_balance_account_holder" || row.template === "package_completed_renewal_account_holder";
+  const isPricingCta =
+    (row.template === "lesson_remaining_rights_account_holder" && (liveRemaining === 0 || Number(p.total_remaining_lessons) === 0)) ||
+    (row.template === "lesson_rights_manual" && Number(p.total_remaining_lessons ?? 0) === 0);
   const ctaUrl = isPricingCta
     ? (isEn ? "https://oriens-academy.com/en/pricing/" : "https://oriens-academy.com/tr/ucretler/")
     : (isEn ? "https://oriens-academy.com/en/account/" : "https://oriens-academy.com/tr/hesabim/");
-  const ctaLabel = isPricingCta ? (isEn ? "View Pricing" : "Ücretleri İncele") : (isEn ? "Go to My Account" : "Hesabıma Git");
+  const ctaLabel = isPricingCta ? (isEn ? "Renew Lesson Rights" : "Ders Haklarını Yenile") : (isEn ? "Go to My Account" : "Hesabıma Git");
   const ctaButton = actionButton(ctaLabel, ctaUrl);
   const bodyHtml = `
     <div style="font-size:14px;line-height:1.65;color:#10271B;">
@@ -217,8 +247,51 @@ Deno.serve(async (req: Request) => {
   let sent = 0;
   let failed = 0;
   for (const row of (data || []) as OutboxRow[]) {
+    // 1. Decommissioned templates check: Cancel without error
+    if (
+      row.template === "package_activated_guardian" ||
+      row.template === "lesson_rights_decreased" ||
+      row.template === "package_low_balance_account_holder" ||
+      row.template === "package_completed_renewal_account_holder"
+    ) {
+      await admin.from("notification_deliveries").update({
+        status: "cancelled",
+        last_error_code: "TEMPLATE_DECOMMISSIONED",
+        last_error: `Template ${row.template} decommissioned or consolidated into MAIL-040.`,
+        updated_at: new Date().toISOString(),
+      }).eq("id", row.id);
+      continue;
+    }
+
+    // 2. Lesson state check and live remaining rights calculation for MAIL-040
+    let liveRemaining: number | undefined;
+    if (row.template === "lesson_remaining_rights_account_holder") {
+      const lessonId = row.entity_id || (row.payload as Record<string, unknown>)?.lesson_id;
+      const { data: lesson } = await admin
+        .from("student_lessons")
+        .select("id, status, student_user_id, title, lesson_date")
+        .eq("id", lessonId)
+        .maybeSingle();
+
+      if (!lesson || lesson.status !== "completed") {
+        await admin.from("notification_deliveries").update({
+          status: "cancelled",
+          last_error_code: "LESSON_NOT_COMPLETED",
+          last_error: `Lesson status is ${lesson?.status || "missing"}. Cancelled remaining rights delivery.`,
+          updated_at: new Date().toISOString(),
+        }).eq("id", row.id);
+        continue;
+      }
+
+      // Calculate authoritative live remaining rights across all active, non-expired packages
+      const { data: rightsData } = await admin.rpc("calculate_student_usable_remaining_lessons", {
+        p_student_id: lesson.student_user_id,
+      });
+      liveRemaining = Number(rightsData ?? 0);
+    }
+
     try {
-      const message = render(row);
+      const message = render(row, liveRemaining);
       const result = await sendTransactionalEmail({
         supabaseAdmin: admin,
         to: row.recipient,
@@ -231,7 +304,6 @@ Deno.serve(async (req: Request) => {
         idempotencyKey: row.id,
         channel: message.channel,
         deliveryId: row.id,
-        skipArchiveBcc: row.recipient.toLowerCase() === "admin@oriens-academy.com",
       });
       if (result.status === "sent") sent += 1; else failed += 1;
     } catch (err) {

@@ -284,7 +284,7 @@ export function BookingFlow() {
             <p className="mt-7 font-semibold text-ink">{isTr ? "Beklemeye vaktiniz yok mu?" : "Can’t wait?"}</p>
             <p className="mt-1 text-sm text-muted-foreground">{isTr ? "WhatsApp üzerinden bize hemen ulaşabilirsiniz." : "You can reach us immediately on WhatsApp."}</p>
             <div className="mx-auto mt-7 grid max-w-lg gap-3 sm:grid-cols-2">
-              <ButtonLink href={whatsappHref} target="_blank" rel="noreferrer" size="lg" className="min-h-12">
+              <ButtonLink href={whatsappHref} target="_blank" rel="noopener noreferrer" size="lg" className="min-h-12">
                 <MessageCircle className="size-4" aria-hidden="true" />
                 {isTr ? "WhatsApp’tan Yaz" : "Message on WhatsApp"}
               </ButtonLink>

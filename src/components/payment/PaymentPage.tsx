@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LockKeyhole, Tag, X } from "lucide-react";
+import { LockKeyhole, Tag } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getPaymentCopy } from "@/content/payment";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
-import { validateCoupon } from "@/lib/coupons/client";
-import type { CouponValidationSuccess } from "@/lib/coupons/types";
+import { calculateAuthoritativeTotal } from "@/lib/payments/pricing";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { formatCurrency } from "@/lib/format/currency";
 import { useAccount } from "@/lib/auth/account-context";
@@ -33,7 +33,7 @@ export function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { accountType, user, isInitializing, refreshAccount } = useAccount();
-  const { items: cartItems, isHydrated: cartHydrated } = useCart();
+  const { items: cartItems, isHydrated: cartHydrated, appliedCoupon } = useCart();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
   const [directPackageId, setDirectPackageId] = useState("");
@@ -44,9 +44,6 @@ export function PaymentPage() {
   const [guardianId, setGuardianId] = useState("");
   const [learnerId, setLearnerId] = useState("");
   const [activeModal, setActiveModal] = useState<LegalDocKey | null>(null);
-  const [couponInput, setCouponInput] = useState("");
-  const [couponError, setCouponError] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationSuccess | null>(null);
 
   // Transient checkout-only 3D Secure phone (never persisted to a profile)
   const [paymentPhone, setPaymentPhone] = useState("");
@@ -147,25 +144,35 @@ export function PaymentPage() {
     : packages.filter((pkg) => pkg.id === directPackageId), [cartItems, directPackageId, isCartCheckout, packages]);
   const packageIds = useMemo(() => checkoutPackages.map((pkg) => pkg.id), [checkoutPackages]);
   const cartMismatch = isCartCheckout && checkoutPackages.length !== cartItems.length;
-  const basePrice = checkoutPackages.reduce((sum, pkg) => sum + Number(pkg.current_total ?? pkg.price_amount ?? 0), 0);
-  const discountAmount = Number(appliedCoupon?.discount_amount ?? 0);
-  const finalPrice = Math.max(0, basePrice - discountAmount);
+  const pricingPackages = checkoutPackages.map((pkg) => ({
+    id: pkg.id,
+    price: Number(pkg.current_total ?? pkg.price_amount ?? 0),
+    name_tr: pkg.name_tr,
+    name_en: pkg.name_en,
+    lesson_count: pkg.lesson_count,
+  }));
+
+  const pricingBreakdown = calculateAuthoritativeTotal({
+    packages: pricingPackages,
+    coupon: appliedCoupon
+      ? {
+          id: appliedCoupon.coupon_id,
+          code: appliedCoupon.code,
+          discount_type: appliedCoupon.discount_type,
+          discount_value: appliedCoupon.discount_value,
+        }
+      : null,
+  });
+
+  const basePrice = pricingBreakdown.subtotal;
+  const discountAmount = pricingBreakdown.discount;
+  const finalPrice = pricingBreakdown.finalTotal;
   const currency = checkoutPackages[0]?.currency || "TRY";
   const money = (value: number, code = "TRY") => formatCurrency(value, { currency: code, locale });
   const emailVerified = accountType === "admin" || Boolean(selectedGuardian?.email_verified_at);
   const phoneCheck = validateStudentPhone(paymentPhone, isTr);
   const isPhoneValid = paymentPhone.trim().length > 0 && phoneCheck.valid;
   const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch && isPhoneValid);
-
-  async function applyCoupon() {
-    if (!couponInput.trim() || !packageIds.length) return;
-    for (const packageId of packageIds) {
-      const result = await validateCoupon(couponInput, packageId, learnerId || undefined);
-      if (result.valid) { setAppliedCoupon(result); setCouponError(""); return; }
-    }
-    setAppliedCoupon(null);
-    setCouponError(isTr ? "Kupon kodu geçersiz veya bu sipariş için kullanılamıyor." : "The coupon is invalid or cannot be used for this order.");
-  }
 
   const orderSnapshot: LegalOrderSnapshot = {
     packageName: checkoutPackages.map((pkg) => (isTr ? pkg.name_tr : pkg.name_en) || pkg.id).join(", ") || (isTr ? "Eğitim Paketi" : "Lesson Package"),
@@ -196,7 +203,7 @@ export function PaymentPage() {
             {isTr ? "Eğitim Paketi" : "Package"}
             <select
               value={directPackageId}
-              onChange={(event) => { setDirectPackageId(event.target.value); setAppliedCoupon(null); }}
+              onChange={(event) => { setDirectPackageId(event.target.value); }}
               className="mt-2 min-h-12 w-full rounded-xl border border-input bg-surface px-3"
             >
               <option value="">{isTr ? "Paket seçin" : "Select package"}</option>
@@ -278,7 +285,7 @@ export function PaymentPage() {
             <span>{isTr ? "Ara Toplam" : "Subtotal"}</span>
             <span>{money(basePrice, currency)}</span>
           </div>
-          {appliedCoupon ? (
+          {appliedCoupon && discountAmount > 0 ? (
             <div className="flex justify-between text-emerald-800 text-xs font-semibold">
               <span>{isTr ? `Kupon İndirimi (${appliedCoupon.code})` : `Coupon Discount (${appliedCoupon.code})`}</span>
               <span>-{money(discountAmount, currency)}</span>
@@ -290,15 +297,57 @@ export function PaymentPage() {
           </div>
         </div>
 
-        <form className="mt-5 flex gap-2" onSubmit={(event) => { event.preventDefault(); void applyCoupon(); }}>
-          <input value={couponInput} onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); if (appliedCoupon) setAppliedCoupon(null); }} className="min-h-11 min-w-0 flex-1 rounded-xl border border-input px-3 text-xs uppercase" placeholder={isTr ? "Kupon kodu" : "Coupon code"} />
-          {appliedCoupon ? <button type="button" aria-label={isTr ? "Kuponu kaldır" : "Remove coupon"} onClick={() => { setAppliedCoupon(null); setCouponInput(""); }} className="rounded-xl border px-3"><X className="size-4" /></button> : <button type="submit" className="rounded-xl bg-ink px-4 text-xs font-semibold text-white"><Tag className="mr-1 inline size-3" />{isTr ? "Uygula" : "Apply"}</button>}
-        </form>
-        {couponError ? <p role="alert" className="mt-2 text-xs text-red-700">{couponError}</p> : null}
+        {/* Read-only Coupon State & Return to Cart Link */}
+        {appliedCoupon ? (
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Tag className="size-3.5 text-emerald-700" />
+              <div>
+                <span className="font-mono font-bold text-emerald-950 uppercase">{appliedCoupon.code}</span>
+                <span className="ml-1.5 text-[11px] text-emerald-700">
+                  (-{money(discountAmount, currency)})
+                </span>
+              </div>
+            </div>
+            <Link
+              href={localizedPath("cart", locale)}
+              className="font-semibold text-primary underline underline-offset-2 hover:no-underline"
+            >
+              {isTr ? "Kuponu Değiştir / Sepete Dön" : "Change Coupon / Back to Cart"}
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-4 text-center">
+            <Link
+              href={localizedPath("cart", locale)}
+              className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              {isTr ? "Kupon kodu kullanmak için sepete dönün" : "Return to cart to use a coupon code"}
+            </Link>
+          </div>
+        )}
       </aside>
       <div className="rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8"><h2 className="font-heading text-2xl text-ink">{isTr ? "Kart ile Ödeme" : "Pay by Card"}</h2>
         {accountType === "admin" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-900">{isTr ? "Yönetici işlemi için hesap sahibi ve öğrenci bağlamını seçin." : "Select the account holder and learner for this admin-assisted payment."}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><select value={guardianId} onChange={(event) => { setGuardianId(event.target.value); setLearnerId(""); }} className="min-h-11 rounded-xl border bg-white px-3 text-xs"><option value="">{isTr ? "Hesap sahibi seçin" : "Select account holder"}</option>{guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}</select><select value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className="min-h-11 rounded-xl border bg-white px-3 text-xs disabled:opacity-50"><option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></div></div> : null}
-        <div className="mt-6 border-t border-border pt-6"><h3 className="text-sm font-semibold text-ink">{isTr ? "İletişim Bilgileri" : "Contact Information"}</h3><dl className="mt-3 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "Ad Soyad" : "Full Name"}</dt><dd className="mt-1 text-xs font-semibold">{selectedGuardian?.full_name || "—"}</dd></div><div className="rounded-xl border bg-surface-muted p-3"><dt className="text-[10px] text-muted-foreground">{isTr ? "E-posta" : "Email"}</dt><dd className="mt-1 break-all text-xs font-semibold">{selectedGuardian?.email || "—"}</dd></div></dl></div>
+        {(selectedGuardian?.full_name || selectedGuardian?.email) ? (
+          <div className="mt-6 border-t border-border pt-6">
+            <h3 className="text-sm font-semibold text-ink">{isTr ? "İletişim Bilgileri" : "Contact Information"}</h3>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+              {selectedGuardian?.full_name ? (
+                <div className="rounded-xl border bg-surface-muted p-3">
+                  <dt className="text-[10px] text-muted-foreground">{isTr ? "Ad Soyad" : "Full Name"}</dt>
+                  <dd className="mt-1 text-xs font-semibold">{selectedGuardian.full_name}</dd>
+                </div>
+              ) : null}
+              {selectedGuardian?.email ? (
+                <div className="rounded-xl border bg-surface-muted p-3">
+                  <dt className="text-[10px] text-muted-foreground">{isTr ? "E-posta" : "Email"}</dt>
+                  <dd className="mt-1 break-all text-xs font-semibold">{selectedGuardian.email}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+        ) : null}
         
         {!emailVerified ? (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
@@ -331,8 +380,8 @@ export function PaymentPage() {
             </label>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               {isTr
-                ? "PayTR ödeme işlemi için gereklidir. 3D Secure doğrulaması bankanız tarafından, bankanızda kayıtlı iletişim kanalına gönderilir."
-                : "Required for the PayTR payment. Your bank sends 3D Secure verification to the contact channel registered with the bank."}
+                ? "3D Secure doğrulama kodu, bankanız tarafından bankanızda kayıtlı iletişim kanalınıza gönderilir."
+                : "Your bank sends the 3D Secure verification code to the contact channel registered with your bank."}
             </p>
             {paymentPhone.trim() && !isPhoneValid ? (
               <p role="alert" className="mt-1.5 text-xs text-red-700">{phoneCheck.error}</p>

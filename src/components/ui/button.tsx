@@ -74,11 +74,16 @@ function ButtonLink({
   variant = "default",
   size = "default",
   directional = false,
+  target,
+  rel,
   ...props
 }: ButtonLinkProps) {
+  const finalRel = target === "_blank" ? (rel ? (rel.includes("noopener") ? rel : `${rel} noopener noreferrer`) : "noopener noreferrer") : rel;
   return (
     <Link
       data-slot="button-link"
+      target={target}
+      rel={finalRel}
       className={cn(buttonVariants({ variant, size, directional, className }))}
       {...props}
     />

@@ -1,4 +1,4 @@
-import { INFO_EMAIL, PAYMENTS_EMAIL, ZOOM_EMAIL } from "@/config/email";
+import { INFO_EMAIL, PAYMENTS_EMAIL } from "@/config/email";
 
 export const CONTACT = {
   email: INFO_EMAIL,
@@ -6,7 +6,6 @@ export const CONTACT = {
   contactEmail: INFO_EMAIL,
   supportEmail: INFO_EMAIL,
   paymentsEmail: PAYMENTS_EMAIL,
-  zoomEmail: ZOOM_EMAIL,
   // WhatsApp
   whatsappDisplay: "+90 544 293 90 40",
   whatsappHref: "https://wa.me/905442939040",

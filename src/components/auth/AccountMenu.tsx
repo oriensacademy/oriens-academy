@@ -58,7 +58,7 @@ export function AccountMenu({ locale, mobile = false, active = false, onNavigate
 
   return <>
     <div ref={rootRef} className="relative">
-      <button ref={triggerRef} type="button" onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} className={cn("flex min-h-11 items-center justify-center gap-2 rounded-full border px-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", active ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25" : "border-border text-ink hover:bg-surface-muted")}>
+      <button ref={triggerRef} type="button" onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} className={cn("flex min-h-11 items-center justify-center gap-1.5 sm:gap-2 rounded-full border px-2.5 sm:px-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary", active ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25" : "border-border text-ink hover:bg-surface-muted")}>
         <UserRound className="size-4" /><span className="hidden sm:inline">{accountLabel}</span><ChevronDown className={cn("size-3.5 transition-transform", open && "rotate-180")} />
       </button>
       {open && <div role="menu" className="absolute right-0 top-full mt-2 min-w-44 rounded-xl border border-border bg-background p-1.5 shadow-xl">

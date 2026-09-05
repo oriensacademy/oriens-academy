@@ -8,7 +8,7 @@ import { ensureTrailingSlash } from "@/lib/routes";
 
 export interface AdminActionNotification {
   id: string;
-  type: "contact" | "support" | "payment" | "delivery" | "homework";
+  type: "contact" | "payment" | "delivery" | "homework";
   title: string;
   subtitle: string;
   timestamp: string;
@@ -55,7 +55,6 @@ export function AdminNotificationsProvider({ children }: { children: React.React
 
       const [
         contactsRes,
-        supportRes,
         paymentsRes,
         deliveriesRes,
         homeworkRes,
@@ -66,14 +65,6 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           .select("id, full_name, email, subject, created_at, status")
           .eq("status", "new")
           .order("created_at", { ascending: false })
-          .limit(10),
-
-        // 2. Open / waiting support threads
-        anySupabase
-          .from("support_threads")
-          .select("id, title, status, last_message_at, student_user_id, student_profiles:student_user_id(full_name)")
-          .in("status", ["open", "waiting_support"])
-          .order("last_message_at", { ascending: false })
           .limit(10),
 
         // 3. Pending payments (e.g. bank transfer pending)
@@ -115,26 +106,8 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           subtitle: `${c.full_name || c.email} · Yeni Talep`,
           timestamp: c.created_at,
           isRead: false,
-          link: ensureTrailingSlash(`/admin/iletisim-destek?view=web&id=${c.id}`),
+          link: ensureTrailingSlash(`/admin/iletisim-destek?id=${c.id}`),
           severity: "normal",
-        });
-      });
-
-      // Transform support
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const support = (supportRes.data || []) as any[];
-      support.forEach((s) => {
-        const studentProfile = s.student_profiles as unknown as { full_name?: string } | null;
-        const name = studentProfile?.full_name || "Öğrenci";
-        items.push({
-          id: `support-${s.id}`,
-          type: "support",
-          title: s.title || "Destek Talebi",
-          subtitle: `${name} · Yanıt Bekliyor`,
-          timestamp: s.last_message_at || new Date().toISOString(),
-          isRead: false,
-          link: ensureTrailingSlash(`/admin/iletisim-destek?view=support&id=${s.id}`),
-          severity: "urgent",
         });
       });
 
@@ -194,7 +167,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
       // Sort by timestamp desc
       items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      const communicationCount = contacts.length + support.length;
+      const communicationCount = contacts.length;
       const paymentsCount = paymentsRes.count ?? payments.length;
       const notificationsCount = deliveries.length;
       const homeworkCount = homework.length;

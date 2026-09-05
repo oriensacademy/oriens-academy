@@ -51,11 +51,12 @@ export interface CreateManualBookingParams {
   studentUserId?: string | null;
   liveMeetingUrl?: string | null;
   eventType: ScheduleEventType;
+  sendNotification?: boolean;
 }
 
 export async function createManualAdminBooking(
   params: CreateManualBookingParams
-): Promise<{ bookingId: string | null; error: string | null }> {
+): Promise<{ bookingId: string | null; error: string | null; emailSent?: boolean }> {
   const supabase = getSupabaseClient();
   const rpcArgs = {
     p_full_name: params.fullName.trim(),
@@ -89,26 +90,29 @@ export async function createManualAdminBooking(
     };
   }
 
-  // Update live_meeting_url if not handled by older RPC version
+  // Both of these are follow-up side effects on an already-created booking --
+  // neither should block the admin UI from showing the new booking immediately
+  // (see "DERS PLANLAMA PERFORMANSI" fix). Fire-and-forget; a failure here
+  // never rolls back or invalidates the booking itself.
   if (result.booking_id) {
-    await supabase
+    const bookingId = result.booking_id;
+    void supabase
       .from("bookings")
       .update({
         live_meeting_url: params.liveMeetingUrl?.trim() || null,
         event_type: params.eventType,
       } as never)
-      .eq("id", result.booking_id);
-  }
-
-  // Send confirmation email via Edge Function
-  if (result.booking_id) {
-    try {
-      const { error: emailError } = await supabase.functions.invoke("send-student-appointment", {
-        body: { bookingId: result.booking_id },
+      .eq("id", bookingId)
+      .then(({ error: updateError }) => {
+        if (updateError) console.error("[Admin Booking] live_meeting_url/event_type patch failed:", updateError);
       });
-      if (emailError) console.error("[Admin Booking] Notification dispatch status:", emailError);
-    } catch {
-      // Safe fallback
+
+    if (params.sendNotification === true) {
+      void supabase.functions
+        .invoke("send-student-appointment", { body: { bookingId, action: "confirm" } })
+        .then(({ error: emailError }) => {
+          if (emailError) console.error("[Admin Booking] Notification dispatch status:", emailError);
+        });
     }
   }
 
@@ -178,8 +182,9 @@ export async function listAdminBookings(
 export async function updateAdminBookingStatus(
   bookingId: string,
   newStatus: BookingStatus,
-  notes?: string | null
-): Promise<{ success: boolean; error: string | null }> {
+  notes?: string | null,
+  sendNotification = false
+): Promise<{ success: boolean; error: string | null; emailSent?: boolean }> {
   const supabase = getSupabaseClient();
 
   try {
@@ -196,7 +201,19 @@ export async function updateAdminBookingStatus(
     const result = data as { success?: boolean; error_code?: string } | null;
     if (!result?.success) return { success: false, error: result?.error_code || "Güncelleme başarısız." };
 
-    return { success: true, error: null };
+    let emailSent = false;
+    if (sendNotification && newStatus === "cancelled") {
+      try {
+        const { error: cancelErr } = await supabase.functions.invoke("send-student-appointment", {
+          body: { bookingId, action: "cancel" },
+        });
+        if (!cancelErr) emailSent = true;
+      } catch (e) {
+        console.warn("[Admin Bookings] Cancellation notification error:", e);
+      }
+    }
+
+    return { success: true, error: null, emailSent };
   } catch (err) {
     console.error("[Admin Bookings] Unexpected error updating status:", err);
     return { success: false, error: "Güncelleme sırasında bir hata oluştu." };
@@ -218,11 +235,11 @@ export interface UpdateBookingEventParams {
 
 /**
  * Updates an existing scheduled event atomically without creating a second event row.
- * Dispatches reschedule notification email when meaningful schedule/meeting parameters are modified.
+ * Dispatches reschedule notification email ONLY when explicitly requested (Default: false).
  */
 export async function updateAdminBookingEvent(
   params: UpdateBookingEventParams
-): Promise<{ success: boolean; error: string | null }> {
+): Promise<{ success: boolean; error: string | null; emailSent?: boolean }> {
   const supabase = getSupabaseClient();
 
   try {
@@ -256,25 +273,49 @@ export async function updateAdminBookingEvent(
       return { success: false, error: result?.error_code || "Randevu güncellenemedi." };
     }
 
-    // If meaningfully changed and notification is enabled, send reschedule email
-    if (params.sendNotification !== false && result.meaningfully_changed) {
+    let emailSent = false;
+    // Dispatched ONLY if admin checked explicit opt-in (Default: false)
+    if (params.sendNotification === true && result.meaningfully_changed) {
       try {
-        await supabase.functions.invoke("send-student-appointment", {
+        const { error: sendErr } = await supabase.functions.invoke("send-student-appointment", {
           body: {
             bookingId: params.bookingId,
+            action: "update",
             isUpdate: true,
             previousStartsAt: result.previous_starts_at,
           },
         });
+        if (!sendErr) emailSent = true;
       } catch (emailErr) {
         console.warn("[Admin Bookings] Reschedule notification dispatch status:", emailErr);
       }
     }
 
-    return { success: true, error: null };
+    return { success: true, error: null, emailSent };
   } catch (err) {
     console.error("[Admin Bookings] Unexpected error updating booking event:", err);
     return { success: false, error: "Etkinlik güncellenirken beklenmeyen bir hata oluştu." };
+  }
+}
+
+/**
+ * Explicit manual email sender for bookings (confirm, cancel, remind).
+ */
+export async function sendAdminBookingNotification(
+  bookingId: string,
+  action: "confirm" | "cancel" | "remind" | "update"
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = getSupabaseClient();
+  try {
+    const { data, error } = await supabase.functions.invoke("send-student-appointment", {
+      body: { bookingId, action },
+    });
+    if (error || !data?.success) {
+      return { success: false, error: error?.message || data?.error_code || "E-posta gönderilemedi." };
+    }
+    return { success: true, error: null };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "E-posta gönderilemedi." };
   }
 }
 

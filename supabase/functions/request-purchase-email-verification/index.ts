@@ -1,57 +1,13 @@
 import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
-import { renderPurchaseEmailVerificationOtpEmail } from "../_shared/email/templates.ts";
+import { renderPurchaseEmailVerificationOtpEmail, normalizeLocale } from "../_shared/email/templates.ts";
+import { computeOtpHash, generateOtpCode, normalizeOtpEmail } from "../_shared/otp/hash.ts";
 
 const OTP_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const MAX_REQUESTS_PER_HOUR = 10;
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-
-async function computeOtpHmac(
-  userId: string,
-  email: string,
-  otp: string,
-  secret: string
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const messageData = encoder.encode(`${userId}:${email}:${otp}`);
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function computeTokenHmac(rawToken: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const messageData = encoder.encode(`purchase_link:${rawToken}`);
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function generateSecureOtp(): string {
-  const buffer = new Uint32Array(1);
-  crypto.getRandomValues(buffer);
-  return String(100000 + (buffer[0] % 900000));
-}
 
 Deno.serve(async (req: Request) => {
   const invalidRequest = validateMutationRequest(req, ["POST"]);
@@ -104,8 +60,8 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const candidateEmail = String(payload.candidateEmail || user.email || "").trim().toLowerCase();
-  const locale = payload.locale === "en" ? "en" : "tr";
+  const candidateEmail = normalizeOtpEmail(payload.candidateEmail || user.email || "");
+  const locale = normalizeLocale(payload.locale);
 
   if (!candidateEmail || !EMAIL_REGEX.test(candidateEmail)) {
     return buildJsonResponse(
@@ -163,22 +119,24 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Invalidate previous challenges
+  // Retire previous challenges explicitly. `superseded_at` keeps "you asked for
+  // a newer code" distinguishable from "your code timed out", so the verifier
+  // can tell the user which one actually happened.
   await supabaseAdmin
     .from("purchase_email_verification_challenges")
-    .update({ expires_at: now.toISOString(), updated_at: now.toISOString() })
+    .update({ superseded_at: now.toISOString(), expires_at: now.toISOString(), updated_at: now.toISOString() })
     .eq("user_id", user.id)
     .is("verified_at", null)
-    .gt("expires_at", now.toISOString());
+    .is("superseded_at", null);
 
-  const otp = generateSecureOtp();
-  const codeHash = await computeOtpHmac(user.id, candidateEmail, otp, hmacSecret);
-
-  // Generate high-entropy 256-bit opaque token for one-click email verification
-  const rawTokenBytes = new Uint8Array(32);
-  crypto.getRandomValues(rawTokenBytes);
-  const rawLinkToken = Array.from(rawTokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const linkTokenHash = await computeTokenHmac(rawLinkToken, hmacSecret);
+  const otp = generateOtpCode();
+  const codeHash = await computeOtpHash({
+    purpose: "purchase_email_verification",
+    userId: user.id,
+    email: candidateEmail,
+    code: otp,
+    secret: hmacSecret,
+  });
 
   const expiresAt = new Date(now.getTime() + OTP_EXPIRATION_MS).toISOString();
   const resendAvailableAt = new Date(now.getTime() + RESEND_COOLDOWN_MS).toISOString();
@@ -189,7 +147,6 @@ Deno.serve(async (req: Request) => {
       user_id: user.id,
       candidate_email: candidateEmail,
       code_hash: codeHash,
-      verification_token_hash: linkTokenHash,
       expires_at: expiresAt,
       resend_available_at: resendAvailableAt,
       attempt_count: 0,
@@ -207,15 +164,14 @@ Deno.serve(async (req: Request) => {
   }
 
   // Build secure one-click verification URL pointing to the edge function callback
-  const verificationUrl = `${supabaseUrl}/functions/v1/verify-purchase-email-link?token=${rawLinkToken}&locale=${locale}`;
 
-  // Render & dispatch email with both 6-digit OTP and one-click verification button
+  // Render & dispatch: 6-digit OTP only. Verification links are deliberately
+  // not issued -- see supabase/functions/_shared/email/templates.ts.
   const template = renderPurchaseEmailVerificationOtpEmail({
     candidateEmail,
     otp,
     locale,
     expiresInMinutes: 10,
-    verificationUrl,
   });
 
   const delivery = await sendTransactionalEmail({
@@ -227,7 +183,7 @@ Deno.serve(async (req: Request) => {
     eventType: "purchase.email_verification_otp",
     entityType: "purchase_verification",
     entityId: user.id,
-    channel: "payments",
+    channel: "general",
     idempotencyKey: `otp-verify-${user.id}-${Date.now()}`,
   });
 

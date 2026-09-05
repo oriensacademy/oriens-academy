@@ -4,6 +4,7 @@ import {
   dispatchLiveLessonLinkEmail,
   sendTransactionalEmail,
 } from "../_shared/email/service.ts";
+import { normalizeLocale } from "../_shared/email/templates.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -72,7 +73,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const isUpdate = Boolean(lesson.meeting_link_sent_at);
-    const locale = profile.preferred_language === "en" ? "en" : "tr";
+    const locale = normalizeLocale(profile.preferred_language);
 
     const delivery = await dispatchLiveLessonLinkEmail(admin, {
       lessonId: lesson.id,
@@ -102,7 +103,8 @@ Deno.serve(async (req: Request) => {
     const packagePurchaseId = body.packagePurchaseId ? String(body.packagePurchaseId) : null;
     const teacherNote = body.teacherNote ? String(body.teacherNote) : null;
 
-    // Call idempotent complete RPC
+    // Kanonik, idempotent tamamlama. MAIL-027 burada GÖNDERİLMEZ; ayrı bir admin
+    // aksiyonudur. MAIL-040 (kalan ders hakkı) bu RPC içinde otomatik kuyruğa alınır.
     const { data: rpcResult, error: rpcError } = await caller.rpc("admin_complete_student_lesson", {
       p_lesson_id: lessonId,
       p_package_purchase_id: packagePurchaseId,
@@ -124,7 +126,7 @@ Deno.serve(async (req: Request) => {
         remaining_lessons: rpcResult.remaining ?? rpcResult.remaining_lessons,
         total_lessons: rpcResult.total ?? rpcResult.total_lessons,
         is_package_completed: (rpcResult.remaining ?? rpcResult.remaining_lessons) === 0,
-        notification: "durable_outbox",
+        notification: "none",
       },
       200,
       req
@@ -148,7 +150,7 @@ Deno.serve(async (req: Request) => {
       return buildJsonResponse({ error_code: "RESOURCES_NOT_FOUND" }, 404, req);
     }
 
-    const locale = profile.preferred_language === "en" ? "en" : "tr";
+    const locale = normalizeLocale(profile.preferred_language);
     const isEn = locale === "en";
     const packageName = purchase.custom_package_name || (isEn ? purchase.pricing_packages?.name_en : purchase.pricing_packages?.name_tr) || purchase.package_id || "Birebir Eğitim Paketi";
     const portalUrl = isEn ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim";
@@ -202,15 +204,15 @@ ${isEn ? "View your package:" : "Paketinizi görüntüleyin:"} ${portalUrl}
     const delivery = await sendTransactionalEmail({
       supabaseAdmin: admin,
       to: profile.email,
-      replyTo: "zoom@oriens-academy.com",
-      channel: "zoom",
+      replyTo: "info@oriens-academy.com",
+      channel: "support",
       subject,
       html,
       text,
       eventType: "package.assigned.student",
       entityType: "student_package_purchase",
       entityId: purchase.id,
-      idempotencyKey: `pkg-assign-${purchase.id}-${Date.now()}`,
+      idempotencyKey: `pkg-assign-${purchase.id}`,
     });
 
     return buildJsonResponse({ success: true, delivery }, 200, req);
@@ -234,7 +236,7 @@ ${isEn ? "View your package:" : "Paketinizi görüntüleyin:"} ${portalUrl}
       return buildJsonResponse({ error_code: "RESOURCES_NOT_FOUND" }, 404, req);
     }
 
-    const locale = profile.preferred_language === "en" ? "en" : "tr";
+    const locale = normalizeLocale(profile.preferred_language);
     const isEn = locale === "en";
     const packageName = purchase.custom_package_name || (isEn ? purchase.pricing_packages?.name_en : purchase.pricing_packages?.name_tr) || purchase.package_id || "Birebir Eğitim Paketi";
     const portalUrl = isEn ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim";
@@ -290,15 +292,15 @@ ${isEn ? "View your package:" : "Paketinizi görüntüleyin:"} ${portalUrl}
     const delivery = await sendTransactionalEmail({
       supabaseAdmin: admin,
       to: profile.email,
-      replyTo: "zoom@oriens-academy.com",
-      channel: "zoom",
+      replyTo: "info@oriens-academy.com",
+      channel: "support",
       subject,
       html,
       text,
       eventType: "package.extra_lessons.student",
       entityType: "student_package_purchase",
       entityId: purchase.id,
-      idempotencyKey: `pkg-extra-${purchase.id}-${Date.now()}`,
+      idempotencyKey: `pkg-extra-${purchase.id}-${lessonDelta}`,
     });
 
     return buildJsonResponse({ success: true, delivery }, 200, req);

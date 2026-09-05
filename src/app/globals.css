@@ -111,6 +111,16 @@ html[data-theme="theme-1"] {
   --destination-us-soft: #E4EDF5;
   --destination-canada: #8A4F59;
   --destination-canada-soft: #F5EAEB;
+  --destination-italy: #16A34A;
+  --destination-italy-soft: #F0FDF4;
+  --destination-netherlands: #EA580C;
+  --destination-netherlands-soft: #FFF7ED;
+  --destination-germany: #CA8A04;
+  --destination-germany-soft: #FEFCE8;
+  --destination-switzerland: #E11D48;
+  --destination-switzerland-soft: #FFF1F2;
+  --destination-france: #0284C7;
+  --destination-france-soft: #F0F9FF;
   --destination-other: #78694B;
   --destination-other-soft: #F3ECE0;
 
@@ -349,13 +359,30 @@ html[data-theme="theme-5"] {
     font-family: var(--font-body), sans-serif;
     color-scheme: light;
     min-width: 320px;
+    width: 100%;
+    overflow-x: clip;
   }
 
   html {
     font-family: var(--font-body), sans-serif;
-    scroll-behavior: smooth;
     background-color: var(--background);
+    /* Belirgin yatay taşma olmadığı ölçüldü; yine de tek bir kural olarak
+       yatay kaydırmayı kilitlemek, ileride eklenecek geniş bir bileşenin tüm
+       sayfayı yana kaydırmasını engeller. `clip` kullanılıyor çünkü
+       `hidden`, position:sticky elemanları için kaydırma bağlamı yaratır. */
+    overflow-x: clip;
   }
+
+  /* Yumuşak kaydırma yalnızca masaüstünde. Mobilde programatik kaydırmaları
+     (route değişiminde başa dönme, çapa bağlantıları) animasyona sokup
+     gecikmiş hissettiriyor ve dokunmatik momentum ile yarışıyor. */
+  @media (min-width: 768px) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+
 
   h1,
   h2,
@@ -479,3 +506,23 @@ html[data-theme="theme-5"] {
   }
   .oriens-marquee-track > [aria-hidden="true"] { display: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   iOS odak yakınlaştırmasını engelleyen taban yazı tipi.
+
+   Kasıtlı olarak KATMANSIZ (@layer dışında): Tailwind'in `text-sm`/`text-xs`
+   yardımcı sınıfları @layer utilities içinde tanımlı ve @layer base'i yener,
+   bu yüzden kural base'e konduğunda 14px'lik alanlar 14px kalıyordu. Katmansız
+   normal bildirimler bütün katmanlı bildirimlerden önce gelir.
+
+   Yalnız küçük ekranlarda uygulanır; masaüstündeki yoğun form düzeni korunur.
+   Onay kutusu/radyo hariç tutulur: onlarda yazı tipi zoom'u tetiklemez.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+

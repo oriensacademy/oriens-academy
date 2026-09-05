@@ -116,7 +116,8 @@ Do not infer safety from a publishable key: RLS is the authorization boundary. D
 | `booking-availability` | GET, public | Origin/CORS handling; returns future available slot DTOs only |
 | `create-booking` | POST, public gateway | Validates input/consent and `booking_submit` Turnstile action; calls atomic reservation RPC; dispatches two emails |
 | `create-contact` | POST, public gateway | Validates contact/consultation/quick-contact payload and matching Turnstile action; validates package ID against active pricing; stores structured metadata; dispatches emails |
-| `admin-password-reset` | POST, public gateway | Strict configured-email match, Turnstile action, hashed DB cooldown, admin identity/profile verification, password rotation and email delivery |
+| `request-password-recovery` | POST, public gateway | Turnstile action, DB-backed rate-limit RPC (`check_and_claim_recovery_rate_limit`), generates a Supabase Auth recovery link (`auth.admin.generateLink`), emails it via Google Workspace (`dispatchPasswordResetEmail`). Shared by admin and student accounts (`/tr/sifremi-unuttum`, `/en/forgot-password`); redirects to `/tr/sifre-yenile` or `/en/reset-password` |
+| `admin-password-reset` | POST, public gateway | **Legacy/unused** -- older temporary-password + Resend flow. No caller anywhere in the repository (verified); superseded by `request-password-recovery` above. Not undeployed. |
 
 ```mermaid
 sequenceDiagram

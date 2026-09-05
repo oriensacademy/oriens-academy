@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Mail } from "lucide-react";
 import { requestPurchaseEmailVerification, verifyPurchaseEmailVerification } from "@/lib/payments/email-verification";
+import { requestEmailChange, verifyEmailChangeOtp } from "@/lib/student/auth";
 import { localizeErrorMessage } from "@/lib/utils/error-messages";
 
 interface EmailOtpGateProps {
   email: string;
   locale: "tr" | "en";
+  mode?: "signup" | "email_change";
   onVerified: () => void;
   onChangeEmail?: () => void;
   onLogout?: () => void;
@@ -20,7 +22,7 @@ function maskEmail(email: string): string {
   return `${visible}${"*".repeat(Math.max(1, local.length - visible.length))}@${domain}`;
 }
 
-export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogout }: EmailOtpGateProps) {
+export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onChangeEmail, onLogout }: EmailOtpGateProps) {
   const isTr = locale === "tr";
   const [code, setCode] = useState("");
   const [sending, setSending] = useState(false);
@@ -30,6 +32,22 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
   const [resendCooldown, setResendCooldown] = useState(0);
   const sentOnceRef = useRef(false);
 
+  // The gate is a conditional render inside the portal/login screens, so any
+  // parent reload unmounts and remounts it. A per-mount guard therefore fired a
+  // fresh code request on every refresh, which superseded the challenge the user
+  // was still holding -- their correct code then reported as wrong and burned an
+  // attempt. Scope the "already sent" marker to the session and the identity
+  // instead, so a remount reuses the code already in the user's inbox.
+  const autoSendKey = `oriens_otp_sent:${mode}:${email.trim().toLowerCase()}`;
+
+  function clearAutoSendMarker() {
+    try {
+      window.sessionStorage.removeItem(autoSendKey);
+    } catch {
+      // Non-fatal.
+    }
+  }
+
   async function sendCode(silent: boolean) {
     if (!email || sending) return;
     setSending(true);
@@ -38,7 +56,10 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
       setInfo("");
     }
     try {
-      const res = await requestPurchaseEmailVerification(email, locale);
+      const res = mode === "email_change"
+        ? await requestEmailChange(email, locale)
+        : await requestPurchaseEmailVerification(email, locale);
+
       if (!res.success) {
         if (res.error_code === "RESEND_COOLDOWN" && res.resend_available_at) {
           const seconds = Math.max(0, Math.round((new Date(res.resend_available_at).getTime() - Date.now()) / 1000));
@@ -49,6 +70,11 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
         return;
       }
       setResendCooldown(60);
+      try {
+        window.sessionStorage.setItem(autoSendKey, "1");
+      } catch {
+        // Non-fatal.
+      }
       if (!silent) setInfo(isTr ? "Yeni bir kod gönderildi." : "A new code has been sent.");
     } catch {
       if (!silent) setError(isTr ? "Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin." : "The verification code could not be sent. Please try again.");
@@ -60,9 +86,28 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
   useEffect(() => {
     if (sentOnceRef.current) return;
     sentOnceRef.current = true;
+    let alreadySent = false;
+    try {
+      alreadySent = window.sessionStorage.getItem(autoSendKey) === "1";
+    } catch {
+      // Private mode / storage blocked: fall back to sending once per mount.
+    }
+    if (alreadySent) {
+      setInfo(
+        isTr
+          ? "Doğrulama kodu e-posta adresinize gönderildi. Gelen kutunuzu kontrol edin."
+          : "A verification code was sent to your email address. Please check your inbox."
+      );
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(autoSendKey, "1");
+    } catch {
+      // Non-fatal.
+    }
     void sendCode(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoSendKey]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -76,11 +121,22 @@ export function EmailOtpGate({ email, locale, onVerified, onChangeEmail, onLogou
     setVerifying(true);
     setError("");
     try {
-      const res = await verifyPurchaseEmailVerification(email, code, locale);
+      const res = mode === "email_change"
+        ? await verifyEmailChangeOtp(code, locale)
+        : await verifyPurchaseEmailVerification(email, code, locale);
+
       if (!res.success) {
+        // The account is already verified server-side (e.g. this tab is stale):
+        // that is a success for the user, not an error to stare at.
+        if (res.error_code === "ALREADY_VERIFIED") {
+          clearAutoSendMarker();
+          onVerified();
+          return;
+        }
         setError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama başarısız oldu." : "Verification failed."));
         return;
       }
+      clearAutoSendMarker();
       onVerified();
     } catch {
       setError(isTr ? "Doğrulama başarısız oldu. Lütfen tekrar deneyin." : "Verification failed. Please try again.");

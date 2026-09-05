@@ -623,13 +623,13 @@ export async function reviewInteractiveHomework(homeworkId: string, feedback: st
 }
 
 export async function sendHomeworkEmail(
-  input:
+  _input:
     | { action: "assigned"; assignmentId: string }
     | { action: "reviewed"; homeworkId: string }
     | { action: "revision_requested"; homeworkId: string }
 ) {
-  const { data, error } = await getSupabaseClient().functions.invoke("send-homework-email", { body: input });
-  return { data, error: error?.message || null };
+  // Homework notification emails (MAIL-032..036) are permanently removed from system
+  return { data: { success: true, disabled: true }, error: null };
 }
 
 export async function getAdminHomeworkDetail(homeworkId: string): Promise<{ data: HomeworkDetail | null; error: string | null }> {

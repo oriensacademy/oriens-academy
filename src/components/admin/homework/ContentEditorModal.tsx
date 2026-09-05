@@ -29,6 +29,7 @@ import {
   type QuestionLanguage,
 } from "@/lib/homework";
 import { canonicalExams } from "@/content/canonical-exams";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 interface ContentEditorModalProps {
   isOpen: boolean;
@@ -52,8 +53,7 @@ export function ContentEditorModal({
   // Scroll lock & Escape key
   useEffect(() => {
     if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockBodyScroll = lockBodyScroll();
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -62,7 +62,7 @@ export function ContentEditorModal({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previous;
+      unlockBodyScroll();
     };
   }, [isOpen, onClose]);
 

@@ -4,7 +4,10 @@ import {
   dispatchBookingEmails,
   dispatchAppointmentConfirmedEmails,
   dispatchAppointmentUpdatedEmail,
+  dispatchAppointmentCancelledEmail,
+  dispatchAppointmentReminderEmail,
 } from "../_shared/email/service.ts";
+import { normalizeLocale } from "../_shared/email/templates.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -33,7 +36,8 @@ Deno.serve(async (req: Request) => {
 
   const body = await req.json().catch(() => ({}));
   const bookingId = String(body.bookingId || "");
-  const isUpdate = Boolean(body.isUpdate);
+  const action = String(body.action || "");
+  const isUpdate = Boolean(body.isUpdate) || action === "update";
   const previousStartsAt = body.previousStartsAt ? String(body.previousStartsAt) : null;
 
   if (!UUID.test(bookingId)) {
@@ -58,37 +62,33 @@ Deno.serve(async (req: Request) => {
     .eq("id", data.student_user_id)
     .maybeSingle();
 
-  const locale = profile?.preferred_language === "en" ? "en" : "tr";
+  const locale = normalizeLocale(profile?.preferred_language);
 
   const resolvedTitle =
     data.appointment_subject ||
     (data.exam_code ? `Sınav Hazırlığı (${data.exam_code.toUpperCase()})` : (data.custom_exam || "Birebir Akademik Seans"));
 
-  if (isUpdate && slot?.starts_at) {
-    await dispatchAppointmentUpdatedEmail(admin, {
-      appointmentId: data.id,
-      studentName: data.full_name,
-      studentEmail: data.email,
-      lessonTitle: resolvedTitle,
-      startsAt: slot.starts_at,
-      endsAt: slot.ends_at,
-      locationOrMeetingUrl: data.live_meeting_url || (locale === "en" ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim"),
-      notes: data.notes,
-      locale,
-      previousStartsAt,
-    });
+  const appointmentData = {
+    appointmentId: data.id,
+    studentName: data.full_name,
+    studentEmail: data.email,
+    lessonTitle: resolvedTitle,
+    startsAt: slot?.starts_at || "",
+    endsAt: slot?.ends_at || "",
+    locationOrMeetingUrl: data.live_meeting_url || (locale === "en" ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim"),
+    notes: data.notes,
+    locale,
+    previousStartsAt,
+  };
+
+  if (action === "cancel") {
+    await dispatchAppointmentCancelledEmail(admin, appointmentData);
+  } else if (action === "remind") {
+    await dispatchAppointmentReminderEmail(admin, appointmentData);
+  } else if (isUpdate && slot?.starts_at) {
+    await dispatchAppointmentUpdatedEmail(admin, appointmentData);
   } else if (slot?.starts_at) {
-    await dispatchAppointmentConfirmedEmails(admin, {
-      appointmentId: data.id,
-      studentName: data.full_name,
-      studentEmail: data.email,
-      lessonTitle: resolvedTitle,
-      startsAt: slot.starts_at,
-      endsAt: slot.ends_at,
-      locationOrMeetingUrl: data.live_meeting_url || (locale === "en" ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim"),
-      notes: data.notes,
-      locale,
-    });
+    await dispatchAppointmentConfirmedEmails(admin, appointmentData);
   } else {
     await dispatchBookingEmails(admin, {
       bookingId: data.id,

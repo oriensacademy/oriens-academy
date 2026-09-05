@@ -135,6 +135,18 @@ export async function upsertStudentLesson(input: {
   teacherNote?: string | null;
   status?: "scheduled" | "completed" | "cancelled" | "no_show";
 }) {
+  // Gelecek ders validation: must not be in the past
+  if ((!input.status || input.status === "scheduled") && !input.lessonId) {
+    const lessonTime = new Date(input.lessonDate).getTime();
+    const now = Date.now();
+    if (lessonTime < now - 15 * 60_000) {
+      return {
+        success: false,
+        error: "Gelecek ders için geçmiş bir tarih veya saat seçilemez. Lütfen ileri bir tarih giriniz veya 'Geçmiş Ders' seçeneğini kullanınız.",
+      };
+    }
+  }
+
   const { data, error } = await getSupabaseClient().rpc("admin_upsert_student_lesson" as unknown as "admin_update_student_profile", {
     p_student_id: input.studentId,
     p_lesson_id: input.lessonId || null,
@@ -151,6 +163,12 @@ export async function upsertStudentLesson(input: {
   return rpcResult(data, error);
 }
 
+/**
+ * Dersi tamamlar. Tamamlama artık hiçbir koşulda MAIL-027 göndermez: ders
+ * bilgilendirme e-postası ayrı ve açık bir admin aksiyonudur
+ * (sendLessonCompletedEmail). Kanonik RPC'de p_send_email parametresi yoktur.
+ * MAIL-040 (kalan ders hakkı) bu RPC içinde otomatik kuyruğa alınmaya devam eder.
+ */
 export async function completeStudentLesson(input: {
   lessonId: string;
   packagePurchaseId?: string | null;
@@ -184,12 +202,14 @@ export async function completeStudentLesson(input: {
     }
   }
 
-  const { data, error } = await supabase.rpc("admin_complete_student_lesson" as unknown as "admin_update_student_profile", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("admin_complete_student_lesson", {
     p_lesson_id: input.lessonId,
     p_package_purchase_id: input.packagePurchaseId || null,
     p_teacher_note: input.teacherNote || null,
-  } as unknown as { p_student_id: string; p_full_name: string; p_phone: string; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean });
-  return rpcResult(data, error);
+  });
+  const res = rpcResult(data, error);
+  return { success: res.success, error: res.error, alreadyCompleted: res.alreadyCompleted };
 }
 
 export async function recordCompletedLesson(input: {
@@ -202,6 +222,16 @@ export async function recordCompletedLesson(input: {
   packagePurchaseId?: string | null;
   idempotencyKey: string;
 }) {
+  // Geçmiş ders validation: must not be in the future
+  const lessonTime = new Date(input.lessonDate).getTime();
+  const now = Date.now();
+  if (lessonTime > now + 5 * 60_000) {
+    return {
+      success: false,
+      error: "Geçmiş ders için gelecekteki bir tarih veya saat seçilemez. Lütfen geçmiş bir tarih giriniz veya 'Gelecek Ders' seçeneğini kullanınız.",
+    };
+  }
+
   const supabase = getSupabaseClient();
   // Generated RPC types follow when the migration is applied to the remote project.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -218,6 +248,58 @@ export async function recordCompletedLesson(input: {
     p_idempotency_key: input.idempotencyKey,
   });
   return rpcResult(data, error);
+}
+
+export async function sendLessonCompletedEmail(
+  lessonId: string
+): Promise<{ success: boolean; error: string | null; messageId?: string }> {
+  const supabase = getSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("admin_send_lesson_completed_email", {
+    p_lesson_id: lessonId,
+  });
+  if (error) return { success: false, error: error.message };
+  const result = data as { success?: boolean; error_code?: string; message_id?: string } | null;
+  return {
+    success: Boolean(result?.success),
+    error: result?.success ? null : result?.error_code || "E-posta gönderilemedi.",
+    messageId: result?.message_id,
+  };
+}
+
+/**
+ * Paket / ders hakkı bilgilendirme e-postasını AÇIK admin aksiyonu olarak
+ * gönderir. Paket tanımlama ve ders hakkı artırma/azaltma işlemleri kendi
+ * başlarına e-posta göndermez -- veri değişikliği bildirim demek değildir.
+ *
+ * Çift tıklama ve ağ tekrarı sunucu tarafında 60 saniyelik pencerede bastırılır
+ * (admin_send_package_notification); bilinçli tekrar gönderim ise yeni bir
+ * kayıt üretir.
+ */
+export async function sendPackageNotificationEmail(
+  purchaseId: string,
+  kind: "package_assigned" | "lesson_rights"
+): Promise<{ success: boolean; error: string | null; suppressed?: boolean }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (getSupabaseClient() as any).rpc("admin_send_package_notification", {
+    p_purchase_id: purchaseId,
+    p_kind: kind,
+  });
+  if (error) {
+    // Ham veritabanı hatası admin ekranına basılmaz.
+    console.error("[admin/package-notification] RPC error:", error.message);
+    return { success: false, error: "Bilgilendirme e-postası gönderilemedi. Lütfen tekrar deneyin." };
+  }
+  const result = data as { success?: boolean; error_code?: string; suppressed?: boolean } | null;
+  if (!result?.success) {
+    const messages: Record<string, string> = {
+      PACKAGE_NOT_FOUND: "Paket kaydı bulunamadı.",
+      NO_VERIFIED_ACCOUNT_HOLDER: "Bu öğrenciye bağlı doğrulanmış bir hesap sahibi e-postası yok.",
+      INVALID_KIND: "Geçersiz bildirim türü.",
+    };
+    return { success: false, error: messages[result?.error_code || ""] || "Bilgilendirme e-postası gönderilemedi." };
+  }
+  return { success: true, error: null, suppressed: Boolean(result.suppressed) };
 }
 
 export async function sendLessonMeetingLink(lessonId: string) {
@@ -315,6 +397,18 @@ export async function assignStudentPackage(input: {
   return res;
 }
 
+/**
+ * Collapses rapid duplicate submissions (double-click, request retry) of the
+ * same logical action into the same key, without permanently blocking a
+ * deliberate later repeat of the same delta/reason -- see forensic audit
+ * item 3. Callers may pass their own idempotencyKey (e.g. generated once
+ * when a form/modal opens) for tighter control; this is just a safe default.
+ */
+function buildAdjustmentIdempotencyKey(prefix: string, parts: (string | number | null | undefined)[]): string {
+  const bucket = Math.floor(Date.now() / 10_000); // 10-second collision window
+  return [prefix, ...parts.map((p) => String(p ?? "")), bucket].join(":");
+}
+
 export async function addStudentExtraLessons(input: {
   purchaseId: string;
   studentId: string;
@@ -324,8 +418,11 @@ export async function addStudentExtraLessons(input: {
   paymentStatus?: "pending" | "paid" | "waived";
   notes?: string | null;
   sendNotification?: boolean;
+  idempotencyKey?: string;
 }) {
   const supabase = getSupabaseClient();
+  const idempotencyKey = input.idempotencyKey
+    || buildAdjustmentIdempotencyKey("extra", [input.purchaseId, input.lessonDelta, input.priceAmount, input.notes]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc(
     "admin_add_extra_lessons",
@@ -336,6 +433,7 @@ export async function addStudentExtraLessons(input: {
       p_currency: input.currency || "TRY",
       p_payment_status: input.paymentStatus || "waived",
       p_notes: input.notes || null,
+      p_idempotency_key: idempotencyKey,
     }
   );
 
@@ -370,14 +468,18 @@ export async function adjustStudentPackageLessons(input: {
   lessonDelta: number;
   reason: string;
   notes?: string | null;
+  idempotencyKey?: string;
 }): Promise<LessonAdjustmentResult> {
   const supabase = getSupabaseClient();
+  const idempotencyKey = input.idempotencyKey
+    || buildAdjustmentIdempotencyKey("adjust", [input.purchaseId, input.lessonDelta, input.reason, input.notes]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any).rpc("admin_adjust_package_lessons", {
     p_purchase_id: input.purchaseId,
     p_lesson_delta: input.lessonDelta,
     p_reason: input.reason,
     p_notes: input.notes || null,
+    p_idempotency_key: idempotencyKey,
   });
   if (error) return { success: false, error: error.message };
   const value = data as Record<string, unknown> | null;

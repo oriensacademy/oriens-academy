@@ -47,6 +47,12 @@ const PAYMENT_ERROR_COPY: Record<string, Record<PaymentLocale, string>> = {
     tr: "Bağlantı sırasında bir sorun oluştu.",
     en: "A network error occurred.",
   },
+  // PayTR iframe token'i tek kullanimliktir. Bayat bir oturum bulundugunda
+  // sunucu onu arsivler ve istemciden taze bir oturum istemesini bekler.
+  PAYMENT_SESSION_RETRY: {
+    tr: "Ödeme oturumu yenilendi. Lütfen tekrar deneyin.",
+    en: "The payment session was refreshed. Please try again.",
+  },
 };
 
 export function paymentErrorMessage(

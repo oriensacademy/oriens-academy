@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Wave } from "@/components/ui/wave";
 import { LANGUAGE_TRANSITION_STORAGE_KEY } from "./LanguageTransitionProvider";
 import { LoaderRevealProvider } from "./loader-context";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 const STORAGE_KEY = "oriens-loader-seen";
 /** Total on-screen budget for the brand moment — MASTER.md §13: 800–1400ms. */
@@ -27,6 +28,10 @@ export function CompassLoader({ children }: { children: React.ReactNode }) {
   const [skipExit, setSkipExit] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Aynı kilit hem effect temizliğinden hem de çıkış animasyonu bittiğinde
+  // serbest bırakılabiliyor; sayaçlı kilit iki kez çağrılmaya karşı güvenli
+  // ama referansı tutup null'lamak çift serbest bırakmayı tamamen engeller.
+  const unlockRef = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
     const alreadySeen = window.sessionStorage.getItem(STORAGE_KEY) === "1";
@@ -40,18 +45,19 @@ export function CompassLoader({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    unlockRef.current = lockBodyScroll();
     timeoutRef.current = setTimeout(() => setExiting(true), TOTAL_MS);
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      document.body.style.overflow = previousOverflow;
+      unlockRef.current?.();
+      unlockRef.current = null;
     };
   }, [prefersReducedMotion]);
 
   function handleExitComplete() {
-    document.body.style.overflow = "";
+    unlockRef.current?.();
+    unlockRef.current = null;
     window.sessionStorage.setItem(STORAGE_KEY, "1");
     setVisible(false);
   }

@@ -13,26 +13,21 @@ The recovery identity is configured with the server-only `ADMIN_AUTH_EMAIL` Supa
 
 The login form starts blank and uses Supabase `signInWithPassword`. Successful credentials are still rejected from the admin UI when either authorization check above fails.
 
-## Temporary-password recovery
+## Password recovery (current)
 
-`/admin/forgot-password` submits the normalized email, locale, and a Cloudflare Turnstile token to the `admin-password-reset` Edge Function. The public response is deliberately neutral so it does not disclose whether an account exists.
+`/admin/forgot-password` is a redirect stub to the unified `/tr/sifremi-unuttum` (`/en/forgot-password`) page, which is shared by admin and student accounts. It submits the normalized email, locale, and a Cloudflare Turnstile token to the `request-password-recovery` Edge Function, which:
 
-The function:
+1. verifies the Turnstile token server-side;
+2. atomically claims a DB-backed cooldown via the `check_and_claim_recovery_rate_limit` RPC;
+3. calls `supabaseAdmin.auth.admin.generateLink({ type: "recovery" })` to produce a Supabase Auth recovery action link (no password is generated or handled by this function -- the admin/student sets their own new password);
+4. emails that link via the Google Workspace-backed `dispatchPasswordResetEmail` (`_shared/email/service.ts`), not Resend;
+5. the link redirects to `/tr/sifre-yenile` or `/en/reset-password`, where the user sets a new password directly through Supabase Auth.
 
-1. validates origin, method, payload, and Turnstile action;
-2. compares the email with the server-only configured administrator email;
-3. atomically claims separate 10-minute DB-backed cooldowns keyed by SHA-256(email) and SHA-256(IP);
-4. verifies exactly one matching Auth user with the admin role and an active admin profile;
-5. creates a 16-character password with `crypto.getRandomValues`, including uppercase, lowercase, number, and symbol characters;
-6. changes that same Auth user's password with the Supabase Admin API;
-7. sends the credential only to the configured administrator address through Resend;
-8. stores sanitized audit and delivery status records without the password.
+The response is deliberately neutral so it does not disclose whether an account exists. See "Legacy `admin-password-reset`" below for the older, unused, temporary-password mechanism this replaced.
 
-The temporary password exists only in the function's memory, Supabase Auth's password update request, and the outgoing Resend payload. It is never returned to browser JavaScript and is never stored in application tables, console messages, audit metadata, local storage, or session storage.
+## Legacy `admin-password-reset` (unused)
 
-## Delivery limitation
-
-Supabase Auth and Resend are separate systems, so the password rotation and email delivery cannot be one atomic transaction. The function verifies configuration before rotating the password. If Resend still fails after rotation, it records only a sanitized failure, returns a generic temporary failure rather than success, and shortens both cooldowns to one minute so the administrator can request another generated password. The previous password cannot be restored because its plaintext value is intentionally unavailable.
+An older Edge Function, `admin-password-reset`, generated a random temporary password server-side and emailed it via Resend to a single server-configured administrator address. Nothing in the frontend or any other Edge Function calls it anymore (verified by repository-wide search) -- password recovery for both admin and student accounts now goes exclusively through `request-password-recovery` above. The function has not been undeployed; it is a candidate for removal from the Supabase project. Do not reintroduce a caller for it without first reconciling it with the current recovery-link flow.
 
 ## Authenticated password change
 

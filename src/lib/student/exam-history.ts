@@ -143,7 +143,7 @@ export async function claimAnonymousExamResult(claimToken: string): Promise<{ su
   }
 }
 
-export async function sendExamResultEmail(input: {
+export async function sendExamResultEmail(_input: {
   email: string;
   fullName?: string;
   phone?: string;
@@ -152,36 +152,6 @@ export async function sendExamResultEmail(input: {
   result: TestResult;
   questionSnapshots: QuestionSnapshot[];
 }): Promise<{ success: boolean; claimToken?: string; error?: string | null }> {
-  try {
-    const supabase = getSupabaseClient();
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-
-    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-exam-result-email`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        email: input.email.trim().toLowerCase(),
-        fullName: input.fullName?.trim() || "",
-        phone: input.phone?.trim() || "",
-        examCode: input.examCode,
-        locale: input.locale,
-        result: input.result,
-        questionSnapshots: input.questionSnapshots,
-      }),
-    });
-
-    const json = await res.json();
-    if (!res.ok || !json.success) {
-      return { success: false, error: json.error_code || "EMAIL_FAILED" };
-    }
-
-    return { success: true, claimToken: json.claimToken };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "NETWORK_ERROR";
-    return { success: false, error: msg };
-  }
+  // Diagnostic exam report emails (MAIL-037) are permanently removed from system
+  return { success: true };
 }

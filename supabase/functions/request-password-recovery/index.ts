@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
-import { renderPasswordResetActionEmail } from "../_shared/email/templates.ts";
+import { renderPasswordResetActionEmail, normalizeLocale } from "../_shared/email/templates.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
 
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -43,7 +43,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Strict Locale Validation: only "tr" or "en"
-    const targetLocale: "tr" | "en" = body.locale === "en" ? "en" : "tr";
+    const targetLocale: "tr" | "en" = normalizeLocale(body.locale);
 
     // Client IP Extraction
     const clientIp =

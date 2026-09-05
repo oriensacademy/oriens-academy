@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { X, Shield, FileText } from "lucide-react";
 import { LEGAL_DOCS, type LegalDocKey } from "@/config/legal";
 import { formatCurrency } from "@/lib/format/currency";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 export interface LegalOrderSnapshot {
   packageName: string;
@@ -44,11 +45,11 @@ export function LegalModal({
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "hidden";
+    const unlockBodyScroll = lockBodyScroll();
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "unset";
+      unlockBodyScroll();
     };
   }, [isOpen, onClose]);
 
@@ -130,10 +131,14 @@ export function LegalModal({
                       : isTr ? "Banka Havalesi / EFT" : "Bank Transfer / EFT"}
                   </strong>
                 </div>
-                <div>
-                  <span className="text-[#68756C] block">{isTr ? "Veli / Ödeyen:" : "Guardian / Payer:"}</span>
-                  <strong className="text-[#10271B]">{orderSnapshot.payerName || "—"} ({orderSnapshot.payerEmail || "—"})</strong>
-                </div>
+                {(orderSnapshot.payerName || orderSnapshot.payerEmail) && (
+                  <div>
+                    <span className="text-[#68756C] block">{isTr ? "Veli / Ödeyen:" : "Guardian / Payer:"}</span>
+                    <strong className="text-[#10271B]">
+                      {[orderSnapshot.payerName, orderSnapshot.payerEmail ? `(${orderSnapshot.payerEmail})` : null].filter(Boolean).join(" ")}
+                    </strong>
+                  </div>
+                )}
                 <div>
                   <span className="text-[#68756C] block">{isTr ? "Toplam Tutar:" : "Total Amount:"}</span>
                   <strong className="text-sm font-bold text-[#10271B]">

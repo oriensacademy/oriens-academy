@@ -265,7 +265,7 @@ export function TemplateManager({
                   <a
                     href={t.external_link}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
                   >
                     <ExternalLink className="size-3" />

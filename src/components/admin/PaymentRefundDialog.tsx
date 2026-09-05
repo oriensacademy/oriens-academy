@@ -6,6 +6,7 @@ import { Loader2, RotateCcw, X } from "lucide-react";
 import { getPaymentRefundCopy } from "@/content/payment-refund";
 import { formatCurrency } from "@/lib/format/currency";
 import { getAdminRefundContext, type AdminRefundContext, type AdminPaymentRow } from "@/lib/admin/payments";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 export interface RefundReviewRequest {
   context: AdminRefundContext;
@@ -54,12 +55,11 @@ export function PaymentRefundDialog({ row, onClose, onReview }: {
   }
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockBodyScroll = lockBodyScroll();
     closeRef.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKeyDown);
-    return () => { document.removeEventListener("keydown", onKeyDown); document.body.style.overflow = previousOverflow; };
+    return () => { document.removeEventListener("keydown", onKeyDown); unlockBodyScroll(); };
   }, [onClose]);
 
   const refundAmount = Number(amount);
@@ -85,7 +85,7 @@ export function PaymentRefundDialog({ row, onClose, onReview }: {
             <Metric label={copy.refundableAmount} value={money(context.refundable_amount)} />
             <Metric label={copy.completedLessons} value={String(context.completed_lessons)} />
             <Metric label={copy.remainingLessons} value={String(context.remaining_lessons)} />
-            <Metric label="Paket / Öğrenci" value={`${context.package_id} · ${context.learner || "—"}`} />
+            <Metric label="Paket / Öğrenci" value={context.learner ? `${context.package_id} · ${context.learner}` : context.package_id} />
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3" role="group" aria-label="İade türü">

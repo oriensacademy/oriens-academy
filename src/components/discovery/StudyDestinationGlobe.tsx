@@ -75,6 +75,9 @@ export function StudyDestinationGlobe({
   const isPointerOverRef = useRef(false);
   const isDraggingRef = useRef(false);
   const isVisibleRef = useRef(false);
+  // Küre ekrandan çıktığında rAF döngüsü tamamen durdurulur; gözlemci yeniden
+  // görünür olduğunda bu geri çağırma ile döngüyü uyandırır.
+  const wakeLoopRef = useRef<(() => void) | null>(null);
   const resumeAfterRef = useRef(0);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragRef = useRef<{ id: number; x: number; y: number; originX: number; originY: number; moved: boolean } | null>(null);
@@ -109,8 +112,6 @@ export function StudyDestinationGlobe({
     if (canvas.width !== pixelSize || canvas.height !== pixelSize) {
       canvas.width = pixelSize;
       canvas.height = pixelSize;
-      canvas.style.width = `${size}px`;
-      canvas.style.height = `${size}px`;
     }
     const context = canvas.getContext("2d");
     if (!context) return;
@@ -203,6 +204,26 @@ export function StudyDestinationGlobe({
   }, [projection, regions]);
 
   useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const updateSize = () => {
+      const containerWidth = root.clientWidth;
+      if (!containerWidth) return;
+      const isMobile = window.innerWidth < 640;
+      const maxSize = isMobile ? 360 : compact ? 430 : 560;
+      const targetSize = Math.min(containerWidth, maxSize);
+      if (Math.abs(sizeRef.current - targetSize) > 1) {
+        sizeRef.current = targetSize;
+        dirtyRef.current = true;
+      }
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [compact]);
+
+  useEffect(() => {
     let cancelled = false;
     loadCountries()
       .then((features) => {
@@ -236,6 +257,7 @@ export function StudyDestinationGlobe({
       if (entry.isIntersecting) {
         resumeAfterRef.current = performance.now() + 600;
         dirtyRef.current = true;
+        wakeLoopRef.current?.();
       }
     }, { threshold: 0.2 });
     if (rootRef.current) observer.observe(rootRef.current);
@@ -247,7 +269,15 @@ export function StudyDestinationGlobe({
     let previous = performance.now();
     let paused = false;
     const tick = (time: number) => {
-      if (document.hidden) {
+      if (document.hidden || document.documentElement.dataset.mobileMenuOpen === "true") {
+        paused = true;
+        return;
+      }
+      // Ekran dışındayken ve bekleyen bir kamera animasyonu yokken kareyi hiç
+      // planlama. Önceden döngü sayfa ömrü boyunca her karede çalışıyordu:
+      // sadece dönüş atlanıyordu, geri kalan iş (delta hesabı, FPS sayacı ve
+      // saniyede bir DOM yazımı) mobilde scroll sırasında sürüyordu.
+      if (!isVisibleRef.current && !cameraRef.current) {
         paused = true;
         return;
       }
@@ -286,18 +316,32 @@ export function StudyDestinationGlobe({
       }
       frame = requestAnimationFrame(tick);
     };
-    const handleVisibilityChange = () => {
-      if (!document.hidden && paused) {
-        paused = false;
-        previous = performance.now();
-        dirtyRef.current = true;
-        frame = requestAnimationFrame(tick);
-      }
+    const resume = () => {
+      if (!paused || document.hidden || document.documentElement.dataset.mobileMenuOpen === "true") return;
+      paused = false;
+      previous = performance.now();
+      dirtyRef.current = true;
+      frame = requestAnimationFrame(tick);
     };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) resume();
+    };
+    const menuObserver = new MutationObserver(() => {
+      if (document.documentElement.dataset.mobileMenuOpen === "true") {
+        paused = true;
+      } else {
+        resume();
+      }
+    });
+    menuObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-mobile-menu-open"] });
+
+    wakeLoopRef.current = resume;
     document.addEventListener("visibilitychange", handleVisibilityChange);
     frame = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(frame);
+      menuObserver.disconnect();
+      wakeLoopRef.current = null;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [draw, reducedMotion]);
@@ -333,8 +377,10 @@ export function StudyDestinationGlobe({
     isDraggingRef.current = true;
     const { clientX: x, clientY: y, pointerId: id } = event;
     dragRef.current = { id, x, y, originX: x, originY: y, moved: false };
-    event.currentTarget.setPointerCapture?.(id);
-    event.currentTarget.style.cursor = "grabbing";
+    if (event.pointerType !== "touch") {
+      try { event.currentTarget.setPointerCapture?.(id); } catch { /* ignore */ }
+      event.currentTarget.style.cursor = "grabbing";
+    }
     dirtyRef.current = true;
   }
 
@@ -343,8 +389,39 @@ export function StudyDestinationGlobe({
     if (drag && drag.id === event.pointerId) {
       const dx = event.clientX - drag.x;
       const dy = event.clientY - drag.y;
-      drag.moved ||= Math.abs(event.clientX - drag.originX) + Math.abs(event.clientY - drag.originY) > 4;
-      rotationRef.current = [rotationRef.current[0] + dx * 0.28, Math.max(-70, Math.min(70, rotationRef.current[1] - dy * 0.2))];
+      const totalDx = Math.abs(event.clientX - drag.originX);
+      const totalDy = Math.abs(event.clientY - drag.originY);
+
+      if (event.pointerType === "touch") {
+        if (!drag.moved) {
+          // If vertical gesture is detected, immediately abort drag so native page scroll happens smoothly
+          if (totalDy > totalDx && totalDy > 5) {
+            isDraggingRef.current = false;
+            dragRef.current = null;
+            return;
+          }
+          // Only start rotating if horizontal swipe is clearly dominant
+          if (totalDx > totalDy && totalDx > 6) {
+            drag.moved = true;
+            try {
+              event.currentTarget.setPointerCapture(event.pointerId);
+            } catch { /* ignore */ }
+          } else {
+            // Still in deadzone, do not rotate
+            return;
+          }
+        }
+      } else {
+        if (totalDx > 4 || totalDy > 4) {
+          drag.moved = true;
+        }
+      }
+
+      const dyFactor = event.pointerType === "touch" ? 0.08 : 0.2;
+      rotationRef.current = [
+        rotationRef.current[0] + dx * 0.28,
+        Math.max(-70, Math.min(70, rotationRef.current[1] - dy * dyFactor)),
+      ];
       drag.x = event.clientX;
       drag.y = event.clientY;
       dirtyRef.current = true;
@@ -374,7 +451,11 @@ export function StudyDestinationGlobe({
 
   function handlePointerUp(event: ReactPointerEvent<HTMLCanvasElement>) {
     const completedDrag = dragRef.current;
-    try { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch { /* already released */ }
     isDraggingRef.current = false;
     dragRef.current = null;
     if (completedDrag && !completedDrag.moved) {
@@ -387,7 +468,11 @@ export function StudyDestinationGlobe({
   }
 
   function handlePointerCancel(event: ReactPointerEvent<HTMLCanvasElement>) {
-    try { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch { /* already released */ }
     isDraggingRef.current = false;
     dragRef.current = null;
     event.currentTarget.style.cursor = hoveredRegionId ? "pointer" : "grab";
@@ -405,7 +490,7 @@ export function StudyDestinationGlobe({
       data-react-frame-updates="false"
       data-selected-region={region?.id ?? "none"}
       data-hovered-region={hoveredRegionId ?? "none"}
-      className="relative mx-auto aspect-square w-full max-w-[620px]"
+      className="relative mx-auto aspect-square w-full max-w-[350px] sm:max-w-[560px] overflow-hidden"
       onPointerEnter={() => {
         isPointerOverRef.current = true;
         resumeAfterRef.current = Number.POSITIVE_INFINITY;
@@ -425,7 +510,8 @@ export function StudyDestinationGlobe({
         ref={canvasRef}
         role="img"
         aria-label={isTr ? "Sürüklenebilir dünya haritası ve eğitim destinasyonları" : "Draggable world map and study destinations"}
-        className="relative z-0 size-full cursor-grab touch-pan-y select-none active:cursor-grabbing"
+        className="relative z-0 mx-auto block size-full max-h-full max-w-full cursor-grab select-none active:cursor-grabbing"
+        style={{ touchAction: "pan-y" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

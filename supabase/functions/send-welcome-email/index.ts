@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { dispatchWelcomeEmail } from "../_shared/email/service.ts";
+import { normalizeLocale } from "../_shared/email/templates.ts";
 
 Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
@@ -40,7 +41,7 @@ Deno.serve(async (req: Request) => {
       studentUserId = userData.user.id;
       studentEmail = userData.user.email || "";
       studentName = (userData.user.user_metadata?.full_name as string) || "";
-      preferredLanguage = userData.user.user_metadata?.preferred_language === "en" ? "en" : "tr";
+      preferredLanguage = normalizeLocale(userData.user.user_metadata?.preferred_language as string | undefined);
     }
   }
 
@@ -54,7 +55,7 @@ Deno.serve(async (req: Request) => {
   if (!studentName && body.fullName) {
     studentName = String(body.fullName).trim();
   }
-  if (body.locale === "en") {
+  if (typeof body.locale === "string" && normalizeLocale(body.locale) === "en") {
     preferredLanguage = "en";
   }
 
@@ -73,7 +74,7 @@ Deno.serve(async (req: Request) => {
     if (profile) {
       studentName = profile.full_name || studentName;
       studentEmail = profile.email || studentEmail;
-      preferredLanguage = profile.preferred_language === "en" ? "en" : preferredLanguage;
+      preferredLanguage = normalizeLocale(profile.preferred_language) === "en" ? "en" : preferredLanguage;
     }
   }
 
@@ -83,14 +84,30 @@ Deno.serve(async (req: Request) => {
 
   const uniqueEntityId = studentUserId || studentEmail;
 
-  // 2. SERVER-SIDE IDEMPOTENCY CHECK
-  // Exactly ONE welcome email per newly registered student.
+  // 2. EMAIL VERIFICATION GATE
+  // Account welcome emails must only be sent AFTER email address verification
+  if (studentUserId) {
+    const { data: authUser } = await admin.auth.admin.getUserById(studentUserId);
+    if (!authUser?.user?.email_confirmed_at) {
+      return buildJsonResponse({
+        success: true,
+        skipped: true,
+        reason: "EMAIL_NOT_VERIFIED",
+        message: "Welcome email is deferred until the account email address is confirmed.",
+      }, 200, req);
+    }
+  }
+
+  // 3. SERVER-SIDE IDEMPOTENCY & DEDUPLICATION CHECK
+  // Exactly ONE welcome email per registered student/guardian across both trigger and edge function flows
   const { data: existingDelivery } = await admin
     .from("notification_deliveries")
     .select("id, status, created_at")
-    .eq("event_type", "student.welcome_email")
-    .eq("entity_id", uniqueEntityId)
-    .in("status", ["sent", "delivered"])
+    .or(`recipient.eq.${studentEmail},entity_id.eq.${uniqueEntityId}`)
+    .in("event_type", ["guardian.welcome", "student.welcome_email"])
+    .in("status", ["pending", "processing", "sent", "delivered"])
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (existingDelivery) {

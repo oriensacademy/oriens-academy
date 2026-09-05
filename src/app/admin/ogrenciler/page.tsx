@@ -43,6 +43,20 @@ function AdminStudentsContent() {
     setLoading(false);
   }, []);
 
+  // Background reconciliation after a mutation inside the (already showing
+  // its own optimistic update) detail sheet -- deliberately does not toggle
+  // the page-level loading state, and re-syncs the open `selected` student
+  // so a still-open sheet doesn't keep pointing at stale data (see "DERS
+  // İPTAL UI STATE BUG" / "DERS PLANLAMA PERFORMANSI").
+  const syncAfterChange = useCallback(async () => {
+    const result = await listAdminStudents();
+    setStudents(result.data);
+    setSelected((current) => {
+      if (!current) return current;
+      return result.data.find((s) => s.id === current.id) || current;
+    });
+  }, []);
+
   useEffect(() => {
     let active = true;
     listAdminStudents().then((result) => {
@@ -91,7 +105,6 @@ function AdminStudentsContent() {
       const searchable = [
         student.fullName,
         student.email,
-        student.phone || "",
         ...(student.targetExams || []),
         ...(student.targetCountries || []),
       ]
@@ -121,10 +134,10 @@ function AdminStudentsContent() {
         <div>
           <div className="flex items-center gap-2">
             <Users className="size-6 text-primary" />
-            <h1 className="text-xl font-bold text-ink">Öğrenci CRM</h1>
+            <h1 className="text-xl font-bold text-ink">Kullanıcılar</h1>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Öğrenci, hedef sınavlar, randevu, ders, ödev, paket ve ödeme süreçlerini tek profilden yönetin.
+            Kullanıcı, hedef sınavlar, randevu, ders, ödev, paket ve ödeme süreçlerini tek profilden yönetin.
           </p>
         </div>
         <button
@@ -140,11 +153,11 @@ function AdminStudentsContent() {
       <div className="grid gap-3 rounded-xl border border-border bg-white p-4 sm:grid-cols-2 lg:grid-cols-[1fr_160px_180px_180px]">
         <label className="relative">
           <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-          <span className="sr-only">Öğrenci ara</span>
+          <span className="sr-only">Kullanıcı ara</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ad, e-posta, telefon veya hedef sınav ara…"
+            placeholder="Ad, e-posta veya hedef sınav ara…"
             className="min-h-9 w-full rounded-lg border border-input pl-9 pr-3 text-xs focus:border-primary focus:outline-hidden"
           />
         </label>
@@ -227,9 +240,7 @@ function AdminStudentsContent() {
                     >
                       <td className="px-4 py-3">
                         <strong className="block text-ink">{student.fullName}</strong>
-                        <span className="text-[10px] text-muted-foreground">
-                          {student.email} · {student.phone || "Telefon yok"}
-                        </span>
+                        <span className="text-[10px] text-muted-foreground">{student.email}</span>
                       </td>
                       <td className="px-4 py-3">
                         {examBadges.length > 0 ? (
@@ -303,11 +314,7 @@ function AdminStudentsContent() {
                   <div className="flex justify-between gap-3">
                     <div>
                       <strong className="block text-sm text-ink">{student.fullName}</strong>
-                      <span className="text-[11px] text-muted-foreground">
-                        {student.email}
-                        <br />
-                        {student.phone || "Telefon yok"}
-                      </span>
+                      <span className="text-[11px] text-muted-foreground">{student.email}</span>
                     </div>
                     <Status active={student.active} />
                   </div>
@@ -340,7 +347,7 @@ function AdminStudentsContent() {
         key={selected?.id || "closed"}
         student={bookingStudent ? null : selected}
         onClose={() => setSelected(null)}
-        onChanged={() => void refresh()}
+        onChanged={() => void syncAfterChange()}
         onCreateBooking={() => {
           setBookingStudent(selected);
         }}

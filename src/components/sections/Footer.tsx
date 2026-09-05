@@ -132,7 +132,7 @@ export function Footer() {
                 <a
                   href={item.href}
                   target={item.external ? "_blank" : undefined}
-                  rel={item.external ? "noreferrer" : undefined}
+                  rel={item.external ? "noopener noreferrer" : undefined}
                   className="group flex items-center gap-2 text-xs text-foreground/75 hover:text-foreground transition-colors"
                 >
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-surface-muted text-primary group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">

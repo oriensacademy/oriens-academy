@@ -11,7 +11,7 @@ import { Footer } from "@/components/sections/Footer";
 export default function Home() {
   return (
     <>
-      <main id="main-content">
+      <main id="main-content" className="w-full overflow-x-clip">
         <Hero />
         <TrustResults />
         <ExamPreparation />

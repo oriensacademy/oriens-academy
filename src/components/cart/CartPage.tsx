@@ -10,10 +10,14 @@ import {
   Package,
   Receipt,
   BookOpen,
+  Tag,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { useCart } from "@/lib/cart/cart-context";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { calculateAuthoritativeTotal } from "@/lib/payments/pricing";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { useAccount } from "@/lib/auth/account-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
@@ -26,10 +30,29 @@ export function CartPage() {
   const isTr = locale === "tr";
   const { accountType, isInitializing } = useAccount();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
-  const { items, removeFromCart, clearCart } = useCart();
+  const {
+    items,
+    removeFromCart,
+    clearCart,
+    couponCode,
+    appliedCoupon,
+    couponError,
+    applyCartCoupon,
+    removeCartCoupon,
+  } = useCart();
 
   const [availablePackages, setAvailablePackages] = useState<PublicPricingPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [couponInput, setCouponInput] = useState(couponCode || "");
+  const [prevCouponCode, setPrevCouponCode] = useState(couponCode);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [localCouponError, setLocalCouponError] = useState("");
+
+  // Sync couponInput when couponCode in cart changes
+  if (couponCode !== prevCouponCode) {
+    setPrevCouponCode(couponCode);
+    setCouponInput(couponCode || "");
+  }
 
   // Load server-authoritative packages from database for both guests and authenticated users
   useEffect(() => {
@@ -78,23 +101,56 @@ export function CartPage() {
     .map((item) => availablePackages.find((p) => p.id === item.packageId))
     .filter((p): p is PublicPricingPackage => Boolean(p));
 
-  const totalPrice = cartPackages.reduce(
-    (acc, p) => acc + Number(p.current_total ?? p.price_amount ?? 0),
-    0
-  );
-  const totalOriginalPrice = cartPackages.reduce((acc, p) => {
-    const listPrice = p.old_total && p.old_total > Number(p.current_total ?? p.price_amount ?? 0)
-      ? p.old_total
-      : Number(p.current_total ?? p.price_amount ?? 0);
-    return acc + listPrice;
-  }, 0);
-  const totalDiscount = Math.max(0, totalOriginalPrice - totalPrice);
+  const pricingPackages = cartPackages.map((p) => ({
+    id: p.id,
+    price: Number(p.current_total ?? p.price_amount ?? 0),
+    name_tr: p.name_tr,
+    name_en: p.name_en,
+    lesson_count: p.lesson_count,
+  }));
+
+  const pricingBreakdown = calculateAuthoritativeTotal({
+    packages: pricingPackages,
+    coupon: appliedCoupon
+      ? {
+          id: appliedCoupon.coupon_id,
+          code: appliedCoupon.code,
+          discount_type: appliedCoupon.discount_type,
+          discount_value: appliedCoupon.discount_value,
+        }
+      : null,
+  });
+
   const totalLessons = cartPackages.reduce((acc, p) => acc + (p.lesson_count || 0), 0);
   const currency = cartPackages[0]?.currency || "TRY";
 
   const money = (val: number, cur = "TRY") => {
     return formatCurrency(val, { currency: cur, locale });
   };
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponInput.trim() || !cartPackages.length) return;
+    setIsApplyingCoupon(true);
+    setLocalCouponError("");
+    try {
+      const packageIds = cartPackages.map((p) => p.id);
+      const res = await applyCartCoupon(couponInput, packageIds, locale);
+      if (!res.success) {
+        setLocalCouponError(res.message);
+      }
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    removeCartCoupon();
+    setCouponInput("");
+    setLocalCouponError("");
+  };
+
+  const activeError = localCouponError || couponError;
 
   const isAuthenticated = accountType === "student" || accountType === "admin";
   const directPaymentHref = cartPackages.length > 0
@@ -244,25 +300,89 @@ export function CartPage() {
                     <span className="font-semibold text-ink">{totalLessons} {isTr ? "Ders" : "Lessons"}</span>
                   </div>
 
-                  {totalDiscount > 0 ? (
-                    <>
-                      <div className="flex justify-between text-muted-foreground border-t border-border pt-3">
-                        <span>{isTr ? "Paket Tutarı / Liste Fiyatı" : "List Price"}</span>
-                        <span>{money(totalOriginalPrice, currency)}</span>
+                  <div className="flex justify-between text-muted-foreground border-t border-border pt-3">
+                    <span>{isTr ? "Ara Toplam" : "Subtotal"}</span>
+                    <span>{money(pricingBreakdown.subtotal, currency)}</span>
+                  </div>
+
+                  {pricingBreakdown.discount > 0 && appliedCoupon ? (
+                    <div className="flex justify-between font-medium text-emerald-800">
+                      <span>{isTr ? `Kupon İndirimi (${appliedCoupon.code})` : `Coupon Discount (${appliedCoupon.code})`}</span>
+                      <span>-{money(pricingBreakdown.discount, currency)}</span>
+                    </div>
+                  ) : null}
+
+                  <div className="flex items-center justify-between border-t border-border pt-4 text-base font-heading text-ink sm:text-xl">
+                    <span>{isTr ? "Toplam Tutar" : "Total Amount"}</span>
+                    <span className="font-bold text-ink">{money(pricingBreakdown.finalTotal, currency)}</span>
+                  </div>
+                </div>
+
+                {/* COUPON INPUT SECTION */}
+                <div className="mt-6 border-t border-border pt-5">
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800">
+                          <Tag className="size-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs font-bold text-emerald-950 uppercase">{appliedCoupon.code}</span>
+                            <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                              {appliedCoupon.discount_type === "percentage" ? `%${appliedCoupon.discount_value}` : `-${money(appliedCoupon.discount_amount, currency)}`}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[11px] font-medium text-emerald-700">
+                            {isTr ? "Kupon başarıyla uygulandı" : "Coupon successfully applied"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex justify-between font-medium text-emerald-800">
-                        <span>{isTr ? "Paket İndirimi" : "Package Discount"}</span>
-                        <span>-{money(totalDiscount, currency)}</span>
-                      </div>
-                      <div className="flex items-center justify-between border-t border-border pt-4 text-base font-heading text-ink sm:text-xl">
-                        <span>{isTr ? "Toplam Tutar" : "Total Amount"}</span>
-                        <span className="font-bold text-ink">{money(totalPrice, currency)}</span>
-                      </div>
-                    </>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-50"
+                        aria-label={isTr ? "Kuponu kaldır" : "Remove coupon"}
+                      >
+                        <X className="size-3.5" />
+                        <span>{isTr ? "Kaldır" : "Remove"}</span>
+                      </button>
+                    </div>
                   ) : (
-                    <div className="flex items-center justify-between border-t border-border pt-4 text-base font-heading text-ink sm:text-xl">
-                      <span>{isTr ? "Toplam Tutar" : "Total Amount"}</span>
-                      <span className="font-bold text-ink">{money(totalPrice, currency)}</span>
+                    <div>
+                      <label htmlFor="cart-coupon-input" className="block text-xs font-semibold text-ink mb-1.5">
+                        {isTr ? "İndirim Kuponu" : "Discount Coupon"}
+                      </label>
+                      <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                        <input
+                          id="cart-coupon-input"
+                          type="text"
+                          value={couponInput}
+                          onChange={(e) => {
+                            setCouponInput(e.target.value.toUpperCase());
+                            setLocalCouponError("");
+                          }}
+                          placeholder={isTr ? "Kupon kodu" : "Coupon code"}
+                          className="min-h-11 min-w-0 flex-1 rounded-xl border border-input bg-surface px-3 text-xs uppercase font-medium outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isApplyingCoupon || !couponInput.trim()}
+                          className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white transition-colors hover:bg-forest disabled:opacity-50"
+                        >
+                          {isApplyingCoupon ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Tag className="size-3.5" />
+                          )}
+                          <span>{isTr ? "Uygula" : "Apply"}</span>
+                        </button>
+                      </form>
+                      {activeError ? (
+                        <p role="alert" className="mt-2 text-xs font-medium text-red-600">
+                          {activeError}
+                        </p>
+                      ) : null}
                     </div>
                   )}
                 </div>

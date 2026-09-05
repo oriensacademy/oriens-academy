@@ -1,11 +1,5 @@
 export interface LegalEntityConfig {
   brandName: string;
-  formalCompanyTitle: string | null;
-  taxOffice: string | null;
-  taxNumber: string | null;
-  mersisNumber: string | null;
-  tradeRegistryNumber: string | null;
-  kepAddress: string | null;
   address: {
     tr: string;
     en: string;
@@ -14,10 +8,10 @@ export interface LegalEntityConfig {
     tr: string[];
     en: string[];
   };
-  whatsapp: string;
-  whatsappHref: string;
   phone: string;
   phoneHref: string;
+  whatsapp: string;
+  whatsappHref: string;
   emails: {
     info: string;
     contact: string;
@@ -28,12 +22,6 @@ export interface LegalEntityConfig {
 
 export const LEGAL_CONFIG: LegalEntityConfig = {
   brandName: "Oriens Academy",
-  formalCompanyTitle: null,
-  taxOffice: null,
-  taxNumber: null,
-  mersisNumber: null,
-  tradeRegistryNumber: null,
-  kepAddress: null,
   address: {
     tr: "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul",
     en: "Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul",
@@ -282,9 +270,9 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
           ],
         },
         {
-          heading: "3. Örnek İade Hesaplaması",
+          heading: "3. İade Hesaplama Örneği",
           paragraphs: [
-            "Aşağıdaki örnek, kuralın işleyişini açıklamak amacıyla hazırlanmış bilgilendirme amaçlı bir örnek hesaplamadır (Gerçek iadelerde sipariş anındaki kayıtlı snapshot değerleri esas alınır):",
+            "Aşağıdaki örnek, kuralın işleyişini açıklamak amacıyla hazırlanmış bilgilendirme amaçlı bir hesaplamadır (İadelerde sipariş anında teyit edilen paket ve ders bedelleri esas alınır):",
           ],
           bullets: [
             "Paket için fiilen ödenen tutar: 27.000 TL",
@@ -650,9 +638,9 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
           ],
         },
         {
-          heading: "3. Illustrative Calculation Example",
+          heading: "3. Refund Calculation Example",
           paragraphs: [
-            "The following is an illustrative calculation demonstrating the rule (actual refunds utilize snapshot values recorded at transaction time):",
+            "The following is an illustrative calculation demonstrating how the rule operates (actual refunds are calculated based on the confirmed package and lesson rates at the time of purchase):",
           ],
           bullets: [
             "Actual amount paid for package: 27,000 TRY",

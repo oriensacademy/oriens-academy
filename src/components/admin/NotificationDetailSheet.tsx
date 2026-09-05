@@ -63,7 +63,7 @@ export function NotificationDetailSheet({
     : `/admin/ogrenciler?search=${encodeURIComponent(delivery.recipient)}`);
 
   const rawModuleUrl = isContact
-    ? `/admin/iletisim-destek?view=web&id=${delivery.entity_id}`
+    ? `/admin/iletisim-destek?id=${delivery.entity_id}`
     : isBooking
     ? "/admin/randevular"
     : null;

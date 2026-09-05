@@ -10,43 +10,14 @@ import {
   renderStudentAppointmentUpdatedEmail,
   renderStudentAppointmentCancelledEmail,
   renderStudentAppointmentReminderEmail,
-  renderStudentPackagePurchasedEmail,
-  renderStudentPaymentSuccessEmail,
-  renderStudentBankTransferPendingEmail,
-  renderStudentPaymentReminderEmail,
-  renderStudentBankTransferApprovedEmail,
-  renderAdminPaymentNotificationEmail,
-  renderStudentPackageActivatedEmail,
-  renderStudentPackageLowBalanceEmail,
-  renderStudentPackageCompletedEmail,
-  renderStudentPackageRenewalEmail,
-  renderStudentHomeworkAssignedEmail,
-  renderStudentHomeworkDueReminderEmail,
-  renderTeacherHomeworkSubmittedEmail,
-  renderStudentHomeworkReviewedEmail,
-  renderStudentHomeworkRevisionRequestedEmail,
   renderStudentWelcomeEmail,
   renderAccountPasswordRecoveryEmail,
-  renderAccountSecurityAlertEmail,
   renderStudentLiveLessonLinkEmail,
-  renderStudentLessonCompletedEmail,
-  renderStudentSupportConfirmationEmail,
   type BookingEmailData,
   type ContactEmailData,
   type AppointmentEmailData,
-  type PackagePurchaseEmailData,
-  type PaymentSuccessEmailData,
-  type BankTransferPendingEmailData,
-  type PaymentReminderEmailData,
-  type BankTransferApprovedEmailData,
-  type AdminPaymentNotificationData,
-  type PackageStatusEmailData,
-  type HomeworkEmailData,
   type WelcomeEmailData,
-  type SecurityAlertEmailData,
   type LiveLessonLinkEmailData,
-  type LessonCompletedEmailData,
-  type SupportConfirmationEmailData,
 } from "./templates.ts";
 
 export type EmailChannel =
@@ -54,7 +25,6 @@ export type EmailChannel =
   | "contact"
   | "support"
   | "payments"
-  | "zoom"
   | "admin";
 
 export interface MailIdentity {
@@ -65,11 +35,12 @@ export interface MailIdentity {
   internalRecipient: string;
 }
 
+// admin@oriens-academy.com is a recipient/BCC-archive address only -- it must
+// never be used as an outbound sender/From address (business rule).
 export const ADMIN_EMAIL = "admin@oriens-academy.com";
 export const INFO_EMAIL = "info@oriens-academy.com";
 export const PAYMENTS_EMAIL = "payments@oriens-academy.com";
-export const ZOOM_EMAIL = "zoom@oriens-academy.com";
-export const MAIL_ADDRESSES = { admin: ADMIN_EMAIL, info: INFO_EMAIL, payments: PAYMENTS_EMAIL, zoom: ZOOM_EMAIL } as const;
+export const MAIL_ADDRESSES = { admin: ADMIN_EMAIL, info: INFO_EMAIL, payments: PAYMENTS_EMAIL } as const;
 
 export const DEFAULT_FALLBACK_NAME = "Oriens Academy";
 export const DEFAULT_FALLBACK_EMAIL = INFO_EMAIL;
@@ -79,6 +50,25 @@ export const DEFAULT_FALLBACK_FROM = `${DEFAULT_FALLBACK_NAME} <${DEFAULT_FALLBA
  * Global Transactional Email BCC Archive Address
  */
 export const EMAIL_ARCHIVE_BCC = ADMIN_EMAIL;
+
+/**
+ * Window in which an identical transactional send is treated as an accidental
+ * retry (double click / network replay) and suppressed. A deliberate admin
+ * "Tekrar Gonder" always happens well past it and is allowed through.
+ */
+export const IDEMPOTENCY_WINDOW_SECONDS = 60;
+
+/**
+ * Addresses that may never appear as an outbound From/sender identity.
+ * admin@ is the BCC archive + internal notification recipient only; zoom@ and
+ * newsletter@ are retired aliases. Any attempt to send as one of these is
+ * rewritten to the canonical fallback sender instead of going out.
+ */
+const FORBIDDEN_SENDER_ADDRESSES = new Set([
+  ADMIN_EMAIL,
+  "zoom@oriens-academy.com",
+  "newsletter@oriens-academy.com",
+]);
 
 /**
  * Resolves the canonical global transactional email BCC archive address.
@@ -141,8 +131,6 @@ export function resolveMailIdentity(
         internalRecipient: PAYMENTS_EMAIL,
       };
     }
-    case "zoom":
-      return { fromName: "Oriens Academy Ders", fromEmail: ZOOM_EMAIL, fromAddress: `Oriens Academy Ders <${ZOOM_EMAIL}>`, replyTo: ZOOM_EMAIL, internalRecipient: ZOOM_EMAIL };
     case "admin":
       return {
         fromName: "Oriens Academy",
@@ -164,9 +152,10 @@ export function resolveMailIdentity(
 }
 
 export type EmailDeliveryResult = {
-  status: "sent" | "failed";
+  status: "sent" | "failed" | "suppressed";
   errorCode?: string;
   providerMessageId?: string;
+  deliveryId?: string;
   channel?: EmailChannel;
   usedFallback?: boolean;
   archiveBccApplied?: boolean;
@@ -209,49 +198,55 @@ function base64UrlEncode(str: string): string {
     .replace(/=+$/, "");
 }
 
-/** Standards-compliant RFC 2047 Q-encoding for non-ASCII mailbox display names and subjects. */
+/** UTF-8 bytes of a string, as a binary string suitable for btoa(). */
+function utf8Binary(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i += 1) binary += String.fromCharCode(bytes[i]);
+  return binary;
+}
+
+/**
+ * RFC 2047 "B" (base64) encoded-words for non-ASCII header text.
+ *
+ * Switched from Q-encoding to B-encoding because Turkish subjects are dense in
+ * non-ASCII characters: Q-encoding expands each of those to three characters
+ * (`=C4=B1`), which pushed long subjects into multi-word splits and left far
+ * less headroom under the RFC 2047 75-character limit per encoded-word.
+ *
+ * Chunking is done over CODE POINTS, never over bytes: splitting a multi-byte
+ * character across two encoded-words is what silently mangles or drops
+ * characters like ı / ğ / ş in downstream clients.
+ */
 export function encodeHeaderWord(value: string): string {
   const clean = value.replace(/[\r\n]+/g, " ").trim();
   if (/^=\?UTF-8\?[BQ]\?.+\?=$/i.test(clean)) return clean;
-  if (/^[A-Za-z0-9!*+\-/ ]+$/.test(clean)) return clean;
+  // Pure ASCII (and no "=?" that could be mistaken for an encoded-word) is
+  // safe to emit verbatim.
+  if (/^[\x20-\x3C\x3E-\x7E]+$/.test(clean) && !clean.includes("=?")) return clean;
 
-  const MAX_PAYLOAD_LEN = 56;
-  const encodedWords: string[] = [];
-  let currentWord = "";
+  // "=?UTF-8?B?" + payload + "?=" must stay <= 75 chars, so the base64 payload
+  // gets 63; base64 grows 3 bytes -> 4 chars, so cap each chunk at 45 bytes.
+  const MAX_CHUNK_BYTES = 45;
+  const words: string[] = [];
+  let chunk = "";
+  let chunkBytes = 0;
 
-  // Iterate by Unicode code points (Array.from handles surrogate pairs safely)
   for (const ch of Array.from(clean)) {
-    const bytes = new TextEncoder().encode(ch);
-    let chQ = "";
-    for (let i = 0; i < bytes.length; i++) {
-      const b = bytes[i];
-      if (b === 0x20) {
-        chQ += "_";
-      } else if (
-        (b >= 0x41 && b <= 0x5A) || // A-Z
-        (b >= 0x61 && b <= 0x7A) || // a-z
-        (b >= 0x30 && b <= 0x39) || // 0-9
-        b === 0x21 || b === 0x2A || b === 0x2B || b === 0x2D || b === 0x2F // ! * + - /
-      ) {
-        chQ += String.fromCharCode(b);
-      } else {
-        chQ += "=" + b.toString(16).toUpperCase().padStart(2, "0");
-      }
+    const size = new TextEncoder().encode(ch).byteLength;
+    if (chunkBytes + size > MAX_CHUNK_BYTES) {
+      words.push(`=?UTF-8?B?${btoa(utf8Binary(chunk))}?=`);
+      chunk = "";
+      chunkBytes = 0;
     }
-
-    if (currentWord.length + chQ.length > MAX_PAYLOAD_LEN) {
-      encodedWords.push(`=?UTF-8?Q?${currentWord}?=`);
-      currentWord = chQ;
-    } else {
-      currentWord += chQ;
-    }
+    chunk += ch;
+    chunkBytes += size;
   }
+  if (chunk) words.push(`=?UTF-8?B?${btoa(utf8Binary(chunk))}?=`);
 
-  if (currentWord) {
-    encodedWords.push(`=?UTF-8?Q?${currentWord}?=`);
-  }
-
-  return encodedWords.join(" ");
+  // Folding whitespace between encoded-words is discarded by decoders, which is
+  // exactly what we want for a subject that had to be split.
+  return words.join("\r\n ");
 }
 
 function encodeMailboxHeader(value: string): string {
@@ -265,6 +260,12 @@ function encodeMailboxHeader(value: string): string {
 /**
  * Builds RFC 2822 / RFC 5322 MIME multipart/alternative message for transactional delivery
  */
+/** Base64 body content, wrapped at 76 characters as RFC 2045 requires. */
+function base64Body(value: string): string {
+  const encoded = btoa(utf8Binary(value));
+  return (encoded.match(/.{1,76}/g) || []).join("\r\n");
+}
+
 export function buildRfc822Message(params: {
   from: string;
   to: string;
@@ -289,18 +290,23 @@ export function buildRfc822Message(params: {
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
   ].filter(Boolean).join("\r\n");
 
+  // Base64, not 8bit. Raw 8-bit UTF-8 bodies survive only if every hop keeps
+  // them 8-bit clean; a hop that downgrades to 7-bit falls back to a Latin-1
+  // style charset, which cannot represent ı, ğ, ş or İ -- those characters were
+  // being dropped from delivered Turkish mail while ö, ü and ç (which DO exist
+  // in Latin-1) came through fine. Base64 removes that failure mode entirely.
   const body = [
     `--${boundary}`,
     `Content-Type: text/plain; charset=UTF-8`,
-    `Content-Transfer-Encoding: 8bit`,
+    `Content-Transfer-Encoding: base64`,
     ``,
-    params.text,
+    base64Body(params.text),
     ``,
     `--${boundary}`,
     `Content-Type: text/html; charset=UTF-8`,
-    `Content-Transfer-Encoding: 8bit`,
+    `Content-Transfer-Encoding: base64`,
     ``,
-    params.html,
+    base64Body(params.html),
     ``,
     `--${boundary}--`,
   ].join("\r\n");
@@ -426,7 +432,6 @@ export async function sendTransactionalEmail(params: {
   idempotencyKey?: string;
   channel?: EmailChannel;
   sender?: { name?: string; email?: string };
-  skipArchiveBcc?: boolean;
   deliveryId?: string;
 }): Promise<EmailDeliveryResult> {
   const {
@@ -441,11 +446,14 @@ export async function sendTransactionalEmail(params: {
     eventType,
     entityType,
     entityId,
+    idempotencyKey,
     channel = "general",
     sender,
-    skipArchiveBcc = false,
-    deliveryId,
+    deliveryId: initialDeliveryId,
   } = params;
+
+  // Reassigned when the idempotency claim below creates/reuses the delivery row.
+  let deliveryId = initialDeliveryId;
 
   if (!to || !to.includes("@")) {
     console.warn(`[email/service] Recipient email not configured for ${eventType}`);
@@ -477,7 +485,7 @@ export async function sendTransactionalEmail(params: {
   let archiveBccApplied = false;
   let finalBccList: string[] = [];
 
-  if (!alreadyTargeted && !skipArchiveBcc) {
+  if (!alreadyTargeted) {
     finalBccList = [...new Set([...explicitBccEmails, archiveAddress])];
     archiveBccApplied = true;
   } else {
@@ -487,10 +495,48 @@ export async function sendTransactionalEmail(params: {
 
   const effectiveBccHeader = finalBccList.length > 0 ? finalBccList.join(", ") : undefined;
 
+  // Atomic idempotency claim: one claim = one email. A double click, a network
+  // retry or a replayed request inside the window claims nothing and is
+  // suppressed without sending; a deliberate later resend re-claims the same
+  // row and sends again. Rows already owned by the durable outbox arrive with
+  // deliveryId set -- that row IS the dedupe record, so no second claim.
+  if (idempotencyKey && !deliveryId) {
+    const { data: claimedId, error: claimError } = await supabaseAdmin.rpc("claim_manual_email_dispatch", {
+      p_event_type: eventType,
+      p_entity_type: entityType,
+      p_entity_id: entityId,
+      p_recipient: to,
+      p_window_seconds: IDEMPOTENCY_WINDOW_SECONDS,
+    });
+    if (claimError) {
+      // Never block a real send on the dedupe bookkeeping itself.
+      console.warn(`[email/service] Idempotency claim unavailable for ${eventType}: ${claimError.message}`);
+    } else if (!claimedId) {
+      console.warn(`[email/service] Duplicate suppressed for ${eventType} (${idempotencyKey})`);
+      return {
+        status: "suppressed",
+        errorCode: "DUPLICATE_SUPPRESSED",
+        channel,
+        archiveBccApplied,
+        archiveRecipient: archiveBccApplied ? archiveAddress : undefined,
+      };
+    } else {
+      deliveryId = claimedId as string;
+    }
+  }
+
   // Resolve sender identity from channel or override
   const resolvedIdentity = resolveMailIdentity(channel);
   const targetFromName = sender?.name || resolvedIdentity.fromName;
-  const targetFromEmail = sender?.email || resolvedIdentity.fromEmail;
+  const requestedFromEmail = (sender?.email || resolvedIdentity.fromEmail).trim().toLowerCase();
+  const targetFromEmail = FORBIDDEN_SENDER_ADDRESSES.has(requestedFromEmail)
+    ? DEFAULT_FALLBACK_EMAIL
+    : requestedFromEmail;
+  if (targetFromEmail !== requestedFromEmail) {
+    console.warn(
+      `[email/service] Blocked forbidden outbound sender "${requestedFromEmail}" for ${eventType}; sending as ${DEFAULT_FALLBACK_EMAIL}.`
+    );
+  }
   const targetReplyTo = replyTo || resolvedIdentity.replyTo;
   const initialFromAddress = `${targetFromName} <${targetFromEmail}>`;
 
@@ -578,9 +624,14 @@ export async function sendTransactionalEmail(params: {
     let usedFallback = false;
     let { res, json } = await attemptSend(initialFromAddress, targetReplyTo);
 
-    // If alias From is rejected by Gmail API (e.g. status 400/403 on unverified alias),
-    // automatically fallback to safe default From (info@oriens-academy.com) while keeping Reply-To set to the alias!
-    if (!res.ok && targetFromEmail !== DEFAULT_FALLBACK_EMAIL) {
+    // Fallback ONLY for genuine alias-rejection responses (Gmail API returns
+    // 400/403 when the "Send mail as" alias isn't verified/authorized for
+    // this From address). 401 (token/auth problem), 429 (rate limit) and 5xx
+    // (provider-side failure) are unrelated to the alias itself -- retrying
+    // with a different From wouldn't fix those, so let them fail through the
+    // normal error path instead of masking the real cause.
+    const isAliasRejection = !res.ok && res.status !== 401 && res.status !== 429 && res.status < 500;
+    if (isAliasRejection && targetFromEmail !== DEFAULT_FALLBACK_EMAIL) {
       console.warn(
         `[email/service] Alias From "${initialFromAddress}" rejected by Gmail API (${json.error?.message || res.status}). Retrying with safe fallback From: "${DEFAULT_FALLBACK_FROM}" and Reply-To: "${targetReplyTo}"`
       );
@@ -850,7 +901,7 @@ export async function dispatchAppointmentUpdatedEmail(
     eventType: "appointment.rescheduled.student",
     entityType: "appointment",
     entityId: data.appointmentId,
-    idempotencyKey: `appt-update-${data.appointmentId}-${Date.now()}`,
+    idempotencyKey: `appt-update-${data.appointmentId}`,
   });
 }
 
@@ -895,284 +946,6 @@ export async function dispatchAppointmentReminderEmail(
 }
 
 // ============================================================================
-// DISPATCHERS — PAKETLER & ÖDEMELER (CHANNEL: PAYMENTS)
-// ============================================================================
-
-export async function dispatchPackagePurchasedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: PackagePurchaseEmailData
-) {
-  const template = renderStudentPackagePurchasedEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: PAYMENTS_EMAIL,
-    channel: "payments",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "package.order_received.student",
-    entityType: "package_order",
-    entityId: data.orderReference,
-    idempotencyKey: `pkg-purchase-${data.orderReference}`,
-  });
-}
-
-export async function dispatchPaymentSuccessEmail(
-  supabaseAdmin: SupabaseClient,
-  data: PaymentSuccessEmailData
-) {
-  const template = renderStudentPaymentSuccessEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: PAYMENTS_EMAIL,
-    channel: "payments",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "payment.success.student",
-    entityType: "payment_transaction",
-    entityId: data.paymentReference,
-    idempotencyKey: `pay-success-${data.paymentReference}`,
-  });
-}
-
-export async function dispatchBankTransferPendingEmail(
-  supabaseAdmin: SupabaseClient,
-  data: BankTransferPendingEmailData
-) {
-  const template = renderStudentBankTransferPendingEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: PAYMENTS_EMAIL,
-    channel: "payments",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "payment.bank_transfer_pending.student",
-    entityType: "payment_transaction",
-    entityId: data.paymentReference,
-    idempotencyKey: `pay-bank-pending-${data.paymentReference}`,
-  });
-}
-
-export async function dispatchPaymentReminderEmail(
-  supabaseAdmin: SupabaseClient,
-  data: PaymentReminderEmailData
-) {
-  const template = renderStudentPaymentReminderEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: PAYMENTS_EMAIL,
-    channel: "payments",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "payment.reminder.student",
-    entityType: "payment_transaction",
-    entityId: data.paymentReference,
-    idempotencyKey: `pay-remind-${data.paymentReference}-${data.reminderCount || 1}`,
-  });
-}
-
-export async function dispatchBankTransferApprovedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: BankTransferApprovedEmailData
-) {
-  const template = renderStudentBankTransferApprovedEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: PAYMENTS_EMAIL,
-    channel: "payments",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "payment.bank_transfer_approved.student",
-    entityType: "payment_transaction",
-    entityId: data.paymentReference,
-    idempotencyKey: `pay-bank-approved-${data.paymentReference}`,
-  });
-}
-
-export async function dispatchAdminPaymentAlert(
-  supabaseAdmin: SupabaseClient,
-  data: AdminPaymentNotificationData
-) {
-  const paymentEmailConfig = await getPrivateSiteSetting<{ email: string }>(
-    supabaseAdmin,
-    "notification.payment_email"
-  );
-  const adminRecipient = paymentEmailConfig?.email?.trim() || PAYMENTS_EMAIL;
-
-  const template = renderAdminPaymentNotificationEmail(data, data.locale || "tr");
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: adminRecipient,
-    replyTo: data.payerEmail,
-    channel: "payments",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "payment.created.admin_alert",
-    entityType: "payment_transaction",
-    entityId: data.paymentReference,
-    idempotencyKey: `pay-admin-alert-${data.paymentReference}`,
-  });
-}
-
-export async function dispatchPackageStatusEmail(
-  supabaseAdmin: SupabaseClient,
-  type: "activated" | "low_balance" | "completed" | "renewal",
-  data: PackageStatusEmailData
-) {
-  let template;
-  const eventType = `package.${type}.student`;
-
-  switch (type) {
-    case "activated":
-      template = renderStudentPackageActivatedEmail(data);
-      break;
-    case "low_balance":
-      template = renderStudentPackageLowBalanceEmail(data);
-      break;
-    case "completed":
-      template = renderStudentPackageCompletedEmail(data);
-      break;
-    case "renewal":
-      template = renderStudentPackageRenewalEmail(data);
-      break;
-  }
-
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: PAYMENTS_EMAIL,
-    channel: "payments",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType,
-    entityType: "package_status",
-    entityId: `${data.packageName}-${Date.now()}`,
-    idempotencyKey: `pkg-status-${type}-${data.studentEmail}-${Date.now()}`,
-  });
-}
-
-// ============================================================================
-// DISPATCHERS — ÖDEVLER & AKADEMİK TAKİP (CHANNEL: SUPPORT)
-// ============================================================================
-
-export async function dispatchHomeworkAssignedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: HomeworkEmailData
-) {
-  const template = renderStudentHomeworkAssignedEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: INFO_EMAIL,
-    channel: "support",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "homework.assigned.student",
-    entityType: "homework",
-    entityId: data.homeworkId,
-    idempotencyKey: `hw-assigned-${data.homeworkId}`,
-  });
-}
-
-export async function dispatchHomeworkDueReminderEmail(
-  supabaseAdmin: SupabaseClient,
-  data: HomeworkEmailData
-) {
-  const template = renderStudentHomeworkDueReminderEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: INFO_EMAIL,
-    channel: "support",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "homework.due_reminder.student",
-    entityType: "homework",
-    entityId: data.homeworkId,
-    idempotencyKey: `hw-due-${data.homeworkId}`,
-  });
-}
-
-export async function dispatchHomeworkSubmittedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: HomeworkEmailData
-) {
-  const supportEmailConfig = await getPrivateSiteSetting<{ email: string }>(
-    supabaseAdmin,
-    "notification.support_email"
-  );
-  const recipient = supportEmailConfig?.email?.trim() || INFO_EMAIL;
-
-  const template = renderTeacherHomeworkSubmittedEmail(data, "tr");
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: recipient,
-    replyTo: data.studentEmail,
-    channel: "support",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "homework.submitted.teacher",
-    entityType: "homework",
-    entityId: data.homeworkId,
-    idempotencyKey: `hw-submitted-${data.homeworkId}`,
-  });
-}
-
-export async function dispatchHomeworkReviewedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: HomeworkEmailData
-) {
-  const template = renderStudentHomeworkReviewedEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: INFO_EMAIL,
-    channel: "support",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "homework.reviewed.student",
-    entityType: "homework",
-    entityId: data.homeworkId,
-    idempotencyKey: `hw-reviewed-${data.homeworkId}-${Date.now()}`,
-  });
-}
-
-export async function dispatchHomeworkRevisionRequestedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: HomeworkEmailData
-) {
-  const template = renderStudentHomeworkRevisionRequestedEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: INFO_EMAIL,
-    channel: "support",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "homework.revision_requested.student",
-    entityType: "homework",
-    entityId: data.homeworkId,
-    idempotencyKey: `hw-revision-${data.homeworkId}-${Date.now()}`,
-  });
-}
-
-// ============================================================================
 // DISPATCHERS — HESAP & GÜVENLİK (CHANNELS: GENERAL & SUPPORT)
 // ============================================================================
 
@@ -1180,8 +953,28 @@ export async function dispatchWelcomeEmail(
   supabaseAdmin: SupabaseClient,
   data: WelcomeEmailData
 ) {
-  const template = renderStudentWelcomeEmail(data);
   const studentIdentifier = data.studentUserId || data.studentEmail;
+  const targetEmail = data.studentEmail.toLowerCase().trim();
+
+  // Guard against duplicate welcome email if already enqueued or sent via trigger or previous call
+  const { data: existing } = await supabaseAdmin
+    .from("notification_deliveries")
+    .select("id, status")
+    .or(`recipient.eq.${targetEmail},entity_id.eq.${studentIdentifier}`)
+    .in("event_type", ["guardian.welcome", "student.welcome_email"])
+    .in("status", ["pending", "processing", "sent", "delivered"])
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    return {
+      status: "suppressed" as const,
+      deliveryId: existing.id,
+      channel: "general" as const,
+    };
+  }
+
+  const template = renderStudentWelcomeEmail(data);
 
   return sendTransactionalEmail({
     supabaseAdmin,
@@ -1206,11 +999,13 @@ export async function dispatchPasswordResetEmail(params: {
   supabaseAdmin: SupabaseClient;
   requestId: string;
   to: string;
-  temporaryPassword: string;
+  temporaryPassword?: string;
+  recoveryUrl?: string;
   locale?: "tr" | "en";
 }): Promise<EmailDeliveryResult> {
-  const { supabaseAdmin, requestId, to, temporaryPassword, locale = "tr" } = params;
-  const template = renderAccountPasswordRecoveryEmail(to, temporaryPassword, locale);
+  const { supabaseAdmin, requestId, to, temporaryPassword, recoveryUrl, locale = "tr" } = params;
+  const secretOrLink = recoveryUrl || temporaryPassword || "";
+  const template = renderAccountPasswordRecoveryEmail(to, secretOrLink, locale);
 
   return sendTransactionalEmail({
     supabaseAdmin,
@@ -1227,90 +1022,28 @@ export async function dispatchPasswordResetEmail(params: {
   });
 }
 
-export async function dispatchSecurityAlertEmail(
-  supabaseAdmin: SupabaseClient,
-  data: SecurityAlertEmailData
-) {
-  const template = renderAccountSecurityAlertEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: ADMIN_EMAIL,
-    channel: "admin",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "account.security_alert",
-    entityType: "account_security",
-    entityId: `${data.studentEmail}-${Date.now()}`,
-    idempotencyKey: `acc-security-${data.studentEmail}-${Date.now()}`,
-  });
-}
-
 // ============================================================================
-// DISPATCHERS — CANLI DERS & DERS TAMAMLAMA (CHANNEL: SUPPORT)
+// DISPATCHERS — CANLI DERS (MAIL-026, CHANNEL: SUPPORT)
 // ============================================================================
 
 export async function dispatchLiveLessonLinkEmail(
   supabaseAdmin: SupabaseClient,
   data: LiveLessonLinkEmailData
 ) {
+  const eventType = data.isUpdate ? "lesson.link_updated.student" : "lesson.link_ready.student";
   const template = renderStudentLiveLessonLinkEmail(data);
   return sendTransactionalEmail({
     supabaseAdmin,
     to: data.studentEmail,
-    replyTo: ZOOM_EMAIL,
-    channel: "zoom",
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: data.isUpdate ? "lesson.link_updated.student" : "lesson.link_ready.student",
-    entityType: "student_lesson",
-    entityId: data.lessonId,
-    idempotencyKey: `lesson-link-${data.lessonId}-${Date.now()}`,
-  });
-}
-
-export async function dispatchLessonCompletedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: LessonCompletedEmailData
-) {
-  const template = renderStudentLessonCompletedEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
     replyTo: INFO_EMAIL,
     channel: "support",
     subject: template.subject,
     html: template.html,
     text: template.text,
-    eventType: "lesson.completed.student",
+    eventType,
     entityType: "student_lesson",
     entityId: data.lessonId,
-    idempotencyKey: `lesson-completed-${data.lessonId}`,
+    idempotencyKey: `lesson-link-${eventType}-${data.lessonId}`,
   });
 }
 
-export async function dispatchSupportCreatedEmail(
-  supabaseAdmin: SupabaseClient,
-  data: SupportConfirmationEmailData & { threadId: string }
-) {
-  const template = renderStudentSupportConfirmationEmail(data);
-  return sendTransactionalEmail({
-    supabaseAdmin,
-    to: data.studentEmail,
-    replyTo: INFO_EMAIL,
-    channel: "support",
-    sender: {
-      name: data.locale === "en" ? "Oriens Academy Destek" : "Oriens Academy Destek",
-      email: INFO_EMAIL,
-    },
-    subject: template.subject,
-    html: template.html,
-    text: template.text,
-    eventType: "support.ticket_created.student",
-    entityType: "support_thread",
-    entityId: data.threadId,
-    idempotencyKey: `support-created-${data.threadId}`,
-  });
-}

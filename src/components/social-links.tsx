@@ -191,7 +191,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                   href={href}
                   data-social-platform={platform}
                   target={external ? "_blank" : undefined}
-                  rel={external ? "noreferrer" : undefined}
+                  rel={external ? "noopener noreferrer" : undefined}
                   aria-label={value ? `${label ?? style.label}: ${value}` : (label ?? style.label)}
                   className={`relative ml-[-208px] flex h-12 w-64 items-center justify-between overflow-hidden rounded-r-xl border border-[rgba(16,39,27,0.12)] bg-[#10271B] px-3.5 text-white shadow-[0_6px_18px_rgba(16,39,27,0.14)] transition-[margin,transform,background-color,box-shadow] duration-300 ease-out group-hover:ml-[-8px] group-hover:translate-x-[3px] group-hover:bg-[#819586] group-hover:shadow-[0_8px_22px_rgba(16,39,27,0.18)] motion-reduce:transition-none ${isAutoExpanded ? "!ml-[-8px] translate-x-[3px] bg-[#819586] shadow-[0_8px_22px_rgba(16,39,27,0.18)]" : ""}`}
                 >
@@ -252,7 +252,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                     href={href}
                     data-social-platform={platform}
                     target={external ? "_blank" : undefined}
-                    rel={external ? "noreferrer" : undefined}
+                    rel={external ? "noopener noreferrer" : undefined}
                     aria-label={label ?? style.label}
                     className="group relative ml-auto"
                     style={{

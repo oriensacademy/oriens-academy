@@ -68,38 +68,22 @@ export function validateStudentPhone(
   return { valid: true, normalized };
 }
 
-export async function sendStudentWelcomeEmail(params: {
+/**
+ * @deprecated Welcome emails are now canonically managed by the database trigger
+ * on_auth_user_verified_guardian_welcome -> queue_verified_guardian_welcome_email
+ * once the user confirms their email address. Client-side triggers are disabled
+ * to prevent duplicate welcome emails.
+ */
+export async function sendStudentWelcomeEmail(_params: {
   studentUserId?: string;
   email: string;
   fullName: string;
   locale: Locale;
   sessionToken?: string;
 }) {
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl) return;
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(anonKey ? { apikey: anonKey } : {}),
-      ...(params.sessionToken ? { Authorization: `Bearer ${params.sessionToken}` } : {}),
-    };
-
-    await fetch(`${supabaseUrl}/functions/v1/send-welcome-email`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        studentUserId: params.studentUserId,
-        email: params.email,
-        fullName: params.fullName,
-        locale: params.locale,
-      }),
-    });
-  } catch (err) {
-    // Non-blocking error handling
-    console.warn("[auth] Non-blocking welcome email trigger error:", err);
-  }
+  // Canonical welcome emails are handled strictly by verified trigger to prevent duplicate emails.
+  void _params;
+  return;
 }
 
 export async function registerStudent(input: StudentRegistrationInput) {
@@ -133,11 +117,140 @@ export async function resendGuardianConfirmation(email: string, locale: Locale) 
   });
 }
 
+export interface RequestEmailChangeResult {
+  success: boolean;
+  new_email?: string;
+  masked_new_email?: string;
+  resend_available_at?: string;
+  expires_at?: string;
+  error_code?: string;
+  message?: string;
+}
+
+export interface VerifyEmailChangeResult {
+  success: boolean;
+  email?: string;
+  verified_at?: string;
+  error_code?: string;
+  remaining_attempts?: number;
+  message?: string;
+}
+
+export async function requestEmailChange(
+  newEmail: string,
+  locale: Locale
+): Promise<RequestEmailChangeResult> {
+  const supabase = getSupabaseClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    return {
+      success: false,
+      error_code: "UNAUTHORIZED",
+      message: locale === "tr" ? "Lütfen önce giriş yapınız." : "Please sign in first.",
+    };
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    return {
+      success: false,
+      error_code: "CONFIG_ERROR",
+      message: locale === "tr" ? "Sistem yapılandırma hatası." : "System configuration error.",
+    };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/request-email-change`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ newEmail: newEmail.trim().toLowerCase(), locale }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return {
+        success: false,
+        error_code: data.error_code || `HTTP_${res.status}`,
+        resend_available_at: data.resend_available_at,
+        message: data.message || (locale === "tr" ? "E-posta değişikliği başlatılamadı." : "Failed to request email change."),
+      };
+    }
+    return {
+      success: true,
+      new_email: data.new_email,
+      masked_new_email: data.masked_new_email,
+      resend_available_at: data.resend_available_at,
+      expires_at: data.expires_at,
+    };
+  } catch {
+    return {
+      success: false,
+      error_code: "NETWORK_ERROR",
+      message: locale === "tr" ? "Bağlantı hatası oluştu. Lütfen tekrar deneyiniz." : "Network error. Please try again.",
+    };
+  }
+}
+
+export async function verifyEmailChangeOtp(
+  code: string,
+  locale: Locale
+): Promise<VerifyEmailChangeResult> {
+  const supabase = getSupabaseClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    return {
+      success: false,
+      error_code: "UNAUTHORIZED",
+      message: locale === "tr" ? "Lütfen önce giriş yapınız." : "Please sign in first.",
+    };
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    return {
+      success: false,
+      error_code: "CONFIG_ERROR",
+      message: locale === "tr" ? "Sistem yapılandırma hatası." : "System configuration error.",
+    };
+  }
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/verify-email-change`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ code: code.trim(), locale }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return {
+        success: false,
+        error_code: data.error_code || `HTTP_${res.status}`,
+        remaining_attempts: data.remaining_attempts,
+        message: data.message || (locale === "tr" ? "Doğrulama başarısız oldu." : "Verification failed."),
+      };
+    }
+    await supabase.auth.refreshSession();
+    return {
+      success: true,
+      email: data.email,
+      verified_at: data.verified_at,
+    };
+  } catch {
+    return {
+      success: false,
+      error_code: "NETWORK_ERROR",
+      message: locale === "tr" ? "Bağlantı hatası oluştu. Lütfen tekrar deneyiniz." : "Network error. Please try again.",
+    };
+  }
+}
+
 export async function updateStudentEmail(email: string, locale: Locale) {
-  return getSupabaseClient().auth.updateUser({
-    email: email.trim().toLowerCase(),
-    data: { preferred_language: locale },
-  });
+  return requestEmailChange(email, locale);
 }
 
 export async function updateStudentPassword(password: string) {
@@ -154,7 +267,7 @@ export async function updateGuardianProfile(input: { fullName: string; contactAd
 
 export interface DeleteAccountResult {
   success: boolean;
-  mode?: "deleted" | "anonymized";
+  mode?: "deleted";
   error_code?: string;
   message?: string;
 }

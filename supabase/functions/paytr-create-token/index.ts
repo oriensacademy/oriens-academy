@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { calculatePaytrToken, encodePaytrUserBasket, mapCurrencyToPaytr } from "../_shared/payments/paytr.ts";
 import { createStatusCredential, generatePaytrMerchantOid, sha256 } from "../_shared/payments/security.ts";
+import { calculateAuthoritativeTotal } from "../_shared/payments/pricing.ts";
 
 const PHONE_RE = /^\+[1-9][0-9]{6,14}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -98,35 +99,90 @@ Deno.serve(async (req: Request) => {
     const baseAmounts = packages.map((row) => Number(row.current_total ?? row.price_amount));
     if (packages.some((row, index) => !Number.isFinite(baseAmounts[index]) || baseAmounts[index] <= 0 || !row.lesson_count)) return validationError(req, locale, "PACKAGE_NOT_CONFIGURED", "Paket ödeme bilgileri eksik.", "Package payment data is incomplete.");
 
-    let discountAmount = 0;
-    let couponId: string | null = null;
+    let couponRule = null;
     let discountedPackageId: string | null = null;
     if (couponCode) {
       for (const packageId of packageIds) {
-        const { data: validation } = await admin.rpc("validate_checkout_coupon", { p_code: couponCode, p_package_id: packageId, p_student_user_id: learnerId });
+        const { data: validation } = await admin.rpc("validate_checkout_coupon", {
+          p_code: couponCode,
+          p_package_id: packageId,
+          p_student_user_id: learnerId,
+        });
         if (validation?.valid) {
-          discountAmount = Math.max(0, Number(validation.discount_amount ?? 0));
-          couponId = validation.coupon_id ? String(validation.coupon_id) : null;
+          couponRule = {
+            id: String(validation.coupon_id),
+            code: String(validation.code),
+            discount_type: validation.discount_type as "percentage" | "fixed",
+            discount_value: Number(validation.discount_value),
+            applicable_package_id: packageId,
+          };
           discountedPackageId = packageId;
           break;
         }
       }
-      if (!couponId) return validationError(req, locale, "INVALID_COUPON", "Kupon kodu geçersiz veya bu sipariş için kullanılamıyor.", "The coupon is invalid or cannot be used for this order.");
+      if (!couponRule) {
+        return validationError(req, locale, "INVALID_COUPON", "Kupon kodu geçersiz veya bu sipariş için kullanılamıyor.", "The coupon is invalid or cannot be used for this order.");
+      }
     }
-    const baseAmount = Math.round(baseAmounts.reduce((sum, amount) => sum + amount, 0) * 100) / 100;
-    discountAmount = Math.min(baseAmount, Math.round(discountAmount * 100) / 100);
-    const finalAmount = Math.max(0, Math.round((baseAmount - discountAmount) * 100) / 100);
-    const checkoutItems = packages.map((row, index) => {
-      const itemDiscount = row.id === discountedPackageId ? Math.min(baseAmounts[index], discountAmount) : 0;
-      return { package_id: row.id, package_name: (locale === "en" ? row.name_en : row.name_tr) || row.id, lesson_count: row.lesson_count, base_amount: baseAmounts[index], discount_amount: itemDiscount, final_amount: Math.max(0, Math.round((baseAmounts[index] - itemDiscount) * 100) / 100), unit_price: row.unit_price ?? baseAmounts[index] };
+
+    const pricingPackages = packages.map((row) => ({
+      id: row.id,
+      price: Number(row.current_total ?? row.price_amount),
+      name_tr: row.name_tr,
+      name_en: row.name_en,
+      lesson_count: row.lesson_count,
+    }));
+
+    const pricing = calculateAuthoritativeTotal({
+      packages: pricingPackages,
+      coupon: couponRule,
     });
-    if (Math.round(checkoutItems.reduce((sum, item) => sum + item.final_amount, 0) * 100) / 100 !== finalAmount) return buildJsonResponse({ error_code: "AMOUNT_CALCULATION_FAILED", message: "Order total could not be calculated." }, 500, req);
+
+    const baseAmount = pricing.subtotal;
+    const discountAmount = pricing.discount;
+    const finalAmount = pricing.finalTotal;
+    const subtotalKurus = pricing.subtotalKurus;
+    const discountKurus = pricing.discountKurus;
+    const finalTotalKurus = pricing.finalTotalKurus;
+    const couponId = pricing.couponId;
+
+    const checkoutItems = packages.map((row) => {
+      const calcItem = pricing.items.find((it) => it.packageId === row.id);
+      return {
+        package_id: row.id,
+        package_name: (locale === "en" ? row.name_en : row.name_tr) || row.id,
+        lesson_count: row.lesson_count,
+        base_amount: calcItem?.baseAmount ?? Number(row.current_total ?? row.price_amount),
+        discount_amount: calcItem?.discountAmount ?? 0,
+        final_amount: calcItem?.finalAmount ?? Number(row.current_total ?? row.price_amount),
+        unit_price: row.unit_price ?? Number(row.current_total ?? row.price_amount),
+      };
+    });
 
     const sortedPackageIds = [...packageIds].sort().join(",");
-    const idempotencyContext = `${actor.id}:${learnerId}:${purchaserGuardianId || ""}:${sortedPackageIds}:${finalAmount}:${currency}:${couponId || ""}`;
+    const idempotencyContext = `${actor.id}:${learnerId}:${purchaserGuardianId || ""}:${sortedPackageIds}:${finalTotalKurus}:${currency}:${couponId || ""}`;
     const checkoutIdempotencyKey = await sha256(idempotencyContext);
 
-    // Reuse existing active pending preload if within valid 15-minute window
+    // PayTR iframe token'i TEK KULLANIMLIKTIR: aynı token ile ikinci kez
+    // https://www.paytr.com/odeme/guvenli/<token> açıldığında PayTR kendi
+    // sayfasında "Bu ödeme sayfası artık geçersiz. Lütfen yeni bir ödeme
+    // başlatın." hatasını gösterir. Önceki sürüm aynı sepet için 15 dakika
+    // boyunca kayıtlı token'ı geri veriyordu; kullanıcı sayfayı yenilediğinde
+    // ya da başarısız denemeden sonra tekrar "Ödemeye Geç" dediğinde ölü bir
+    // ödeme sayfası açılıyor ve ödeme hiç tamamlanamıyordu.
+    //
+    // Bu yüzden token yeniden kullanımı yalnızca çift tıklama / ağ tekrarı
+    // penceresiyle (90 sn) sınırlıdır. Bu pencerenin dışında kalan bekleyen
+    // kayıt arşivlenir (kısmi tekil indeks serbest kalır) ve KULLANICIYA HER
+    // ZAMAN TAZE bir merchant_oid + token üretilir.
+    const TOKEN_REUSE_WINDOW_MS = 90 * 1000;
+    const isReusableToken = (meta: Record<string, unknown> | null | undefined) => {
+      if (!meta?.iframe_token) return false;
+      const issuedAt = Date.parse(String(meta.iframe_token_issued_at ?? ""));
+      if (!Number.isFinite(issuedAt)) return false;
+      return Date.now() - issuedAt < TOKEN_REUSE_WINDOW_MS;
+    };
+
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
     const { data: existingTx } = await admin
       .from("payment_transactions")
@@ -139,23 +195,40 @@ Deno.serve(async (req: Request) => {
       .limit(1)
       .maybeSingle();
 
-    if (existingTx && (existingTx.metadata as Record<string, unknown>)?.iframe_token) {
-      const meta = existingTx.metadata as Record<string, unknown>;
-      return buildJsonResponse(
-        {
-          success: true,
-          iframe_token: meta.iframe_token,
-          merchant_oid: existingTx.public_reference,
-          reference: existingTx.public_reference,
-          statusToken: meta.status_token,
-          final_amount: existingTx.amount,
-          currency: existingTx.currency,
-          legal_accepted: legalAccepted,
-          reused_existing: true,
-        },
-        200,
-        req
-      );
+    if (existingTx) {
+      const meta = (existingTx.metadata ?? {}) as Record<string, unknown>;
+      if (isReusableToken(meta)) {
+        return buildJsonResponse(
+          {
+            success: true,
+            iframe_token: meta.iframe_token,
+            merchant_oid: existingTx.public_reference,
+            reference: existingTx.public_reference,
+            statusToken: meta.status_token,
+            final_amount: existingTx.amount,
+            currency: existingTx.currency,
+            legal_accepted: legalAccepted,
+            reused_existing: true,
+          },
+          200,
+          req
+        );
+      }
+
+      // Eski oturum devre dışı bırakılır. Statü bilerek 'pending' kalır:
+      // finalize_paytr_payment merchant_oid ile arar ve is_archived'e bakmaz,
+      // yani kullanıcı eski sekmede gerçekten ödeme yaparsa geri bildirim
+      // yine işlenir ve ders hakları tanımlanır.
+      await admin
+        .from("payment_transactions")
+        .update({ is_archived: true, metadata: { ...meta, superseded_at: new Date().toISOString(), superseded_reason: "paytr_token_single_use" } })
+        .eq("id", existingTx.id);
+      // Free unfinalized coupon redemption so user is not blocked
+      await admin
+        .from("discount_coupon_redemptions")
+        .delete()
+        .eq("payment_transaction_id", existingTx.id)
+        .is("package_purchase_id", null);
     }
 
     const merchantOid = generatePaytrMerchantOid();
@@ -167,7 +240,10 @@ Deno.serve(async (req: Request) => {
     const { data: singlePkg } = await admin.from("pricing_packages").select("price_amount,current_total,unit_price").eq("id", "single").maybeSingle();
     const initialMetadata: Record<string, unknown> = {
       locale, learner_name: learner.full_name, coupon_code: couponCode, coupon_id: couponId, discounted_package_id: discountedPackageId,
-      base_amount: baseAmount, discount_amount: discountAmount, checkout_items: checkoutItems, package_ids: packageIds,
+      base_amount: baseAmount, discount_amount: discountAmount,
+      subtotal_kurus: subtotalKurus, discount_kurus: discountKurus, final_total_kurus: finalTotalKurus,
+      discount_type: pricing.discountType, discount_value: pricing.discountValue,
+      checkout_items: checkoutItems, package_ids: packageIds,
       package_name: checkoutItems.map((item) => item.package_name).join(", "), lesson_count: checkoutItems.reduce((sum, item) => sum + Number(item.lesson_count || 0), 0),
       provider_test_mode: testMode === "1", created_at: nowIso,
       sales_terms_version: legalVersions.salesAgreement || "2026-08-27",
@@ -206,7 +282,10 @@ Deno.serve(async (req: Request) => {
         .limit(1)
         .maybeSingle();
 
-      if (racedTx && (racedTx.metadata as Record<string, unknown>)?.iframe_token) {
+      // Yalnızca gerçekten eşzamanlı istek (90 sn) için token paylaşılır;
+      // bayat bir token asla geri verilmez, aksi halde kullanıcı yine PayTR'nin
+      // "ödeme sayfası geçersiz" ekranına düşer.
+      if (racedTx && isReusableToken(racedTx.metadata as Record<string, unknown>)) {
         const meta = racedTx.metadata as Record<string, unknown>;
         return buildJsonResponse(
           {
@@ -223,6 +302,19 @@ Deno.serve(async (req: Request) => {
           200,
           req
         );
+      }
+      if (racedTx) {
+        // Bayat oturum arşivlenir; kullanıcı tekrar denediğinde taze token alır.
+        await admin
+          .from("payment_transactions")
+          .update({ is_archived: true, metadata: { ...((racedTx.metadata ?? {}) as Record<string, unknown>), superseded_at: new Date().toISOString(), superseded_reason: "paytr_token_single_use" } })
+          .eq("id", racedTx.id);
+        await admin
+          .from("discount_coupon_redemptions")
+          .delete()
+          .eq("payment_transaction_id", racedTx.id)
+          .is("package_purchase_id", null);
+        return buildJsonResponse({ error_code: "PAYMENT_SESSION_RETRY", message: locale === "tr" ? "Ödeme oturumu yenilendi. Lütfen tekrar deneyin." : "The payment session was refreshed. Please try again." }, 409, req);
       }
       return buildJsonResponse({ error_code: "TRANSACTION_CREATE_FAILED", message: "Payment record could not be created." }, 500, req);
     }
@@ -244,7 +336,7 @@ Deno.serve(async (req: Request) => {
     const publicSiteUrl = (Deno.env.get("PUBLIC_SITE_URL") ?? "https://oriens-academy.com").replace(/\/$/, "");
     const merchantOkUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/success" : "tr/odeme/basarili"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
     const merchantFailUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/failed" : "tr/odeme/basarisiz"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
-    const paymentAmount = Math.round(finalAmount * 100).toString();
+    const paymentAmount = finalTotalKurus.toString();
     const paytrToken = await calculatePaytrToken({ merchantId, userIp, merchantOid, email: verifiedEmail, paymentAmount, userBasket, noInstallment: "0", maxInstallment: "12", currency: paytrCurrency, testMode, merchantSalt, merchantKey });
     const formData = new URLSearchParams({ merchant_id: merchantId, user_ip: userIp, merchant_oid: merchantOid, email: verifiedEmail, payment_amount: paymentAmount, paytr_token: paytrToken, user_basket: userBasket, debug_on: debugOn, no_installment: "0", max_installment: "12", user_name: payerName, user_address: PAYTR_DEFAULT_ADDRESS, user_phone: payerPhone, merchant_ok_url: merchantOkUrl, merchant_fail_url: merchantFailUrl, timeout_limit: "30", currency: paytrCurrency, test_mode: testMode, lang: locale === "en" ? "en" : "tr" });
     const paytrRes = await fetch("https://www.paytr.com/odeme/api/get-token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString() });
@@ -269,6 +361,9 @@ Deno.serve(async (req: Request) => {
       metadata: {
         ...initialMetadata,
         iframe_token: paytrData.token,
+        // Tek kullanımlık token'in yasi: yalnizca 90 sn'lik cift-tiklama
+        // penceresinde yeniden servis edilir.
+        iframe_token_issued_at: new Date().toISOString(),
         status_token: statusToken,
       },
     }).eq("id", transaction.id);

@@ -25,6 +25,7 @@ import {
   type HomeworkDetail,
 } from "@/lib/homework";
 import type { StudentHomeworkRow, StudentLessonRow } from "@/lib/student/data";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 export function InteractiveHomework({
   items,
@@ -350,10 +351,8 @@ function HomeworkDetailDialog({
   }, [item.id]);
 
   useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    const unlockBodyScroll = lockBodyScroll();
+    return unlockBodyScroll;
   }, []);
 
   const rawItem = item as unknown as { content_type?: string };
@@ -505,7 +504,7 @@ function HomeworkDetailDialog({
                     <a
                       href={detail.assignment.external_link}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white px-3.5 py-2 text-xs font-semibold text-primary hover:bg-surface-muted transition-colors"
                     >
                       <ExternalLink className="size-3.5" />

@@ -38,37 +38,6 @@ function temporaryFailure(req: Request) {
   );
 }
 
-function randomIndex(max: number): number {
-  const ceiling = Math.floor(256 / max) * max;
-  const buffer = new Uint8Array(1);
-  do crypto.getRandomValues(buffer); while (buffer[0] >= ceiling);
-  return buffer[0] % max;
-}
-
-function secureShuffle(chars: string[]): string {
-  for (let index = chars.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomIndex(index + 1);
-    [chars[index], chars[swapIndex]] = [chars[swapIndex], chars[index]];
-  }
-  return chars.join("");
-}
-
-function generateTemporaryPassword(length = 16): string {
-  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lower = "abcdefghijkmnopqrstuvwxyz";
-  const digits = "23456789";
-  const symbols = "!@#$%&*+-=?";
-  const all = `${upper}${lower}${digits}${symbols}`;
-  const password = [
-    upper[randomIndex(upper.length)],
-    lower[randomIndex(lower.length)],
-    digits[randomIndex(digits.length)],
-    symbols[randomIndex(symbols.length)],
-  ];
-
-  while (password.length < length) password.push(all[randomIndex(all.length)]);
-  return secureShuffle(password);
-}
 
 async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -176,22 +145,26 @@ Deno.serve(async (req: Request) => {
   }
   if (!activeAccount) return neutralResponse(req, locale);
 
-  const temporaryPassword = generateTemporaryPassword();
-  const { error: updateError } = await client.auth.admin.updateUserById(accountUser.id, {
-    password: temporaryPassword,
-    user_metadata: { ...accountUser.user_metadata, force_password_change: true },
+  const redirectPath = locale === "en" ? "/en/reset-password" : "/tr/sifre-yenile";
+  const redirectTo = `https://oriens-academy.com${redirectPath}`;
+  const { data: linkData, error: linkErr } = await client.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo },
   });
-  if (updateError) {
-    console.error("[admin-password-reset] Password update failed.");
-    return temporaryFailure(req);
+
+  if (linkErr || !linkData?.properties?.action_link) {
+    console.error("[admin-password-reset] generateLink failed:", linkErr?.message);
+    return neutralResponse(req, locale);
   }
 
+  const recoveryUrl = linkData.properties.action_link;
   const requestId = crypto.randomUUID();
   const deliveryResult = await dispatchPasswordResetEmail({
     supabaseAdmin: client,
     requestId,
     to: email,
-    temporaryPassword,
+    temporaryPassword: recoveryUrl, // Action link is passed safely to renderPasswordResetActionEmail
     locale,
   });
   const delivered = deliveryResult.status === "sent";

@@ -3,20 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, Clock, CreditCard, ExternalLink, LayoutDashboard, LogOut, MessageCircle, Package, Plus, Save, Send, UserRound, Video, Award, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, Clock, CreditCard, ExternalLink, LayoutDashboard, LogOut, Package, Save, UserRound, Video, Award, Sparkles, X } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getStudentCopy } from "@/content/student-portal";
 import { getPaymentRefundCopy } from "@/content/payment-refund";
 import { localizedPath } from "@/lib/routes";
-import { updateGuardianProfile, updateStudentEmail, updateStudentPassword } from "@/lib/student/auth";
+import { updateGuardianProfile, updateStudentEmail, updateStudentPassword, requestEmailChange, verifyEmailChangeOtp } from "@/lib/student/auth";
 import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { getStudentPortalData, setupLearnerProfile, updateStudentProfile, type StudentPortalData } from "@/lib/student/data";
 import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences, formatExamBadges } from "@/lib/student/preferences";
 import { InteractiveHomework } from "@/components/student/InteractiveHomework";
-import { listStudentThreads, createSupportThread, listThreadMessages, sendStudentMessage, markThreadReadByStudent, subscribeToThreadMessages, subscribeToStudentThreads } from "@/lib/support/client";
-import { SUPPORT_CATEGORIES, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportMessage, type SupportThread } from "@/lib/support/types";
 import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
@@ -31,8 +29,12 @@ import { localizeErrorMessage } from "@/lib/utils/error-messages";
 import type { Tables } from "@/types/database.types";
 
 type SectionId = StudentSectionId;
-const icons = [LayoutDashboard, UserRound, BookOpen, Package, CreditCard, MessageCircle];
+const icons = [LayoutDashboard, UserRound, BookOpen, Package, CreditCard];
 const visibleNavigation = VISIBLE_STUDENT_NAVIGATION.map((item) => ({ ...item, Icon: icons[item.labelIndex] }));
+const mobileTabLabels: Record<"tr" | "en", string[]> = {
+  tr: ["Genel", "Profil", "Dersler", "Paketler", "Ödemeler"],
+  en: ["Overview", "Profile", "Lessons", "Packages", "Payments"],
+};
 
 export function StudentPortal() {
   const locale = useLocale(); const copy = getStudentCopy(locale); const router = useRouter();
@@ -165,9 +167,9 @@ export function StudentPortal() {
   return <section className="min-h-screen bg-background pt-24 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
     <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Hesabım" : "My Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></header>
     <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} onOpenPersonalization={() => setPersonalizationOpen(true)} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} onAccountDeleted={handleConfirmLogout} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}{section === "support" && <SupportSection userId={selectedLearnerId} locale={locale} />}</main>
+      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} onOpenPersonalization={() => setPersonalizationOpen(true)} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} onAccountDeleted={handleConfirmLogout} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}</main>
     </div>
-  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full max-w-full overflow-hidden border-t border-border bg-background/95 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden">{/* Scroll happens on this inner wrapper, not the fixed nav itself -- an `overflow-x-auto` fixed element with a wider-than-viewport child can force mobile browsers to expand the whole layout viewport past device-width. See BLOG/MOBILE QA plan. */}<div className="overflow-x-auto overscroll-x-contain"><div className="flex w-max min-w-full justify-start gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} className={cn("flex min-h-14 min-w-[4.4rem] flex-col items-center justify-center gap-1 rounded-lg px-2 text-[10px] cursor-pointer", section === id ? "bg-sage-soft font-semibold text-ink" : "text-muted-foreground")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</div></div></nav>
+  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full border-t border-border bg-background/95 px-1.5 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden"><div className="grid w-full grid-cols-5 items-center gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => { const active = section === id; const label = mobileTabLabels[locale]?.[labelIndex] ?? copy.tabs[labelIndex]; return <button key={id} type="button" onClick={() => setSection(id)} aria-current={active ? "page" : undefined} className={cn("flex min-h-[52px] w-full flex-col items-center justify-center gap-1 rounded-xl py-1 px-0.5 text-[10px] leading-tight transition-colors cursor-pointer select-none", active ? "bg-sage-soft font-bold text-ink shadow-2xs" : "text-muted-foreground hover:bg-surface-muted hover:text-ink active:scale-95")}><Icon className={cn("size-4 shrink-0", active ? "text-primary stroke-[2.2]" : "text-muted-foreground")} /><span className="truncate max-w-full text-center tracking-tight">{label}</span></button>; })}</div></nav>
   <LogoutConfirmationModal open={logoutModalOpen} signingOut={signingOut} locale={locale} onCancel={() => setLogoutModalOpen(false)} onConfirm={handleConfirmLogout} />
   {showPersonalization && (
     <div
@@ -176,9 +178,9 @@ export function StudentPortal() {
           handleDismissPersonalization();
         }
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/60 p-3 sm:p-4 backdrop-blur-sm pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]"
     >
-      <div className="relative w-full max-w-2xl my-8">
+      <div className="relative w-full max-w-2xl my-auto sm:my-8">
         <StudentOnboardingPersonalization
           studentId={selectedLearnerId || user?.id || ""}
           initialExams={data?.profile?.target_exams || []}
@@ -414,7 +416,7 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
             <a
               href={nextLesson.live_meeting_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
             >
               <Video className="size-4 text-warm-accent" />
@@ -442,7 +444,7 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
             <a
               href={nextBooking.live_meeting_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl bg-ink px-5 py-3 text-xs font-bold text-white hover:bg-forest transition-colors shadow-xs"
             >
               <Video className="size-4 text-warm-accent" />
@@ -623,19 +625,90 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
     }
   }
 
+  const [emailChangeModal, setEmailChangeModal] = useState<{
+    open: boolean;
+    newEmail: string;
+    maskedEmail: string;
+    resendCooldown: number;
+  } | null>(null);
+  const [emailOtpCode, setEmailOtpCode] = useState("");
+  const [emailOtpBusy, setEmailOtpBusy] = useState(false);
+  const [emailOtpErr, setEmailOtpErr] = useState("");
+
+  useEffect(() => {
+    if (!emailChangeModal || emailChangeModal.resendCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setEmailChangeModal((prev) =>
+        prev ? { ...prev, resendCooldown: Math.max(0, prev.resendCooldown - 1) } : null
+      );
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [emailChangeModal?.resendCooldown]);
+
   async function saveEmail(e: React.FormEvent) {
     e.preventDefault();
+    const target = emailForm.email.trim().toLowerCase();
+    if (!target || target === data.profile.email.toLowerCase()) return;
     setEmailBusy(true);
     setMsg("");
     setErr("");
     try {
-      const r = await updateStudentEmail(emailForm.email.trim(), locale);
-      if (r.error) setErr(localizeErrorMessage(r.error, locale, locale === "tr" ? "E-posta güncellenemedi." : "Email could not be updated."));
-      else setMsg(locale === "tr" ? "Doğrulama bağlantısı e-posta adresinize gönderildi." : "Confirmation email sent.");
+      const r = await requestEmailChange(target, locale);
+      if (!r.success) {
+        setErr(localizeErrorMessage(r.message || r.error_code, locale, locale === "tr" ? "E-posta değişikliği başlatılamadı." : "Email change could not be initiated."));
+      } else {
+        setEmailChangeModal({
+          open: true,
+          newEmail: target,
+          maskedEmail: r.masked_new_email || target,
+          resendCooldown: 60,
+        });
+        setEmailOtpCode("");
+        setEmailOtpErr("");
+      }
     } catch (error) {
       setErr(localizeErrorMessage(error, locale, locale === "tr" ? "E-posta güncellenemedi." : "Email could not be updated."));
     } finally {
       setEmailBusy(false);
+    }
+  }
+
+  async function handleVerifyEmailOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (emailOtpCode.trim().length !== 6) return;
+    setEmailOtpBusy(true);
+    setEmailOtpErr("");
+    try {
+      const r = await verifyEmailChangeOtp(emailOtpCode.trim(), locale);
+      if (!r.success) {
+        setEmailOtpErr(localizeErrorMessage(r.message || r.error_code, locale, locale === "tr" ? "Doğrulama kodu hatalı." : "Verification code incorrect."));
+      } else {
+        setEmailChangeModal(null);
+        setMsg(locale === "tr" ? "E-posta adresiniz başarıyla güncellendi ve doğrulandı." : "Email address updated and verified successfully.");
+        onReload();
+      }
+    } catch {
+      setEmailOtpErr(locale === "tr" ? "Doğrulama başarısız oldu." : "Verification failed.");
+    } finally {
+      setEmailOtpBusy(false);
+    }
+  }
+
+  async function handleResendEmailChangeOtp() {
+    if (!emailChangeModal || emailChangeModal.resendCooldown > 0 || emailOtpBusy) return;
+    setEmailOtpBusy(true);
+    setEmailOtpErr("");
+    try {
+      const r = await requestEmailChange(emailChangeModal.newEmail, locale);
+      if (r.success) {
+        setEmailChangeModal((prev) => prev ? { ...prev, resendCooldown: 60 } : null);
+      } else {
+        setEmailOtpErr(localizeErrorMessage(r.message, locale, locale === "tr" ? "Kod gönderilemedi." : "Failed to send code."));
+      }
+    } catch {
+      setEmailOtpErr(locale === "tr" ? "Kod gönderilemedi." : "Failed to send code.");
+    } finally {
+      setEmailOtpBusy(false);
     }
   }
 
@@ -909,8 +982,8 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
             <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "E-posta Değiştir" : "Change Email"}</h3>
             <p className="text-xs leading-5 text-muted-foreground md:min-h-10">
               {locale === "tr"
-                ? "E-posta adresinizi değiştirdiğinizde yeni adrese onay bağlantısı gönderilecektir."
-                : "A verification link will be sent to the new email address."}
+                ? "Yeni adresinize 6 haneli doğrulama kodu (OTP) gönderilecektir. Eski adresinize ise bilgilendirme iletilir."
+                : "A 6-digit verification code (OTP) will be sent to the new address. A security notice will be sent to the previous address."}
             </p>
             <input
               required
@@ -921,12 +994,81 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
             />
             <button
               type="submit"
-              disabled={emailBusy}
+              disabled={emailBusy || emailForm.email.trim().toLowerCase() === data.profile.email.toLowerCase()}
               className="mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-xs font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer sm:w-auto sm:self-start"
             >
-              {emailBusy ? (locale === "tr" ? "Gönderiliyor…" : "Sending…") : (locale === "tr" ? "E-posta Güncelle" : "Update Email")}
+              {emailBusy ? (locale === "tr" ? "Gönderiliyor…" : "Sending…") : (locale === "tr" ? "Doğrulama Kodu İste" : "Request Verification Code")}
             </button>
           </form>
+
+          {/* Email Change OTP Modal */}
+          {emailChangeModal?.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+              <div className="w-full max-w-md rounded-3xl border border-border bg-white p-6 shadow-xl sm:p-8">
+                <div className="text-center">
+                  <h3 className="font-heading text-xl text-ink">
+                    {locale === "tr" ? "Yeni E-posta Doğrulama" : "Verify New Email"}
+                  </h3>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {locale === "tr"
+                      ? `${emailChangeModal.maskedEmail} adresine gönderilen 6 haneli kodu giriniz.`
+                      : `Enter the 6-digit code sent to ${emailChangeModal.maskedEmail}.`}
+                  </p>
+                </div>
+
+                {emailOtpErr && (
+                  <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive text-center">
+                    {emailOtpErr}
+                  </p>
+                )}
+
+                <form onSubmit={handleVerifyEmailOtp} className="mt-6 space-y-4">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    autoFocus
+                    value={emailOtpCode}
+                    onChange={(e) => setEmailOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="••••••"
+                    className="mx-auto block min-h-14 w-44 rounded-xl border border-input bg-background text-center text-2xl font-mono font-bold tracking-[0.35em] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEmailChangeModal(null)}
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-border bg-white text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
+                    >
+                      {locale === "tr" ? "Vazgeç" : "Cancel"}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={emailOtpCode.length !== 6 || emailOtpBusy}
+                      className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-ink text-xs font-semibold text-white hover:bg-forest disabled:opacity-45 cursor-pointer"
+                    >
+                      {emailOtpBusy ? (locale === "tr" ? "Doğrulanıyor…" : "Verifying…") : (locale === "tr" ? "Onayla" : "Confirm")}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    disabled={emailChangeModal.resendCooldown > 0 || emailOtpBusy}
+                    onClick={handleResendEmailChangeOtp}
+                    className="text-xs font-semibold text-primary underline disabled:text-muted-foreground disabled:no-underline cursor-pointer"
+                  >
+                    {emailChangeModal.resendCooldown > 0
+                      ? (locale === "tr"
+                          ? `Kodu Tekrar Gönder (${emailChangeModal.resendCooldown}s)`
+                          : `Resend Code (${emailChangeModal.resendCooldown}s)`)
+                      : (locale === "tr" ? "Kodu Tekrar Gönder" : "Resend Code")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={savePassword} className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-surface/50 p-4 sm:p-5">
             <h3 className="text-sm font-semibold text-ink">{locale === "tr" ? "Şifre Belirle" : "Update Password"}</h3>
@@ -1136,7 +1278,7 @@ function Lessons({ data, locale }: { data: StudentPortalData; locale: "tr" | "en
       {s.teacherNote && <p className="mt-3 rounded-lg border border-border bg-surface-muted p-2.5 text-xs text-ink/80"><strong>{isTr ? "Eğitmen Notu" : "Teacher Note"}:</strong> {s.teacherNote}</p>}
       {!past && s.liveMeetingUrl && (
         <div className="mt-4 border-t border-primary/10 pt-3">
-          <a href={s.liveMeetingUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-forest">
+          <a href={s.liveMeetingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-forest">
             <Video className="size-4 text-warm-accent" />
             {s.eventType === "lesson" ? (isTr ? "Canlı Derse Katıl" : "Join Live Lesson") : (isTr ? "Görüşmeye Katıl" : "Join Meeting")}
             <ExternalLink className="size-3" />
@@ -1497,417 +1639,6 @@ function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
   );
 }
 
-function SupportSection({ userId, locale }: { userId: string; locale: "tr" | "en" }) {
-  const isTr = locale === "tr";
-  const [threads, setThreads] = useState<SupportThread[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-
-  // Form states
-  const [newSubject, setNewSubject] = useState("");
-  const [newCategory, setNewCategory] = useState<SupportCategory>("general");
-  const [newInitialMsg, setNewInitialMsg] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
-
-  // Composer
-  const [composerText, setComposerText] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  const activeThread = threads.find((t) => t.id === activeThreadId) || null;
-
-  // Load threads
-  const loadThreads = useCallback(async () => {
-    if (!userId) return;
-    const res = await listStudentThreads(userId);
-    if (res.data) setThreads(res.data);
-    setLoading(false);
-  }, [userId]);
-
-  useEffect(() => {
-    let ignore = false;
-    listStudentThreads(userId).then((res) => {
-      if (!ignore) {
-        if (res.data) setThreads(res.data);
-        setLoading(false);
-      }
-    });
-    const unsub = subscribeToStudentThreads(userId, () => {
-      listStudentThreads(userId).then((res) => {
-        if (!ignore && res.data) setThreads(res.data);
-      });
-    });
-    return () => {
-      ignore = true;
-      unsub();
-    };
-  }, [userId]);
-
-  // Load messages when activeThreadId changes
-  useEffect(() => {
-    if (!activeThreadId) return;
-    let ignore = false;
-    markThreadReadByStudent(activeThreadId);
-
-    listThreadMessages(activeThreadId).then((res) => {
-      if (!ignore) {
-        if (res.data) setMessages(res.data);
-        setLoadingMessages(false);
-      }
-    });
-
-    const unsub = subscribeToThreadMessages(activeThreadId, (newMsg) => {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === newMsg.id)) return prev;
-        return [...prev, newMsg];
-      });
-      markThreadReadByStudent(activeThreadId);
-    });
-
-    return () => {
-      ignore = true;
-      unsub();
-    };
-  }, [activeThreadId]);
-
-  // Scroll to bottom inside internal container only (never moves document viewport)
-  useEffect(() => {
-    if (activeThreadId && messages.length && chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [messages, activeThreadId]);
-
-  // Handle new thread creation without unexpected document jump
-  const handleCreateThread = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSubject.trim() || !newInitialMsg.trim()) {
-      setFormError(isTr ? "Lütfen konu ve mesaj alanlarını doldurun." : "Please fill in subject and message.");
-      return;
-    }
-    setIsSubmitting(true);
-    setFormError("");
-    const res = await createSupportThread({
-      student_user_id: userId,
-      subject: newSubject.trim(),
-      category: newCategory,
-      initial_message: newInitialMsg.trim(),
-      locale: locale as "tr" | "en",
-    });
-    setIsSubmitting(false);
-
-    if (res.error || !res.data) {
-      setFormError(res.error || (isTr ? "Talep oluşturulamadı." : "Could not create request."));
-      return;
-    }
-
-    setNewSubject("");
-    setNewInitialMsg("");
-    setIsCreating(false);
-    await loadThreads();
-    setActiveThreadId(res.data.thread.id);
-  };
-
-  // Handle sending reply
-  const handleSendMessage = async () => {
-    if (!activeThreadId || !composerText.trim() || isSending) return;
-    const text = composerText.trim();
-    setComposerText("");
-    setIsSending(true);
-
-    const res = await sendStudentMessage(activeThreadId, userId, text);
-    setIsSending(false);
-
-    if (res.data) {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === res.data!.id)) return prev;
-        return [...prev, res.data!];
-      });
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  return (
-    <div className="space-y-6 min-w-0 max-w-full">
-      {/* 1. If viewing a specific thread conversation */}
-      {activeThread ? (
-        <Panel
-          title={
-            <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveThreadId(null)}
-                  className="inline-flex size-9 items-center justify-center rounded-xl border border-border bg-surface-muted text-ink hover:bg-surface transition-colors cursor-pointer shrink-0"
-                  aria-label={isTr ? "Geri" : "Back"}
-                >
-                  <ChevronLeft className="size-4" />
-                </button>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="rounded-md bg-sage-soft px-2 py-0.5 text-[11px] font-bold text-ink">
-                      {SUPPORT_CATEGORIES.find((c) => c.id === activeThread.category)?.[isTr ? "labelTr" : "labelEn"] || activeThread.category}
-                    </span>
-                    <span className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-                      {SUPPORT_STATUS_LABELS[activeThread.status]?.[locale] || activeThread.status}
-                    </span>
-                  </div>
-                  <h3 className="mt-1 font-heading text-xl text-ink truncate">{activeThread.subject}</h3>
-                </div>
-              </div>
-            </div>
-          }
-        >
-          {/* Chat message stream */}
-          <div ref={chatContainerRef} className="flex flex-col space-y-4 max-h-[480px] min-h-[260px] overflow-y-auto overflow-x-hidden pr-1 py-2 min-w-0 max-w-full">
-            {loadingMessages ? (
-              <div className="py-12 text-center text-xs text-muted-foreground">
-                {isTr ? "Mesajlar yükleniyor…" : "Loading conversation…"}
-              </div>
-            ) : messages.length ? (
-              messages.map((m) => {
-                const isStudent = m.sender_type === "student";
-                return (
-                  <div
-                    key={m.id}
-                    className={cn(
-                      "flex flex-col max-w-[85%] sm:max-w-[75%] min-w-0",
-                      isStudent ? "ml-auto items-end" : "mr-auto items-start"
-                    )}
-                  >
-                    <span className="mb-1 text-[11px] font-medium text-muted-foreground">
-                      {isStudent ? (isTr ? "Siz" : "You") : "Oriens Destek"} · {fmt(m.created_at, locale, true)}
-                    </span>
-                    <div
-                      className={cn(
-                        "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-xs break-words [overflow-wrap:anywhere] max-w-full",
-                        isStudent
-                          ? "bg-primary text-primary-foreground rounded-tr-xs"
-                          : "bg-surface-muted border border-border text-ink rounded-tl-xs"
-                      )}
-                    >
-                      {m.body}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="py-12 text-center text-xs text-muted-foreground">
-                {isTr ? "Henüz mesaj bulunmuyor." : "No messages yet."}
-              </div>
-            )}
-          </div>
-
-          {/* Composer */}
-          <div className="mt-4 border-t border-border pt-4">
-            {activeThread.status === "closed" ? (
-              <div className="rounded-xl border border-border bg-surface-muted p-4 text-center text-xs text-muted-foreground">
-                {isTr ? "Bu destek talebi kapatılmıştır." : "This support request is closed."}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <textarea
-                  value={composerText}
-                  onChange={(e) => setComposerText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  rows={3}
-                  placeholder={isTr ? "Mesajınızı yazın… (Göndermek için Enter, yeni satır için Shift+Enter)" : "Write your message… (Enter to send, Shift+Enter for newline)"}
-                  className="w-full rounded-xl border border-input bg-surface p-3 text-sm leading-relaxed text-ink placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary focus-visible:ring-2 focus-visible:ring-primary"
-                />
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] text-muted-foreground">
-                    {isTr ? "Enter: Gönder · Shift+Enter: Alt satır" : "Enter: Send · Shift+Enter: Newline"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleSendMessage}
-                    disabled={isSending || !composerText.trim()}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-40 transition-colors shadow-xs"
-                  >
-                    <Send className="size-3.5" />
-                    {isSending ? (isTr ? "Gönderiliyor…" : "Sending…") : (isTr ? "Gönder" : "Send")}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </Panel>
-      ) : (
-        /* 2. Thread List / New Request Panel */
-        <Panel
-          title={
-            <div className="flex items-center justify-between gap-4">
-              <span>{isTr ? "Destek Taleplerim" : "My Support Requests"}</span>
-              <button
-                type="button"
-                onClick={() => setIsCreating(!isCreating)}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest transition-colors shadow-xs"
-              >
-                <Plus className="size-3.5" />
-                {isTr ? "Yeni Destek Talebi" : "New Support Request"}
-              </button>
-            </div>
-          }
-        >
-          {/* New Request Modal/Card if open */}
-          {isCreating && (
-            <form onSubmit={handleCreateThread} className="mb-6 rounded-2xl border border-primary/30 bg-surface-muted p-5 space-y-4 shadow-xs">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <h3 className="font-heading text-lg text-ink">
-                  {isTr ? "Yeni Destek Talebi Oluştur" : "Create Support Request"}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsCreating(false)}
-                  className="text-xs text-muted-foreground hover:text-ink"
-                >
-                  {isTr ? "Vazgeç" : "Cancel"}
-                </button>
-              </div>
-
-              {formError && (
-                <div className="rounded-lg bg-destructive/10 p-3 text-xs font-medium text-destructive">
-                  {formError}
-                </div>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="text-xs font-semibold text-ink">
-                  {isTr ? "Kategori" : "Category"}
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as SupportCategory)}
-                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    {SUPPORT_CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {isTr ? cat.labelTr : cat.labelEn}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="text-xs font-semibold text-ink">
-                  {isTr ? "Konu" : "Subject"}
-                  <input
-                    type="text"
-                    required
-                    value={newSubject}
-                    onChange={(e) => setNewSubject(e.target.value)}
-                    placeholder={isTr ? "Destek konusu" : "Inquiry subject"}
-                    className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  />
-                </label>
-              </div>
-
-              <label className="block text-xs font-semibold text-ink">
-                {isTr ? "Mesajınız" : "Message"}
-                <textarea
-                  required
-                  rows={4}
-                  value={newInitialMsg}
-                  onChange={(e) => setNewInitialMsg(e.target.value)}
-                  placeholder={isTr ? "Talebinizi ve sormak istediklerinizi detaylıca belirtin…" : "Describe your inquiry in detail…"}
-                  className="mt-1.5 w-full rounded-xl border border-input bg-surface p-3 text-sm text-ink focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </label>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCreating(false)}
-                  className="min-h-11 rounded-xl border border-border px-4 text-xs font-semibold text-ink hover:bg-surface transition-colors"
-                >
-                  {isTr ? "İptal" : "Cancel"}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="min-h-11 rounded-xl bg-ink px-6 text-xs font-semibold text-white hover:bg-forest disabled:opacity-40 transition-colors shadow-xs"
-                >
-                  {isSubmitting ? (isTr ? "Oluşturuluyor…" : "Creating…") : (isTr ? "Talebi Gönder" : "Submit Request")}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Ticket list */}
-          {loading ? (
-            <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
-              {isTr ? "Destek talepleri yükleniyor…" : "Loading support requests…"}
-            </div>
-          ) : threads.length ? (
-            <div className="grid gap-3">
-              {threads.map((t) => {
-                const categoryObj = SUPPORT_CATEGORIES.find((c) => c.id === t.category);
-                const statusObj = SUPPORT_STATUS_LABELS[t.status];
-                return (
-                  <article
-                    key={t.id}
-                    onClick={() => setActiveThreadId(t.id)}
-                    className={cn(
-                      "cursor-pointer rounded-2xl border p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-xs",
-                      t.unread_for_student
-                        ? "border-primary/40 bg-surface-muted"
-                        : "border-border bg-surface"
-                    )}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-md bg-sage-soft px-2 py-0.5 text-[11px] font-bold text-ink">
-                            {categoryObj?.[isTr ? "labelTr" : "labelEn"] || t.category}
-                          </span>
-                          <span className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-                            {statusObj?.[locale] || t.status}
-                          </span>
-                          {t.unread_for_student && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                              <MessageCircle className="size-3" />
-                              {isTr ? "Yeni Yanıt" : "New Reply"}
-                            </span>
-                          )}
-                        </div>
-                        <h4 className="mt-2 font-heading text-lg text-ink font-semibold">{t.subject}</h4>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Clock className="size-3" />
-                          <span>{fmt(t.last_message_at, locale, true)}</span>
-                        </div>
-                        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                          {isTr ? "Görüntüle" : "View"}
-                          <ArrowRight className="size-3" />
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <Empty>
-              {isTr
-                ? "Henüz açık veya tamamlanmış bir destek talebiniz bulunmuyor."
-                : "You don't have any support requests yet."}
-            </Empty>
-          )}
-        </Panel>
-      )}
-    </div>
-  );
-}
-
 function ExamHistoryView({ userId, locale }: { userId: string; locale: "tr" | "en" }) {
   const isTr = locale === "tr";
   const [attempts, setAttempts] = useState<StudentExamAttempt[]>([]);
@@ -2098,7 +1829,7 @@ function ExamHistoryView({ userId, locale }: { userId: string; locale: "tr" | "e
                 onClick={() => setSelectedAttempt(null)}
                 className="rounded-xl border border-border p-2 text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
               >
-                ✕
+                <X className="size-4" />
               </button>
             </div>
 

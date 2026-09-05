@@ -33,17 +33,44 @@ export function QuickContactLead() {
       window.clearTimeout(timer);
       window.removeEventListener("scroll", checkScroll);
     };
-    const checkScroll = () => {
-      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    // `scrollHeight` okumak zorunlu bir yeniden yerleşim (forced reflow)
+    // tetikler. Bu ölçüm her scroll olayında yapıldığı için mobilde her
+    // karede layout hesabı çalışıyor ve kaydırma takılıyordu. Ölçümü
+    // önbelleğe alıp yalnızca resize'da tazeliyoruz; scroll işleyicisi de
+    // rAF ile kare başına bir kez çalışacak şekilde kısıtlandı.
+    let scrollable = 0;
+    let ticking = false;
+
+    const measure = () => {
+      scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    };
+
+    const evaluate = () => {
+      ticking = false;
       if (scrollable > 0 && window.scrollY / scrollable >= 0.45) show();
     };
+
+    const checkScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(evaluate);
+    };
+
+    const onResize = () => {
+      measure();
+      checkScroll();
+    };
+
     const timer = window.setTimeout(show, 45000);
+    measure();
     window.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
     checkScroll();
     return () => {
       finished = true;
       window.clearTimeout(timer);
       window.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 

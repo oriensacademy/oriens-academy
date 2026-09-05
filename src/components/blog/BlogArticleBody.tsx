@@ -1,13 +1,19 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, Info, CheckCircle2, AlertTriangle } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import {
   sanitizeBlogContentJson,
   type BlogBlock,
   type BlockAlign,
   type BlockWidth,
+  type CalloutTone,
+  type ImageAspect,
+  type ImageFit,
   type InlineNode,
+  type PaneTextNode,
+  type SplitPane,
+  type SplitRatio,
 } from "@/lib/blog/blockSchema";
 
 /**
@@ -38,6 +44,137 @@ const ALIGN_BLOCK_CLASS: Record<BlockAlign, string> = {
   center: "mx-auto",
   full: "",
 };
+
+/**
+ * Every class below is a complete literal string. Tailwind's scanner cannot see
+ * classes assembled at runtime, so ratios/aspects must never be interpolated.
+ */
+const SPLIT_RATIO_CLASS: Record<SplitRatio, [string, string]> = {
+  "50-50": ["md:w-1/2", "md:w-1/2"],
+  "40-60": ["md:w-2/5", "md:w-3/5"],
+  "60-40": ["md:w-3/5", "md:w-2/5"],
+};
+
+const ASPECT_CLASS: Record<ImageAspect, string> = {
+  auto: "",
+  "16-9": "aspect-[16/9]",
+  "4-3": "aspect-[4/3]",
+  "1-1": "aspect-square",
+  "3-4": "aspect-[3/4]",
+};
+
+const CALLOUT_CLASS: Record<CalloutTone, string> = {
+  info: "border-primary/30 bg-primary/5 text-ink/85",
+  success: "border-emerald-300 bg-emerald-50 text-emerald-950",
+  warning: "border-amber-300 bg-amber-50 text-amber-950",
+};
+
+const CALLOUT_ICON: Record<CalloutTone, typeof Info> = {
+  info: Info,
+  success: CheckCircle2,
+  warning: AlertTriangle,
+};
+
+const CALLOUT_ICON_CLASS: Record<CalloutTone, string> = {
+  info: "text-primary",
+  success: "text-emerald-700",
+  warning: "text-amber-700",
+};
+
+function fitClass(fit: ImageFit): string {
+  return fit === "contain" ? "object-contain" : "object-cover";
+}
+
+/** One image inside a side-by-side pane or a gallery cell. */
+function FramedImage({
+  url,
+  alt,
+  caption,
+  fit,
+  aspect,
+}: {
+  url: string;
+  alt: string;
+  caption: string;
+  fit: ImageFit;
+  aspect: ImageAspect;
+}) {
+  const aspectClass = ASPECT_CLASS[aspect];
+  return (
+    <figure className="w-full overflow-hidden rounded-2xl border border-border bg-surface-muted">
+      {aspectClass ? (
+        <div className={`relative w-full ${aspectClass}`}>
+          <Image src={url} alt={alt || caption || ""} fill unoptimized sizes="(max-width: 768px) 100vw, 50vw" className={fitClass(fit)} />
+        </div>
+      ) : (
+        <Image
+          src={url}
+          alt={alt || caption || ""}
+          width={1200}
+          height={800}
+          unoptimized
+          className={`h-auto w-full ${fitClass(fit)}`}
+        />
+      )}
+      {caption ? <figcaption className="px-4 py-3 text-center text-xs text-muted-foreground">{caption}</figcaption> : null}
+    </figure>
+  );
+}
+
+/** Bounded rich content of a side-by-side text pane. */
+function PaneTextView({ nodes, idPrefix }: { nodes: PaneTextNode[]; idPrefix: string }) {
+  return (
+    <div>
+      {nodes.map((node, index) => {
+        const key = `${idPrefix}-${index}`;
+        if (node.type === "heading") {
+          const Tag = node.level === 2 ? "h2" : "h3";
+          return (
+            <Tag
+              key={key}
+              className={
+                node.level === 2
+                  ? "mb-3 font-heading text-2xl text-ink first:mt-0"
+                  : "mb-2.5 font-heading text-xl text-ink first:mt-0"
+              }
+            >
+              {renderInline(node.content, key)}
+            </Tag>
+          );
+        }
+        if (node.type === "paragraph") {
+          return (
+            <p key={key} className="mb-4 text-base leading-relaxed text-ink/85 last:mb-0">
+              {renderInline(node.content, key)}
+            </p>
+          );
+        }
+        const ListTag = node.ordered ? "ol" : "ul";
+        return (
+          <ListTag
+            key={key}
+            className={
+              node.ordered
+                ? "mb-4 list-decimal space-y-2 pl-5 text-base leading-relaxed text-ink/85 last:mb-0"
+                : "mb-4 list-disc space-y-2 pl-5 text-base leading-relaxed text-ink/85 last:mb-0"
+            }
+          >
+            {node.items.map((item, itemIndex) => (
+              <li key={`${key}-${itemIndex}`}>{renderInline(item, `${key}-${itemIndex}`)}</li>
+            ))}
+          </ListTag>
+        );
+      })}
+    </div>
+  );
+}
+
+function SplitPaneView({ pane, idPrefix }: { pane: SplitPane; idPrefix: string }) {
+  if (pane.kind === "image") {
+    return <FramedImage url={pane.url} alt={pane.alt} caption={pane.caption} fit={pane.fit} aspect={pane.aspect} />;
+  }
+  return <PaneTextView nodes={pane.nodes} idPrefix={idPrefix} />;
+}
 
 function renderInline(nodes: InlineNode[], keyPrefix: string): ReactNode[] {
   return nodes.map((node, index) => {
@@ -115,16 +252,30 @@ function BlockView({ block }: { block: BlogBlock }) {
     case "image": {
       const wrapClass = block.wrap && block.align !== "full" ? ALIGN_WRAP_CLASS[block.align] : ALIGN_BLOCK_CLASS[block.align];
       const widthClass = block.align === "full" ? "md:w-full" : WIDTH_CLASS[block.width];
+      const aspectClass = ASPECT_CLASS[block.aspect];
       return (
         <figure className={`my-7 w-full overflow-hidden rounded-2xl border border-border bg-surface-muted ${widthClass} ${wrapClass}`}>
-          <Image
-            src={block.url}
-            alt={block.alt || block.caption || "Blog görseli"}
-            width={1400}
-            height={900}
-            unoptimized
-            className="h-auto w-full object-cover"
-          />
+          {aspectClass ? (
+            <div className={`relative w-full ${aspectClass}`}>
+              <Image
+                src={block.url}
+                alt={block.alt || block.caption || "Blog görseli"}
+                fill
+                unoptimized
+                sizes="(max-width: 768px) 100vw, 760px"
+                className={fitClass(block.fit)}
+              />
+            </div>
+          ) : (
+            <Image
+              src={block.url}
+              alt={block.alt || block.caption || "Blog görseli"}
+              width={1400}
+              height={900}
+              unoptimized
+              className={`h-auto w-full ${fitClass(block.fit)}`}
+            />
+          )}
           {block.caption ? <figcaption className="px-4 py-3 text-center text-xs text-muted-foreground">{block.caption}</figcaption> : null}
         </figure>
       );
@@ -156,6 +307,62 @@ function BlockView({ block }: { block: BlogBlock }) {
           <ButtonLink href={block.url} variant={block.style === "primary" ? "default" : "outline"} size="lg" className="min-h-12">
             {block.label}
           </ButtonLink>
+        </div>
+      );
+    case "callout": {
+      const Icon = CALLOUT_ICON[block.tone];
+      return (
+        <div className={`my-7 flex gap-3 rounded-2xl border p-4 sm:p-5 clear-both ${CALLOUT_CLASS[block.tone]}`}>
+          <Icon className={`mt-0.5 size-5 shrink-0 ${CALLOUT_ICON_CLASS[block.tone]}`} aria-hidden="true" />
+          <div className="min-w-0 flex-1 text-base leading-relaxed">{renderInline(block.content, block.id)}</div>
+        </div>
+      );
+    }
+    case "split": {
+      const ratio = SPLIT_RATIO_CLASS[block.ratio];
+      // Mobile is always a single column in DOM order, so "Görsel Solda"
+      // stacks image-then-text and "Yazı Solda" stacks text-then-image.
+      return (
+        <div
+          className={`my-8 flex flex-col gap-6 clear-both md:flex-row md:gap-8 ${
+            block.valign === "center" ? "md:items-center" : "md:items-start"
+          }`}
+        >
+          <div className={`w-full min-w-0 ${ratio[0]}`}>
+            <SplitPaneView pane={block.left} idPrefix={`${block.id}-l`} />
+          </div>
+          <div className={`w-full min-w-0 ${ratio[1]}`}>
+            <SplitPaneView pane={block.right} idPrefix={`${block.id}-r`} />
+          </div>
+        </div>
+      );
+    }
+    case "gallery":
+      return (
+        <div
+          className={`my-8 grid grid-cols-1 gap-4 clear-both sm:gap-5 ${
+            block.columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"
+          }`}
+        >
+          {block.items.map((item) => (
+            <FramedImage key={item.id} url={item.url} alt={item.alt} caption={item.caption} fit="cover" aspect="4-3" />
+          ))}
+        </div>
+      );
+    case "cta":
+      return (
+        <div className="my-9 rounded-3xl border border-primary/25 bg-primary/5 p-6 text-center clear-both sm:p-8">
+          {block.title ? <h2 className="font-heading text-2xl text-ink">{block.title}</h2> : null}
+          {block.description ? (
+            <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-ink/80">{block.description}</p>
+          ) : null}
+          {block.buttonLabel && block.buttonUrl ? (
+            <div className="mt-6">
+              <ButtonLink href={block.buttonUrl} size="lg" className="min-h-12">
+                {block.buttonLabel}
+              </ButtonLink>
+            </div>
+          ) : null}
         </div>
       );
     default:

@@ -13,7 +13,6 @@ import {
   Bell,
   CheckCheck,
   MessageSquare,
-  Headphones,
   CreditCard,
   AlertCircle,
   ClipboardList,
@@ -218,8 +217,6 @@ export function AdminHeader() {
                       const Icon =
                         item.type === "contact"
                           ? MessageSquare
-                          : item.type === "support"
-                          ? Headphones
                           : item.type === "payment"
                           ? CreditCard
                           : item.type === "homework"
@@ -229,8 +226,6 @@ export function AdminHeader() {
                       const iconBg =
                         item.type === "contact"
                           ? "bg-blue-50 text-blue-700"
-                          : item.type === "support"
-                          ? "bg-purple-50 text-purple-700"
                           : item.type === "payment"
                           ? "bg-amber-50 text-amber-700"
                           : item.type === "homework"

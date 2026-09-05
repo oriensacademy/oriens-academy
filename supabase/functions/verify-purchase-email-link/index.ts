@@ -1,144 +1,47 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { getCorsHeaders, buildJsonResponse } from "../_shared/cors.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-async function computeTokenHmac(rawToken: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const messageData = encoder.encode(`purchase_link:${rawToken}`);
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function getSafeRedirectUrl(locale: string, status: "success" | "expired" | "invalid"): string {
-  const isTr = locale !== "en";
-  const baseUrl = "https://oriens-academy.com";
-  const accountSegment = isTr ? "/tr/hesabim/" : "/en/account/";
-
-  if (status === "success") {
-    return `${baseUrl}${accountSegment}?verified=true`;
-  }
-  return `${baseUrl}${accountSegment}?email_verify_status=${status}`;
-}
-
-Deno.serve(async (req: Request) => {
+/**
+ * DECOMMISSIONED — one-click email verification has been removed.
+ *
+ * Email verification is 6-digit OTP only. This endpoint used to mark a
+ * verification challenge as verified on a plain GET of a tokenised URL, which
+ * meant anything that fetches links in an email — corporate mail security
+ * scanners, link prefetchers, antivirus gateways — consumed the user's challenge
+ * before they ever opened the message. The verifier then fell through to an
+ * older challenge and rejected the code the user was actually holding, reporting
+ * a correct code as wrong and burning an attempt.
+ *
+ * Confirmed in production: audit trail `purchase.email_verified_via_link` fired
+ * 31 seconds after the code was sent, while the user was still typing it.
+ *
+ * The stub stays only so any link already sitting in an inbox lands on a clear
+ * message instead of a 404 or, worse, a still-working bypass. It verifies
+ * nothing. The function should be deleted once old links have aged out
+ * (`supabase functions delete verify-purchase-email-link`).
+ */
+Deno.serve((req: Request) => {
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
-
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  const url = new URL(req.url);
-  const token = (url.searchParams.get("token") || "").trim();
-  const rawLocale = (url.searchParams.get("locale") || "tr").toLowerCase();
-  const locale = rawLocale === "en" ? "en" : "tr";
+  const locale = new URL(req.url).searchParams.get("locale") === "en" ? "en" : "tr";
+  const isTr = locale === "tr";
+  const title = isTr ? "Bu bağlantı artık kullanılmıyor" : "This link is no longer used";
+  const body = isTr
+    ? "E-posta doğrulaması artık yalnızca 6 haneli kod ile yapılmaktadır. Lütfen hesabınıza dönüp size gönderilen 6 haneli doğrulama kodunu giriniz."
+    : "Email verification now uses a 6-digit code only. Please return to your account and enter the 6-digit verification code that was emailed to you.";
 
-  if (!token || token.length < 32 || !/^[0-9a-fA-F]+$/.test(token)) {
-    return Response.redirect(getSafeRedirectUrl(locale, "invalid"), 302);
-  }
-
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const hmacSecret = Deno.env.get("PURCHASE_OTP_HMAC_SECRET") || "";
-
-  if (!supabaseUrl || !serviceRoleKey || !hmacSecret) {
-    console.error("[verify-purchase-email-link] Server config error: missing secrets.");
-    return buildJsonResponse({ error_code: "SERVER_CONFIG_ERROR" }, 500, req);
-  }
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  const tokenHash = await computeTokenHmac(token, hmacSecret);
-  const now = new Date();
-
-  // Find active challenge by token hash (must not be expired and not verified)
-  const { data: challenge, error: challengeError } = await supabaseAdmin
-    .from("purchase_email_verification_challenges")
-    .select("*")
-    .eq("verification_token_hash", tokenHash)
-    .is("verified_at", null)
-    .gt("expires_at", now.toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (challengeError || !challenge) {
-    console.warn("[verify-purchase-email-link] Challenge not found, expired, or already consumed.");
-    return Response.redirect(getSafeRedirectUrl(locale, "expired"), 302);
-  }
-
-  const verifiedAt = now.toISOString();
-
-  // 1. Mark challenge verified (atomically invalidates BOTH the OTP and this link token)
-  const { error: updateChallengeErr } = await supabaseAdmin
-    .from("purchase_email_verification_challenges")
-    .update({
-      verified_at: verifiedAt,
-      updated_at: verifiedAt,
-      attempt_count: (challenge.attempt_count || 0) + 1,
-    })
-    .eq("id", challenge.id);
-
-  if (updateChallengeErr) {
-    console.error("[verify-purchase-email-link] Failed to update challenge:", updateChallengeErr);
-    return Response.redirect(getSafeRedirectUrl(locale, "invalid"), 302);
-  }
-
-  // 2. Update guardian account with verified timestamp
-  await supabaseAdmin
-    .from("guardian_accounts")
-    .update({
-      email: challenge.candidate_email,
-      email_verified_at: verifiedAt,
-      updated_at: verifiedAt,
-    })
-    .eq("user_id", challenge.user_id);
-
-  // 3. Update self student profile
-  await supabaseAdmin
-    .from("student_profiles")
-    .update({
-      email: challenge.candidate_email,
-      updated_at: verifiedAt,
-    })
-    .eq("id", challenge.user_id);
-
-  // 4. Update auth user email if it differs
-  try {
-    const { data: authUserData } = await supabaseAdmin.auth.admin.getUserById(challenge.user_id);
-    if (authUserData?.user?.email && authUserData.user.email.toLowerCase() !== challenge.candidate_email) {
-      await supabaseAdmin.auth.admin.updateUserById(challenge.user_id, {
-        email: challenge.candidate_email,
-        email_confirm: true,
-      });
-    }
-  } catch (authUpdateErr) {
-    console.warn("[verify-purchase-email-link] Auth user email sync warning:", authUpdateErr);
-  }
-
-  // 5. Audit log
-  await supabaseAdmin.from("audit_logs").insert({
-    actor_user_id: challenge.user_id,
-    action: "purchase.email_verified_via_link",
-    entity_type: "purchase_verification",
-    entity_id: challenge.id,
-    metadata: {
-      candidate_email: challenge.candidate_email,
-      verified_at: verifiedAt,
-      method: "one_click_link",
-    },
-  });
-
-  // 6. Safe fixed redirect to checkout with verified=true marker
-  return Response.redirect(getSafeRedirectUrl(locale, "success"), 302);
+  return new Response(
+    `<!doctype html><html lang="${locale}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>${title} | Oriens Academy</title></head>
+<body style="margin:0;background:#F7F6F1;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#10271B;">
+<div style="max-width:520px;margin:12vh auto;padding:32px;background:#fff;border:1px solid #DDE4DC;border-radius:18px;text-align:center;">
+<h1 style="font-size:20px;margin:0 0 12px;">${title}</h1>
+<p style="font-size:14px;line-height:1.65;color:#4A5A50;margin:0;">${body}</p>
+</div></body></html>`,
+    { status: 410, headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" } }
+  );
 });

@@ -2,14 +2,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 
 /**
- * Self-service account deletion/anonymization.
+ * Self-service account deletion.
  *
  * Requires the caller's own bearer token (self-delete only, no service-role/admin
  * bypass). Password is re-verified server-side via signInWithPassword on a throwaway
  * anon-key client -- never trusted from the client alone, never logged, never written
- * anywhere. Only after that succeeds does the caller-scoped RPC run, which performs the
- * actual public-schema mutation (delete or anonymize, decided by whether any
- * purchase/payment history exists) and returns which mode it took.
+ * anywhere. Only after that succeeds does the caller-scoped RPC run, which removes the
+ * entire CRM footprint (profiles, links, lessons, bookings, contact requests, audit
+ * trail) while detaching -- never deleting -- the financial ledger.
+ *
+ * There is no anonymization path any more: an account is either deleted outright or
+ * refused (ACTIVE_ENTITLEMENT_EXISTS). No 'Deleted User' placeholder, no
+ * deleted+<uuid>@deleted.oriens-academy.invalid identity, no disabled auth row is
+ * ever left behind.
  */
 Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
@@ -112,7 +117,7 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  const result = rpcData as { success?: boolean; error_code?: string; mode?: "deleted" | "anonymized" } | null;
+  const result = rpcData as { success?: boolean; error_code?: string; mode?: "deleted" } | null;
 
   if (!result?.success) {
     if (result?.error_code === "ACTIVE_ENTITLEMENT_EXISTS") {
@@ -134,26 +139,22 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // 4. Only now touch the GoTrue auth account, using the service-role client.
+  // 4. Only now remove the GoTrue auth identity, using the service-role client.
+  // The RPC has already released every FK that could block this, so the row is
+  // deleted outright -- no disabled/placeholder auth user is left behind.
   try {
-    if (result.mode === "deleted") {
-      await admin.auth.admin.deleteUser(caller.id);
-    } else {
-      const randomPassword = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      await admin.auth.admin.updateUserById(caller.id, {
-        email: `deleted+${caller.id}@deleted.oriens-academy.invalid`,
-        password: randomPassword,
-        ban_duration: "87600h",
-        user_metadata: {},
-      });
-    }
+    const { error: deleteError } = await admin.auth.admin.deleteUser(caller.id);
+    if (deleteError) throw deleteError;
   } catch (err) {
-    console.error("[delete-student-account] Auth account finalization failed:", err instanceof Error ? err.message : "unknown");
-    // Public-schema data is already anonymized/removed at this point; the auth row
-    // finalization failure is logged for manual follow-up but not surfaced as a
-    // rollback (there is nothing left to roll back to).
+    console.error("[delete-student-account] Auth identity deletion failed:", err instanceof Error ? err.message : "unknown");
+    // Public-schema data is already removed at this point, so the account can no
+    // longer sign in to anything meaningful; ban the identity as a fallback so
+    // login is impossible, and log for manual follow-up.
+    try {
+      await admin.auth.admin.updateUserById(caller.id, { ban_duration: "876000h" });
+    } catch {
+      // Non-fatal.
+    }
   }
 
   // Best-effort session revocation for the token used in this request.

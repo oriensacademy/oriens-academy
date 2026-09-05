@@ -15,10 +15,13 @@ import {
   Video,
   XCircle,
   History,
+  Mail,
   Check,
   CalendarPlus,
   Pencil,
   Trash2,
+  ArrowLeft,
+  X,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
@@ -31,8 +34,10 @@ import {
   cancelStudentLesson,
   completeStudentLesson,
   recordCompletedLesson,
+  sendLessonCompletedEmail,
   listStudentLearning,
   sendLessonMeetingLink,
+  sendPackageNotificationEmail,
   upsertStudentLesson,
   type PackageOption,
   type PackagePurchase,
@@ -47,6 +52,7 @@ import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { canonicalExams } from "@/content/canonical-exams";
 import { adminLessonCopy } from "@/content/admin-lessons";
 import { previewLessonAdjustment } from "@/lib/admin/lesson-adjustments";
+import { useToast } from "@/components/ui/toast";
 
 export type LearningSection = "lessons" | "homework" | "packages" | "payments" | "notes" | "exam_history";
 
@@ -221,12 +227,18 @@ function LessonsPanel({
   onPlan?: () => void;
 }) {
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
-  const [isCreating, setIsCreating] = useState(false);
-  const [isAddingPast, setIsAddingPast] = useState(false);
+  const toast = useToast();
+  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
+  const [lessonTypeSelection, setLessonTypeSelection] = useState<"past" | "future" | null>(null);
   const [completeTarget, setCompleteTarget] = useState<Tables<"student_lessons"> | null>(null);
   const [completionNote, setCompletionNote] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  // Manual email dispatch is tracked per button, not through the panel-wide
+  // `busy` flag: only the clicked button spins and disables, the sheet stays
+  // open, and nothing else on the panel is blocked. `sentEmails` flips the
+  // label to "Tekrar Gonder" once a deliberate first send has succeeded.
+  const [sendingEmailKey, setSendingEmailKey] = useState<string | null>(null);
+  const [sentEmails, setSentEmails] = useState<Set<string>>(new Set());
   const lessonCopy = adminLessonCopy.tr;
 
   const activePackage = purchases.find((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0) || null;
@@ -258,10 +270,18 @@ function LessonsPanel({
     if (busy) return;
     setBusy(true);
     setError("");
-    setActionSuccess(null);
+
+    const lessonIso = new Date(`${pastForm.date}T${pastForm.startTime}:00`).toISOString();
+    const lessonTime = new Date(lessonIso).getTime();
+    if (lessonTime > Date.now() + 5 * 60_000) {
+      setBusy(false);
+      setError("Geçmiş ders için ileri bir tarih veya saat seçilemez. Lütfen geçmiş bir tarih giriniz veya 'Gelecek Ders' seçeneğini kullanınız.");
+      return;
+    }
+
     const res = await recordCompletedLesson({
       studentId: userId,
-      lessonDate: new Date(`${pastForm.date}T${pastForm.startTime}`).toISOString(),
+      lessonDate: lessonIso,
       durationMinutes: pastForm.durationMinutes,
       title: pastForm.title,
       subject: pastForm.subject,
@@ -274,9 +294,10 @@ function LessonsPanel({
       setError(res.error || lessonCopy.failure);
       return;
     }
-    setIsAddingPast(false);
+    setIsLessonModalOpen(false);
+    setLessonTypeSelection(null);
     setPastRequestKey(crypto.randomUUID());
-    setActionSuccess(lessonCopy.success);
+    toast.success("Geçmiş ders başarıyla kaydedildi ve paketten 1 ders hakkı düşüldü.");
     changed();
   }
 
@@ -284,7 +305,13 @@ function LessonsPanel({
     e.preventDefault();
     setBusy(true);
     setError("");
-    setActionSuccess(null);
+
+    const lessonTime = new Date(form.lessonDate).getTime();
+    if (lessonTime < Date.now() - 15 * 60_000) {
+      setBusy(false);
+      setError("Gelecek ders için geçmiş bir tarih veya saat seçilemez. Lütfen ileri bir tarih giriniz veya 'Geçmiş Ders' seçeneğini kullanınız.");
+      return;
+    }
 
     const res = await upsertStudentLesson({
       studentId: userId,
@@ -303,30 +330,31 @@ function LessonsPanel({
     if (!res.success) {
       setError(res.error || "Ders kaydedilemedi.");
     } else {
-      setIsCreating(false);
-      setActionSuccess("Canlı ders başarıyla planlandı.");
-      // If meeting url provided, send link email automatically or inform
-      if (res.success && form.liveMeetingUrl.trim()) {
-        setActionSuccess("Canlı ders başarıyla planlandı. Bağlantıyı öğrenciye gönderebilirsiniz.");
-      }
+      setIsLessonModalOpen(false);
+      setLessonTypeSelection(null);
+      toast.success("Gelecek canlı ders başarıyla planlandı. Ders tamamlandığında paketten 1 hak düşülecektir.");
       changed();
     }
   }
 
+  // MAIL-026: explicit admin action only. Creating a lesson, adding a meeting
+  // link or updating one never sends this mail on its own.
   async function handleSendLink(lesson: Tables<"student_lessons">) {
     if (!lesson.live_meeting_url) {
       setError("Ders için tanımlı bir canlı ders bağlantısı bulunmuyor.");
       return;
     }
-    setBusy(true);
+    const key = `link-${lesson.id}`;
+    if (sendingEmailKey === key) return;
+    setSendingEmailKey(key);
     setError("");
-    setActionSuccess(null);
     const res = await sendLessonMeetingLink(lesson.id);
-    setBusy(false);
+    setSendingEmailKey(null);
     if (!res.success) {
       setError(res.error || "Bağlantı e-postası gönderilemedi.");
     } else {
-      setActionSuccess(`Canlı ders bağlantısı öğrenciye başarıyla gönderildi.`);
+      setSentEmails((prev) => new Set(prev).add(key));
+      toast.success("Canlı ders bağlantısı öğrenciye başarıyla gönderildi.");
       changed();
     }
   }
@@ -335,7 +363,6 @@ function LessonsPanel({
     if (!completeTarget) return;
     setBusy(true);
     setError("");
-    setActionSuccess(null);
 
     const res = await completeStudentLesson({
       lessonId: completeTarget.id,
@@ -350,11 +377,29 @@ function LessonsPanel({
     if (!res.success) {
       setError(res.error || "Ders tamamlanamadı.");
     } else {
-      setActionSuccess(
+      toast.success(
         res.alreadyCompleted
           ? "Ders zaten tamamlanmış olarak işaretliydi."
-          : "Ders başarıyla tamamlandı, paketten 1 ders düşüldü ve hesap sahibine bilgilendirme olayı oluşturuldu."
+          : "Ders başarıyla tamamlandı ve paketten 1 ders düşüldü."
       );
+      changed();
+    }
+  }
+
+  // MAIL-027: explicit admin action only. Lesson completion and the lesson-right
+  // decrement never depend on this mail succeeding.
+  async function handleSendCompletedNotification(lesson: Tables<"student_lessons">) {
+    const key = `completed-${lesson.id}`;
+    if (sendingEmailKey === key) return;
+    setSendingEmailKey(key);
+    setError("");
+    const res = await sendLessonCompletedEmail(lesson.id);
+    setSendingEmailKey(null);
+    if (!res.success) {
+      setError(res.error || "Ders kaydedildi ancak e-posta gönderilemedi.");
+    } else {
+      setSentEmails((prev) => new Set(prev).add(key));
+      toast.success("Ders bilgilendirme e-postası hesap sahibine başarıyla gönderildi.");
       changed();
     }
   }
@@ -364,7 +409,7 @@ function LessonsPanel({
       setBusy(true); setError("");
       const res = await cancelStudentLesson(lessonId, "Yönetici tarafından iptal edildi.");
       setBusy(false);
-      if (!res.success) setError(res.error || "İptal edilemedi."); else { setActionSuccess("Ders iptal edildi."); changed(); }
+      if (!res.success) setError(res.error || "İptal edilemedi."); else { toast.success("Ders iptal edildi."); changed(); }
     }});
   }
 
@@ -377,12 +422,6 @@ function LessonsPanel({
   return (
     <div className="space-y-4">
       {confirmationDialog}
-      {actionSuccess && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 flex items-center justify-between">
-          <span>{actionSuccess}</span>
-          <button onClick={() => setActionSuccess(null)} className="font-bold cursor-pointer">×</button>
-        </div>
-      )}
 
       {/* Top Header & Add Live Lesson Button */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -391,127 +430,335 @@ function LessonsPanel({
           Canlı Dersler ve Ders Geçmişi ({lessons.length})
         </h4>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setIsAddingPast((value) => !value)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-700 bg-emerald-50 px-4 text-xs font-bold text-emerald-900 shadow-xs hover:bg-emerald-100 cursor-pointer"><History className="size-4" />{lessonCopy.pastAction}</button>
           <button
             type="button"
-            onClick={() => onPlan ? onPlan() : setIsCreating(!isCreating)}
-            className="inline-flex items-center gap-1 rounded-lg bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer"
+            onClick={() => {
+              setIsLessonModalOpen((prev) => !prev);
+              setLessonTypeSelection(null);
+              setError("");
+            }}
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-primary bg-primary/10 px-4 text-xs font-bold text-primary shadow-xs hover:bg-primary/15 cursor-pointer"
           >
-            <Plus className="size-3.5" />
-            {onPlan ? "Ders / Görüşme Planla" : isCreating ? "Formu Kapat" : "Ders / Görüşme Planla"}
+            <Plus className="size-4" />
+            {isLessonModalOpen ? "Formu Kapat" : "Ders Tanımla / Planla"}
           </button>
         </div>
       </div>
 
-      {isAddingPast && (
-        <form onSubmit={handleRecordPastLesson} className="grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 text-xs shadow-xs">
-          <div className="font-bold text-ink">{lessonCopy.pastHeading}</div>
-          <div className="rounded-lg bg-white p-3 text-muted-foreground"><strong className="text-ink">{lessonCopy.learner}:</strong> {studentName}<br />{lessonCopy.accountEmail}</div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="font-semibold text-muted-foreground">{lessonCopy.title}<Input required placeholder={lessonCopy.titlePlaceholder} value={pastForm.title} onChange={(value) => setPastForm({ ...pastForm, title: value })} /></label>
-            <label className="font-semibold text-muted-foreground">{lessonCopy.subject}<Input required placeholder={lessonCopy.subjectPlaceholder} value={pastForm.subject} onChange={(value) => setPastForm({ ...pastForm, subject: value })} /></label>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="font-semibold text-muted-foreground">{lessonCopy.date}<input required type="date" value={pastForm.date} onChange={(event) => setPastForm({ ...pastForm, date: event.target.value })} className={field} /></label>
-            <label className="font-semibold text-muted-foreground">{lessonCopy.startTime}<input required type="time" value={pastForm.startTime} onChange={(event) => setPastForm({ ...pastForm, startTime: event.target.value })} className={field} /></label>
-            <label className="font-semibold text-muted-foreground">{lessonCopy.duration}<Input required type="number" placeholder="60" value={String(pastForm.durationMinutes)} onChange={(value) => setPastForm({ ...pastForm, durationMinutes: Number(value) || 60 })} /></label>
-          </div>
-          <label className="font-semibold text-muted-foreground">{lessonCopy.package}<select value={pastForm.packagePurchaseId} onChange={(event) => setPastForm({ ...pastForm, packagePurchaseId: event.target.value })} className={field}><option value="">{lessonCopy.fifo}</option>{purchases.filter((purchase) => purchase.status === "active" && purchase.lessons_used < purchase.lesson_count).map((purchase) => <option key={purchase.id} value={purchase.id}>{purchase.custom_package_name || purchase.pricing_packages?.name_tr || purchase.package_id} ({purchase.lesson_count - purchase.lessons_used} {lessonCopy.remaining})</option>)}</select></label>
-          <label className="font-semibold text-muted-foreground">{lessonCopy.note}<textarea value={pastForm.teacherNote} onChange={(event) => setPastForm({ ...pastForm, teacherNote: event.target.value })} className={field} /></label>
-          <div className="flex justify-end gap-2"><button type="button" onClick={() => setIsAddingPast(false)} className="rounded-lg border border-border px-4 py-2 font-semibold">{lessonCopy.cancel}</button><button disabled={busy} className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50">{busy ? lessonCopy.saving : lessonCopy.save}</button></div>
-        </form>
-      )}
-
-      {/* New Live Lesson Form */}
-      {isCreating && !onPlan && (
-        <form onSubmit={handleCreateLesson} className="grid gap-3 rounded-xl border border-primary/20 bg-surface p-4 text-xs shadow-xs">
-          <div className="font-bold text-ink">Canlı Ders Planla</div>
-          <div className="grid gap-2 sm:grid-cols-2">
+      {isLessonModalOpen && (
+        <div className="grid gap-4 rounded-2xl border border-border bg-surface p-4 sm:p-5 text-xs shadow-md animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-border pb-3">
             <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Ders Başlığı</label>
-              <Input required placeholder="Örn: Birebir Matematik Dersi" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
+              <div className="font-bold text-ink text-sm">Ders Tanımla / Planla</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {studentName} ({lessonCopy.accountEmail})
+              </div>
             </div>
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Konu / Alan</label>
-              <Input required placeholder="Örn: SAT Math / Calculus" value={form.subject} onChange={(v) => setForm({ ...form, subject: v })} />
-            </div>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Sınav Kodu</label>
-              <select
-                value={form.examCode}
-                onChange={(event) => setForm({ ...form, examCode: event.target.value })}
-                className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-              >
-                <option value="">Genel / Sınavsız</option>
-                {canonicalExams.map((exam) => (
-                  <option key={exam.code} value={exam.code}>{exam.displayNameTr}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Tarih & Saat</label>
-              <input
-                required
-                type="datetime-local"
-                value={form.lessonDate}
-                onChange={(e) => setForm({ ...form, lessonDate: e.target.value })}
-                className={field}
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Süre (Dakika)</label>
-              <Input required type="number" placeholder="60" value={String(form.durationMinutes)} onChange={(v) => setForm({ ...form, durationMinutes: Number(v) || 60 })} />
-            </div>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">İlişkili Paket</label>
-              <select
-                value={form.packagePurchaseId}
-                onChange={(e) => setForm({ ...form, packagePurchaseId: e.target.value })}
-                className={field}
-              >
-                <option value="">Paket Seçilmedi (Bağımsız Ders)</option>
-                {purchases
-                  .filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id} ({p.lesson_count - p.lessons_used} ders kaldı)
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Canlı Ders Bağlantısı (Google Meet / Zoom URL)</label>
-              <Input
-                placeholder="https://meet.google.com/abc-defg-hij"
-                value={form.liveMeetingUrl}
-                onChange={(v) => setForm({ ...form, liveMeetingUrl: v })}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Eğitmen Notu / Hazırlık Yönergesi (İsteğe bağlı)</label>
-            <textarea
-              placeholder="Öğrencinin derse hazır getirmesi gereken materyaller veya notlar..."
-              value={form.teacherNote}
-              onChange={(e) => setForm({ ...form, teacherNote: e.target.value })}
-              className={field}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Submit busy={busy}>Dersi Kaydet & Planla</Submit>
             <button
               type="button"
-              onClick={() => setIsCreating(false)}
-              className="inline-flex min-h-9 items-center rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground hover:bg-surface-muted cursor-pointer"
+              onClick={() => {
+                setIsLessonModalOpen(false);
+                setLessonTypeSelection(null);
+              }}
+              className="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:bg-surface-muted cursor-pointer"
             >
-              İptal
+              Kapat
             </button>
           </div>
-        </form>
+
+          {/* Mandatory Conscious Radio Selection */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
+            <label className="text-xs font-bold text-ink block">
+              Ders Türü (Zorunlu Seçim)
+            </label>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <label
+                className={`flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${
+                  lessonTypeSelection === "past"
+                    ? "border-emerald-600 bg-white shadow-xs ring-1 ring-emerald-600"
+                    : "border-border bg-white/70 hover:bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="adminLessonTypeRadio"
+                  value="past"
+                  checked={lessonTypeSelection === "past"}
+                  onChange={() => {
+                    setLessonTypeSelection("past");
+                    setError("");
+                  }}
+                  className="mt-0.5 size-4 text-emerald-700 focus:ring-emerald-700"
+                />
+                <div>
+                  <div className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <History className="size-3.5 text-emerald-700" />
+                    <span>○ Geçmiş Ders</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                    Tamamlanmış bir dersin kaydı oluşturulur. Öğrencinin aktif paketinden 1 ders hakkı düşülür ve hesap sahibine güncel kalan ders hakkı bildirimi iletilir.
+                  </div>
+                </div>
+              </label>
+
+              <label
+                className={`flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all ${
+                  lessonTypeSelection === "future"
+                    ? "border-primary bg-white shadow-xs ring-1 ring-primary"
+                    : "border-border bg-white/70 hover:bg-white"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="adminLessonTypeRadio"
+                  value="future"
+                  checked={lessonTypeSelection === "future"}
+                  onChange={() => {
+                    setLessonTypeSelection("future");
+                    setError("");
+                  }}
+                  className="mt-0.5 size-4 text-primary focus:ring-primary"
+                />
+                <div>
+                  <div className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Video className="size-3.5 text-primary" />
+                    <span>○ Gelecek Ders</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                    Gelecekteki bir canlı ders takvime planlanır. Ders hakkı bu aşamada düşülmez; ders tamamlandığında düşülecek ve bitiş saatinden 1 saat sonra kalan hak bildirimi gönderilecektir.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {lessonTypeSelection === null && (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-4 text-center text-xs text-amber-900">
+              Devam etmek için lütfen yukarıdan <strong>Geçmiş Ders</strong> veya <strong>Gelecek Ders</strong> seçeneğini belirleyiniz.
+            </div>
+          )}
+
+          {/* Form for PAST Lesson */}
+          {lessonTypeSelection === "past" && (
+            <form onSubmit={handleRecordPastLesson} className="grid gap-3 animate-in fade-in duration-150">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="font-semibold text-muted-foreground">
+                  {lessonCopy.title}
+                  <Input
+                    required
+                    placeholder={lessonCopy.titlePlaceholder}
+                    value={pastForm.title}
+                    onChange={(value) => setPastForm({ ...pastForm, title: value })}
+                  />
+                </label>
+                <label className="font-semibold text-muted-foreground">
+                  {lessonCopy.subject}
+                  <Input
+                    required
+                    placeholder={lessonCopy.subjectPlaceholder}
+                    value={pastForm.subject}
+                    onChange={(value) => setPastForm({ ...pastForm, subject: value })}
+                  />
+                </label>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="font-semibold text-muted-foreground">
+                  {lessonCopy.date} (Geçmiş Tarih)
+                  <input
+                    required
+                    type="date"
+                    value={pastForm.date}
+                    onChange={(event) => setPastForm({ ...pastForm, date: event.target.value })}
+                    className={field}
+                  />
+                </label>
+                <label className="font-semibold text-muted-foreground">
+                  {lessonCopy.startTime}
+                  <input
+                    required
+                    type="time"
+                    value={pastForm.startTime}
+                    onChange={(event) => setPastForm({ ...pastForm, startTime: event.target.value })}
+                    className={field}
+                  />
+                </label>
+                <label className="font-semibold text-muted-foreground">
+                  {lessonCopy.duration}
+                  <Input
+                    required
+                    type="number"
+                    placeholder="60"
+                    value={String(pastForm.durationMinutes)}
+                    onChange={(value) => setPastForm({ ...pastForm, durationMinutes: Number(value) || 60 })}
+                  />
+                </label>
+              </div>
+              <label className="font-semibold text-muted-foreground">
+                {lessonCopy.package}
+                <select
+                  value={pastForm.packagePurchaseId}
+                  onChange={(event) => setPastForm({ ...pastForm, packagePurchaseId: event.target.value })}
+                  className={field}
+                >
+                  <option value="">{lessonCopy.fifo}</option>
+                  {purchases
+                    .filter((purchase) => purchase.status === "active" && purchase.lessons_used < purchase.lesson_count)
+                    .map((purchase) => (
+                      <option key={purchase.id} value={purchase.id}>
+                        {purchase.custom_package_name || purchase.pricing_packages?.name_tr || purchase.package_id} (
+                        {purchase.lesson_count - purchase.lessons_used} {lessonCopy.remaining})
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="font-semibold text-muted-foreground">
+                {lessonCopy.note}
+                <textarea
+                  placeholder="Ders notu veya eğitmen geri bildirimi..."
+                  value={pastForm.teacherNote}
+                  onChange={(event) => setPastForm({ ...pastForm, teacherNote: event.target.value })}
+                  className={field}
+                />
+              </label>
+              <p className="rounded-xl border border-border bg-surface-muted/60 p-3 text-[11px] leading-relaxed text-muted-foreground">
+                Ders kaydedildiğinde hesap sahibine e-posta gönderilmez. İsterseniz kayıttan
+                sonra ders kartındaki <strong>Ders Bilgilendirme E-postası Gönder</strong>
+                {" "}butonunu kullanabilirsiniz.
+              </p>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLessonModalOpen(false)}
+                  className="rounded-lg border border-border px-4 py-2 font-semibold hover:bg-surface-muted cursor-pointer"
+                >
+                  {lessonCopy.cancel}
+                </button>
+                <button
+                  disabled={busy}
+                  className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50 cursor-pointer"
+                >
+                  {busy ? lessonCopy.saving : "Geçmiş Dersi Kaydet"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Form for FUTURE Lesson */}
+          {lessonTypeSelection === "future" && (
+            <form onSubmit={handleCreateLesson} className="grid gap-3 animate-in fade-in duration-150">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Ders Başlığı</label>
+                  <Input
+                    required
+                    placeholder="Örn: Birebir Matematik Dersi"
+                    value={form.title}
+                    onChange={(v) => setForm({ ...form, title: v })}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Konu / Alan</label>
+                  <Input
+                    required
+                    placeholder="Örn: SAT Math / Calculus"
+                    value={form.subject}
+                    onChange={(v) => setForm({ ...form, subject: v })}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Sınav Kodu</label>
+                  <select
+                    value={form.examCode}
+                    onChange={(event) => setForm({ ...form, examCode: event.target.value })}
+                    className="min-h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  >
+                    <option value="">Genel / Sınavsız</option>
+                    {canonicalExams.map((exam) => (
+                      <option key={exam.code} value={exam.code}>
+                        {exam.displayNameTr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Tarih & Saat (Gelecek Tarih)
+                  </label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={form.lessonDate}
+                    onChange={(e) => setForm({ ...form, lessonDate: e.target.value })}
+                    className={field}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Süre (Dakika)</label>
+                  <Input
+                    required
+                    type="number"
+                    placeholder="60"
+                    value={String(form.durationMinutes)}
+                    onChange={(v) => setForm({ ...form, durationMinutes: Number(v) || 60 })}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">İlişkili Paket</label>
+                  <select
+                    value={form.packagePurchaseId}
+                    onChange={(e) => setForm({ ...form, packagePurchaseId: e.target.value })}
+                    className={field}
+                  >
+                    <option value="">Paket Seçilmedi (Bağımsız Ders)</option>
+                    {purchases
+                      .filter((p) => p.status === "active" && (p.lesson_count || 0) - (p.lessons_used || 0) > 0)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.pricing_packages?.name_tr || p.pricing_packages?.name_en || p.package_id} (
+                          {p.lesson_count - p.lessons_used} ders kaldı)
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                    Canlı Ders Bağlantısı (Google Meet / Zoom URL)
+                  </label>
+                  <Input
+                    placeholder="https://meet.google.com/abc-defg-hij"
+                    value={form.liveMeetingUrl}
+                    onChange={(v) => setForm({ ...form, liveMeetingUrl: v })}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                  Eğitmen Notu / Hazırlık Yönergesi (İsteğe bağlı)
+                </label>
+                <textarea
+                  placeholder="Öğrencinin derse hazır getirmesi gereken materyaller veya notlar..."
+                  value={form.teacherNote}
+                  onChange={(e) => setForm({ ...form, teacherNote: e.target.value })}
+                  className={field}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLessonModalOpen(false)}
+                  className="rounded-lg border border-border px-4 py-2 font-semibold hover:bg-surface-muted cursor-pointer"
+                >
+                  {lessonCopy.cancel}
+                </button>
+                <Submit busy={busy}>Gelecek Dersi Planla</Submit>
+              </div>
+            </form>
+          )}
+        </div>
       )}
 
       {/* Coordinated In-Place Action View: Marking Lesson Completed */}
@@ -526,9 +773,10 @@ function LessonsPanel({
               type="button"
               disabled={busy}
               onClick={() => setCompleteTarget(null)}
-              className="rounded-lg border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 cursor-pointer"
             >
-              ← Vazgeç
+              <ArrowLeft className="size-3.5" />
+              Vazgeç
             </button>
           </div>
           <p className="text-xs text-muted-foreground leading-5">
@@ -536,7 +784,7 @@ function LessonsPanel({
           </p>
           <div className="rounded-xl bg-white p-3 text-xs space-y-1 text-ink/80 border border-emerald-100 shadow-xs">
             <div>• Öğrencinin ilişkili paketinden <strong>1 ders hakkı güvenli şekilde düşülecektir</strong>.</div>
-            <div>• <strong>Hesap sahibine</strong> ilişki türüne uygun ders tamamlandı e-postası iletilecektir.</div>
+            <div>• E-posta bildirimi yalnızca aşağıdaki seçenek işaretlenirse gönderilir (Varsayılan: Kapalı).</div>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Tamamlama / Değerlendirme Notu (İsteğe Bağlı)</label>
@@ -547,6 +795,11 @@ function LessonsPanel({
               className={`${field} min-h-16`}
             />
           </div>
+          <p className="rounded-xl border border-border bg-surface-muted/60 p-3 text-[11px] leading-relaxed text-muted-foreground">
+            Tamamlama işlemi hesap sahibine bilgilendirme e-postası göndermez. Ders
+            tamamlandıktan sonra ders kartındaki
+            {" "}<strong>Ders Bilgilendirme E-postası Gönder</strong> butonunu kullanabilirsiniz.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
@@ -628,7 +881,7 @@ function LessonsPanel({
                         <a
                           href={l.live_meeting_url}
                           target="_blank"
-                          rel="noreferrer"
+                          rel="noopener noreferrer"
                           className="font-mono text-primary underline break-all flex items-center gap-1 hover:text-forest"
                         >
                           {l.live_meeting_url}
@@ -647,7 +900,7 @@ function LessonsPanel({
                         <a
                           href={l.live_meeting_url}
                           target="_blank"
-                          rel="noreferrer"
+                          rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 rounded bg-ink px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-forest"
                         >
                           <ExternalLink className="size-3" />
@@ -665,12 +918,16 @@ function LessonsPanel({
                       </span>
                       <button
                         type="button"
-                        disabled={busy}
-                        onClick={() => handleSendLink(l)}
+                        disabled={sendingEmailKey === `link-${l.id}`}
+                        onClick={() => void handleSendLink(l)}
                         className="inline-flex items-center gap-1 text-primary font-semibold hover:underline cursor-pointer disabled:opacity-50"
                       >
                         <Send className="size-3" />
-                        {l.meeting_link_sent_at ? "Bağlantıyı Tekrar Gönder" : "Linki Öğrenciye E-posta İle Gönder"}
+                        {sendingEmailKey === `link-${l.id}`
+                          ? "Gönderiliyor…"
+                          : l.meeting_link_sent_at || sentEmails.has(`link-${l.id}`)
+                            ? "Linki Öğrenciye Tekrar Gönder"
+                            : "Linki Öğrenciye E-posta İle Gönder"}
                       </button>
                     </div>
                   </div>
@@ -703,6 +960,27 @@ function LessonsPanel({
                     >
                       <XCircle className="size-3.5" />
                       İptal Et
+                    </button>
+                  </div>
+                )}
+
+                {/* Actions for completed lessons: Manual email dispatch on-demand */}
+                {isCompleted && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 pt-2 border-t border-border/60">
+                    <button
+                      type="button"
+                      disabled={sendingEmailKey === `completed-${l.id}`}
+                      onClick={() => void handleSendCompletedNotification(l)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 cursor-pointer shadow-2xs transition-colors"
+                    >
+                      <Send className="size-3 text-emerald-700" />
+                      <span>
+                        {sendingEmailKey === `completed-${l.id}`
+                          ? "Gönderiliyor…"
+                          : sentEmails.has(`completed-${l.id}`)
+                            ? "Bilgilendirme E-postasını Tekrar Gönder"
+                            : "Ders Bilgilendirme E-postası Gönder"}
+                      </span>
                     </button>
                   </div>
                 )}
@@ -865,7 +1143,7 @@ function HomeworkReview({
               className="inline-flex items-center gap-1 font-semibold text-primary underline"
               href={fileUrl}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               <ExternalLink className="size-3" />
               <span>Bağlantıyı Aç</span>
@@ -945,8 +1223,39 @@ function PackagePanel({
   setError: (v: string) => void;
   changed: () => void;
 }) {
+  const toast = useToast();
   const today = new Date().toISOString().slice(0, 10);
   const [activeModal, setActiveModal] = useState<"none" | "assign_package" | "adjust_lessons">("none");
+  // Manuel bilgilendirme e-postaları: her buton yalnız kendi yüklenme durumunu
+  // kullanır, sayfa yenilenmez ve panel kapanmaz.
+  const [mailSendingKey, setMailSendingKey] = useState<string | null>(null);
+  const [mailSentKeys, setMailSentKeys] = useState<Set<string>>(new Set());
+
+  async function sendPackageMail(purchaseId: string, kind: "package_assigned" | "lesson_rights") {
+    const key = `${purchaseId}:${kind}`;
+    if (mailSendingKey === key) return;
+    setMailSendingKey(key);
+    setError("");
+    const res = await sendPackageNotificationEmail(purchaseId, kind);
+    setMailSendingKey(null);
+    if (!res.success) {
+      toast.error(res.error || "Bilgilendirme e-postası gönderilemedi.");
+      return;
+    }
+    setMailSentKeys((prev) => new Set(prev).add(key));
+    toast.success(
+      kind === "package_assigned"
+        ? "Paket bilgilendirme e-postası hesap sahibine gönderildi."
+        : "Ders hakkı güncelleme e-postası hesap sahibine gönderildi."
+    );
+  }
+
+  function mailButtonLabel(purchaseId: string, kind: "package_assigned" | "lesson_rights") {
+    const key = `${purchaseId}:${kind}`;
+    const base = kind === "package_assigned" ? "Paket Bilgilendirme E-postası" : "Ders Hakkı Güncelleme E-postası";
+    if (mailSendingKey === key) return "Gönderiliyor…";
+    return mailSentKeys.has(key) ? `${base}nı Tekrar Gönder` : `${base} Gönder`;
+  }
   const [targetPurchaseId, setTargetPurchaseId] = useState<string>("");
   const [adjustmentMode, setAdjustmentMode] = useState<"add" | "remove">("add");
 
@@ -1035,6 +1344,7 @@ function PackagePanel({
     } else {
       setActiveModal("none");
       changed();
+      toast.success("Paket başarıyla tanımlandı.");
     }
   }
 
@@ -1066,6 +1376,12 @@ function PackagePanel({
     } else {
       setActiveModal("none");
       changed();
+      const remaining = typeof res.newRemaining === "number" ? res.newRemaining : resultingRemaining;
+      toast.success(
+        adjustmentMode === "add"
+          ? `Ders hakkı ${adjustmentAmount} adet artırıldı. Yeni kalan hak: ${remaining}.`
+          : `Ders hakkı ${adjustmentAmount} adet azaltıldı. Yeni kalan hak: ${remaining}.`
+      );
     }
   }
 
@@ -1102,7 +1418,7 @@ function PackagePanel({
                 onClick={() => setActiveModal("none")}
                 className="rounded-xl border border-border p-1.5 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </div>
 
@@ -1250,8 +1566,10 @@ function PackagePanel({
                 />
               </div>
 
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] leading-relaxed text-emerald-900">
-                Paket kaydedildikten sonra hesap sahibinin bildirimi güvenli outbox üzerinden otomatik olarak işleme alınır.
+              <p className="rounded-xl border border-border bg-surface-muted/60 p-3 text-[11px] leading-relaxed text-muted-foreground">
+                Paket kaydedildiğinde hesap sahibine e-posta gönderilmez. Kayıttan sonra paket
+                kartındaki <strong>Paket Bilgilendirme E-postası Gönder</strong> butonuyla
+                dilediğiniz zaman bilgilendirme yapabilirsiniz.
               </p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-border">
@@ -1288,7 +1606,7 @@ function PackagePanel({
                 onClick={() => setActiveModal("none")}
                 className="rounded-xl border border-border p-1.5 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer"
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </div>
 
@@ -1516,6 +1834,26 @@ function PackagePanel({
                         >
                           <Minus className="size-3" />
                           Ders Hakkı Azalt
+                        </button>
+                        {/* Manuel bilgilendirme: paket tanımlama ve hak
+                            değişikliği kendi başına e-posta göndermez. */}
+                        <button
+                          type="button"
+                          disabled={mailSendingKey === `${p.id}:package_assigned`}
+                          onClick={() => void sendPackageMail(p.id, "package_assigned")}
+                          className="inline-flex items-center gap-1 rounded-xl border border-border bg-white px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer transition-colors"
+                        >
+                          <Mail className="size-3 text-primary" />
+                          {mailButtonLabel(p.id, "package_assigned")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={mailSendingKey === `${p.id}:lesson_rights`}
+                          onClick={() => void sendPackageMail(p.id, "lesson_rights")}
+                          className="inline-flex items-center gap-1 rounded-xl border border-border bg-white px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-muted disabled:opacity-50 cursor-pointer transition-colors"
+                        >
+                          <Mail className="size-3 text-primary" />
+                          {mailButtonLabel(p.id, "lesson_rights")}
                         </button>
                       </div>
                     </div>
@@ -2158,7 +2496,7 @@ function AdminExamHistoryPanel({ userId }: { userId: string }) {
                 onClick={() => setSelectedAttempt(null)}
                 className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted"
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </div>
 

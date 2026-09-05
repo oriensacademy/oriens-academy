@@ -7,17 +7,46 @@ import type {
 } from "./types";
 import type { TablesUpdate } from "@/types/database.types";
 
+export function mapCouponErrorMessage(errorCode: string, locale: "tr" | "en" = "tr"): string {
+  const isTr = locale === "tr";
+  switch (errorCode) {
+    case "COUPON_NOT_FOUND":
+      return isTr ? "Kupon kodu geçersiz." : "Invalid coupon code.";
+    case "COUPON_INACTIVE":
+      return isTr ? "Bu kupon şu anda aktif değil." : "This coupon is currently inactive.";
+    case "COUPON_NOT_STARTED":
+      return isTr ? "Bu kuponun geçerlilik tarihi henüz başlamadı." : "This coupon is not yet valid.";
+    case "COUPON_EXPIRED":
+      return isTr ? "Bu kuponun kullanım süresi dolmuş." : "This coupon has expired.";
+    case "USAGE_LIMIT_REACHED":
+      return isTr ? "Bu kuponun kullanım limiti dolmuş." : "This coupon's total usage limit has been reached.";
+    case "PACKAGE_NOT_ELIGIBLE":
+      return isTr ? "Bu kupon bu paket için kullanılamaz." : "This coupon cannot be used for this package.";
+    case "MINIMUM_AMOUNT_NOT_MET":
+      return isTr ? "Bu kupon için minimum sepet tutarı sağlanamadı." : "The minimum order amount for this coupon was not met.";
+    case "STUDENT_LIMIT_REACHED":
+      return isTr ? "Bu kuponu daha önce kullandınız." : "You have already used this coupon.";
+    case "FIRST_PURCHASE_ONLY":
+      return isTr ? "Bu kupon yalnızca ilk paket alımında geçerlidir." : "This coupon is only valid for first purchases.";
+    case "EMPTY_CODE":
+      return isTr ? "Lütfen bir kupon kodu girin." : "Please enter a coupon code.";
+    default:
+      return isTr ? "Kupon kodu geçersiz." : "The coupon code is invalid.";
+  }
+}
+
 export async function validateCoupon(
   code: string,
   packageId: string,
-  studentUserId?: string
+  studentUserId?: string,
+  locale: "tr" | "en" = "tr"
 ): Promise<CouponValidationResult> {
   const cleanCode = code.trim().toUpperCase();
   if (!cleanCode) {
     return {
       valid: false,
       error_code: "EMPTY_CODE",
-      message: "Lütfen bir indirim kuponu girin.",
+      message: mapCouponErrorMessage("EMPTY_CODE", locale),
     };
   }
 
@@ -32,19 +61,73 @@ export async function validateCoupon(
       return {
         valid: false,
         error_code: "RPC_ERROR",
-        message: error.message || "Kupon doğrulanamadı.",
+        message: mapCouponErrorMessage("COUPON_NOT_FOUND", locale),
       };
     }
 
-    return (data as unknown) as CouponValidationResult;
+    const res = data as unknown as CouponValidationResult;
+    if (!res.valid) {
+      return {
+        valid: false,
+        error_code: res.error_code,
+        message: mapCouponErrorMessage(res.error_code, locale),
+      };
+    }
+
+    return res;
   } catch {
     return {
       valid: false,
       error_code: "NETWORK_ERROR",
-      message: "Kupon doğrulanırken bir hata oluştu.",
+      message: locale === "tr" ? "Kupon doğrulanırken bir hata oluştu." : "A network error occurred while validating coupon.",
     };
   }
 }
+
+/**
+ * Validates a coupon against all packages currently in the cart.
+ * If any package is eligible, returns that validation result.
+ */
+export async function validateCartCoupon(
+  code: string,
+  packageIds: string[],
+  studentUserId?: string,
+  locale: "tr" | "en" = "tr"
+): Promise<CouponValidationResult> {
+  const cleanCode = code.trim().toUpperCase();
+  if (!cleanCode) {
+    return {
+      valid: false,
+      error_code: "EMPTY_CODE",
+      message: mapCouponErrorMessage("EMPTY_CODE", locale),
+    };
+  }
+
+  if (!packageIds.length) {
+    return {
+      valid: false,
+      error_code: "EMPTY_CART",
+      message: locale === "tr" ? "Sepetinizde paket bulunmuyor." : "There are no packages in your cart.",
+    };
+  }
+
+  let lastFailure: CouponValidationResult = {
+    valid: false,
+    error_code: "COUPON_NOT_FOUND",
+    message: mapCouponErrorMessage("COUPON_NOT_FOUND", locale),
+  };
+
+  for (const pkgId of packageIds) {
+    const result = await validateCoupon(cleanCode, pkgId, studentUserId, locale);
+    if (result.valid) {
+      return result;
+    }
+    lastFailure = result;
+  }
+
+  return lastFailure;
+}
+
 
 export async function listAdminCoupons(): Promise<{
   data: DiscountCoupon[];

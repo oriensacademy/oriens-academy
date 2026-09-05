@@ -2,16 +2,15 @@
 
 import { useState, useEffect, useRef, useTransition, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, Calendar, RefreshCcw, Award, Mail, ArrowRight, UserPlus, ShieldCheck } from "lucide-react";
+import { CheckCircle2, XCircle, Calendar, RefreshCcw, Award } from "lucide-react";
 import type { TestResult, ExamTest, QuestionBreakdownItem, TopicResult } from "@/data/exam-tests";
 import { getExamTestCopy } from "@/content/exam-test";
 import type { Locale } from "@/content/dictionaries";
 import { useAccount } from "@/lib/auth/account-context";
 import { submitContact } from "@/lib/contact/api";
-import { saveStudentExamAttempt, sendExamResultEmail, type QuestionSnapshot } from "@/lib/student/exam-history";
-import { localizedPath } from "@/lib/routes";
+import { saveStudentExamAttempt, type QuestionSnapshot } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "./ExamQuestionReview";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 const emptySubscribe = () => () => {};
 function useIsHydrated() {
@@ -58,33 +57,21 @@ export function ExamTestResults({
   onChangeExam,
 }: {
   locale: Locale;
-  result: TestResult;
-  testData?: ExamTest | null;
+  result?: TestResult;
+  testData?: ExamTest;
   onRetry: () => void;
   onChangeExam: () => void;
 }) {
-  const router = useRouter();
   const copy = getExamTestCopy(locale);
   const isTr = locale === "tr";
   const { user } = useAccount();
-
-  const safeResult = normalizeTestResult(result);
-  const consultationRef = useRef<HTMLElement>(null);
-
   const mounted = useIsHydrated();
+  const consultationRef = useRef<HTMLDivElement>(null);
+  const safeResult = normalizeTestResult(result);
 
   // Auto-save state for authenticated students
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveAttemptedRef = useRef(false);
-
-  // Email Report Modal State
-  const [showEmailModal, setShowEmailModal] = useState(false);
-  const [reportEmail, setReportEmail] = useState(() => user?.email || "");
-  const [reportName, setReportName] = useState(() => user?.user_metadata?.full_name || "");
-  const [emailSuccess, setEmailSuccess] = useState(false);
-  const [claimToken, setClaimToken] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState("");
-  const [isSendingEmail, startEmailTransition] = useTransition();
 
   // Consultation Modal State
   const [showConsultModal, setShowConsultModal] = useState(false);
@@ -94,17 +81,12 @@ export function ExamTestResults({
   const [consultError, setConsultError] = useState("");
   const [isSendingConsult, startConsultTransition] = useTransition();
 
-  // Body scroll locking when any modal is open
+  // Body scroll locking when consultation modal is open
   useEffect(() => {
-    if (showEmailModal || showConsultModal) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [showEmailModal, showConsultModal]);
+    if (!showConsultModal) return;
+    const unlockBodyScroll = lockBodyScroll();
+    return unlockBodyScroll;
+  }, [showConsultModal]);
 
   // Build question snapshots
   const questionSnapshots: QuestionSnapshot[] = safeResult.breakdown.map((b: QuestionBreakdownItem) => {
@@ -181,55 +163,6 @@ export function ExamTestResults({
       : accuracy >= 40
         ? copy.performance.moderate
         : copy.performance.foundation;
-
-  // Handle Email Report submission
-  const handleSendEmailReport = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reportEmail.trim() || !reportEmail.includes("@")) {
-      setEmailError(isTr ? "Lütfen geçerli bir e-posta adresi girin." : "Please enter a valid email address.");
-      return;
-    }
-
-    setEmailError("");
-    startEmailTransition(async () => {
-      const res = await sendExamResultEmail({
-        email: reportEmail.trim().toLowerCase(),
-        fullName: reportName.trim() || undefined,
-        examCode: safeResult.examCode,
-        locale,
-        result: safeResult,
-        questionSnapshots,
-      });
-
-      if (res.success) {
-        setEmailSuccess(true);
-        if (res.claimToken) {
-          setClaimToken(res.claimToken);
-        }
-      } else {
-        setEmailError(isTr ? "E-posta gönderilemedi, lütfen tekrar deneyin." : "Could not send email, please retry.");
-      }
-    });
-  };
-
-  // Handle Registration Conversion Click
-  const handleProceedToRegistration = () => {
-    try {
-      if (typeof window !== "undefined") {
-        if (reportEmail.trim()) {
-          sessionStorage.setItem("oriens.pendingSignupEmail", reportEmail.trim().toLowerCase());
-        }
-        if (claimToken) {
-          sessionStorage.setItem("oriens.pendingExamClaimToken", claimToken);
-        }
-      }
-    } catch {
-      // safe fallback
-    }
-    setShowEmailModal(false);
-    const signupPath = localizedPath("login", locale) + "?mode=register";
-    router.push(signupPath);
-  };
 
   // Handle Consultation submit
   const handleSendToConsultant = (e: React.FormEvent) => {
@@ -485,23 +418,7 @@ export function ExamTestResults({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 shrink-0 items-stretch sm:items-center">
-            {/* Primary Action: Email Report / Send to Advisor */}
-            <button
-              type="button"
-              onClick={() => {
-                setReportName(user?.user_metadata?.full_name || "");
-                setReportEmail(user?.email || "");
-                setShowEmailModal(true);
-                setEmailSuccess(false);
-                setEmailError("");
-              }}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-forest transition-colors cursor-pointer whitespace-nowrap"
-            >
-              <Mail className="size-4 shrink-0" />
-              <span>{user?.id ? (isTr ? "Sonuçlarımı Danışmana Gönder" : "Send Results to Advisor") : copy.emailReportCTA}</span>
-            </button>
-
-            {/* Secondary Action: Consultation */}
+            {/* Consultation CTA */}
             <button
               type="button"
               onClick={() => {
@@ -511,166 +428,14 @@ export function ExamTestResults({
                 setConsultSuccess(false);
                 setConsultError("");
               }}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white px-6 text-xs sm:text-sm font-semibold text-ink shadow-xs hover:bg-surface-muted transition-colors cursor-pointer whitespace-nowrap"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-forest transition-colors cursor-pointer whitespace-nowrap"
             >
-              <Calendar className="size-4 text-primary shrink-0" />
+              <Calendar className="size-4 shrink-0" />
               <span>{copy.requestConsultation}</span>
             </button>
           </div>
         </div>
       </section>
-
-      {/* Email Report Modal (Root React Portal) */}
-      {showEmailModal && mounted && typeof document !== "undefined" && createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-[999] overflow-y-auto"
-        >
-          {/* Full Viewport Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity"
-            onClick={() => setShowEmailModal(false)}
-            aria-hidden="true"
-          />
-
-          {/* Centered Modal Container */}
-          <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
-            <div className="relative my-auto w-full max-w-md rounded-3xl border border-[#DDE4DC] bg-white p-6 sm:p-8 text-left shadow-2xl animate-in fade-in zoom-in duration-200">
-              {emailSuccess ? (
-                <div className="text-center py-2 space-y-4">
-                  <div className="size-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="size-7" />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-bold text-ink">{copy.emailReportSentTitle}</h4>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                      {copy.emailReportSentDesc}
-                    </p>
-                  </div>
-
-                  {/* Anonymous Visitor Post-Email Registration Conversion Card */}
-                  {!user?.id && (
-                    <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-3">
-                      <div className="flex items-center gap-2 text-primary font-bold text-xs">
-                        <UserPlus className="size-4" />
-                        <span>{copy.conversionTitle}</span>
-                      </div>
-                      <div className="text-xs text-ink/80 whitespace-pre-line leading-relaxed">
-                        {copy.conversionDesc}
-                      </div>
-
-                      <div className="pt-2 flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={handleProceedToRegistration}
-                          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest transition-colors cursor-pointer"
-                        >
-                          {copy.createAccountBtn}
-                          <ArrowRight className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowEmailModal(false)}
-                          className="w-full py-2 text-xs font-medium text-muted-foreground hover:text-ink transition-colors cursor-pointer"
-                        >
-                          {copy.notNowBtn}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {user?.id && (
-                    <button
-                      type="button"
-                      onClick={() => setShowEmailModal(false)}
-                      className="mt-2 w-full rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer"
-                    >
-                      {isTr ? "Kapat" : "Close"}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <form onSubmit={handleSendEmailReport} className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
-                      <Mail className="size-4" />
-                      <span>{user?.id ? (isTr ? "Danışmana Gönder" : "Send to Advisor") : copy.emailReportCTA}</span>
-                    </div>
-                    <h4 className="text-lg font-bold text-ink">{copy.emailReportModalTitle}</h4>
-                    <p className="mt-1 text-xs text-muted-foreground">{copy.emailReportModalDesc}</p>
-                  </div>
-
-                  {emailError && (
-                    <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800">
-                      {emailError}
-                    </div>
-                  )}
-
-                  {user?.id ? (
-                    <div className="rounded-2xl border border-primary/20 bg-[#F4F6F0] p-4 text-left space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
-                        <ShieldCheck className="size-3.5" />
-                        <span>{isTr ? "Doğrulanmış Hesap E-postası" : "Verified Account Email"}</span>
-                      </div>
-                      <p className="text-sm font-bold text-ink">{user.email}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {isTr
-                          ? "Sınav analiz raporunuz ve detaylı soru çözümleri doğrudan hesabınıza bağlı e-posta adresine iletilecektir."
-                          : "Your exam diagnostic report and detailed question solutions will be delivered directly to your verified account email."}
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div>
-                        <label className="block text-xs font-semibold text-ink">{copy.fullName} ({isTr ? "İsteğe Bağlı" : "Optional"})</label>
-                        <input
-                          type="text"
-                          value={reportName}
-                          onChange={(e) => setReportName(e.target.value)}
-                          placeholder={isTr ? "Adınız Soyadınız" : "Your full name"}
-                          className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-ink">{copy.email}</label>
-                        <input
-                          type="email"
-                          required
-                          value={reportEmail}
-                          onChange={(e) => setReportEmail(e.target.value)}
-                          placeholder={isTr ? "E-posta adresiniz" : "Your email address"}
-                          className="mt-1.5 min-h-10 w-full rounded-lg border border-input px-3 text-sm"
-                        />
-                      </div>
-
-                    </>
-                  )}
-
-                  <div className="mt-6 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowEmailModal(false)}
-                      className="flex-1 rounded-xl border border-border py-2.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"
-                    >
-                      {copy.cancelBtn}
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSendingEmail}
-                      className="flex-1 rounded-xl bg-ink py-2.5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer"
-                    >
-                      {isSendingEmail ? copy.sending : (isTr ? "Raporu Gönder" : "Send Report")}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Consultation Modal (Root React Portal) */}
       {showConsultModal && mounted && typeof document !== "undefined" && createPortal(

@@ -21,6 +21,17 @@ interface StudentOnboardingPersonalizationProps {
 
 const ALL_UNIVERSITIES = Object.keys(VERIFIED_OFFICIAL_UNIVERSITY_URLS);
 
+const DESTINATION_FLAGS: Record<string, string> = {
+  UK: "🇬🇧",
+  USA: "🇺🇸",
+  CAN: "🇨🇦",
+  ITA: "🇮🇹",
+  NLD: "🇳🇱",
+  DEU: "🇩🇪",
+  CHE: "🇨🇭",
+  FRA: "🇫🇷",
+};
+
 export function StudentOnboardingPersonalization({
   studentId,
   initialExams = [],
@@ -118,9 +129,10 @@ export function StudentOnboardingPersonalization({
   };
 
   return (
-    <div className="mx-auto w-full max-w-2xl rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8 md:p-10">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5 text-xs font-bold tracking-[0.2em] text-primary uppercase">
+    <div className="mx-auto flex max-h-[min(90dvh,820px)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-editorial">
+      {/* Sticky Header - Always visible on mobile, never cut off */}
+      <div className="flex shrink-0 items-center justify-between border-b border-border/80 bg-surface/95 px-5 py-3.5 backdrop-blur-md sm:px-8 sm:py-4">
+        <div className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-primary uppercase">
           <Sparkles className="size-4" />
           <span>{isTr ? "Kişiselleştirme" : "Personalization"}</span>
         </div>
@@ -129,22 +141,24 @@ export function StudentOnboardingPersonalization({
             type="button"
             onClick={onClose || onSkip}
             aria-label={isTr ? "Kapat" : "Close"}
-            className="rounded-xl p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink transition-colors cursor-pointer"
+            className="flex size-9 items-center justify-center rounded-xl p-1.5 text-muted-foreground hover:bg-surface-muted hover:text-ink transition-colors cursor-pointer"
           >
-            <X className="size-4" />
+            <X className="size-5" />
           </button>
         )}
       </div>
 
-      <h1 className="mt-3 font-heading text-2xl text-ink sm:text-3xl">
-        {isTr ? "Eğitim Deneyiminizi Kişiselleştirin" : "Personalize Your Academic Journey"}
-      </h1>
+      {/* Scrollable Body */}
+      <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-8 sm:py-6">
+        <h1 className="font-heading text-xl sm:text-2xl md:text-3xl text-ink">
+          {isTr ? "Eğitim Deneyiminizi Kişiselleştirin" : "Personalize Your Academic Journey"}
+        </h1>
 
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        {isTr
-          ? "Hedeflediğiniz sınavları ve üniversite ülkelerini seçerek size özel ders programı ve içerik önerileri oluşturmamıza yardımcı olun (Birden fazla seçebilirsiniz)."
-          : "Select your target exams and destination countries to help us tailor lesson plans and recommendations for you (Multiple selections supported)."}
-      </p>
+        <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+          {isTr
+            ? "Hedeflediğiniz sınavları ve üniversite ülkelerini seçerek size özel ders programı ve içerik önerileri oluşturmamıza yardımcı olun (Birden fazla seçebilirsiniz)."
+            : "Select your target exams and destination countries to help us tailor lesson plans and recommendations for you (Multiple selections supported)."}
+        </p>
 
       {/* Target Exams Multi-Selection */}
       <div className="mt-8">
@@ -198,23 +212,31 @@ export function StudentOnboardingPersonalization({
         <div className="mt-3 flex flex-wrap gap-2">
           {SUPPORTED_DESTINATIONS.map((dest) => {
             const isSelected = selectedCountries.includes(dest.id);
+            const flag = DESTINATION_FLAGS[dest.id];
             return (
               <button
                 key={dest.id}
                 type="button"
                 onClick={() => toggleCountry(dest.id)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 ${
+                className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 select-none cursor-pointer ${
                   isSelected
                     ? "border-emerald-600 bg-emerald-50 text-emerald-900 shadow-xs ring-1 ring-emerald-600/20"
                     : "border-border bg-background text-foreground hover:border-emerald-600/40 hover:bg-surface-muted"
                 }`}
               >
-                {isSelected ? (
+                {flag ? (
+                  <span className="text-sm leading-none" aria-hidden="true">
+                    {flag}
+                  </span>
+                ) : isSelected ? (
                   <Check className="size-3.5 text-emerald-700" />
                 ) : (
                   <span className="size-3.5 rounded-full border border-border" />
                 )}
                 <span>{isTr ? dest.name_tr : dest.name_en}</span>
+                {isSelected && flag && (
+                  <Check className="size-3 text-emerald-700 ml-0.5" />
+                )}
               </button>
             );
           })}
@@ -334,12 +356,14 @@ export function StudentOnboardingPersonalization({
         </div>
       )}
 
-      {/* Actions */}
-      <div className="mt-10 flex flex-col-reverse justify-end gap-3 pt-4 sm:flex-row border-t border-border">
+      </div>
+
+      {/* Sticky Bottom Actions - Always accessible on mobile without scrolling */}
+      <div className="flex shrink-0 flex-col-reverse justify-end gap-2.5 border-t border-border/80 bg-surface/95 px-5 py-3.5 backdrop-blur-md sm:flex-row sm:px-8 sm:py-4">
         <button
           type="button"
           onClick={handleSkip}
-          className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border px-5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-ink"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-ink select-none cursor-pointer"
         >
           {isTr ? "Şimdilik Atla" : "Skip for Now"}
         </button>
@@ -348,7 +372,7 @@ export function StudentOnboardingPersonalization({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ink px-6 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45 select-none cursor-pointer"
         >
           {saving ? (
             <span>{isTr ? "Kaydediliyor..." : "Saving..."}</span>

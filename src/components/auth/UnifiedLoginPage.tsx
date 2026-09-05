@@ -13,6 +13,7 @@ import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routin
 import { changePasswordPath, forgotPasswordPath, localizedPath } from "@/lib/routes";
 import { registerStudent } from "@/lib/student/auth";
 import { claimAnonymousExamResult } from "@/lib/student/exam-history";
+import { getSupabaseClient } from "@/lib/supabase/client";
 import { localizeErrorMessage } from "@/lib/utils/error-messages";
 
 export function UnifiedLoginPage() {
@@ -52,6 +53,7 @@ export function UnifiedLoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [awaitingOtpVerification, setAwaitingOtpVerification] = useState(false);
+  const [otpMode, setOtpMode] = useState<"signup" | "email_change">("signup");
 
   const navigatedRef = useRef(false);
   const isRegisteringRef = useRef(false);
@@ -106,6 +108,35 @@ export function UnifiedLoginPage() {
       if (result.accountType === "unknown") {
         setError(isTr ? "Bu hesap için aktif bir Oriens Academy profili bulunamadı." : "No active Oriens Academy profile was found for this account.");
         return;
+      }
+
+      // Enforce email verification / email change OTP verification gate
+      if (result.accountType === "student" && result.user) {
+        const supabase = getSupabaseClient();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: challenge } = await (supabase as any)
+          .from("email_change_challenges")
+          .select("new_email")
+          .eq("user_id", result.user.id)
+          .is("verified_at", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const { data: guardian } = await supabase
+          .from("guardian_accounts")
+          .select("email, email_verified_at")
+          .eq("user_id", result.user.id)
+          .maybeSingle();
+
+        if (challenge || (guardian && !guardian.email_verified_at)) {
+          const targetEmail = challenge?.new_email || guardian?.email || result.user.email || email;
+          setEmail(targetEmail);
+          setOtpMode(challenge ? "email_change" : "signup");
+          setAwaitingOtpVerification(true);
+          setSubmitting(false);
+          return;
+        }
       }
 
       await tryClaimPendingResult();
@@ -229,6 +260,7 @@ export function UnifiedLoginPage() {
       <EmailOtpGate
         email={email.trim().toLowerCase()}
         locale={locale}
+        mode={otpMode}
         onVerified={handleOtpVerified}
         onChangeEmail={handleChangeEmail}
       />
@@ -472,6 +504,7 @@ export function UnifiedLoginPage() {
                   <Link
                     href={localizedPath("privacy", locale)}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="font-semibold text-ink underline"
                   >
                     {isTr ? "Gizlilik Politikası" : "Privacy Policy"}
@@ -480,6 +513,7 @@ export function UnifiedLoginPage() {
                   <Link
                     href={localizedPath("terms", locale)}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="font-semibold text-ink underline"
                   >
                     {isTr ? "Kullanım Koşulları" : "Terms of Service"}

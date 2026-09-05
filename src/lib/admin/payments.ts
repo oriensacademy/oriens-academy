@@ -428,27 +428,6 @@ export async function reviewManualBankTransfer(paymentId: string, decision: "app
   };
 }
 
-export async function sendPaymentReminder(paymentId: string) {
-  const client = getSupabaseClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (client as any).rpc("admin_send_payment_reminder", {
-    p_payment_id: paymentId,
-  });
-  if (error) return { success: false, error: error.message };
-  const result = data as {
-    success?: boolean;
-    error_code?: string;
-    reminder_count?: number;
-    last_reminder_sent_at?: string;
-  } | null;
-  return {
-    success: Boolean(result?.success),
-    error: result?.success ? null : result?.error_code || "Hatırlatma gönderilemedi.",
-    reminderCount: result?.reminder_count,
-    lastReminderSentAt: result?.last_reminder_sent_at,
-  };
-}
-
 export async function getAdminRefundContext(paymentId: string): Promise<{ data: AdminRefundContext | null; error: string | null }> {
   const { data, error } = await getSupabaseClient().rpc("admin_get_payment_refund_context", { p_transaction_id: paymentId });
   if (error) return { data: null, error: error.message };

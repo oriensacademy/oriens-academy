@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Manrope, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { CompassLoader } from "@/components/brand/CompassLoader";
 import { AccountProvider } from "@/lib/auth/account-context";
 import { CartProvider } from "@/lib/cart/cart-context";
+import { ToastProvider } from "@/components/ui/toast";
 import { RELEASE_VERSION } from "@/lib/release-version";
 
 const inter = Inter({
@@ -26,6 +27,23 @@ const dmSerif = DM_Serif_Display({
 });
 
 import { SITE_URL } from "@/lib/routes";
+
+/**
+ * viewport-fit="cover" is what makes env(safe-area-inset-*) resolve to real
+ * values on notched iPhones. Without it every safe-area padding in the codebase
+ * silently evaluates to 0, which is why the fixed bottom UI sat underneath the
+ * home indicator. `themeColor` also stops iOS painting a white bar above the
+ * page when the address bar collapses.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F7F6F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#10271B" },
+  ],
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -97,7 +115,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <PublicSettingsProvider>
           <AccountProvider>
             <CartProvider>
-              <CompassLoader>{children}</CompassLoader>
+              <ToastProvider>
+                <CompassLoader>{children}</CompassLoader>
+              </ToastProvider>
             </CartProvider>
           </AccountProvider>
         </PublicSettingsProvider>

@@ -15,6 +15,7 @@ import {
   type HomeworkTemplate,
 } from "@/lib/homework";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 interface StudentOption {
   id: string;
@@ -70,8 +71,7 @@ export function AssignHomeworkModal({
   // Body scroll lock & Escape handler
   useEffect(() => {
     if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockBodyScroll = lockBodyScroll();
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -83,7 +83,7 @@ export function AssignHomeworkModal({
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previous;
+      unlockBodyScroll();
     };
   }, [isOpen, onClose]);
 

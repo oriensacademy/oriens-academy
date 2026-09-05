@@ -4,7 +4,6 @@ import {
   formatContentTypeLabel,
   isSubmittableContentType,
 } from "../src/lib/homework.ts";
-import { renderStudentHomeworkAssignedEmail } from "../supabase/functions/_shared/email/templates.ts";
 
 console.log("\n=======================================================");
 console.log("   ORIENS ACADEMY — PHASE 03 COMPREHENSIVE QA SUITE");
@@ -46,61 +45,9 @@ test("1. Content Types and Helper Functions", () => {
   assert.ok(CONTENT_TYPE_LABELS.mock_exam.badgeClass.includes("rose"));
 });
 
-// 2. Email Subject & Title Generation per Content Type
-test("2. Email Notifications per Content Type", () => {
-  const noteEmail = renderStudentHomeworkAssignedEmail({
-    homeworkId: "hw-1",
-    studentName: "Mert Ömeroğlu",
-    studentEmail: "student@test.com",
-    assignmentTitle: "Calculus & Limits Ders Notları",
-    subjectOrLesson: "IB Mathematics HL",
-    dueDate: new Date().toISOString(),
-    contentType: "lesson_note",
-    locale: "tr",
-  });
-  assert.equal(noteEmail.subject, "Yeni Ders Notunuz Var | Oriens Academy");
-  assert.ok(noteEmail.html.includes("Yeni Ders Notunuz Var"));
-  assert.ok(noteEmail.html.includes("İçeriği Görüntüle"));
-
-  const resourceEmail = renderStudentHomeworkAssignedEmail({
-    homeworkId: "hw-2",
-    studentName: "Mert Ömeroğlu",
-    studentEmail: "student@test.com",
-    assignmentTitle: "SAT Reading Kaynak Dokümanı",
-    subjectOrLesson: "Digital SAT",
-    dueDate: new Date().toISOString(),
-    contentType: "resource",
-    locale: "tr",
-  });
-  assert.equal(resourceEmail.subject, "Yeni Eğitim Materyaliniz Var | Oriens Academy");
-  assert.ok(resourceEmail.html.includes("Yeni Eğitim Materyaliniz Var"));
-
-  const mockExamEmail = renderStudentHomeworkAssignedEmail({
-    homeworkId: "hw-3",
-    studentName: "Mert Ömeroğlu",
-    studentEmail: "student@test.com",
-    assignmentTitle: "AP Physics 1 Deneme Sınavı",
-    subjectOrLesson: "AP Physics",
-    dueDate: new Date().toISOString(),
-    contentType: "mock_exam",
-    locale: "tr",
-  });
-  assert.equal(mockExamEmail.subject, "Yeni Denemeniz Var | Oriens Academy");
-  assert.ok(mockExamEmail.html.includes("Yeni Denemeniz Var"));
-
-  const hwEmail = renderStudentHomeworkAssignedEmail({
-    homeworkId: "hw-4",
-    studentName: "Mert Ömeroğlu",
-    studentEmail: "student@test.com",
-    assignmentTitle: "Vectors Problem Set",
-    subjectOrLesson: "Matematik",
-    dueDate: new Date().toISOString(),
-    contentType: "homework",
-    locale: "tr",
-  });
-  assert.equal(hwEmail.subject, "Yeni Ödeviniz Var | Oriens Academy");
-  assert.ok(hwEmail.html.includes("Yeni Ödeviniz Var"));
-});
+// 2. Homework notification emails (MAIL-032..036) are decommissioned -- the
+// renderers and their dispatchers were removed, so there is no email surface
+// left to assert here. Content-type labelling itself is covered by test 1.
 
 // 3. Security: Executable File Block Verification
 test("3. Security Extension Blocking on Attachment Uploads", () => {

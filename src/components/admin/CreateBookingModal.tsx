@@ -4,6 +4,7 @@ import { CalendarPlus, X, AlertCircle, UserCheck, Search, Clock, Check, ChevronD
 import { Wave } from "@/components/ui/wave";
 import { createManualAdminBooking } from "@/lib/admin/bookings";
 import { listAdminStudents, type StudentProfile } from "@/lib/admin/students";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 const emptySubscribe = () => () => {};
 function useIsHydrated() {
@@ -71,6 +72,7 @@ export function CreateBookingModal({
   const [startTime, setStartTime] = useState("13:00");
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [subject, setSubject] = useState("");
+  const [sendNotification, setSendNotification] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -97,8 +99,7 @@ export function CreateBookingModal({
   // Body scroll lock & Escape handler
   useEffect(() => {
     if (!isOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockBodyScroll = lockBodyScroll();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -110,7 +111,7 @@ export function CreateBookingModal({
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previous;
+      unlockBodyScroll();
     };
   }, [isOpen, onClose]);
 
@@ -209,6 +210,7 @@ export function CreateBookingModal({
       studentUserId: selectedStudent.userId || selectedStudent.id,
       liveMeetingUrl: null,
       eventType: "lesson",
+      sendNotification,
     });
 
     setSubmitting(false);
@@ -426,6 +428,19 @@ export function CreateBookingModal({
               placeholder="Örn: SAT Math — Fonksiyonlar ve Paraboller"
               className="w-full rounded-xl border border-input bg-white px-3 py-2 text-xs text-foreground outline-hidden transition-colors focus:border-primary"
             />
+          </div>
+
+          {/* E-posta ile bildir seçeneği (Default: OFF) */}
+          <div className="pt-1">
+            <label className="flex items-center gap-2 text-xs font-semibold text-ink cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendNotification}
+                onChange={(e) => setSendNotification(e.target.checked)}
+                className="size-4 rounded border-input text-primary focus:ring-primary cursor-pointer"
+              />
+              <span>Hesap sahibine e-posta ile bildir</span>
+            </label>
           </div>
 
           {/* Actions */}

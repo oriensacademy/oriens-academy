@@ -33,14 +33,14 @@ export function ButtonBlockEditor({ block, onChange }: { block: ButtonBlock; onC
           onClick={() => onChange({ ...block, style: "primary" })}
           className={`rounded-lg border px-3 py-1.5 text-[11px] font-semibold ${block.style === "primary" ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:bg-muted"}`}
         >
-          Primary
+          Dolu Buton
         </button>
         <button
           type="button"
           onClick={() => onChange({ ...block, style: "secondary" })}
           className={`rounded-lg border px-3 py-1.5 text-[11px] font-semibold ${block.style === "secondary" ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:bg-muted"}`}
         >
-          Secondary
+          Çerçeveli Buton
         </button>
         <span
           className={

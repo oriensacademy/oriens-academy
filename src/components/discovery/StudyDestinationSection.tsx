@@ -103,7 +103,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
           </p>
         </Reveal>
 
-        <div className="mt-8">
+        <div className="mt-8 max-w-full overflow-hidden">
           <DestinationSelector
             locale={locale}
             regions={studyDestinations}
@@ -114,8 +114,8 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
         </div>
 
         <div className={`mt-8 grid items-start gap-8 lg:grid-cols-12 ${compact ? "lg:gap-8" : "lg:gap-12"}`}>
-          <Reveal className="order-1 min-w-0 lg:col-span-7" y={8}>
-            <div className="relative rounded-[2rem] border border-border bg-surface/45 p-2 sm:p-4">
+          <Reveal className="order-1 min-w-0 max-w-full lg:col-span-7" y={8}>
+            <div className="relative mx-auto w-full max-w-[390px] overflow-hidden rounded-[2rem] border border-border bg-surface/45 p-2 sm:max-w-none sm:p-4">
               <StudyDestinationGlobe
                 locale={locale}
                 region={selectedRegion}

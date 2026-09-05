@@ -53,7 +53,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     group: "GENEL",
   },
   {
-    label: "Öğrenciler",
+    label: "Kullanıcılar",
     href: "/admin/ogrenciler",
     icon: Users,
     enabled: true,
@@ -74,7 +74,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
     group: "ÖĞRENCİ YÖNETİMİ",
   },
   {
-    label: "İletişim & Destek",
+    label: "İletişim Talepleri",
     href: "/admin/iletisim-destek",
     icon: MessageSquare,
     enabled: true,

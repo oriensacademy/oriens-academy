@@ -1,35 +1,67 @@
 import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
+import { computeOtpHash, normalizeOtpCode, normalizeOtpEmail } from "../_shared/otp/hash.ts";
 
-async function computeOtpHmac(
-  userId: string,
-  email: string,
-  otp: string,
-  secret: string
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const messageData = encoder.encode(`${userId}:${email}:${otp}`);
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+/**
+ * Purchase / signup email verification — 6-digit OTP only.
+ *
+ * The whole verification is one atomic RPC (verify_purchase_email_otp). It
+ * matches the submitted hash against EVERY active challenge rather than only the
+ * newest one, consumes the row that actually matches, marks the account verified
+ * in the same transaction, and only touches the attempt counter when nothing
+ * matched.
+ *
+ * Three defects this replaces, all of which made a CORRECT code report as wrong:
+ *   1. The verifier compared against `order by created_at desc limit 1`, so a
+ *      correct code could be judged against a challenge it never came from.
+ *   2. The attempt counter was incremented BEFORE the comparison, so a correct
+ *      code still consumed an attempt.
+ *   3. The account update ran afterwards with its result discarded, so when it
+ *      failed the caller was told verification succeeded while
+ *      email_verified_at stayed NULL and the portal re-gated on every reload.
+ */
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
+type VerifyResult = {
+  success?: boolean;
+  error_code?: string;
+  remaining_attempts?: number;
+  candidate_email?: string;
+  verified_at?: string;
+};
+
+const MESSAGES: Record<string, { tr: string; en: string }> = {
+  INVALID_FORMAT: {
+    tr: "Lütfen 6 haneli doğrulama kodunu giriniz.",
+    en: "Please enter the 6-digit verification code.",
+  },
+  INVALID_CODE: {
+    tr: "Girdiğiniz doğrulama kodu hatalı.",
+    en: "The verification code you entered is incorrect.",
+  },
+  EXPIRED: {
+    tr: "Doğrulama kodunun süresi doldu. Lütfen yeni bir kod isteyin.",
+    en: "Your verification code has expired. Please request a new one.",
+  },
+  SUPERSEDED: {
+    tr: "Bu kod artık geçerli değil. Size gönderilen en son e-postadaki kodu kullanın.",
+    en: "This code is no longer valid. Please use the code from the most recent email.",
+  },
+  ALREADY_VERIFIED: {
+    tr: "Bu e-posta adresi zaten doğrulanmış. Sayfayı yenileyebilirsiniz.",
+    en: "This email address is already verified. You can refresh the page.",
+  },
+  TOO_MANY_ATTEMPTS: {
+    tr: "Çok fazla hatalı deneme yapıldı. Lütfen yeni bir doğrulama kodu isteyin.",
+    en: "Too many failed attempts. Please request a new verification code.",
+  },
+  INTERNAL_ERROR: {
+    tr: "Doğrulama sırasında bir sorun oluştu. Lütfen tekrar deneyin.",
+    en: "Something went wrong during verification. Please try again.",
+  },
+};
+
+function message(code: string, locale: "tr" | "en"): string {
+  return (MESSAGES[code] ?? MESSAGES.INTERNAL_ERROR)[locale];
 }
 
 Deno.serve(async (req: Request) => {
@@ -39,11 +71,7 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!token) {
-    return buildJsonResponse(
-      { error_code: "UNAUTHORIZED", message: "Oturum açmanız gerekmektedir." },
-      401,
-      req
-    );
+    return buildJsonResponse({ error_code: "UNAUTHORIZED", message: "Oturum açmanız gerekmektedir." }, 401, req);
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -51,11 +79,7 @@ Deno.serve(async (req: Request) => {
   const hmacSecret = Deno.env.get("PURCHASE_OTP_HMAC_SECRET") ?? "";
   if (!supabaseUrl || !serviceRoleKey || !hmacSecret) {
     console.error("[verify-purchase-email-verification] Required server configuration is missing.");
-    return buildJsonResponse(
-      { error_code: "SERVER_CONFIG_ERROR", message: "Sunucu yapılandırma hatası." },
-      503,
-      req
-    );
+    return buildJsonResponse({ error_code: "SERVER_CONFIG_ERROR", message: "Sunucu yapılandırma hatası." }, 503, req);
   }
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
@@ -64,11 +88,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
   if (userError || !userData?.user) {
-    return buildJsonResponse(
-      { error_code: "UNAUTHORIZED", message: "Geçersiz oturum." },
-      401,
-      req
-    );
+    return buildJsonResponse({ error_code: "UNAUTHORIZED", message: "Geçersiz oturum." }, 401, req);
   }
   const user: User = userData.user;
 
@@ -76,143 +96,84 @@ Deno.serve(async (req: Request) => {
   try {
     payload = await req.json();
   } catch {
+    return buildJsonResponse({ error_code: "INVALID_REQUEST", message: "Geçersiz istek formatı." }, 400, req);
+  }
+
+  const locale: "tr" | "en" = payload.locale === "en" ? "en" : "tr";
+  const candidateEmail = normalizeOtpEmail(payload.candidateEmail || user.email || "");
+  // Strictly a string, and never coerced through Number() -- "012345" must stay
+  // six characters wide all the way into the HMAC.
+  const code = normalizeOtpCode(payload.code);
+
+  if (!candidateEmail || !code) {
     return buildJsonResponse(
-      { error_code: "INVALID_REQUEST", message: "Geçersiz istek formatı." },
+      { success: false, error_code: "INVALID_FORMAT", message: message("INVALID_FORMAT", locale) },
       400,
       req
     );
   }
 
-  const candidateEmail = String(payload.candidateEmail || user.email || "").trim().toLowerCase();
-  const code = String(payload.code || "").trim();
-  const locale = payload.locale === "en" ? "en" : "tr";
+  const codeHash = await computeOtpHash({
+    purpose: "purchase_email_verification",
+    userId: user.id,
+    email: candidateEmail,
+    code,
+    secret: hmacSecret,
+  });
 
-  if (!code || !/^\d{6}$/.test(code)) {
+  const { data, error } = await supabaseAdmin.rpc("verify_purchase_email_otp", {
+    p_user_id: user.id,
+    p_candidate_email: candidateEmail,
+    p_code_hash: codeHash,
+  });
+
+  if (error) {
+    // An infrastructure failure must never be presented as a wrong code -- that
+    // is what previously burned the user's attempts on a healthy code.
+    console.error("[verify-purchase-email-verification] verify RPC failed:", error.message);
     return buildJsonResponse(
-      {
-        success: false,
-        error_code: "INVALID_FORMAT",
-        message: locale === "tr"
-          ? "Lütfen 6 haneli doğrulama kodunu giriniz."
-          : "Please enter the 6-digit verification code.",
-      },
-      400,
+      { success: false, error_code: "INTERNAL_ERROR", message: message("INTERNAL_ERROR", locale) },
+      500,
       req
     );
   }
 
-  const now = new Date();
+  const result = (data ?? {}) as VerifyResult;
 
-  // Find active challenge
-  const { data: challenge, error: challengeError } = await supabaseAdmin
-    .from("purchase_email_verification_challenges")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("candidate_email", candidateEmail)
-    .is("verified_at", null)
-    .gt("expires_at", now.toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (challengeError || !challenge) {
+  if (!result.success) {
+    const code_ = result.error_code || "INTERNAL_ERROR";
+    const remaining = result.remaining_attempts;
+    const base = message(code_, locale);
     return buildJsonResponse(
       {
         success: false,
-        error_code: "CHALLENGE_EXPIRED_OR_NOT_FOUND",
-        message: locale === "tr"
-          ? "Doğrulama kodunun süresi dolmuş veya kod bulunamadı. Lütfen yeni bir kod isteyin."
-          : "Verification code expired or not found. Please request a new code.",
-      },
-      400,
-      req
-    );
-  }
-
-  if (challenge.attempt_count >= 5) {
-    await supabaseAdmin
-      .from("purchase_email_verification_challenges")
-      .update({ expires_at: now.toISOString(), updated_at: now.toISOString() })
-      .eq("id", challenge.id);
-
-    return buildJsonResponse(
-      {
-        success: false,
-        error_code: "TOO_MANY_ATTEMPTS",
-        message: locale === "tr"
-          ? "Çok fazla hatalı deneme yapıldı. Lütfen yeni bir kod isteyin."
-          : "Too many failed attempts. Please request a new code.",
-      },
-      400,
-      req
-    );
-  }
-
-  // Increment attempt count
-  const newAttemptCount = challenge.attempt_count + 1;
-  await supabaseAdmin
-    .from("purchase_email_verification_challenges")
-    .update({ attempt_count: newAttemptCount, updated_at: now.toISOString() })
-    .eq("id", challenge.id);
-
-  const expectedHash = await computeOtpHmac(user.id, candidateEmail, code, hmacSecret);
-  if (!timingSafeEqual(challenge.code_hash, expectedHash)) {
-    const remaining = Math.max(0, 5 - newAttemptCount);
-    return buildJsonResponse(
-      {
-        success: false,
-        error_code: "INVALID_CODE",
+        error_code: code_,
         remaining_attempts: remaining,
-        message: locale === "tr"
-          ? `Girdiğiniz doğrulama kodu hatalı. Kalan deneme hakkı: ${remaining}`
-          : `Invalid verification code. Remaining attempts: ${remaining}`,
+        message:
+          code_ === "INVALID_CODE" && typeof remaining === "number"
+            ? locale === "tr"
+              ? `${base} Kalan deneme hakkı: ${remaining}`
+              : `${base} Remaining attempts: ${remaining}`
+            : base,
       },
-      400,
+      code_ === "INTERNAL_ERROR" ? 500 : 400,
       req
     );
   }
 
-  // Verification SUCCESS
-  const verifiedAt = now.toISOString();
+  const verifiedAt = result.verified_at || new Date().toISOString();
 
-  // 1. Mark challenge verified
-  await supabaseAdmin
-    .from("purchase_email_verification_challenges")
-    .update({ verified_at: verifiedAt, updated_at: verifiedAt })
-    .eq("id", challenge.id);
-
-  // 2. Update guardian account with verified timestamp
-  await supabaseAdmin
-    .from("guardian_accounts")
-    .update({
-      email: candidateEmail,
-      email_verified_at: verifiedAt,
-      updated_at: verifiedAt,
-    })
-    .eq("user_id", user.id);
-
-  // 3. Update self student profile if email matched
-  await supabaseAdmin
-    .from("student_profiles")
-    .update({
-      email: candidateEmail,
-      updated_at: verifiedAt,
-    })
-    .eq("id", user.id);
-
-  // 4. If candidateEmail differs from auth user email, update auth user in place
-  if (candidateEmail !== user.email?.toLowerCase()) {
+  // The account row was marked verified inside the RPC transaction. Only the
+  // GoTrue identity lives outside Postgres, so it is synced here; a failure is
+  // logged but does not invalidate a verification that already committed.
+  if (candidateEmail !== (user.email || "").toLowerCase()) {
     try {
-      await supabaseAdmin.auth.admin.updateUserById(user.id, {
-        email: candidateEmail,
-        email_confirm: true,
-      });
+      await supabaseAdmin.auth.admin.updateUserById(user.id, { email: candidateEmail, email_confirm: true });
     } catch (authUpdateErr) {
-      console.error("[verify-purchase-email-verification] Auth email update failed:", authUpdateErr);
+      console.error("[verify-purchase-email-verification] Auth email sync failed:", authUpdateErr);
     }
   }
 
-  // 5. Audit log
   await supabaseAdmin.from("audit_logs").insert({
     actor_user_id: user.id,
     action: "purchase.email_verified",
@@ -229,9 +190,10 @@ Deno.serve(async (req: Request) => {
       success: true,
       email: candidateEmail,
       verified_at: verifiedAt,
-      message: locale === "tr"
-        ? "E-posta adresiniz başarıyla doğrulandı."
-        : "Your email address has been successfully verified.",
+      message:
+        locale === "tr"
+          ? "E-posta adresiniz başarıyla doğrulandı."
+          : "Your email address has been successfully verified.",
     },
     200,
     req

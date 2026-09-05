@@ -79,29 +79,38 @@ export function Navbar() {
     if (!open) {
       if (wasOpenRef.current) menuTriggerRef.current?.focus();
       wasOpenRef.current = false;
+      delete document.documentElement.dataset.mobileMenuOpen;
       return;
     }
 
     wasOpenRef.current = true;
+    document.documentElement.dataset.mobileMenuOpen = "true";
     const unlockBodyScroll = lockBodyScroll();
-    const background = [headerRef.current, document.querySelector("main"), document.querySelector("footer")]
-      .filter((element): element is HTMLElement => element instanceof HTMLElement)
-      .map((element) => ({
-        element,
-        inert: element.inert,
-        ariaHidden: element.getAttribute("aria-hidden"),
-      }));
 
-    background.forEach(({ element }) => {
-      element.inert = true;
-      element.setAttribute("aria-hidden", "true");
-    });
-    requestAnimationFrame(() => closeButtonRef.current?.focus());
+    // Defer inert application until after the slide-in transition finishes (240ms)
+    // to prevent synchronous style recalcs and layout thrashing during animation frames
+    let backgroundElements: { element: HTMLElement; inert: boolean; ariaHidden: string | null }[] = [];
+    const timer = setTimeout(() => {
+      backgroundElements = [headerRef.current, document.querySelector("main"), document.querySelector("footer")]
+        .filter((element): element is HTMLElement => element instanceof HTMLElement)
+        .map((element) => ({
+          element,
+          inert: element.inert,
+          ariaHidden: element.getAttribute("aria-hidden"),
+        }));
 
-    wasOpenRef.current = open;
+      backgroundElements.forEach(({ element }) => {
+        element.inert = true;
+        element.setAttribute("aria-hidden", "true");
+      });
+      closeButtonRef.current?.focus();
+    }, 240);
+
     return () => {
+      clearTimeout(timer);
       unlockBodyScroll();
-      background.forEach(({ element, inert, ariaHidden }) => {
+      delete document.documentElement.dataset.mobileMenuOpen;
+      backgroundElements.forEach(({ element, inert, ariaHidden }) => {
         element.inert = inert;
         if (ariaHidden === null) element.removeAttribute("aria-hidden");
         else element.setAttribute("aria-hidden", ariaHidden);
@@ -163,7 +172,7 @@ export function Navbar() {
           scrolled ? "border-border/80 bg-background/90 backdrop-blur-md shadow-[0_2px_12px_rgba(16,39,27,0.04)]" : "border-transparent bg-transparent"
         )}
       >
-        <div className="mx-auto flex h-[72px] max-w-[1360px] items-center px-[clamp(24px,5vw,72px)] md:h-20">
+        <div className="mx-auto flex h-[72px] max-w-[1360px] items-center px-4 sm:px-6 md:px-[clamp(24px,5vw,72px)] md:h-20">
           <Link href={localizedPath("home", locale)} className="relative z-10 flex min-h-11 shrink-0 items-center" aria-label={nav.homeAriaLabel}>
             <Image
               src="/brand/oriens-logo-v2.png"
@@ -182,8 +191,8 @@ export function Navbar() {
             />
           </nav>
 
-          <div className="ml-auto flex items-center gap-2 md:gap-3">
-            <div className="flex items-center gap-2 sm:gap-3">
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               <LanguageSwitch />
               {showPricing && (cartCount > 0 || isStudent) && (
                 <Link
@@ -254,18 +263,32 @@ export function Navbar() {
 
       <AnimatePresence>
         {open && (
-          <motion.div
-            ref={overlayRef}
-            tabIndex={-1}
-            className="fixed inset-y-0 right-0 z-[90] flex w-[min(88vw,380px)] flex-col border-l border-border bg-background shadow-[-20px_0_60px_rgba(16,39,27,0.16)] xl:hidden"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            role="dialog"
-            aria-modal="true"
-            aria-label={nav.menuDialogLabel}
-          >
+          <>
+            {/* Backdrop overlay - dismisses on tap outside, isolates canvas beneath */}
+            <motion.div
+              key="mobile-nav-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 z-[89] bg-black/40 xl:hidden will-change-opacity"
+              aria-hidden="true"
+            />
+
+            <motion.div
+              ref={overlayRef}
+              tabIndex={-1}
+              className="fixed inset-y-0 right-0 z-[90] flex w-[min(88vw,380px)] flex-col border-l border-border bg-background shadow-[-10px_0_30px_rgba(16,39,27,0.12)] xl:hidden will-change-transform transform-gpu"
+              style={{ willChange: "transform", transform: "translateZ(0)", contain: "layout paint" }}
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={nav.menuDialogLabel}
+            >
             <div className="flex h-16 items-center justify-between px-6">
               <Link href={localizedPath("home", locale)} onClick={() => setOpen(false)} className="flex items-center" aria-label={nav.homeAriaLabel}>
                 <Image
@@ -325,8 +348,9 @@ export function Navbar() {
               <CompassMark size={22} />
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </>
+      )}
+    </AnimatePresence>
       <LogoutConfirmationModal open={mobileLogoutOpen} signingOut={signingOut} locale={locale} returnFocusRef={menuTriggerRef} onCancel={() => setMobileLogoutOpen(false)} onConfirm={confirmMobileLogout} />
     </>
   );

@@ -138,13 +138,6 @@ function DashboardContent() {
               href="/admin/randevular"
             />
             <MetricCard
-              label="Açık Destek Talebi"
-              count={metrics?.openSupportTickets || 0}
-              subtext="Yanıt Bekleyen"
-              href="/admin/iletisim-destek"
-              highlight={Boolean(metrics?.openSupportTickets)}
-            />
-            <MetricCard
               label="Ödeme Bekliyor"
               count={metrics?.awaitingPayments || 0}
               subtext="İnceleme Gerekli"
@@ -182,10 +175,10 @@ function DashboardContent() {
             description="Seans randevularını ve takvimi yönetin."
           />
           <ModuleLinkCard
-            title="İletişim & Destek"
+            title="İletişim Talepleri"
             href="/admin/iletisim-destek"
             icon={MessageSquare}
-            description="Web taleplerini ve öğrenci destek konuşmalarını yönetin."
+            description="Web iletişim ve danışmanlık taleplerini yönetin."
           />
           <ModuleLinkCard
             title="Fiyatlandırma & Kuponlar"

@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AcademicIcon, type AcademicIconType } from "@/components/academic/AcademicIcon";
 import { cn } from "@/lib/utils";
+import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 export interface ExamOverviewCard {
   id: string;
@@ -174,8 +175,7 @@ export function ThreeDExamCarousel({ examCode, cards, locale }: ThreeDExamCarous
 
   useEffect(() => {
     if (!selected) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockBodyScroll = lockBodyScroll();
     requestAnimationFrame(() => closeRef.current?.focus());
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -192,7 +192,7 @@ export function ThreeDExamCarousel({ examCode, cards, locale }: ThreeDExamCarous
       if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     window.addEventListener("keydown", onKey);
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKey); };
+    return () => { unlockBodyScroll(); window.removeEventListener("keydown", onKey); };
   }, [selected]);
 
   const closeDetail = () => {

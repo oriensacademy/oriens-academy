@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, FileCheck2, Loader2, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowRight, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
 import { confirmPaymentAgreements, createPaytrToken } from "@/lib/payments/client";
@@ -61,6 +61,17 @@ export function HostedCardPanel({
   const [error, setError] = useState<ErrorState | null>(null);
   const inFlightRef = useRef(false);
 
+  // Invalidate any prepared payment session if package selection or coupon changes
+  const prevPricingKeyRef = useRef<string>("");
+  useEffect(() => {
+    const currentKey = `${packageIds.slice().sort().join(",")}:${couponCode || ""}`;
+    if (prevPricingKeyRef.current && prevPricingKeyRef.current !== currentKey) {
+      setPrepared(null);
+      setError(null);
+    }
+    prevPricingKeyRef.current = currentKey;
+  }, [packageIds, couponCode]);
+
   const handleProceedToPayment = useCallback(async () => {
     // Belt-and-suspenders re-entrancy guard on top of the disabled button --
     // covers a rapid double-click landing between React's disabled-state
@@ -77,7 +88,10 @@ export function HostedCardPanel({
         refundPolicy: LEGAL_VERSIONS.refundPolicy,
       };
 
-      const result = await createPaytrToken({
+      // PAYMENT_SESSION_RETRY: sunucu bayat (tek kullanımlık, tüketilmiş) bir
+      // PayTR oturumu bulup arşivledi. Kullanıcıya hata göstermek yerine aynı
+      // tık içinde bir kez daha, taze bir oturumla deneriz.
+      let result = await createPaytrToken({
         packageIds,
         couponCode,
         learnerId,
@@ -90,6 +104,20 @@ export function HostedCardPanel({
         refundPolicyAccepted: true,
         legalVersions,
       });
+
+      if (result.errorCode === "PAYMENT_SESSION_RETRY") {
+        result = await createPaytrToken({
+          packageIds,
+          couponCode,
+          learnerId,
+          guardianUserId,
+          paymentPhone,
+          locale,
+          termsAccepted: true,
+          refundPolicyAccepted: true,
+          legalVersions,
+        });
+      }
 
       if (!result.success || (!result.iframe_token && !result.zero_payment)) {
         setError({
@@ -127,6 +155,54 @@ export function HostedCardPanel({
     }
   }, [contextReady, couponCode, guardianUserId, isTr, learnerId, locale, packageIds, paymentPhone, router]);
 
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  /**
+   * PayTR'nin resmi iframeResizer betiği, ödeme formunun gerçek yüksekliğini
+   * üst pencereye bildirip çerçeveyi büyütür. Yalnızca ödeme oturumu
+   * hazırlandıktan sonra, yani iframe DOM'a girdikten sonra yüklenir.
+   *
+   * Betik yüklenemezse hiçbir şey bozulmaz: iframe en az 850px yüksekliğiyle
+   * ve kaydırmasıyla kalır, kullanıcı butona her durumda ulaşır.
+   */
+  useEffect(() => {
+    if (!prepared?.token) return;
+    let cancelled = false;
+
+    const applyResizer = () => {
+      const resize = (window as unknown as { iFrameResize?: (options: object, target: string) => void }).iFrameResize;
+      if (!resize || cancelled) return;
+      try {
+        resize({ checkOrigin: false }, "#paytriframe");
+      } catch {
+        // Yedek yükseklik + iframe kaydırması devrede kalır.
+      }
+    };
+
+    const existing = document.querySelector<HTMLScriptElement>('script[data-paytr-resizer="1"]');
+    if (existing) {
+      if (existing.dataset.loaded === "1") applyResizer();
+      else existing.addEventListener("load", applyResizer, { once: true });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://www.paytr.com/js/iframeResizer.min.js";
+    script.async = true;
+    script.dataset.paytrResizer = "1";
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "1";
+      applyResizer();
+    });
+    document.body.appendChild(script);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [prepared?.token]);
+
   return (
     <div className="space-y-4">
       {!contextReady ? (
@@ -148,14 +224,60 @@ export function HostedCardPanel({
           </p>
         </div>
       ) : prepared?.token ? (
-        <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-xs">
+        <div className="rounded-2xl border border-border bg-white shadow-xs">
+          {/*
+            PayTR'nin ödeme formu (kart alanları + taksit tablosu + "Ödemeyi
+            Tamamla" butonu) sabit bir yüksekliğe sığmaz. Önceki sürümde iframe
+            `scrolling="no"` ile sabit yükseklikteydi ve dıştaki kap
+            `overflow-hidden` idi: formun altı -- yani ödemeyi tamamlayan buton
+            -- tamamen erişilemez oluyordu, ödeme bitirilemiyordu.
+
+            Çözüm PayTR'nin kendi iframeResizer entegrasyonu: iframe içeriği
+            yüksekliğini üst pencereye bildirir ve çerçeve içeriğe göre büyür,
+            böylece sayfa normal şekilde kaydırılır ve buton görünür olur.
+            Betik yüklenemezse `scrolling` varsayılanda kalır (auto), yani
+            kullanıcı yine de iframe içinde kaydırıp butona ulaşabilir --
+            para akışını tek bir üçüncü taraf betiğine bağlamıyoruz.
+          */}
           <iframe
+            // Her yeni oturum yepyeni bir iframe elemanıdır: React eski
+            // elemanı yeniden kullanıp tüketilmiş bir token'ı ikinci kez
+            // yükleyemez.
+            key={prepared.token}
+            ref={iframeRef}
             id="paytriframe"
             title="PayTR Secure Payment"
             src={`https://www.paytr.com/odeme/guvenli/${prepared.token}`}
-            className="min-h-[70dvh] w-full border-0 sm:min-h-[480px]"
-            scrolling="no"
+            className="w-full rounded-2xl border-0"
+            scrolling="auto"
+            style={{ minHeight: "850px", width: "100%" }}
           />
+          {/*
+            PayTR token'i tek kullanimliktir; kullanici geri gelip cerceveyi
+            yeniden yuklerse PayTR kendi sayfasinda "Bu odeme sayfasi artik
+            gecersiz" der. Bu buton kullaniciyi cikmaza birakmaz: tek tikla
+            yepyeni bir odeme oturumu baslatilir.
+          */}
+          <div className="border-t border-border p-3 text-center">
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {isTr
+                ? "Ödeme formu yüklenmediyse veya \"bu ödeme sayfası geçersiz\" uyarısı görüyorsanız:"
+                : "If the payment form did not load, or you see an \"invalid payment page\" warning:"}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setPrepared(null);
+                setError(null);
+                void handleProceedToPayment();
+              }}
+              disabled={starting}
+              className="mt-2 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-white px-4 text-xs font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
+            >
+              {starting ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+              {isTr ? "Yeni Ödeme Oturumu Başlat" : "Start a New Payment Session"}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">
@@ -180,7 +302,7 @@ export function HostedCardPanel({
           ) : null}
 
           <p className="text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
-            {isTr ? "Ödemeye devam ederek " : "By continuing to payment, you confirm that you have read and accepted the "}
+            {isTr ? '"Ödemeye Geç" butonuna tıklayarak ' : 'By clicking "Proceed to Payment", you confirm that you have read and accepted the '}
             <button type="button" onClick={() => onOpenLegalDoc("preInformation")} className="font-semibold text-primary underline underline-offset-2 hover:no-underline">
               {isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}
             </button>
@@ -193,7 +315,7 @@ export function HostedCardPanel({
               {isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}
             </button>
             {isTr
-              ? "'nı okuduğunuzu ve kabul ettiğinizi; siparişin ödeme yükümlülüğü doğurduğunu onaylarsınız."
+              ? "'nı okuduğunuzu ve kabul ettiğinizi; siparişin ödeme yükümlülüğü doğurduğunu onaylamış olursunuz."
               : ", and acknowledge that placing the order creates a payment obligation."}
           </p>
 

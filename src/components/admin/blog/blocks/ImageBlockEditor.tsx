@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { AlignLeft, AlignCenter, AlignRight, StretchHorizontal, Settings2, RefreshCw } from "lucide-react";
+import { ASPECT_OPTIONS, FIT_OPTIONS } from "./PaneEditors";
 import type { BlockAlign, BlockWidth, BlogBlock } from "@/lib/blog/blockSchema";
 
 type ImageBlock = Extract<BlogBlock, { type: "image" }>;
@@ -34,7 +35,14 @@ export function ImageBlockEditor({ block, onChange, onReplace, uploading }: {
     <div>
       <div className="relative overflow-hidden rounded-xl border border-border bg-surface-muted">
         <button type="button" onClick={() => setSettingsOpen((value) => !value)} className="block w-full cursor-pointer" aria-label="Görsel ayarlarını aç">
-          <Image src={block.url} alt={block.alt || ""} width={1200} height={800} unoptimized className="h-auto max-h-[26rem] w-full object-cover" />
+          <Image
+            src={block.url}
+            alt={block.alt || ""}
+            width={1200}
+            height={800}
+            unoptimized
+            className={`h-auto max-h-[26rem] w-full ${block.fit === "contain" ? "object-contain" : "object-cover"}`}
+          />
         </button>
         <div className="absolute right-2 top-2 flex gap-1.5">
           <button type="button" onClick={() => setSettingsOpen((value) => !value)} className="flex size-8 items-center justify-center rounded-lg bg-black/55 text-white backdrop-blur hover:bg-black/70" aria-label="Ayarlar">
@@ -93,6 +101,38 @@ export function ImageBlockEditor({ block, onChange, onReplace, uploading }: {
               </div>
             </div>
           ) : null}
+
+          <div>
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Görsel Davranışı</p>
+            <div className="flex flex-wrap gap-1">
+              {FIT_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onChange({ ...block, fit: value })}
+                  className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${block.fit === value ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:bg-muted"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Oran</p>
+            <div className="flex flex-wrap gap-1">
+              {ASPECT_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onChange({ ...block, aspect: value })}
+                  className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold ${block.aspect === value ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:bg-muted"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {block.align === "left" || block.align === "right" ? (
             <label className="flex items-center gap-2 text-[11px] font-semibold text-ink">

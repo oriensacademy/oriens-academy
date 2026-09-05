@@ -119,7 +119,7 @@ export const EligibilityDrawer: React.FC<EligibilityDrawerProps> = ({
                       <a
                         href={check.provenance.officialUrl}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         className="text-sky-400 hover:underline flex items-center space-x-1"
                       >
                         <span>Official Source</span>
