@@ -2,9 +2,9 @@ import Link from "next/link";
 import { CompassMark } from "@/components/brand/CompassMark";
 
 /**
- * Root entry point `/`. Automatically redirects to `/tr/` via meta-refresh
- * while providing crawlable locale links. Document shell is provided by
- * `app/layout.tsx`.
+ * Root entry point `/`. The early script in `app/layout.tsx` redirects JavaScript
+ * clients using their persisted locale. Meta-refresh remains as the no-JavaScript
+ * Turkish fallback while these crawlable locale links provide explicit choices.
  */
 export default function RootEntry() {
   return (

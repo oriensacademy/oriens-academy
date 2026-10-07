@@ -8,10 +8,11 @@ import { submitContact } from "@/lib/contact/api";
 import Link from "next/link";
 import { Wave } from "@/components/ui/wave";
 import { useAccount } from "@/lib/auth/account-context";
-import { getStudentPortalData } from "@/lib/student/data";
-import { CONTACT } from "@/config/contact";
+import { getStudentPrefillProfile } from "@/lib/student/data";
+import { useSiteContact } from "@/lib/contact-settings";
 
 export function ContactForm({ embedded = false }: { embedded?: boolean }) {
+  const CONTACT = useSiteContact();
   const locale = useLocale();
   const isTr = locale === "tr";
   const { user, accountType } = useAccount();
@@ -26,14 +27,15 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
   // Prefill for authenticated student
   useEffect(() => {
     if (user && accountType === "student") {
-      getStudentPortalData(user.id).then((res) => {
-        if (res.data?.profile) {
-          if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
-          if (res.data.profile.email) setEmail(res.data.profile.email);
-        }
+      getStudentPrefillProfile(user.id).then((profile) => {
+        if (!profile) return;
+        if (profile.full_name) setFullName(profile.full_name);
+        if (profile.email) setEmail(profile.email);
       });
     }
-  }, [user, accountType]);
+    // `user` yerine `user?.id`: sekme dönüşünde yayılan yeni user nesnesi bu
+    // efekti (ve 7 tabloluk sorgusunu) gereksizce tetikliyordu.
+  }, [user?.id, accountType]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
@@ -107,7 +109,7 @@ export function ContactForm({ embedded = false }: { embedded?: boolean }) {
     const whatsappMessage = isTr
       ? "Merhaba Oriens Academy, tanışma görüşmesi hakkında bilgi almak istiyorum."
       : "Hello Oriens Academy, I would like to get information about an introductory consultation.";
-    const whatsappHref = `https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`;
+    const whatsappHref = `${CONTACT.whatsappHref}?text=${encodeURIComponent(whatsappMessage)}`;
 
     return (
       <div aria-live="polite" className={`${embedded ? "bg-[#F7F8F4]" : "border border-border bg-surface shadow-sm"} rounded-2xl p-7 text-center sm:p-12`}>

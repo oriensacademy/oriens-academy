@@ -12,9 +12,9 @@ import {
   Layers,
   AlertCircle,
   Trash2,
-  CheckCircle2,
 } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
+import { toast } from "@/components/ui/toast";
 
 interface CreateSlotModalProps {
   isOpen: boolean;
@@ -48,7 +48,6 @@ export function CreateSlotModal({
   const [mode, setMode] = useState<"single" | "bulk">("single");
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Single Slot State
   const [todayStr] = useState(() => new Date().toISOString().split("T")[0]);
@@ -122,7 +121,6 @@ export function CreateSlotModal({
   const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    setSuccessMsg(null);
     setSubmitting(true);
 
     const startsAtIso = `${singleDate}T${singleStartTime}:00`;
@@ -135,19 +133,16 @@ export function CreateSlotModal({
     if (error) {
       setErrorMsg(error);
     } else {
-      setSuccessMsg("Müsaitlik zaman dilimi başarıyla eklendi.");
+      toast.success("Müsaitlik zaman dilimi başarıyla eklendi.");
       sessionStorage.removeItem(AVAILABILITY_DRAFT_KEY);
-      setTimeout(() => {
-        onCreated();
-        onClose();
-      }, 1000);
+      onCreated();
+      onClose();
     }
   };
 
   const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    setSuccessMsg(null);
     setSubmitting(true);
 
     const { createdCount, skippedCount, error } =
@@ -163,16 +158,14 @@ export function CreateSlotModal({
     if (error) {
       setErrorMsg(error);
     } else {
-      setSuccessMsg(
+      toast.success(
         `Toplu işlem tamamlandı: ${createdCount} yeni dilim eklendi${
           skippedCount > 0 ? `, ${skippedCount} çakışan dilim atlandı` : ""
         }.`
       );
       sessionStorage.removeItem(AVAILABILITY_DRAFT_KEY);
-      setTimeout(() => {
-        onCreated();
-        onClose();
-      }, 1200);
+      onCreated();
+      onClose();
     }
   };
 
@@ -266,12 +259,7 @@ export function CreateSlotModal({
           </div>
         )}
 
-        {successMsg && (
-          <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-            <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
-            <span>{successMsg}</span>
-          </div>
-        )}
+
 
         {/* Single Mode Form */}
         {mode === "single" && (

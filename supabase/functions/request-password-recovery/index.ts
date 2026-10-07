@@ -3,6 +3,8 @@ import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
 import { renderPasswordResetActionEmail, normalizeLocale } from "../_shared/email/templates.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
+import { sanitizeAuditError, writeEdgeAuditEvent } from "../_shared/audit.ts";
 
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const CANONICAL_ORIGIN = "https://oriens-academy.com";
@@ -20,7 +22,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const serviceRoleKey = getSupabaseAdminKey();
     if (!supabaseUrl || !serviceRoleKey) {
       return buildJsonResponse({ error: "Server configuration missing" }, 500, req);
     }
@@ -63,31 +65,18 @@ Deno.serve(async (req: Request) => {
       if (token === serviceRoleKey.trim()) {
         isAdminCaller = true;
       } else {
-        // Also check if JWT payload is service_role
+        // Never trust unverified JWT claims. The caller's token must be accepted by
+        // Supabase and the database must confirm the authenticated user is an admin.
         try {
-          const parts = token.split(".");
-          if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1]));
-            if (payload.role === "service_role") {
-              isAdminCaller = true;
-            }
+          const callerClient = createClient(supabaseUrl, token, {
+            auth: { autoRefreshToken: false, persistSession: false },
+          });
+          const { data: isAdmin } = await callerClient.rpc("is_admin");
+          if (isAdmin === true) {
+            isAdminCaller = true;
           }
         } catch {
-          // ignore
-        }
-
-        if (!isAdminCaller) {
-          try {
-            const callerClient = createClient(supabaseUrl, token, {
-              auth: { autoRefreshToken: false, persistSession: false },
-            });
-            const { data: isAdmin } = await callerClient.rpc("is_admin");
-            if (isAdmin === true) {
-              isAdminCaller = true;
-            }
-          } catch {
-            isAdminCaller = false;
-          }
+          isAdminCaller = false;
         }
       }
     }
@@ -172,6 +161,7 @@ Deno.serve(async (req: Request) => {
     // 5. User Account Lookup
     const { data: userList, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
     if (listErr) {
+      await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.password_recovery_failed", category: "auth", severity: "error", entityType: "auth_user", metadata: sanitizeAuditError(listErr, { operation: "list_users" }) });
       console.error("[request-password-recovery] listUsers failed:", listErr.message);
       return buildJsonResponse({ error: "Internal server error" }, 500, req);
     }
@@ -204,6 +194,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (linkErr || !linkData?.properties?.action_link) {
+      await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.password_recovery_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: matchingUser.id, correlationId: matchingUser.id, metadata: sanitizeAuditError(linkErr || { message: "Recovery link unavailable" }, { operation: "generate_recovery_link" }) });
       console.error("[request-password-recovery] generateLink failed:", linkErr?.message);
       // Return neutral success to client even on generation error to avoid leakage
       return buildJsonResponse(neutralSuccessResponse, 200, req);
@@ -229,6 +220,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (delivery.status === "failed") {
+      await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.password_recovery_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: matchingUser.id, correlationId: matchingUser.id, metadata: { operation: "dispatch_recovery_email", safe_error_code: delivery.errorCode } });
       console.error("[request-password-recovery] Email dispatch failed:", delivery.errorCode);
       return buildJsonResponse({ error: "Failed to dispatch recovery email" }, 500, req);
     }
@@ -248,7 +240,7 @@ Deno.serve(async (req: Request) => {
 
     return buildJsonResponse(neutralSuccessResponse, 200, req);
   } catch (err) {
-    console.error("[request-password-recovery] Unexpected handler error:", err);
+    console.error(`[request-password-recovery] Unexpected handler error type=${err instanceof Error ? err.name : "unknown"}`);
     return buildJsonResponse({ error: "Internal server error" }, 500, req);
   }
 });

@@ -1,7 +1,7 @@
 export const adminLessonCopy = {
   tr: {
-    pastAction: "Geçmiş Ders Ekle",
-    pastHeading: "Geçmiş / Plansız Tamamlanan Ders",
+    pastAction: "Yapılan Ders Ekle",
+    pastHeading: "Yapılan Ders",
     learner: "Öğrenci",
     date: "Tarih",
     startTime: "Başlangıç Saati",
@@ -18,10 +18,10 @@ export const adminLessonCopy = {
     cancel: "Vazgeç",
     save: "Dersi Tamamlandı Olarak Kaydet",
     saving: "Kaydediliyor…",
-    success: "Geçmiş ders kaydedildi ve tam olarak 1 ders hakkı kullanıldı.",
+    success: "Yapılan ders kaydedildi ve tam olarak 1 ders hakkı kullanıldı.",
     failure: "Ders kaydedilemedi.",
     remaining: "kalan",
-    accountEmail: "Bilgilendirme e-postası hesap sahibine outbox üzerinden gönderilecektir.",
+    accountEmail: "",
   },
   en: {
     pastAction: "Add Past Lesson",
@@ -45,6 +45,6 @@ export const adminLessonCopy = {
     success: "The past lesson was recorded and exactly 1 lesson right was used.",
     failure: "The lesson could not be recorded.",
     remaining: "remaining",
-    accountEmail: "The completion email will be sent to the account holder through the outbox.",
+    accountEmail: "",
   },
 } as const;

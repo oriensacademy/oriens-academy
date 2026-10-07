@@ -8,13 +8,14 @@ import { ButtonLink } from "@/components/ui/button";
 import { examRecords } from "@/content/exams";
 import { useAboutContent, useLocale } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
 import About from "@/components/about";
 import { OriensLottie } from "@/components/ui/OriensLottie";
 
 const number = (index: number) => String(index + 1).padStart(2, "0");
 
 export function AboutPage() {
+  const CONTACT = useSiteContact();
   const locale = useLocale();
   const content = useAboutContent();
   const bookingHref = `${localizedPath("home", locale)}#consultation-form`;

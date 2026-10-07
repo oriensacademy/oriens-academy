@@ -11,7 +11,7 @@ export const universitySupport = {
     eyebrow: "Üniversite Ders Desteği",
     title: "Dersi geçmenin ötesinde, konuyu gerçekten kavramak.",
     description:
-      "Oriens, üniversite öğrencilerine dersin kendi içeriği ve takvimi üzerinden bireysel akademik yol gösterir; kavramları netleştirir, problem çözme sürecini yapılandırır ve çalışmayı takip edilebilir hâle getirir.",
+      "Oriens Academy, üniversite öğrencilerine dersin kendi içeriği ve takvimi üzerinden bireysel akademik yol gösterir; kavramları netleştirir, problem çözme sürecini yapılandırır ve çalışmayı takip edilebilir hâle getirir.",
     primaryCta: "Ücretsiz Görüşme Planla",
     secondaryCta: "Destek Alanlarını İncele",
     visualLabel: "Üniversite öğrenimi, planlama ve geri bildirim için akademik destek çizimi",
@@ -139,7 +139,7 @@ export const universitySupport = {
       { question: "Hangi üniversite dersleri için destek alabilirim?", answer: "Mevcut içerik STEM ve sayısal dersler, problem setleri, laboratuvar raporları, araştırma çalışmaları ve üniversite çalışma becerileri için genel bir destek çerçevesini doğruluyor. Belirli bir ders için uygunluk, ders izlencesi ve materyaller incelendikten sonra netleştirilir." },
       { question: "Destek yalnızca sınav dönemlerinde mi verilir?", answer: "Hayır. Haftalık ders takibi ve problem setleri için düzenli çalışma yapılabileceği gibi quiz, vize ve final öncesinde daha odaklı bir plan da oluşturulabilir." },
       { question: "Ders materyallerimi paylaşmam gerekir mi?", answer: "Syllabus, ders notları, görev yönergeleri ve yaklaşan değerlendirme kapsamı desteğin doğru yapılandırılmasına yardımcı olur. İlk aşamada hangi materyallerin gerekli olduğu birlikte belirlenir." },
-      { question: "Oriens ödevimi veya raporumu benim yerime hazırlar mı?", answer: "Hayır. Destek; kavramı anlama, yapı kurma, yöntem seçme, geri bildirim ve öğrencinin kendi çalışmasını geliştirmesi üzerine kuruludur." },
+      { question: "Oriens Academy ödevimi veya raporumu benim yerime hazırlar mı?", answer: "Hayır. Destek; kavramı anlama, yapı kurma, yöntem seçme, geri bildirim ve öğrencinin kendi çalışmasını geliştirmesi üzerine kuruludur." },
       { question: "Çalışma sıklığı nasıl belirlenir?", answer: "Ders yükü, mevcut eksikler ve akademik takvim birlikte değerlendirilir. Uygun sıklık ilk görüşme ve materyal incelemesinden sonra planlanır." },
     ],
   },

@@ -6,6 +6,7 @@ import {
   normalizeLocale,
 } from "../_shared/email/templates.ts";
 import { computeOtpHash, generateOtpCode } from "../_shared/otp/hash.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 const OTP_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
@@ -26,7 +27,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceRoleKey = getSupabaseAdminKey();
   const hmacSecret =
     Deno.env.get("EMAIL_CHANGE_HMAC_SECRET") ||
     Deno.env.get("PURCHASE_OTP_HMAC_SECRET") ||

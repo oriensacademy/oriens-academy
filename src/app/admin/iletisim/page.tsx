@@ -1,344 +1,171 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { ContactDetailSheet } from "@/components/admin/ContactDetailSheet";
-import type { ContactRequestRow, ContactStatus } from "@/lib/admin/contacts";
-import { listAdminContactRequests } from "@/lib/admin/contacts";
-import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
-import { Wave } from "@/components/ui/wave";
-import {
-  MessageSquare,
-  Search,
-  Filter,
-  RefreshCw,
-  Calendar,
-  User,
-  Mail,
-  ChevronRight,
-  AlertCircle,
-  Inbox,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { invalidate, queryKeys, useQuery } from "@/lib/data/query-store";
+import { listAdminContactInbox, type ContactInboxReply, type ContactRequestRow } from "@/lib/admin/contacts";
+import { CONTACT_FORM_LABEL, CONTACT_STATUS, ContactDialog } from "@/components/admin/ContactDialog";
+import { RefDatePicker } from "@/components/admin/RefDatePicker";
+import { foldTurkish, formatTrShortListDate } from "@/lib/format/turkish";
+import pages from "@/components/admin/admin-pages.module.css";
 
-export default function AdminContactsPage({ initialContactId = null, embedded = false }: { initialContactId?: string | null; embedded?: boolean }) {
-  return <ContactsContent initialContactId={initialContactId} embedded={embedded} />;
-}
+// Referans "İletişim Talepleri" (#view-iletisim): Aktif / Arşiv görünümü, arama
+// ve yerel tarih aralığı; satıra tıklayınca talep penceresi açılır.
 
-const STATUS_OPTIONS: Array<{ value: ContactStatus | "all"; label: string }> = [
-  { value: "all", label: "Tüm Durumlar" },
-  { value: "new", label: "Yeni (New)" },
-  { value: "in_progress", label: "İşlemde (In Progress)" },
-  { value: "resolved", label: "Çözüldü (Resolved)" },
-  { value: "spam", label: "Spam (Spam)" },
-];
+const EMPTY_CONTACTS: ContactRequestRow[] = [];
+const EMPTY_REPLIES: ContactInboxReply[] = [];
+const INBOX_KEY = `${queryKeys.adminContacts}:inbox`;
 
-function ContactsContent({ initialContactId, embedded }: { initialContactId: string | null; embedded: boolean }) {
-  const [contacts, setContacts] = useState<ContactRequestRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+const parseDay = (key: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  return match ? new Date(+match[1], +match[2] - 1, +match[3]) : null;
+};
 
-  // Filters State
-  const [statusFilter, setStatusFilter] = useState<ContactStatus | "all">("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+export default function AdminContactsPage({ initialContactId = null }: { initialContactId?: string | null; embedded?: boolean }) {
+  const { data, loading } = useQuery(INBOX_KEY, listAdminContactInbox, { staleTime: 30_000 });
+  const contacts = data?.data ?? EMPTY_CONTACTS;
+  const replies = data?.replies ?? EMPTY_REPLIES;
+  const loadError = data?.error || "";
 
-  // Selected Contact for Detail View
-  const [selectedContact, setSelectedContact] = useState<ContactRequestRow | null>(null);
+  const [seg, setSeg] = useState<"aktif" | "arsiv">("aktif");
+  const [q, setQ] = useState("");
+  const [from, setFrom] = useState("");
+  const [until, setUntil] = useState("");
+  const [openId, setOpenId] = useState<string | null>(initialContactId);
 
-  const fetchContacts = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    const { data, error } = await listAdminContactRequests({
-      status: statusFilter,
-      search: searchTerm,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    });
-    setLoading(false);
-    if (error) setErrorMsg(error);
-    else setContacts(data);
-  }, [statusFilter, searchTerm, startDate, endDate]);
+  const repliesByContact = useMemo(() => {
+    const map = new Map<string, ContactInboxReply[]>();
+    for (const reply of replies) {
+      const list = map.get(reply.contact_request_id) ?? [];
+      list.push(reply);
+      map.set(reply.contact_request_id, list);
+    }
+    return map;
+  }, [replies]);
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setErrorMsg(null);
-
-      listAdminContactRequests({
-        status: statusFilter,
-        search: searchTerm,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      }).then(({ data, error }) => {
-        if (mounted) {
-          setLoading(false);
-          if (error) {
-            setErrorMsg(error);
-          } else {
-            setContacts(data);
-            if (initialContactId) setSelectedContact(data.find((item) => item.id === initialContactId) || null);
-          }
-        }
-      });
-    }, 0);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
+  const rows = useMemo(() => contacts.map((contact) => {
+    const thread = repliesByContact.get(contact.id) ?? EMPTY_REPLIES;
+    const last = thread[thread.length - 1];
+    return {
+      contact,
+      count: 1 + thread.length,
+      lastAt: last ? last.sent_at || last.created_at : contact.created_at,
+      lastText: last ? last.message_text : contact.message,
+      lastOut: Boolean(last && last.direction !== "inbound"),
+      haystack: foldTurkish([contact.full_name, contact.email, contact.phone ?? "", contact.subject ?? "", CONTACT_FORM_LABEL[contact.source] ?? "", contact.message, ...thread.map((r) => r.message_text)].join(" ")),
     };
-  }, [statusFilter, searchTerm, startDate, endDate, initialContactId]);
+  }), [contacts, repliesByContact]);
 
-  const handleStatusUpdated = () => {
-    fetchContacts();
-    setSelectedContact(null);
-  };
+  const counts = useMemo(() => ({
+    aktif: contacts.filter((c) => !c.is_archived).length,
+    arsiv: contacts.filter((c) => c.is_archived).length,
+  }), [contacts]);
+
+  const visible = useMemo(() => {
+    const query = foldTurkish(q.trim());
+    const start = parseDay(from);
+    const end = parseDay(until);
+    if (end) end.setDate(end.getDate() + 1);
+    return rows
+      .filter((row) => (seg === "arsiv") === row.contact.is_archived)
+      .filter((row) => {
+        const created = new Date(row.contact.created_at);
+        if (start && created < start) return false;
+        if (end && created >= end) return false;
+        return !query || row.haystack.includes(query);
+      })
+      .sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  }, [rows, seg, q, from, until]);
+
+  const total = seg === "arsiv" ? counts.arsiv : counts.aktif;
+  const open = openId ? contacts.find((c) => c.id === openId) ?? null : null;
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      {!embedded && <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <MessageSquare className="size-6 text-[#819586]" />
-            <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              İletişim Talepleri
-            </h1>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Web sitesinden gönderilen tüm iletişim ve bilgi alma taleplerini yönetin.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={fetchContacts}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted"
-        >
-          {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
-          <span>Yenile</span>
-        </button>
-      </div>}
-
-      {/* Filter Bar */}
-      <div className="rounded-xl border border-border bg-white p-4 shadow-xs space-y-3">
-        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-          <Filter className="size-4 text-[#10271B]" />
-          <span>Filtreleme & Arama</span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="İsim, e-posta, konu veya mesaj…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-input bg-white pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#10271B] focus:outline-hidden"
-            />
-          </div>
-
-          {/* Status Dropdown */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as ContactStatus | "all")}
-              className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Start Date */}
-          <div>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
-              title="Başlangıç Tarihi"
-            />
-          </div>
-
-          {/* End Date */}
-          <div>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
-              title="Bitiş Tarihi"
-            />
+    <div id="view-iletisim" className={`pgv ${pages.root}`}>
+      <div className="page"><div className="wrap">
+        <div className="head">
+          <div><h1>İletişim Talepleri</h1><p>Web sitesindeki iletişim ve danışmanlık formundan gelen talepler.</p></div>
+          <div className="seg" role="group" aria-label="Görünüm">
+            <button type="button" aria-pressed={seg === "aktif"} data-il-seg="aktif" onClick={() => setSeg("aktif")}>Aktif<small data-il-c="aktif">{counts.aktif}</small></button>
+            <button type="button" aria-pressed={seg === "arsiv"} data-il-seg="arsiv" onClick={() => setSeg("arsiv")}>Arşiv<small data-il-c="arsiv">{counts.arsiv}</small></button>
           </div>
         </div>
-      </div>
-
-      {/* Error Banner */}
-      {errorMsg && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="size-4 text-red-600" />
-            <span>{errorMsg}</span>
+        <section className="card">
+          <div className="tools">
+            <label className="search">
+              <span className="sr">Ara</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+              <input type="search" id="il-q" placeholder="İsim, e-posta, konu veya mesaj ara…" value={q} onChange={(event) => setQ(event.target.value)} />
+            </label>
+            <div className="fx-range">
+              <span className="fx-rl">Tarih</span>
+              <RefDatePicker id="il-bas" value={from} onChange={setFrom} emptyLabel="Başlangıç" ariaLabel="Başlangıç tarihi" />
+              <span className="fx-rsep">–</span>
+              <RefDatePicker id="il-bit" value={until} onChange={setUntil} emptyLabel="Bitiş" ariaLabel="Bitiş tarihi" />
+              <button type="button" className="fx-link" data-il-clear="" onClick={() => { setFrom(""); setUntil(""); setQ(""); }}>Temizle</button>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={fetchContacts}
-            className="font-semibold underline hover:text-red-950"
-          >
-            Tekrar Deneyin
-          </button>
-        </div>
-      )}
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-white p-12 text-center">
-          <AdminWaveStatus label="İletişim talepleri yükleniyor…" className="text-xs text-muted-foreground" />
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !errorMsg && contacts.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-input bg-white p-12 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Inbox className="size-6" />
-          </div>
-          <h3 className="mt-3 text-sm font-bold text-foreground">
-            İletişim Talebi Bulunamadı
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-            Henüz gönderilmiş iletişim talebi yok veya filtrenizle eşleşen kayıt bulunamadı.
-          </p>
-        </div>
-      )}
-
-      {/* Data Table (Desktop) */}
-      {!loading && !errorMsg && contacts.length > 0 && (
-        <div className="rounded-xl border border-border bg-white shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3">Gönderen</th>
-                  <th className="px-4 py-3">Konu & Özet</th>
-                  <th className="px-4 py-3">Durum</th>
-                  <th className="px-4 py-3">Tarih</th>
-                  <th className="px-4 py-3 text-right">İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {contacts.map((contact) => (
+          <table className="fx-table il-table" id="il-table" aria-label="İletişim talepleri" hidden={!visible.length}>
+            <colgroup><col style={{ width: "27%" }} /><col /><col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col style={{ width: 56 }} /></colgroup>
+            <thead><tr><th>Gönderen</th><th>Konu ve son mesaj</th><th>Durum</th><th>Son işlem</th><th><span className="sr">Aç</span></th></tr></thead>
+            <tbody id="il-rows">
+              {visible.map((row) => {
+                const { contact } = row;
+                const status = CONTACT_STATUS[contact.status] ?? CONTACT_STATUS.new;
+                const when = formatTrShortListDate(row.lastAt);
+                const name = contact.full_name?.trim();
+                return (
                   <tr
                     key={contact.id}
-                    onClick={() => setSelectedContact(contact)}
-                    className="cursor-pointer transition-colors hover:bg-background-soft/80"
+                    className={status.cls}
+                    data-il={contact.id}
+                    tabIndex={0}
+                    onClick={() => setOpenId(contact.id)}
+                    onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpenId(contact.id); } }}
                   >
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#10271B]/10 text-[#10271B] font-semibold">
-                          <User className="size-4" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-foreground">
-                            {contact.full_name}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                            <Mail className="size-3 text-muted-foreground" />
-                            <span>{contact.email}</span>
-                          </div>
-                        </div>
+                    <td><div className="il-gon"><span className="fx-who"><b>{name || <span className="bos">İsim belirtilmedi</span>}</b><small>{contact.email}</small></span></div></td>
+                    <td className="il-konu">
+                      <div className="il-kh">
+                        <b>{contact.subject?.trim() || <span className="bos">Konu belirtilmedi</span>}</b>
+                        <span className="il-form">{CONTACT_FORM_LABEL[contact.source] ?? "İletişim formu"}</span>
+                        {row.count > 1 ? (
+                          <span className="il-say" title={`${row.count} mesaj`}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>{row.count}</span>
+                        ) : null}
                       </div>
+                      <small>{row.lastText?.trim() ? <>{row.lastOut ? <em>Siz:</em> : null}{row.lastOut ? " " : null}{row.lastText}</> : <span className="bos">Mesaj boş</span>}</small>
                     </td>
-
-                    <td className="px-4 py-3.5 max-w-xs truncate">
-                      <div className="font-semibold text-foreground truncate">
-                        {contact.subject || "Konusuz İletişim Talebi"}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground truncate">
-                        {contact.message}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3.5">
-                      <StatusBadge status={contact.status as ContactStatus} />
-                    </td>
-
-                    <td className="px-4 py-3.5 text-muted-foreground text-[11px]">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="size-3 text-muted-foreground" />
-                        <span>{new Date(contact.created_at).toLocaleDateString("tr-TR")}</span>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedContact(contact);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted"
-                      >
-                        <span>Detay</span>
-                        <ChevronRight className="size-3 text-muted-foreground" />
-                      </button>
-                    </td>
+                    <td><span className={`il-st ${status.cls}`}>{status.label}</span></td>
+                    <td className="fx-date">{when.primary}<small>{when.secondary}</small></td>
+                    <td className="il-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                );
+              })}
+            </tbody>
+          </table>
 
-      {/* Contact Detail Sheet */}
-      <ContactDetailSheet
-        contact={selectedContact}
-        onClose={() => setSelectedContact(null)}
-        onStatusUpdated={handleStatusUpdated}
-      />
+          {loading && !data ? (
+            <div className="fx-empty" id="il-empty"><b>Talepler yükleniyor…</b></div>
+          ) : (
+            <div className="fx-empty" id="il-empty" hidden={visible.length > 0}>
+              <span className="fx-empty-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg></span>
+              <b data-t="">{loadError ? "Talepler yüklenemedi" : total ? "Sonuç bulunamadı" : seg === "arsiv" ? "Arşiv boş" : "Henüz iletişim talebi yok"}</b>
+              <span data-s="">{loadError || (total ? "Aramayı veya tarih aralığını değiştirin." : seg === "arsiv" ? "Arşive taşınan talepler burada listelenir." : "Web sitesinden gelen talepler burada listelenir.")}</span>
+            </div>
+          )}
+
+          <div className="foot"><span id="il-shown">{visible.length} / {total} talep gösteriliyor</span><span>Satıra tıklayarak talebi açın ve yanıtlayın</span></div>
+        </section>
+      </div></div>
+
+      {open ? (
+        <ContactDialog
+          key={open.id}
+          contact={open}
+          replies={repliesByContact.get(open.id) ?? EMPTY_REPLIES}
+          onClose={() => setOpenId(null)}
+          onChanged={() => invalidate(queryKeys.adminContacts, queryKeys.adminDashboard)}
+        />
+      ) : null}
     </div>
   );
-}
-
-function StatusBadge({ status }: { status: ContactStatus }) {
-  switch (status) {
-    case "new":
-      return (
-        <span className="inline-flex items-center rounded-md bg-[#819586]/15 border border-amber-300 px-2 py-0.5 text-[11px] font-bold text-[#819586]">
-          Yeni (New)
-        </span>
-      );
-    case "in_progress":
-      return (
-        <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
-          İşlemde
-        </span>
-      );
-    case "resolved":
-      return (
-        <span className="inline-flex items-center rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-          Çözüldü
-        </span>
-      );
-    case "spam":
-      return (
-        <span className="inline-flex items-center rounded-md bg-muted border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-          Spam
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {status}
-        </span>
-      );
-  }
 }

@@ -1,5 +1,7 @@
+"use client";
+
 import { FaWhatsapp } from "react-icons/fa6";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
 
 /**
  * Premium, low-key WhatsApp CTA shown under every published article (spec
@@ -9,6 +11,7 @@ import { CONTACT } from "@/config/contact";
  * and URL.
  */
 export function BlogWhatsAppCta({ title, url, locale }: { title: string; url: string; locale: "tr" | "en" }) {
+  const CONTACT = useSiteContact();
   const isTr = locale === "tr";
   const message = isTr
     ? `Merhaba Oriens Academy,\n"${title}" başlıklı yazınız hakkında bilgi almak istiyorum.\n\n${url}`

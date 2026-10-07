@@ -158,12 +158,12 @@ async function runBccArchiveTestSuite() {
     assert.strictEqual(support.replyTo, "info@oriens-academy.com");
 
     const payments = resolveMailIdentity("payments");
-    assert.strictEqual(payments.fromEmail, "payments@oriens-academy.com");
-    assert.strictEqual(payments.replyTo, "payments@oriens-academy.com");
+    assert.strictEqual(payments.fromEmail, "info@oriens-academy.com");
+    assert.strictEqual(payments.replyTo, "info@oriens-academy.com");
 
     const zoom = resolveMailIdentity("zoom");
-    assert.strictEqual(zoom.fromEmail, "zoom@oriens-academy.com");
-    assert.strictEqual(zoom.replyTo, "zoom@oriens-academy.com");
+    assert.strictEqual(zoom.fromEmail, "info@oriens-academy.com");
+    assert.strictEqual(zoom.replyTo, "info@oriens-academy.com");
 
     const general = resolveMailIdentity("general");
     assert.strictEqual(general.fromEmail, "info@oriens-academy.com");

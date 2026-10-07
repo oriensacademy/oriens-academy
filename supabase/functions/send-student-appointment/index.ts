@@ -8,6 +8,7 @@ import {
   dispatchAppointmentReminderEmail,
 } from "../_shared/email/service.ts";
 import { normalizeLocale } from "../_shared/email/templates.ts";
+import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -16,8 +17,8 @@ Deno.serve(async (req: Request) => {
   if (invalid) return invalid;
 
   const url = Deno.env.get("SUPABASE_URL") || "";
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const anon = getSupabasePublishableKey();
+  const service = getSupabaseAdminKey();
   const authorization = req.headers.get("authorization") || "";
 
   if (!url || !anon || !service || !authorization) {

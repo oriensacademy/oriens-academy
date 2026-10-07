@@ -45,9 +45,17 @@ export function Hero() {
             animate={state}
             variants={item}
             transition={{ duration: skip ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="flex min-h-7 min-w-0 flex-wrap items-center gap-x-2 text-[12px] font-semibold tracking-[0.18em] text-[#68756C] uppercase font-ui"
+            /* Flex değil, normal metin akışı.
+               Flex-wrap ile eyebrow tek bir öğe olarak satırın TAMAMINI
+               kaplıyordu (mobilde 345px), bu yüzden "· Şimdi sırada AP" hep
+               kendi satırına düşüp başlığı üç satıra çıkarıyordu. Satır içi
+               akışta metin doğal olarak sarılıyor ve ifade bir üst satırın
+               sonuna yerleşiyor. */
+            className="min-h-7 min-w-0 text-[12px] font-semibold leading-[1.55] tracking-[0.1em] text-[#68756C] uppercase font-ui sm:tracking-[0.18em]"
           >
-            <span>{hero.eyebrow}</span><span aria-hidden="true">·</span><span className="inline-flex max-w-full items-center whitespace-nowrap">{locale === "tr" ? "Şimdi sırada" : "Prepare for"} <TextRotate texts={[...canonicalExamCodes]} rotationInterval={2500} splitBy="characters" mainClassName="ml-1 inline-flex min-w-[6.5ch] max-w-full overflow-hidden text-[#819586]" /></span>
+            {/* Ayraç ifadeye yapışık: ayrı bir öğe olduğunda dar ekranlarda
+                satır sonunda tek başına kalıp öksüz kalıyordu. */}
+            <span>{hero.eyebrow}</span>{" "}<span className="inline-flex max-w-full items-center whitespace-nowrap align-baseline"><span aria-hidden="true" className="mr-2">·</span>{locale === "tr" ? "Şimdi sırada" : "Prepare for"} <TextRotate texts={[...canonicalExamCodes]} rotationInterval={2500} splitBy="characters" mainClassName="ml-1 inline-flex min-w-[6.5ch] max-w-full overflow-hidden text-[#819586]" /></span>
           </motion.div>
 
           <motion.h1
@@ -55,7 +63,7 @@ export function Hero() {
             animate={state}
             variants={item}
             transition={{ duration: skip ? 0 : 0.45, delay: skip ? 0 : 0.05, ease: [0.22, 1, 0.36, 1] }}
-            className="mt-5 max-w-[740px] text-left font-heading text-[clamp(2.8rem,12vw,4rem)] leading-[1.04] font-normal tracking-[-0.02em] text-foreground md:text-[clamp(3rem,6.5vw,3.75rem)] md:leading-[1.02] lg:text-[clamp(3.4rem,4.3vw,5.1rem)] lg:leading-[1.01]"
+            className="mt-5 max-w-[740px] text-left font-heading text-[clamp(1.9rem,12vw,4rem)] leading-[1.04] font-normal tracking-[-0.02em] text-foreground md:text-[clamp(3rem,6.5vw,3.75rem)] md:leading-[1.02] lg:text-[clamp(3.4rem,4.3vw,5.1rem)] lg:leading-[1.01]"
           >
             <TextReveal preset="fade-in-blur" per="word" delay={.05} speedReveal={1.5} speedSegment={1.2} trigger={state === "visible"}>{hero.headline}</TextReveal>
           </motion.h1>
@@ -91,7 +99,7 @@ export function Hero() {
               href="#consultation-form"
               directional
               size="lg"
-              className="h-12 px-7 text-base font-ui"
+              className="h-12 px-7 text-base font-ui max-[359px]:px-4 max-[359px]:text-[0.9375rem]"
             >
               {hero.ctaPrimary}
               <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />
@@ -100,7 +108,7 @@ export function Hero() {
               href={localizedPath("exams", locale)}
               variant="outline"
               size="lg"
-              className="h-12 px-6 text-base font-ui"
+              className="h-12 px-6 text-base font-ui max-[359px]:px-4 max-[359px]:text-[0.9375rem]"
             >
               {hero.ctaSecondary}
             </ButtonLink>

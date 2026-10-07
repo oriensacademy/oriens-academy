@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@/lib/data/query-store";
 import { CreateSlotModal } from "@/components/admin/CreateSlotModal";
 import type { AvailabilitySlotWithBooking, SlotStatus } from "@/lib/admin/availability";
 import {
@@ -28,14 +29,16 @@ export default function AdminAvailabilityPage() {
 }
 
 function AvailabilityContent() {
-  const [slots, setSlots] = useState<AvailabilitySlotWithBooking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // İşlem hataları listeleme hatasından ayrı tutuluyor.
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setErrorMsg = setActionError;
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Filters State
   const [statusFilter, setStatusFilter] = useState<SlotStatus | "all">("all");
-  const todayStr = new Date().toISOString().split("T")[0];
+  const EMPTY_SLOTS: AvailabilitySlotWithBooking[] = [];
+
+const todayStr = new Date().toISOString().split("T")[0];
   const [startDate, setStartDate] = useState(todayStr);
   const [endDate, setEndDate] = useState("");
 
@@ -60,46 +63,16 @@ function AvailabilityContent() {
     setEndDate(end.toISOString().split("T")[0]);
   };
 
-  const fetchSlots = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    const { data, error } = await listAdminAvailabilitySlots({
-      status: statusFilter,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    });
-    setLoading(false);
-    if (error) setErrorMsg(error);
-    else setSlots(data);
-  }, [statusFilter, startDate, endDate]);
-
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setErrorMsg(null);
-
-      listAdminAvailabilitySlots({
-        status: statusFilter,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      }).then(({ data, error }) => {
-        if (mounted) {
-          setLoading(false);
-          if (error) {
-            setErrorMsg(error);
-          } else {
-            setSlots(data);
-          }
-        }
-      });
-    }, 0);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [statusFilter, startDate, endDate]);
+  // Randevular sekmesi ile Takvim arasında gidip gelmek artık soğuk yükleme
+  // yapmıyor: eldeki slotlar anında görünür, tazeleme arkada olur.
+  const { data, loading, refetch } = useQuery(
+    `admin:slots:${statusFilter}|${startDate}|${endDate}`,
+    () => listAdminAvailabilitySlots({ status: statusFilter, startDate: startDate || undefined, endDate: endDate || undefined }),
+    { staleTime: 30_000 }
+  );
+  const slots = useMemo(() => data?.data ?? EMPTY_SLOTS, [data]);
+  const errorMsg = actionError ?? data?.error ?? null;
+  const fetchSlots = refetch;
 
   const handleDeleteSlot = async (slotId: string) => {
     setDeletingId(slotId);

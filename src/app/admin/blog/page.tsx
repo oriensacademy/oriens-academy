@@ -1,230 +1,121 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { BlogPostRow, BlogPostStatus } from "@/lib/admin/blog";
-import { listAdminBlogPosts, deleteAdminBlogPost } from "@/lib/admin/blog";
-import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
-import { Wave } from "@/components/ui/wave";
-import {
-  Newspaper,
-  Plus,
-  RefreshCw,
-  AlertCircle,
-  Pencil,
-  Trash2,
-  Inbox,
-} from "lucide-react";
+import { queryKeys, useQuery } from "@/lib/data/query-store";
+import type { BlogPostRow } from "@/lib/admin/blog";
+import { archiveAdminBlogPost, listAdminBlogPosts, restoreAdminBlogPost } from "@/lib/admin/blog";
+import { toast } from "@/components/ui/toast";
+import pages from "@/components/admin/admin-pages.module.css";
 
-import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
+// Referans Blog listesi (#view-blog): Aktif / Arşiv segmenti ve yazı kartları.
+// Arşive taşıma geri alınabilir; arşivden çıkan yazı mevcut kurala göre taslağa döner.
 
-const STATUS_LABEL: Record<BlogPostStatus, string> = {
-  draft: "Taslak",
-  published: "Yayında",
-  archived: "Arşivlendi",
-};
+const EMPTY_POSTS: BlogPostRow[] = [];
 
-const STATUS_STYLE: Record<BlogPostStatus, string> = {
-  draft: "bg-muted border-border text-muted-foreground",
-  published: "bg-emerald-50 border-emerald-200 text-emerald-800",
-  archived: "bg-amber-50 border-amber-200 text-amber-800",
-};
-
-export default function AdminBlogPage() {
-  return <BlogContent />;
+function blogDate(iso: string, withTime: boolean) {
+  const date = new Date(iso);
+  const day = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" }).format(date);
+  if (!withTime) return day;
+  const time = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+  return `${day}, ${time}`;
 }
 
-function BlogContent() {
-  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
-  const [posts, setPosts] = useState<BlogPostRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const fetchPosts = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-      const { data, error } = await listAdminBlogPosts();
-      if (error) setErrorMsg(error);
-      else setPosts(data);
-    } finally {
-      setLoading(false);
+function StatusTag({ post, now }: { post: BlogPostRow; now: number }) {
+  if (post.status === "published" && post.published_at) {
+    if (now && new Date(post.published_at).getTime() > now) {
+      return <span className="fx-tag star">Planlandı · {blogDate(post.published_at, true)}</span>;
     }
-  }, []);
+    return <span className="fx-tag ok">Yayında · {blogDate(post.published_at, false)}</span>;
+  }
+  if (post.status === "published") return <span className="fx-tag ok">Yayında</span>;
+  return <span className="fx-tag grey">Taslak</span>;
+}
 
+export default function AdminBlogPage() {
+  const [mode, setMode] = useState<"aktif" | "arsiv">("aktif");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [now, setNow] = useState(0);
   useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setErrorMsg(null);
-      listAdminBlogPosts().then(({ data, error }) => {
-        if (mounted) {
-          setLoading(false);
-          if (error) setErrorMsg(error);
-          else setPosts(data);
-        }
-      });
-    }, 0);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
+    const timer = setTimeout(() => setNow(Date.now()), 0);
+    return () => clearTimeout(timer);
   }, []);
+  const active = useQuery(`${queryKeys.adminBlog}:active`, () => listAdminBlogPosts({ archived: false }), { staleTime: 30_000 });
+  const archived = useQuery(`${queryKeys.adminBlog}:archive`, () => listAdminBlogPosts({ archived: true }), { staleTime: 30_000 });
+  const activePosts = active.data?.data ?? EMPTY_POSTS;
+  const archivedPosts = archived.data?.data ?? EMPTY_POSTS;
+  const current = mode === "arsiv" ? archived : active;
+  const posts = mode === "arsiv" ? archivedPosts : activePosts;
+  const loadError = current.data?.error || "";
 
-  const handleDelete = (post: BlogPostRow) => {
-    requestConfirmation({
-      title: "Blog yazısını sil",
-      description: `"${post.title}" başlıklı yazı kalıcı olarak silinecek.`,
-      action: async () => {
-        setDeletingId(post.id);
-        try {
-          const { success, error } = await deleteAdminBlogPost(post.id);
-          if (error) setErrorMsg(error);
-          else if (success) await fetchPosts();
-        } finally {
-          setDeletingId(null);
-        }
-      },
-    });
-  };
+  async function toggleArchive(post: BlogPostRow) {
+    const restoring = post.status === "archived";
+    setBusyId(post.id);
+    const { success, error } = restoring ? await restoreAdminBlogPost(post.id) : await archiveAdminBlogPost(post.id);
+    setBusyId(null);
+    if (!success) {
+      toast.error(error || "İşlem tamamlanamadı.");
+      return;
+    }
+    toast.success(restoring ? "Yazı arşivden çıkarıldı" : "Yazı arşive taşındı");
+    await Promise.all([active.refetch(), archived.refetch()]);
+  }
+
+  const emptyTitle = loadError ? "Blog yazıları yüklenemedi" : mode === "arsiv" ? "Arşiv boş" : "Henüz blog yazısı yok";
+  const emptyText = loadError ? loadError : mode === "arsiv" ? "Arşive taşınan yazılar burada listelenir." : "Sağ üstteki “Yeni Yazı” ile ilk yazınızı ekleyin.";
 
   return (
-    <div className="space-y-6">
-      {confirmationDialog}
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <Newspaper className="size-6 text-[#819586]" />
-            <h1 className="text-xl font-bold tracking-tight text-[#10271B]">Blog Yönetimi</h1>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            TR/EN blog yazılarını oluşturun, düzenleyin ve yayınlayın.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={fetchPosts}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted"
-          >
-            {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
-            <span>Yenile</span>
-          </button>
-
-          <Link
-            href="/admin/blog/editor/"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C]"
-          >
-            <Plus className="size-4" />
-            <span>Yeni Yazı Ekle</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Error Alert */}
-      {errorMsg && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="size-4 text-red-600" />
-            <span>{errorMsg}</span>
-          </div>
-          <button type="button" onClick={fetchPosts} className="font-semibold underline hover:text-red-950">
-            Tekrar Deneyin
-          </button>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-white p-12 text-center">
-          <AdminWaveStatus label="Blog yazıları yükleniyor…" className="text-xs text-muted-foreground" />
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !errorMsg && posts.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-input bg-white p-12 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Inbox className="size-6" />
-          </div>
-          <h3 className="mt-3 text-sm font-bold text-foreground">Henüz Blog Yazısı Bulunmuyor</h3>
-          <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-            &quot;Yeni Yazı Ekle&quot; butonunu kullanarak ilk blog yazınızı oluşturabilirsiniz.
-          </p>
-          <Link
-            href="/admin/blog/editor/"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#10271B] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#0D2A1C]"
-          >
-            <Plus className="size-4" />
-            <span>İlk Yazıyı Oluştur</span>
-          </Link>
-        </div>
-      )}
-
-      {/* Post List (Table) */}
-      {!loading && !errorMsg && posts.length > 0 && (
-        <div className="rounded-xl border border-border bg-white shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3">Başlık</th>
-                  <th className="px-4 py-3">Dil</th>
-                  <th className="px-4 py-3">Slug</th>
-                  <th className="px-4 py-3">Durum</th>
-                  <th className="px-4 py-3">Yayın Tarihi</th>
-                  <th className="px-4 py-3 text-right">İşlemler</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {posts.map((post) => (
-                  <tr key={post.id} className="transition-colors hover:bg-background-soft/80">
-                    <td className="px-4 py-3.5 font-semibold text-foreground max-w-xs truncate">{post.title}</td>
-                    <td className="px-4 py-3.5 text-muted-foreground uppercase">{post.locale}</td>
-                    <td className="px-4 py-3.5 font-mono text-muted-foreground">{post.slug}</td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold ${STATUS_STYLE[post.status as BlogPostStatus]}`}
-                      >
-                        {STATUS_LABEL[post.status as BlogPostStatus]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-muted-foreground">
-                      {post.published_at ? new Date(post.published_at).toLocaleDateString("tr-TR") : "—"}
-                    </td>
-                    <td className="px-4 py-3.5 text-right space-x-2 whitespace-nowrap">
-                      <Link
-                        href={`/admin/blog/editor/?id=${post.id}`}
-                        className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted"
-                      >
-                        <Pencil className="size-3 text-muted-foreground" />
-                        <span>Düzenle</span>
-                      </Link>
-
-                      <button
-                        type="button"
-                        disabled={deletingId === post.id}
-                        onClick={() => handleDelete(post)}
-                        className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
-                      >
-                        {deletingId === post.id ? <Wave className="h-3 w-6" aria-label="Siliniyor" /> : <Trash2 className="size-3" />}
-                        <span>Sil</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div id="view-blog" className={`pgv ${pages.root}`}>
+      <div className="page"><div className="wrap">
+        <div className="head">
+          <div><h1>Blog</h1><p>Türkçe ve İngilizce blog yazılarını oluşturun, düzenleyin ve yayınlayın.</p></div>
+          <div className="fx-headr">
+            <div className="seg" role="group" aria-label="Görünüm">
+              <button type="button" aria-pressed={mode === "aktif"} onClick={() => setMode("aktif")}>Aktif<small>{activePosts.length}</small></button>
+              <button type="button" aria-pressed={mode === "arsiv"} onClick={() => setMode("arsiv")}>Arşiv<small>{archivedPosts.length}</small></button>
+            </div>
+            <Link className="fx-btn primary" href="/admin/blog/editor/">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              Yeni Yazı
+            </Link>
           </div>
         </div>
-      )}
-
+        <section className="card">
+          <div className="fx-cards" id="bl-cards">
+            {posts.map((post) => (
+              <article key={post.id} className="fx-post">
+                <div className="fx-post-img" style={post.cover_image_url ? { background: `center/cover url("${post.cover_image_url}")` } : undefined}>
+                  {post.cover_image_url ? null : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 21" /></svg>}
+                </div>
+                <div className="fx-post-b">
+                  <b>{post.title || "Başlıksız yazı"}</b>
+                  {post.excerpt ? <p>{post.excerpt}</p> : null}
+                  <span className="fx-id">/blog/{post.slug}</span>
+                </div>
+                <div className="fx-post-f">
+                  <StatusTag post={post} now={now} />
+                  <span className="fx-tag grey">{post.locale === "en" ? "EN" : "TR"}</span>
+                  <div className="fx-act">
+                    <Link className="fx-ib txt" href={`/admin/blog/editor/?id=${post.id}`}>Düzenle</Link>
+                    <button type="button" className="fx-ib txt" disabled={busyId === post.id} onClick={() => void toggleArchive(post)}>
+                      {post.status === "archived" ? "Arşivden çıkar" : "Arşive taşı"}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+          {current.loading && !posts.length ? (
+            <div className="fx-empty" id="bl-empty"><b>Blog yazıları yükleniyor…</b></div>
+          ) : (
+            <div className="fx-empty" id="bl-empty" hidden={posts.length > 0}>
+              <span className="fx-empty-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 22h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" /><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z" /></svg></span>
+              <b>{emptyTitle}</b>
+              <span>{emptyText}</span>
+            </div>
+          )}
+        </section>
+      </div></div>
     </div>
   );
 }

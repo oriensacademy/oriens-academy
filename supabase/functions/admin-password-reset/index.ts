@@ -8,6 +8,7 @@ import { createClient, type SupabaseClient, type User } from "https://esm.sh/@su
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
 import { dispatchPasswordResetEmail } from "../_shared/email/service.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 const RESET_ACTION = "admin_password_reset";
 const RESET_COOLDOWN_MS = 10 * 60 * 1000;
@@ -94,7 +95,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceRoleKey = getSupabaseAdminKey();
   if (!supabaseUrl || !serviceRoleKey) {
     console.error("[admin-password-reset] Required server configuration is missing.");
     return temporaryFailure(req);

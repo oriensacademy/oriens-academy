@@ -17,6 +17,14 @@ export async function retryAdminNotification(deliveryId: string) {
   return { success: !error && result?.success === true, error: error?.message || result?.error_code || null };
 }
 
+export async function deleteAdminNotification(deliveryId: string): Promise<{ success: boolean; error: string | null }> {
+  // Generated RPC types are refreshed after the migration is promoted.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (getSupabaseClient() as any).rpc("admin_delete_notification_delivery", { p_delivery_id: deliveryId });
+  const result = data as { success?: boolean; error_code?: string } | null;
+  return { success: !error && result?.success === true, error: error?.message || result?.error_code || null };
+}
+
 export interface ListNotificationsParams {
   status?: DeliveryStatus | "all";
   eventType?: string;
@@ -194,6 +202,7 @@ export async function listAdminNotifications(
     let query = supabase
       .from("notification_deliveries")
       .select("*", { count: "exact" })
+      .eq("is_archived", false)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -242,4 +251,162 @@ export async function listAdminNotifications(
     console.error("[Admin Notifications] Unexpected error listing deliveries:", err);
     return { data: [], totalCount: 0, error: "Bildirim teslimatları yüklenirken bir hata oluştu." };
   }
+}
+
+// ================== E-posta Geçmişi (referans #view-bildirim) ==================
+
+export type EmailHistoryKind = "rapor" | "odeme" | "paket" | "hosgeldin" | "otp" | "diger";
+export type EmailHistoryStatus = "ok" | "fail" | "wait";
+
+export const EMAIL_HISTORY_KIND_LABEL: Record<EmailHistoryKind, string> = {
+  rapor: "Ders raporu",
+  paket: "Paket tanımlandı",
+  odeme: "Ödeme alındı",
+  hosgeldin: "Hesap oluşturuldu",
+  otp: "Doğrulama kodu",
+  diger: "Diğer",
+};
+
+/** Teslimat olayını referanstaki e-posta türüne eşler. */
+export function emailHistoryKind(eventType: string | null | undefined): EmailHistoryKind {
+  const type = String(eventType || "").toLowerCase();
+  if (type.includes("otp") || type.includes("verification") || type.includes("password")) return "otp";
+  if (type.includes("welcome")) return "hosgeldin";
+  if (type.startsWith("payment.") || type.includes("bank_transfer")) return "odeme";
+  if (type.startsWith("package.") || type.includes("remaining_rights")) return "paket";
+  if (type.includes("report") || type.startsWith("lesson.completed") || type === "lesson.completion_email") return "rapor";
+  return "diger";
+}
+
+export function emailHistoryStatus(status: string | null | undefined): EmailHistoryStatus {
+  if (status === "sent" || status === "delivered") return "ok";
+  if (status === "failed") return "fail";
+  return "wait";
+}
+
+export interface EmailHistoryPerson {
+  name: string;
+  role: "Veli" | "Öğrenci";
+  studentName: string | null;
+  studentId: string | null;
+}
+
+export interface EmailHistoryRow {
+  id: string;
+  kind: EmailHistoryKind;
+  status: EmailHistoryStatus;
+  subject: string;
+  recipient: string;
+  messageId: string | null;
+  at: string;
+  canRetry: boolean;
+  person: EmailHistoryPerson | null;
+  raw: NotificationDeliveryRow;
+}
+
+export interface EmailHistoryResult {
+  rows: EmailHistoryRow[];
+  total: number;
+  okCount: number;
+  failCount: number;
+  error: string | null;
+}
+
+const EMAIL_HISTORY_LIMIT = 1000;
+
+/**
+ * E-posta Geçmişi listesi: son 1000 teslimat + tüm kayıtlar üzerinden durum
+ * sayıları. Alıcı adı veli/öğrenci kayıtlarındaki e-postadan çözülür.
+ */
+export async function listAdminEmailHistory(): Promise<EmailHistoryResult> {
+  const supabase = getSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const untyped = supabase as any;
+  const base = () => supabase.from("notification_deliveries").select("id", { count: "exact", head: true }).eq("is_archived", false);
+  const [list, okRes, failRes, guardians, links, students] = await Promise.all([
+    supabase.from("notification_deliveries").select("*", { count: "exact" }).eq("is_archived", false).eq("channel", "email").order("created_at", { ascending: false }).limit(EMAIL_HISTORY_LIMIT),
+    base().eq("channel", "email").in("status", ["sent", "delivered"]),
+    base().eq("channel", "email").eq("status", "failed"),
+    untyped.from("guardian_accounts").select("user_id,full_name,email") as Promise<{ data: { user_id: string; full_name: string | null; email: string | null }[] | null }>,
+    untyped.from("guardian_students").select("guardian_user_id,student_id,is_primary").eq("active", true) as Promise<{ data: { guardian_user_id: string; student_id: string; is_primary: boolean | null }[] | null }>,
+    untyped.from("student_profiles").select("id,full_name,email") as Promise<{ data: { id: string; full_name: string | null; email: string | null }[] | null }>,
+  ]);
+  if (list.error) return { rows: [], total: 0, okCount: 0, failCount: 0, error: "E-posta geçmişi yüklenemedi." };
+
+  const studentById = new Map((students.data ?? []).map((s) => [s.id, s]));
+  const firstStudentOfGuardian = new Map<string, string>();
+  for (const link of links.data ?? []) {
+    if (!firstStudentOfGuardian.has(link.guardian_user_id) || link.is_primary) firstStudentOfGuardian.set(link.guardian_user_id, link.student_id);
+  }
+  const people = new Map<string, EmailHistoryPerson>();
+  for (const g of guardians.data ?? []) {
+    const email = g.email?.trim().toLowerCase();
+    if (!email || !g.full_name?.trim()) continue;
+    const studentId = firstStudentOfGuardian.get(g.user_id) ?? null;
+    const student = studentId ? studentById.get(studentId) : undefined;
+    const self = student && student.email?.trim().toLowerCase() === email;
+    people.set(email, {
+      name: g.full_name.trim(),
+      role: self ? "Öğrenci" : "Veli",
+      studentName: !self && student?.full_name?.trim() ? student.full_name.trim() : null,
+      studentId: student ? studentId : null,
+    });
+  }
+  for (const s of students.data ?? []) {
+    const email = s.email?.trim().toLowerCase();
+    if (!email || people.has(email) || !s.full_name?.trim()) continue;
+    people.set(email, { name: s.full_name.trim(), role: "Öğrenci", studentName: null, studentId: s.id });
+  }
+
+  const rows = ((list.data ?? []) as NotificationDeliveryRow[]).map((row) => {
+    const status = emailHistoryStatus(row.status);
+    return {
+      id: row.id,
+      kind: emailHistoryKind(row.event_type),
+      status,
+      subject: humanizeNotificationSubject(row, "tr"),
+      recipient: row.recipient,
+      messageId: row.provider_message_id ?? null,
+      at: row.sent_at || row.created_at,
+      canRetry: status === "fail" && Boolean(row.template),
+      person: people.get(String(row.recipient || "").trim().toLowerCase()) ?? null,
+      raw: row,
+    };
+  });
+  return { rows, total: list.count ?? rows.length, okCount: okRes.count ?? 0, failCount: failRes.count ?? 0, error: null };
+}
+
+/**
+ * Gönderilen şablonun tam metni sistemde saklanmaz; ayrıntı penceresinde
+ * teslimat kaydındaki içerik alanları okunur biçimde gösterilir.
+ */
+export function emailHistoryBody(row: NotificationDeliveryRow): string {
+  const payload = (typeof row.payload === "object" && row.payload !== null ? row.payload : {}) as Record<string, unknown>;
+  const labels: [string, string][] = [
+    ["guardian_name", "Veli"],
+    ["student_name", "Öğrenci"],
+    ["learner_name", "Öğrenci"],
+    ["lesson_title", "Ders konusu"],
+    ["lesson_date", "Ders tarihi"],
+    ["completion_report", "Ders raporu"],
+    ["package_name", "Paket"],
+    ["total_remaining_lessons", "Kalan ders hakkı"],
+    ["remaining_lessons", "Kalan ders hakkı"],
+    ["amount", "Tutar"],
+  ];
+  const lines: string[] = [];
+  const seen = new Set<string>();
+  for (const [key, label] of labels) {
+    const value = payload[key];
+    if (seen.has(label) && value != null) continue;
+    if (value != null && value !== "") seen.add(label);
+    if (key === "lesson_date" && typeof value === "string" && !Number.isNaN(Date.parse(value))) {
+      lines.push(`${label}: ${new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value))}`);
+    } else if (typeof value === "string" && value.trim()) lines.push(`${label}: ${value.trim()}`);
+    else if (typeof value === "number") lines.push(`${label}: ${value.toLocaleString("tr-TR")}`);
+  }
+  if (row.last_error_code && emailHistoryStatus(row.status) === "fail") lines.push(`Hata: ${row.last_error_code}`);
+  return lines.length
+    ? lines.join("\n")
+    : "Bu e-postanın tam metni sistemde saklanmaz. Konu, alıcı ve teslim bilgileri yukarıda yer alır.";
 }

@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronLeft, Clock, CreditCard, ExternalLink, LayoutDashboard, LogOut, Package, Save, UserRound, Video, Award, Sparkles, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, CalendarDays, Check, ChevronLeft, Clock, ExternalLink, Save, Video, Award, Sparkles, X } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
-import { getStudentCopy } from "@/content/student-portal";
 import { getPaymentRefundCopy } from "@/content/payment-refund";
 import { localizedPath } from "@/lib/routes";
 import { updateGuardianProfile, updateStudentEmail, updateStudentPassword, requestEmailChange, verifyEmailChangeOtp } from "@/lib/student/auth";
@@ -13,46 +12,57 @@ import { useAccount } from "@/lib/auth/account-context";
 import { loginPathWithReturn } from "@/lib/auth/account-routing";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { getStudentPortalData, setupLearnerProfile, updateStudentProfile, type StudentPortalData } from "@/lib/student/data";
+import { invalidateStudentData, queryKeys, useQuery } from "@/lib/data/query-store";
 import { SUPPORTED_EXAMS, SUPPORTED_DESTINATIONS, saveStudentPreferences, formatExamBadges } from "@/lib/student/preferences";
 import { InteractiveHomework } from "@/components/student/InteractiveHomework";
 import { listStudentExamAttempts, claimAnonymousExamResult, type StudentExamAttempt } from "@/lib/student/exam-history";
 import { ExamQuestionReview } from "@/components/exam-test/ExamQuestionReview";
 import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
-import { LogoutConfirmationModal } from "@/components/auth/LogoutConfirmationModal";
 import { DeleteAccountModal } from "@/components/student/DeleteAccountModal";
-import { StudentOnboardingPersonalization } from "@/components/student/StudentOnboardingPersonalization";
+import { HesabimView } from "@/components/student/hesabim/HesabimView";
+import { UniversitySearchSelect } from "@/components/university/UniversitySearchSelect";
 import { cn } from "@/lib/utils";
-import { VISIBLE_STUDENT_NAVIGATION, type StudentSectionId } from "@/lib/student/navigation";
+import { type StudentSectionId } from "@/lib/student/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { requestPurchaseEmailVerification, verifyPurchaseEmailVerification } from "@/lib/payments/email-verification";
 import { localizeErrorMessage } from "@/lib/utils/error-messages";
+import { packageDisplayName } from "@/lib/packages/display";
 import type { Tables } from "@/types/database.types";
 
 type SectionId = StudentSectionId;
-const icons = [LayoutDashboard, UserRound, BookOpen, Package, CreditCard];
-const visibleNavigation = VISIBLE_STUDENT_NAVIGATION.map((item) => ({ ...item, Icon: icons[item.labelIndex] }));
-const mobileTabLabels: Record<"tr" | "en", string[]> = {
-  tr: ["Genel", "Profil", "Dersler", "Paketler", "Ödemeler"],
-  en: ["Overview", "Profile", "Lessons", "Packages", "Payments"],
-};
 
 export function StudentPortal() {
-  const locale = useLocale(); const copy = getStudentCopy(locale); const router = useRouter();
-  const searchParams = useSearchParams();
+  const locale = useLocale(); const router = useRouter();
   const { accountType, user, isInitializing, signOut } = useAccount();
-  const [section, setSection] = useState<SectionId>("overview"); const [data, setData] = useState<StudentPortalData | null>(null);
-  const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const [bootstrapError, setBootstrapError] = useState("");
   const [guardian, setGuardian] = useState<Tables<"guardian_accounts"> | null>(null);
   const [learners, setLearners] = useState<Tables<"student_profiles">[]>([]);
   const [selectedLearnerId, setSelectedLearnerId] = useState("");
-  const [personalizationOpen, setPersonalizationOpen] = useState<boolean | null>(null);
-  const isNewSignup = typeof window !== "undefined" && sessionStorage.getItem("oriens.newSignupOnboarding") === "true";
-  const showPersonalization = personalizationOpen ?? (searchParams?.get("onboarding") === "personalization" || isNewSignup);
-  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [bootstrapDone, setBootstrapDone] = useState(false);
+  // Bootstrap efekti ref ile korunuyor; "tekrar dene" bu sayacı artırarak
+  // efekti yeniden çalıştırır.
+  const [bootstrapRetry, setBootstrapRetry] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
   const navigatedRef = useRef(false);
   const loadedUserRef = useRef("");
-  const load = useCallback(async (id: string, silent = false) => { if (!silent) setLoading(true); const result = await getStudentPortalData(id); if (!silent) setLoading(false); if (result.error || !result.data?.profile.active) { if (!silent) setError(result.error || "INACTIVE_PROFILE"); return; } setError(""); setData(result.data); }, []);
+  // Portal verisi paylaşılan önbellekten geliyor: bölümler arası geçiş ve
+  // sekmeye geri dönüş yeniden yükleme yapmaz, tazeleme arkada sessizce olur.
+  // Ayrıca admin tarafında yapılan bir değişiklik `invalidateStudentData()`
+  // ile bu anahtarı da tazelediği için öğrenci F5 atmadan güncel veriyi görür.
+  const portalQuery = useQuery(
+    selectedLearnerId ? queryKeys.studentPortal(selectedLearnerId) : null,
+    () => getStudentPortalData(selectedLearnerId),
+    { staleTime: 30_000, enabled: !!selectedLearnerId }
+  );
+  const data: StudentPortalData | null = portalQuery.data?.data ?? null;
+  const dataError = portalQuery.error || portalQuery.data?.error || "";
+  const inactiveProfile = !!portalQuery.data?.data && !portalQuery.data.data.profile.active;
+  // Bootstrap bitti ama hiç öğrenci profili çözülemediyse sorgu hiç çalışmaz;
+  // bu durumda ekran eskiden sonsuza kadar iskelette kalıyordu.
+  const noLearner = bootstrapDone && !selectedLearnerId;
+  const error =
+    bootstrapError || dataError || (inactiveProfile ? "INACTIVE_PROFILE" : "") || (noLearner ? "NO_LEARNER" : "");
+  const load = useCallback(() => portalQuery.refetch(), [portalQuery]);
 
   // Claim pending exam result if token exists in sessionStorage
   useEffect(() => {
@@ -81,6 +91,7 @@ export function StudentPortal() {
     if (accountType === "admin") { navigatedRef.current = true; router.replace("/admin/"); return; }
     if (accountType === "student" && user && loadedUserRef.current !== user.id) {
       loadedUserRef.current = user.id;
+      setBootstrapError("");
       const supabase = getSupabaseClient();
       void Promise.all([
         supabase.from("guardian_accounts").select("*").eq("user_id", user.id).maybeSingle(),
@@ -117,18 +128,23 @@ export function StudentPortal() {
         setGuardian(guardianResult.data);
         if (rows.length > 0) setLearners(rows);
         setSelectedLearnerId(selected);
-        if (selected) await load(selected); else { setLoading(false); }
+        setBootstrapDone(true);
+      }).catch((err: unknown) => {
+        // Bu zincirin `.catch`'i yoktu. Herhangi bir adım patladığında (ör.
+        // localStorage erişimi engelliyse) `setLoading(false)` hiç çalışmıyor
+        // ve `loadedUserRef` zaten dolduğu için efekt bir daha denemiyordu:
+        // ekran kalıcı olarak "Hesabınız yükleniyor…" iskeletinde kalıyordu.
+        // Artık hata görünür oluyor ve tekrar denenebiliyor.
+        loadedUserRef.current = "";
+        setBootstrapDone(true);
+        setBootstrapError(err instanceof Error ? err.message : "PORTAL_BOOTSTRAP_FAILED");
       });
     }
-  }, [accountType, isInitializing, locale, load, router, user]);
+  }, [accountType, isInitializing, locale, router, user, bootstrapRetry]);
 
-  useEffect(() => {
-    if (!selectedLearnerId) return;
-    const refreshSilently = () => { if (document.visibilityState === "visible") void load(selectedLearnerId, true); };
-    window.addEventListener("focus", refreshSilently);
-    document.addEventListener("visibilitychange", refreshSilently);
-    return () => { window.removeEventListener("focus", refreshSilently); document.removeEventListener("visibilitychange", refreshSilently); };
-  }, [load, selectedLearnerId]);
+  // Sekme dönüşünde tazeleme artık query-store'da merkezi olarak yapılıyor.
+  // Buradaki `focus` + `visibilitychange` ikilisi tek dönüşte iki kez
+  // tetiklenip her seferinde 14 sorgu üretiyordu.
 
   async function handleConfirmLogout() {
     if (signingOut) return;
@@ -138,8 +154,60 @@ export function StudentPortal() {
     router.replace(localizedPath("home", locale));
   }
 
-  if (isInitializing || accountType !== "student") return <AccountWaveLoader />;
-  if (loading || !data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{error || (locale === "tr" ? "Hesabınız yükleniyor…" : "Loading your account…")}</div></div></section>;
+  // `isInitializing` kasıtlı olarak çıkarıldı: arka planda bir auth tazelemesi
+  // (sekmeye dönüş / token yenileme) tüm portalı unmount etmemeli. Görünürlük
+  // yalnızca çözümlenmiş hesap tipine bağlı.
+  if (accountType !== "student") return <AccountWaveLoader />;
+
+  // Hata ile "henüz yükleniyor" ARTIK ayrı. Eskiden ikisi de aynı pulsing
+  // skeleton'da gösteriliyordu; kullanıcı gerçek bir hatayı "loading hiç
+  // bitmiyor" olarak görüyor ve tekrar deneyecek bir yol bulamıyordu.
+  if (error && !data) {
+    const isTr = locale === "tr";
+    return (
+      <section className="min-h-screen bg-background pt-32">
+        <div className="public-container">
+          <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-10 text-center">
+            <h2 className="font-heading text-xl text-ink">
+              {isTr ? "Hesabınız yüklenemedi" : "We couldn’t load your account"}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {error === "INACTIVE_PROFILE"
+                ? isTr
+                  ? "Profiliniz şu anda aktif değil. Lütfen bizimle iletişime geçin."
+                  : "Your profile is not active right now. Please contact us."
+                : error === "NO_LEARNER"
+                  ? isTr
+                    ? "Hesabınıza bağlı bir öğrenci profili bulunamadı. Lütfen bizimle iletişime geçin."
+                    : "No learner profile is linked to your account. Please contact us."
+                  : isTr
+                    ? "Bağlantı kurulamadı. Lütfen tekrar deneyin."
+                    : "We could not reach the server. Please try again."}
+            </p>
+            {error !== "INACTIVE_PROFILE" && (
+              <button
+                type="button"
+                onClick={() => {
+                  loadedUserRef.current = "";
+                  setBootstrapError("");
+                  setBootstrapDone(false);
+                  setBootstrapRetry((n) => n + 1);
+                  void load();
+                }}
+                className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-lg bg-ink px-5 text-sm font-semibold text-white hover:opacity-90 cursor-pointer"
+              >
+                {isTr ? "Tekrar dene" : "Try again"}
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Skeleton yalnızca gerçekten gösterilecek hiçbir şey yokken. Elde veri
+  // varken tazeleme sürüyorsa içerik ekranda kalır.
+  if (!data) return <section className="min-h-screen bg-background pt-32"><div className="public-container"><div className="mx-auto max-w-6xl animate-pulse rounded-2xl border border-border bg-surface p-10 text-sm text-muted-foreground">{locale === "tr" ? "Hesabınız yükleniyor…" : "Loading your account…"}</div></div></section>;
 
   if (guardian && !guardian.email_verified_at) {
     return (
@@ -152,55 +220,24 @@ export function StudentPortal() {
     );
   }
 
-  const handleDismissPersonalization = () => {
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("oriens.newSignupOnboarding");
-      if (window.location.search.includes("onboarding=personalization")) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete("onboarding");
-        window.history.replaceState(null, "", url.toString());
-      }
-    }
-    setPersonalizationOpen(false);
-  };
-
-  return <section className="min-h-screen bg-background pt-24 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pt-28 lg:pb-16"><div className="public-container"><div className="mx-auto max-w-7xl">
-    <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[.2em] text-primary">{locale === "tr" ? "Hesabım" : "My Account"}</p><h1 className="mt-2 font-heading text-4xl text-ink">{locale === "tr" ? "Hoş geldiniz" : "Welcome"}, {(guardian?.full_name || "").split(" ")[0]}</h1>{learners.length > 1 ? <select aria-label={locale === "tr" ? "Öğrenci değiştir" : "Switch learner"} value={selectedLearnerId} onChange={(event) => { const id=event.target.value; setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId",id); void load(id); }} className="mt-3 min-h-10 rounded-xl border border-input bg-surface px-3 text-sm">{learners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select> : null}</div><button onClick={() => setLogoutModalOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-4 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer"><LogOut className="size-4" />{locale === "tr" ? "Çıkış" : "Log out"}</button></header>
-    <div className="mt-7 grid gap-7 lg:grid-cols-[15rem_minmax(0,1fr)]"><nav aria-label={locale === "tr" ? "Hesap bölümleri" : "Account sections"} className="hidden h-fit rounded-2xl border border-border bg-surface p-2 lg:block">{visibleNavigation.map(({ id, labelIndex, Icon }) => <button key={id} onClick={() => setSection(id)} aria-current={section === id ? "page" : undefined} className={cn("flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors cursor-pointer", section === id ? "bg-ink font-semibold text-white" : "text-muted-foreground hover:bg-surface-muted hover:text-ink")}><Icon className="size-4" />{copy.tabs[labelIndex]}</button>)}</nav>
-      <main className="min-w-0">{section === "overview" && <Overview data={data} locale={locale} onNavigate={setSection} onOpenPersonalization={() => setPersonalizationOpen(true)} />}{section === "profile" && <Profile key={data.profile.updated_at || data.profile.id} data={data} guardian={guardian} userId={selectedLearnerId} locale={locale} onReload={() => load(selectedLearnerId, true)} onAccountDeleted={handleConfirmLogout} />}{section === "lessons" && <Lessons data={data} locale={locale} />}{section === "package" && <PackageView data={data} locale={locale} />}{section === "payments" && <Payments data={data} locale={locale} />}</main>
-    </div>
-  </div></div><nav aria-label={locale === "tr" ? "Mobil hesap bölümleri" : "Mobile account sections"} className="fixed inset-x-0 bottom-0 z-40 w-full border-t border-border bg-background/95 px-1.5 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden"><div className="grid w-full grid-cols-5 items-center gap-1">{visibleNavigation.map(({ id, labelIndex, Icon }) => { const active = section === id; const label = mobileTabLabels[locale]?.[labelIndex] ?? copy.tabs[labelIndex]; return <button key={id} type="button" onClick={() => setSection(id)} aria-current={active ? "page" : undefined} className={cn("flex min-h-[52px] w-full flex-col items-center justify-center gap-1 rounded-xl py-1 px-0.5 text-[10px] leading-tight transition-colors cursor-pointer select-none", active ? "bg-sage-soft font-bold text-ink shadow-2xs" : "text-muted-foreground hover:bg-surface-muted hover:text-ink active:scale-95")}><Icon className={cn("size-4 shrink-0", active ? "text-primary stroke-[2.2]" : "text-muted-foreground")} /><span className="truncate max-w-full text-center tracking-tight">{label}</span></button>; })}</div></nav>
-  <LogoutConfirmationModal open={logoutModalOpen} signingOut={signingOut} locale={locale} onCancel={() => setLogoutModalOpen(false)} onConfirm={handleConfirmLogout} />
-  {showPersonalization && (
-    <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          handleDismissPersonalization();
-        }
-      }}
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/60 p-3 sm:p-4 backdrop-blur-sm pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]"
-    >
-      <div className="relative w-full max-w-2xl my-auto sm:my-8">
-        <StudentOnboardingPersonalization
-          studentId={selectedLearnerId || user?.id || ""}
-          initialExams={data?.profile?.target_exams || []}
-          initialCountries={data?.profile?.target_countries || []}
-          initialUniversity={data?.profile?.target_university || ""}
-          onComplete={async () => {
-            handleDismissPersonalization();
-            if (selectedLearnerId) await load(selectedLearnerId, true);
-          }}
-          onSkip={handleDismissPersonalization}
-          onClose={handleDismissPersonalization}
-        />
-      </div>
-    </div>
-  )}
+  return <section className="min-h-screen">
+    <HesabimView
+      locale={locale}
+      data={data}
+      guardian={guardian}
+      learners={learners}
+      selectedLearnerId={selectedLearnerId}
+      onSelectLearner={(id) => { setSelectedLearnerId(id); localStorage.setItem("oriens.selectedLearnerId", id); }}
+      onLogout={handleConfirmLogout}
+      onGuardianChange={(patch) => setGuardian((prev) => (prev ? { ...prev, ...patch } : prev))}
+      onReload={() => { invalidateStudentData(); }}
+      onAccountDeleted={handleConfirmLogout}
+    />
   </section>;
 }
 
 function LearnerSetupState({ locale, accountEmail, onCreated }: { locale: "tr" | "en"; accountEmail: string; onCreated: (studentId: string) => Promise<void> }) {
-  const [form, setForm] = useState({ fullName: "", email: accountEmail, phone: "", school: "" });
+  const [form, setForm] = useState({ fullName: "", email: accountEmail, phone: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const isTr = locale === "tr";
@@ -233,7 +270,6 @@ function LearnerSetupState({ locale, accountEmail, onCreated }: { locale: "tr" |
           <label className="text-xs font-semibold text-ink">{isTr ? "Öğrenci Adı Soyadı" : "Learner Full Name"}<input required minLength={2} maxLength={100} value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
           <label className="text-xs font-semibold text-ink">{isTr ? "Öğrenci E-postası" : "Learner Email"}<input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
           <label className="text-xs font-semibold text-ink">{isTr ? "Telefon (isteğe bağlı)" : "Phone (optional)"}<input type="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
-          <label className="text-xs font-semibold text-ink">{isTr ? "Okul (isteğe bağlı)" : "School (optional)"}<input value={form.school} onChange={(event) => setForm({ ...form, school: event.target.value })} className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm" /></label>
           <button disabled={busy} className="min-h-12 rounded-xl bg-ink px-5 text-sm font-semibold text-white hover:bg-forest disabled:opacity-50 sm:col-span-2">{busy ? (isTr ? "Kaydediliyor…" : "Saving…") : (isTr ? "Öğrenci Bilgilerini Kaydet" : "Save Learner Details")}</button>
         </form>
       </div>
@@ -320,24 +356,29 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
       {/* Current Package / Total Remaining Lessons Banner */}
       <button onClick={() => onNavigate("package")} className="rounded-2xl border border-border bg-forest p-6 text-left text-white sm:col-span-2 cursor-pointer hover:border-border-strong transition-all">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
           <p className="text-xs uppercase tracking-wider text-white/65">
             {hasActivePackage && activeCount > 1
               ? (locale === "tr" ? `${activeCount} Aktif Eğitim Paketi` : `${activeCount} Active Packages`)
               : (locale === "tr" ? "Eğitim Paketi" : "Education Package")}
           </p>
-          <span className="rounded-full bg-white/15 px-3 py-0.5 text-xs font-semibold text-white">
-            {hasActivePackage
-              ? (locale === "tr" ? `${entitlement.totalRemainingLessons} Ders Hakkı` : `${entitlement.totalRemainingLessons} Lessons Available`)
-              : (locale === "tr" ? "Aktif Paket Yok" : "No Active Package")}
-          </span>
         </div>
 
-        <h2 className="mt-2 font-heading text-3xl">
-          {hasActivePackage && primaryPkg
-            ? primaryPkg.custom_package_name || (locale === "tr" ? primaryPkg.pricing_packages?.name_tr : primaryPkg.pricing_packages?.name_en) || primaryPkg.package_id
-            : (locale === "tr" ? "Aktif Eğitim Paketi Bulunmuyor" : "No Active Education Package")}
-        </h2>
+        <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+          <h2 className="font-heading text-4xl font-bold">
+            {hasActivePackage ? entitlement.totalRemainingLessons : 0}
+          </h2>
+          <p className="pb-1 text-sm font-semibold text-white/85">
+            {locale === "tr" ? "toplam kalan ders" : "total lessons remaining"}
+          </p>
+        </div>
+        {hasActivePackage && (
+          <p className="mt-2 text-xs text-white/70">
+            {locale === "tr" ? "Aktif paketleriniz" : "Your active packages"}: {entitlement.activePackages
+              .map((purchase) => packageDisplayName(purchase, locale))
+              .join(" · ")}
+          </p>
+        )}
 
         {hasActivePackage && entitlement.totalGrantedLessons > 0 ? (
           <>
@@ -350,7 +391,7 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
               />
             </div>
             <p className="mt-2 text-sm text-white/75">
-              {locale === "tr" ? "Toplam Kullanılan" : "Total Completed"}: {entitlement.totalUsedLessons} / {entitlement.totalGrantedLessons} · {locale === "tr" ? "Toplam Kalan" : "Total Remaining"}: <strong className="text-white font-bold">{entitlement.totalRemainingLessons} {locale === "tr" ? "Ders" : "Lessons"}</strong>
+              {locale === "tr" ? "Kullanılan" : "Used"}: {entitlement.totalUsedLessons} / {entitlement.totalGrantedLessons}
             </p>
           </>
         ) : (
@@ -484,9 +525,8 @@ function Overview({ data, locale, onNavigate, onOpenPersonalization }: { data: S
   );
 }
 
-function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }: { data: StudentPortalData; guardian: Tables<"guardian_accounts"> | null; userId: string; locale: "tr" | "en"; onReload: () => void; onAccountDeleted: () => void }) {
+function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted, compact = false }: { data: StudentPortalData; guardian: Tables<"guardian_accounts"> | null; userId: string; locale: "tr" | "en"; onReload: () => void; onAccountDeleted: () => void; compact?: boolean }) {
   const [form, setForm] = useState({
-    school: data.profile.school || "",
     targetUniversity: data.profile.target_university || "",
   });
   const [selectedExams, setSelectedExams] = useState<string[]>(() => {
@@ -600,7 +640,6 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
 
     try {
       const { error: profileError } = await updateStudentProfile(userId, {
-        school: form.school.trim() || null,
         target_university: form.targetUniversity.trim() || null,
         target_exams: selectedExams,
         target_countries: selectedCountries,
@@ -736,9 +775,18 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
       {msg && <p className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-xs font-semibold text-emerald-800">{msg}</p>}
       {err && <p className="rounded-xl border border-red-300 bg-red-50 p-4 text-xs font-semibold text-red-800">{err}</p>}
 
-      <Panel title={locale === "tr" ? "Hesap Sahibi Bilgileri" : "Account Holder Details"}>
+      <Panel title={compact ? (locale === "tr" ? "Hesap Sahibi" : "Account Holder") : (locale === "tr" ? "Hesap Sahibi Bilgileri" : "Account Holder Details")}>
         <form onSubmit={saveGuardian} className="grid gap-4 sm:grid-cols-2">
-          <label className="text-xs font-medium text-muted-foreground sm:col-span-2">{locale === "tr" ? "Ad Soyad" : "Full Name"}<input required minLength={2} maxLength={100} value={guardianForm.fullName} onChange={(event) => setGuardianForm({...guardianForm,fullName:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
+          <label className={compact ? "text-xs font-medium text-muted-foreground" : "text-xs font-medium text-muted-foreground sm:col-span-2"}>{locale === "tr" ? "Ad Soyad" : "Full Name"}<input required minLength={2} maxLength={100} value={guardianForm.fullName} onChange={(event) => setGuardianForm({...guardianForm,fullName:event.target.value})} className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink" /></label>
+          {compact ? (
+            // Telefon yalnız okunur: updateGuardianProfile RPC'si telefon parametresi almıyor.
+            <label className="text-xs font-medium text-muted-foreground">{locale === "tr" ? "Telefon" : "Phone"}
+              <span className="mt-1 flex min-h-11 w-full overflow-hidden rounded-xl border border-input bg-surface-muted text-sm text-ink">
+                <span className="flex items-center border-r border-input px-3 font-semibold text-muted-foreground">+90</span>
+                <input readOnly aria-readonly="true" value={(guardian?.phone || data.profile.phone || "").replace(/^\s*(\+?90)\s*/, "").trim()} placeholder="—" className="min-w-0 flex-1 bg-transparent px-3 outline-none" />
+              </span>
+            </label>
+          ) : null}
           <div className="sm:col-span-2"><button disabled={guardianBusy} className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-xl bg-ink px-5 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50"><Save className="size-4" />{guardianBusy ? (locale === "tr" ? "Kaydediliyor…" : "Saving…") : (locale === "tr" ? "Hesap Bilgilerini Kaydet" : "Save Account Details")}</button></div>
         </form>
       </Panel>
@@ -746,27 +794,18 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
       {/* 2. AKADEMİK HEDEFLER & PROFİL (STUDENT EDITABLE) */}
       <Panel title={locale === "tr" ? "Akademik Hedefler & Tercihler" : "Academic Goals & Preferences"}>
         <form onSubmit={saveProfile} className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-xs font-medium text-muted-foreground">
-              {locale === "tr" ? "Mevcut Okul / Lise" : "Current School / Institution"}
-              <input
-                type="text"
-                placeholder={locale === "tr" ? "Örn: Robert Kolej, Galatasaray Lisesi..." : "e.g. High School..."}
-                value={form.school}
-                onChange={(e) => setForm({ ...form, school: e.target.value })}
-                className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              />
-            </label>
-            <label className="text-xs font-medium text-muted-foreground">
-              {locale === "tr" ? "Hedef Üniversite / Bölüm" : "Target University / Major"}
-              <input
-                type="text"
-                placeholder={locale === "tr" ? "Örn: Oxford University, MIT, Bocconi..." : "e.g. Oxford University, MIT..."}
+          <div className="grid gap-4">
+            <div className="text-xs font-medium text-muted-foreground">
+              <span className="block">{locale === "tr" ? "Hedef Üniversite / Bölüm" : "Target University / Major"}</span>
+              <UniversitySearchSelect
+                className="mt-1"
                 value={form.targetUniversity}
-                onChange={(e) => setForm({ ...form, targetUniversity: e.target.value })}
-                className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                onChange={(university) => setForm({ ...form, targetUniversity: university })}
+                placeholder={locale === "tr" ? "Örn: Oxford University, MIT, Bocconi..." : "e.g. Oxford University, MIT..."}
+                fieldClassName="min-h-11 border-input bg-surface px-3 py-0 shadow-none focus-within:ring-2 focus-within:ring-primary"
+                inputClassName="text-sm"
               />
-            </label>
+            </div>
           </div>
 
           {/* MULTI-SELECT CHIPS FOR EXAMS */}
@@ -904,7 +943,7 @@ function Profile({ data, guardian, userId, locale, onReload, onAccountDeleted }:
       </Panel>
 
       {/* 3. HESAP GÜVENLİĞİ (SAME PAGE) */}
-      <Panel title={locale === "tr" ? "Hesap Güvenliği" : "Account Security"}>
+      <Panel title={compact ? (locale === "tr" ? "Giriş ve Güvenlik" : "Sign-in & Security") : (locale === "tr" ? "Hesap Güvenliği" : "Account Security")}>
         {/* Optional Email Verification Status / Action Card */}
         <div className="mb-5 rounded-2xl border border-border bg-surface/60 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1420,7 +1459,7 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
                           {locale === "tr" ? `Paket #${idx + 1}` : `Package #${idx + 1}`}
                         </span>
                         <h4 className="font-heading text-2xl text-ink">
-                          {p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
+                          {packageDisplayName(p, locale)}
                         </h4>
                       </div>
                       {extraLessonsSum > 0 && (
@@ -1497,12 +1536,12 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
           <div className="grid gap-3">
             {pastPackages.map((p) => {
               const fee = p.price_amount === null ? "—" : new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: p.currency }).format(p.price_amount);
-              const isCompleted = p.status === "completed" || p.lessons_used >= p.lesson_count;
               const isRefunded = p.status === "refunded";
-              const statusLabel = isCompleted
-                ? (locale === "tr" ? "Tamamlandı" : "Completed")
-                : isRefunded
+              const isCompleted = !isRefunded && (p.status === "completed" || p.lessons_used >= p.lesson_count);
+              const statusLabel = isRefunded
                 ? (locale === "tr" ? "İade Edildi" : "Refunded")
+                : isCompleted
+                ? (locale === "tr" ? "Tamamlandı" : "Completed")
                 : (locale === "tr" ? "Süresi Doldu" : "Expired");
 
               return (
@@ -1510,20 +1549,20 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <h4 className="font-heading text-base font-bold text-ink">
-                        {p.custom_package_name || (locale === "tr" ? p.pricing_packages?.name_tr : p.pricing_packages?.name_en) || p.package_id}
+                        {packageDisplayName(p, locale)}
                       </h4>
                       <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                        isCompleted
-                          ? "bg-slate-200/80 text-slate-800"
-                          : isRefunded
+                        isRefunded
                           ? "bg-rose-100 text-rose-800"
+                          : isCompleted
+                          ? "bg-slate-200/80 text-slate-800"
                           : "bg-amber-100 text-amber-800"
                       }`}>
                         {statusLabel}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {p.lesson_count} {locale === "tr" ? "Derslik Paket" : "Lesson Package"} · {statusLabel} · <strong className="text-ink font-semibold">{p.lessons_used} / {p.lesson_count}</strong> {locale === "tr" ? "ders kullanıldı" : "lessons completed"} · {fmt(p.created_at, locale)}
+                      {packageDisplayName(p, locale)} · {statusLabel} · <strong className="text-ink font-semibold">{p.lessons_used} / {p.lesson_count}</strong> {locale === "tr" ? "ders kullanıldı" : "lessons completed"} · {fmt(p.created_at, locale)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
@@ -1544,44 +1583,11 @@ function PackageView({ data, locale }: { data: StudentPortalData; locale: "tr" |
 
 function Metric({label,value}:{label:string;value:string|number}){return <div className="rounded-xl border border-border bg-surface-muted p-4"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-semibold text-ink">{value}</dd></div>;}
 
-function getHumanPackageName(packageId: string, metadata: Record<string, unknown> | null, locale: "tr" | "en"): string {
-  if (metadata) {
-    if (typeof metadata.package_name === "string" && metadata.package_name.trim()) {
-      return metadata.package_name;
-    }
-    if (typeof metadata.package_name_tr === "string" && locale === "tr" && metadata.package_name_tr.trim()) {
-      return metadata.package_name_tr;
-    }
-    if (typeof metadata.package_name_en === "string" && locale === "en" && metadata.package_name_en.trim()) {
-      return metadata.package_name_en;
-    }
-  }
-
-  const normalized = (packageId || "").toLowerCase().trim();
-  const slugMap: Record<string, { tr: string; en: string }> = {
-    single: { tr: "1 Derslik Paket", en: "Single Lesson Package" },
-    package1: { tr: "1 Derslik Paket", en: "Single Lesson Package" },
-    package5: { tr: "5 Derslik Paket", en: "5-Lesson Package" },
-    package10: { tr: "10 Derslik Paket", en: "10-Lesson Package" },
-    package20: { tr: "20 Derslik Paket", en: "20-Lesson Package" },
-    package30: { tr: "30 Derslik Paket", en: "30-Lesson Package" },
-  };
-
-  if (slugMap[normalized]) {
-    return locale === "tr" ? slugMap[normalized].tr : slugMap[normalized].en;
-  }
-
-  const match = normalized.match(/^(?:package|pkg)(\d+)$/);
-  if (match) {
-    return locale === "tr" ? `${match[1]} Derslik Paket` : `${match[1]}-Lesson Package`;
-  }
-
-  return packageId || (locale === "tr" ? "Eğitim Paketi" : "Education Package");
-}
-
 function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
   const refundCopy = getPaymentRefundCopy(locale);
-  const visiblePayments = data.payments.filter((p) => !(p as { is_archived?: boolean }).is_archived);
+  const visiblePayments = data.payments.filter(
+    (p) => !(p as { is_archived?: boolean }).is_archived && p.status !== "failed"
+  );
   return (
     <div className="space-y-5">
       <Panel title={locale === "tr" ? "Ödemelerim" : "My Payments"}>
@@ -1591,7 +1597,7 @@ function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
               const meta = (p.metadata ?? {}) as Record<string, unknown>;
               const discount = Number(meta.discount_amount ?? 0);
               const couponCode = meta.coupon_code ? String(meta.coupon_code) : null;
-              const packageName = getHumanPackageName(p.package_id, meta, locale);
+              const packageName = packageDisplayName({ package_id: p.package_id, metadata: meta }, locale);
               return (
                 <article key={p.id} className="grid gap-2 rounded-2xl border border-border p-4 sm:grid-cols-[1fr_auto_auto]">
                   <div>
@@ -1603,7 +1609,10 @@ function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{fmt(p.created_at, locale)} · Ref: <span className="font-mono">{p.public_reference}</span></p>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-semibold text-ink/75">{locale === "tr" ? "Ödeme tarihi" : "Payment date"}:</span>{" "}
+                      {fmt(p.paid_at || p.created_at, locale, true)} · Ref: <span className="font-mono">{p.public_reference}</span>
+                    </p>
                   </div>
                   <p className="text-sm font-semibold text-ink">
                     {new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: p.currency }).format(p.amount)}
@@ -1615,6 +1624,12 @@ function Payments({data,locale}:{data:StudentPortalData;locale:"tr"|"en"}) {
                     · <span className="font-semibold text-ink">{p.refund_status === "partial" ? refundCopy.partiallyRefunded : p.refund_status === "full" ? refundCopy.refunded : status(p.status, locale)}</span>
                   </p>
                   {Number(p.refunded_amount || 0) > 0 ? <p className="text-[11px] font-medium text-purple-800">{refundCopy.refundedAmount}: {new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: p.currency }).format(Number(p.refunded_amount))}</p> : null}
+                  {Number(p.refunded_amount || 0) > 0 ? (
+                    <p className="text-[11px] text-muted-foreground sm:col-span-3">
+                      {refundCopy.refundableAmount}: {new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-GB", { style: "currency", currency: p.currency }).format(Math.max(0, Number(p.amount) - Number(p.refunded_amount || 0)))}
+                      {p.last_refunded_at ? ` · ${locale === "tr" ? "İade tarihi" : "Refund date"}: ${fmt(p.last_refunded_at, locale, true)}` : ""}
+                    </p>
+                  ) : null}
                 </article>
               );
             })}

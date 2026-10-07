@@ -3,6 +3,8 @@ import {
   parsePaytrCallbackBody,
   verifyPaytrCallbackHash,
 } from "../_shared/payments/paytr.ts";
+import { recordPaymentAuditEvent } from "../_shared/payments/audit.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 /**
  * PayTR iFrame API Callback / Notification Endpoint
@@ -46,7 +48,7 @@ Deno.serve(async (req: Request) => {
 
   // 3. Supabase admin credentials check
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceKey = getSupabaseAdminKey();
   if (!supabaseUrl || !serviceKey) {
     console.error(
       "[paytr-callback] Configuration error: Supabase service credentials missing."
@@ -56,6 +58,8 @@ Deno.serve(async (req: Request) => {
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
+
+  const admin = createClient(supabaseUrl, serviceKey);
 
   try {
     // 4. Parse request payload safely
@@ -92,15 +96,42 @@ Deno.serve(async (req: Request) => {
       console.warn(
         `[paytr-callback] Security Alert: Invalid callback hash for merchant_oid: ${merchantOid}`
       );
+      await recordPaymentAuditEvent(admin, {
+        action: "paytr_callback_hash_invalid",
+        publicReference: merchantOid,
+        severity: "CRITICAL",
+        metadata: {
+          merchant_oid: merchantOid,
+          timestamp: new Date().toISOString(),
+        },
+      });
       return new Response("PAYTR_CALLBACK_FAILED: Invalid signature", {
         status: 400,
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
-    // 6. DB Execution via atomic & idempotent RPC
-    const admin = createClient(supabaseUrl, serviceKey);
+    // Only authenticated PayTR callbacks are allowed into the operational
+    // audit stream. Logging before signature verification lets arbitrary
+    // internet traffic create fake payment references and audit noise.
+    await recordPaymentAuditEvent(admin, {
+      action: "paytr_callback_received",
+      publicReference: merchantOid,
+      severity: "INFO",
+      dedupe: true,
+      metadata: {
+        merchant_oid: merchantOid,
+        provider_status: status,
+        total_amount: totalAmount,
+        payment_type: payload.payment_type || null,
+        currency: payload.currency || null,
+        test_mode: payload.test_mode || null,
+        failed_reason_code: payload.failed_reason_code || null,
+        failed_reason_msg: payload.failed_reason_msg || null,
+      },
+    });
 
+    // 6. DB Execution via atomic & idempotent RPC
     const safePaytrMetadata = {
       status,
       total_amount: totalAmount,
@@ -133,6 +164,42 @@ Deno.serve(async (req: Request) => {
       );
 
       const isNotFound = rpcResult?.error_code === "TRANSACTION_NOT_FOUND";
+      const isAmountMismatch = rpcResult?.error_code === "AMOUNT_MISMATCH";
+
+      if (isNotFound) {
+        await recordPaymentAuditEvent(admin, {
+          action: "paytr_callback_transaction_not_found",
+          publicReference: merchantOid,
+          severity: "ERROR",
+          dedupe: true,
+          metadata: {
+            merchant_oid: merchantOid,
+            provider_status: status,
+          },
+        });
+
+        // The signature is valid, so this is an authentic provider callback
+        // for an order that no longer exists locally (typically a cleaned-up
+        // QA token session). PayTR retries every non-OK response. Acknowledge
+        // this terminal orphan exactly as required by the provider protocol;
+        // no payment is finalized and no entitlement is granted.
+        return new Response("OK", {
+          status: 200,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      } else if (isAmountMismatch) {
+        await recordPaymentAuditEvent(admin, {
+          action: "paytr_callback_amount_mismatch",
+          publicReference: merchantOid,
+          severity: "CRITICAL",
+          metadata: {
+            merchant_oid: merchantOid,
+            received_amount_kurus: totalAmount,
+            message: rpcResult?.message,
+          },
+        });
+      }
+
       return new Response(
         `PAYTR_CALLBACK_ERROR: ${rpcResult?.message || "Payment finalization failed"}`,
         {
@@ -153,16 +220,45 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 8. Notification rows are inserted atomically by the payment status trigger.
-    // The callback must never send mail directly or replay payment finalization for mail retries.
+    // 8. Audit logging for final outcome: payment_completed or payment_failed
     if (status === "success") {
       console.log(
         `[paytr-callback] Payment successful for merchant_oid: ${merchantOid}, transaction: ${rpcResult.transaction_id}`
       );
+      await recordPaymentAuditEvent(admin, {
+        action: "payment_completed",
+        publicReference: merchantOid,
+        transactionId: rpcResult.transaction_id,
+        severity: "INFO",
+        metadata: {
+          transaction_id: rpcResult.transaction_id,
+          public_reference: merchantOid,
+          amount_kurus: Math.round(Number(rpcResult.amount ?? (Number(totalAmount) / 100)) * 100),
+          currency: rpcResult.currency || payload.currency || "TRY",
+          package_purchase_id: rpcResult.purchase_id || null,
+          coupon_used: Boolean(rpcResult.coupon_id),
+        },
+      });
     } else {
       console.log(
         `[paytr-callback] Payment failed notification received for merchant_oid: ${merchantOid}, reason: ${payload.failed_reason_msg || "N/A"}`
       );
+      const isCode6 = String(payload.failed_reason_code ?? "") === "6";
+      await recordPaymentAuditEvent(admin, {
+        action: "payment_failed",
+        publicReference: merchantOid,
+        transactionId: rpcResult.transaction_id,
+        severity: isCode6 ? "WARNING" : "ERROR",
+        metadata: {
+          transaction_id: rpcResult.transaction_id,
+          public_reference: merchantOid,
+          failed_reason_code: payload.failed_reason_code || null,
+          failed_reason_msg: payload.failed_reason_msg || null,
+          failure_type: isCode6 ? "timeout_or_user_left" : "provider_declined",
+          amount_kurus: Number(totalAmount),
+          provider: "paytr",
+        },
+      });
     }
 
     // 9. Exact PayTR response: OK

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database.types";
+import { reportAdminFailure, writeAdminAuditLog } from "@/lib/admin/audit";
 
 export type ContactStatus = "new" | "in_progress" | "resolved" | "spam";
 
@@ -32,6 +33,7 @@ export async function sendAdminContactReply(input: {
   });
 
   if (error) {
+    void reportAdminFailure({ action: "contact.operation_failed", category: "contact", operation: "send_contact_reply", error, entityType: "contact_request", entityId: input.contactRequestId });
     return { reply: null, duplicate: false, error: "Yanıt gönderilemedi. Lütfen tekrar deneyin." };
   }
 
@@ -43,6 +45,7 @@ export async function sendAdminContactReply(input: {
   } | null;
 
   if (!payload?.success || !payload.reply) {
+    void reportAdminFailure({ action: "contact.operation_failed", category: "contact", operation: "send_contact_reply", error: { message: payload?.error_code || "Reply not confirmed" }, entityType: "contact_request", entityId: input.contactRequestId });
     return {
       reply: null,
       duplicate: Boolean(payload?.duplicate),
@@ -64,6 +67,7 @@ export interface ListContactsParams {
   search?: string;
   startDate?: string; // YYYY-MM-DD
   endDate?: string;   // YYYY-MM-DD
+  archived?: boolean;
 }
 
 export interface ListContactsResult {
@@ -84,6 +88,7 @@ export async function listAdminContactRequests(
     let query = supabase
       .from("contact_requests")
       .select("*")
+      .eq("is_archived", Boolean(params.archived))
       .order("created_at", { ascending: false });
 
     if (params.status && params.status !== "all") {
@@ -108,15 +113,34 @@ export async function listAdminContactRequests(
     const { data, error } = await query;
 
     if (error) {
+      void reportAdminFailure({ action: "admin.data_load_failed", category: "admin", operation: "list_contact_requests", error, entityType: "contact_request" });
       console.error("[Admin Contacts] Error listing contact requests:", error);
       return { data: [], error: error.message };
     }
 
     return { data: (data as ContactRequestRow[]) || [], error: null };
   } catch (err) {
+    void reportAdminFailure({ action: "admin.data_load_failed", category: "admin", operation: "list_contact_requests", error: err, entityType: "contact_request" });
     console.error("[Admin Contacts] Unexpected error listing contact requests:", err);
     return { data: [], error: "İletişim talepleri yüklenirken bir hata oluştu." };
   }
+}
+
+export async function archiveAdminContactRequest(contactId: string): Promise<{ success: boolean; error: string | null }> {
+  // Generated RPC types are refreshed after migration promotion.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (getSupabaseClient() as any).rpc("admin_archive_contact_request", { p_contact_id: contactId });
+  const result = data as { success?: boolean } | null;
+  if (error || result?.success !== true) void reportAdminFailure({ action: "contact.operation_failed", category: "contact", operation: "archive_contact_request", error: error || { message: "Archive not confirmed" }, entityType: "contact_request", entityId: contactId });
+  return { success: !error && result?.success === true, error: error?.message || null };
+}
+
+export async function restoreAdminContactRequest(contactId: string): Promise<{ success: boolean; error: string | null }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (getSupabaseClient() as any).rpc("admin_restore_contact_request", { p_contact_id: contactId });
+  const result = data as { success?: boolean } | null;
+  if (error || result?.success !== true) void reportAdminFailure({ action: "contact.operation_failed", category: "contact", operation: "restore_contact_request", error: error || { message: "Restore not confirmed" }, entityType: "contact_request", entityId: contactId });
+  return { success: !error && result?.success === true, error: error?.message || null };
 }
 
 /**
@@ -136,22 +160,16 @@ export async function updateAdminContactStatus(
       .eq("id", contactId);
 
     if (updateErr) {
+      void reportAdminFailure({ action: "contact.operation_failed", category: "contact", operation: "update_contact_status", error: updateErr, entityType: "contact_request", entityId: contactId });
       console.error("[Admin Contacts] Error updating status:", updateErr);
       return { success: false, error: updateErr.message };
     }
 
-    // Log admin audit event
-    const { data: userData } = await supabase.auth.getUser();
-    await supabase.from("audit_logs").insert({
-      actor_user_id: userData.user?.id || null,
-      action: "admin.contact.status_updated",
-      entity_type: "contact_request",
-      entity_id: contactId,
-      metadata: { new_status: newStatus },
-    });
+    await writeAdminAuditLog({ action: "contact.status_updated", category: "contact", entityType: "contact_request", entityId: contactId, metadata: { new_status: newStatus } });
 
     return { success: true, error: null };
   } catch (err) {
+    void reportAdminFailure({ action: "contact.operation_failed", category: "contact", operation: "update_contact_status", error: err, entityType: "contact_request", entityId: contactId });
     console.error("[Admin Contacts] Unexpected error updating status:", err);
     return { success: false, error: "Güncelleme sırasında bir hata oluştu." };
   }
@@ -198,6 +216,7 @@ export async function getUnresolvedContactCounts(): Promise<{
     const { data, error } = await supabase
       .from("contact_requests")
       .select("status")
+      .eq("is_archived", false)
       .in("status", ["new", "in_progress"]);
 
     if (error) {
@@ -210,5 +229,41 @@ export async function getUnresolvedContactCounts(): Promise<{
     return { newCount, inProgressCount, error: null };
   } catch {
     return { newCount: 0, inProgressCount: 0, error: "Count error" };
+  }
+}
+
+export type ContactInboxReply = Pick<ContactReplyRow, "id" | "contact_request_id" | "direction" | "message_text" | "delivery_status" | "created_at" | "sent_at">;
+
+/**
+ * Referans İletişim Talepleri listesi: aktif ve arşiv talepleri birlikte, her
+ * talebin yanıtlarıyla (son işlem ve "Siz:" özeti için) yüklenir. Filtreleme
+ * istemcide yerel tarihlerle yapılır.
+ */
+export async function listAdminContactInbox(): Promise<{ data: ContactRequestRow[]; replies: ContactInboxReply[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  try {
+    const { data, error } = await supabase
+      .from("contact_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) {
+      void reportAdminFailure({ action: "admin.data_load_failed", category: "admin", operation: "list_contact_requests", error, entityType: "contact_request" });
+      return { data: [], replies: [], error: error.message };
+    }
+    const ids = (data || []).map((row) => row.id);
+    const replies: ContactInboxReply[] = [];
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: chunk } = await supabase
+        .from("contact_replies")
+        .select("id,contact_request_id,direction,message_text,delivery_status,created_at,sent_at")
+        .in("contact_request_id", ids.slice(i, i + 200))
+        .order("created_at", { ascending: true });
+      replies.push(...((chunk as ContactInboxReply[] | null) || []));
+    }
+    return { data: (data as ContactRequestRow[]) || [], replies, error: null };
+  } catch (err) {
+    void reportAdminFailure({ action: "admin.data_load_failed", category: "admin", operation: "list_contact_requests", error: err, entityType: "contact_request" });
+    return { data: [], replies: [], error: "İletişim talepleri yüklenirken bir hata oluştu." };
   }
 }

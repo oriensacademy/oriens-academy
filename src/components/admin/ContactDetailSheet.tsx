@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ContactReplyRow, ContactRequestRow, ContactStatus } from "@/lib/admin/contacts";
-import { listContactReplies, sendAdminContactReply, updateAdminContactStatus } from "@/lib/admin/contacts";
+import { archiveAdminContactRequest, listContactReplies, restoreAdminContactRequest, sendAdminContactReply, updateAdminContactStatus } from "@/lib/admin/contacts";
 import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
 import { Wave } from "@/components/ui/wave";
 import { formatPackagePrice, getContactPackageContext } from "@/lib/contact/package-context";
-import { AlertCircle, Calendar, CheckCircle2, Inbox, Mail, Phone, Send, Tag, User, X } from "lucide-react";
+import { toast } from "@/components/ui/toast";
+import { AlertCircle, ArchiveRestore, Calendar, CheckCircle2, Inbox, Mail, Phone, Send, Tag, Trash2, User, X } from "lucide-react";
+import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
 
 interface ContactDetailSheetProps {
   contact: ContactRequestRow | null;
@@ -44,7 +46,8 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
   const [sending, setSending] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
+  const isArchived = Boolean((contact as ContactRequestRow & { is_archived?: boolean }).is_archived);
 
   const refreshReplies = useCallback(async (contactId: string) => {
     setLoadingReplies(true);
@@ -75,7 +78,10 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
     const { success, error } = await updateAdminContactStatus(contact.id, targetStatus);
     setUpdating(false);
     if (error) setErrorMsg(error);
-    if (success) onStatusUpdated();
+    if (success) {
+      toast.success("Durum güncellendi.");
+      onStatusUpdated();
+    }
   };
 
   const handleReplySubmit = async (event: React.FormEvent) => {
@@ -85,7 +91,6 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
 
     setSending(true);
     setErrorMsg(null);
-    setSuccessMsg(null);
     const result = await sendAdminContactReply({ contactRequestId: contact.id, messageText, idempotencyKey });
     setSending(false);
 
@@ -104,7 +109,29 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
     }
     setReplyText("");
     setIdempotencyKey(newIdempotencyKey());
-    setSuccessMsg(result.duplicate ? "Bu yanıt daha önce gönderildi; mevcut kayıt gösteriliyor." : "Yanıt e-posta ile gönderildi ve konuşmaya kaydedildi.");
+    toast.success(result.duplicate ? "Bu yanıt daha önce gönderildi; mevcut kayıt gösteriliyor." : "Yanıt e-posta ile gönderildi ve konuşmaya kaydedildi.");
+  };
+
+  const handleArchiveAction = () => {
+    requestConfirmation({
+      title: isArchived ? "Talep geri yüklensin mi?" : "Talep arşive taşınsın mı?",
+      description: isArchived
+        ? "Bu iletişim talebi aktif listeye geri alınacaktır."
+        : "Bu iletişim talebi kalıcı olarak silinmeyecek, arşive taşınacaktır. Emin misiniz?",
+      confirmLabel: isArchived ? "Geri Yükle" : "Arşive Taşı",
+      destructive: !isArchived,
+      action: async () => {
+        const result = isArchived
+          ? await restoreAdminContactRequest(contact.id)
+          : await archiveAdminContactRequest(contact.id);
+        if (!result.success) {
+          toast.error(result.error || "Talep durumu güncellenemedi.");
+          return;
+        }
+        toast.success(isArchived ? "İletişim talebi geri yüklendi." : "İletişim talebi arşive taşındı.");
+        onStatusUpdated();
+      },
+    });
   };
 
   return (
@@ -122,7 +149,6 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
 
         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
           {errorMsg && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">{errorMsg}</div>}
-          {successMsg && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">{successMsg}</div>}
 
           <section className="flex flex-col gap-3 rounded-xl border border-border bg-background-soft/50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -198,8 +224,15 @@ function ContactDetailContent({ contact, onClose, onStatusUpdated }: { contact: 
               <StatusButton label="Spam" disabled={updating || contact.status === "spam"} onClick={() => handleStatusChange("spam")} icon={<AlertCircle className="size-3.5" />} />
             </div>
           </section>
+          <section className="flex justify-end border-t border-border pt-4">
+            <button type="button" onClick={handleArchiveAction} className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 text-xs font-semibold ${isArchived ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" : "border-red-200 bg-white text-red-700 hover:bg-red-50"}`}>
+              {isArchived ? <ArchiveRestore className="size-4" /> : <Trash2 className="size-4" />}
+              {isArchived ? "Geri Yükle" : "Arşive Taşı"}
+            </button>
+          </section>
         </div>
       </div>
+      {confirmationDialog}
     </div>
   );
 }

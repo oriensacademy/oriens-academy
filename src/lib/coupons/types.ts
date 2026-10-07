@@ -13,6 +13,7 @@ export interface DiscountCoupon {
   valid_from: string | null;
   valid_until: string | null;
   active: boolean;
+  archived_at: string | null;
   first_purchase_only: boolean;
   created_at: string;
   updated_at: string;

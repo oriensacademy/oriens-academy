@@ -2,7 +2,10 @@ import fs from "fs";
 import path from "path";
 import assert from "assert";
 
-// Load templates TypeScript file via tsx runner or dynamic transpilation
+// Çalıştırma: npx tsx scripts/test-all-email-templates.mjs
+// f454507 ile kaldırılan eski 16 şablon (ödev, paket, eski ödeme, güvenlik
+// uyarısı, eski ders tamamlandı) bu listeden çıkarıldı; güncel katalog
+// test-all-email-types.mjs / test-production-email-reconciliation.mjs'de.
 import {
   renderAdminBookingEmail,
   renderStudentBookingEmail,
@@ -13,25 +16,9 @@ import {
   renderStudentAppointmentUpdatedEmail,
   renderStudentAppointmentCancelledEmail,
   renderStudentAppointmentReminderEmail,
-  renderStudentPackagePurchasedEmail,
-  renderStudentPaymentSuccessEmail,
-  renderStudentBankTransferPendingEmail,
-  renderStudentPaymentReminderEmail,
-  renderStudentBankTransferApprovedEmail,
-  renderAdminPaymentNotificationEmail,
-  renderStudentPackageActivatedEmail,
-  renderStudentPackageLowBalanceEmail,
-  renderStudentPackageCompletedEmail,
-  renderStudentPackageRenewalEmail,
-  renderStudentHomeworkAssignedEmail,
-  renderStudentHomeworkDueReminderEmail,
-  renderTeacherHomeworkSubmittedEmail,
-  renderStudentHomeworkReviewedEmail,
   renderStudentWelcomeEmail,
   renderAccountPasswordRecoveryEmail,
-  renderAccountSecurityAlertEmail,
   renderStudentLiveLessonLinkEmail,
-  renderStudentLessonCompletedEmail,
 } from "../supabase/functions/_shared/email/templates.ts";
 
 const TARGET_EMAIL = "info@oriens-academy.com";
@@ -39,7 +26,7 @@ const nowIso = new Date().toISOString();
 
 async function runEmailTestSuite() {
   console.log("==================================================");
-  console.log("ORIENS ACADEMY — 26 TRANSACTIONAL EMAIL TEMPLATES TEST");
+  console.log("ORIENS ACADEMY — TRANSACTIONAL EMAIL TEMPLATES TEST");
   console.log("==================================================\n");
 
   const results = [];
@@ -119,76 +106,8 @@ async function runEmailTestSuite() {
   );
 
   // 3. Packages & Payments
-  testTemplate("10", "C. Paket / Ödeme", "Öğrenci Paket Siparişi Alındı",
-    () => renderStudentPackagePurchasedEmail({ orderReference: "ORD-2026-001", studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket (IB / AP / SAT)", lessonCount: 10, pricePerLesson: 2500, totalAmount: 25000, currency: "TRY", paymentMethod: "card", createdAt: nowIso, locale: "tr" }),
-    () => renderStudentPackagePurchasedEmail({ orderReference: "ORD-2026-001", studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package (IB / AP / SAT)", lessonCount: 10, pricePerLesson: 2500, totalAmount: 25000, currency: "TRY", paymentMethod: "card", createdAt: nowIso, locale: "en" })
-  );
-
-  testTemplate("11", "C. Paket / Ödeme", "Öğrenci Ödeme Başarılı",
-    () => renderStudentPaymentSuccessEmail({ paymentReference: "PAY-2026-001", studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", amountPaid: 25000, currency: "TRY", paymentMethod: "Kredi Kartı (3D Secure)", paidAt: nowIso, locale: "tr" }),
-    () => renderStudentPaymentSuccessEmail({ paymentReference: "PAY-2026-001", studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", amountPaid: 25000, currency: "TRY", paymentMethod: "Credit Card (3D Secure)", paidAt: nowIso, locale: "en" })
-  );
-
-  testTemplate("12", "C. Paket / Ödeme", "Öğrenci Banka Havalesi Talimatı",
-    () => renderStudentBankTransferPendingEmail({ paymentReference: "TX-789012", studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", amount: 25000, currency: "TRY", bankName: "Garanti BBVA", iban: "TR12 0006 2000 0000 0000 0000 00", accountHolder: "Oriens Danışmanlık ve Eğitim Ltd. Şti.", locale: "tr" }),
-    () => renderStudentBankTransferPendingEmail({ paymentReference: "TX-789012", studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", amount: 25000, currency: "TRY", bankName: "Garanti BBVA", iban: "TR12 0006 2000 0000 0000 0000 00", accountHolder: "Oriens Consultancy", locale: "en" })
-  );
-
-  testTemplate("13", "C. Paket / Ödeme", "Öğrenci Ödeme Hatırlatması",
-    () => renderStudentPaymentReminderEmail({ paymentReference: "TX-789012", studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", amount: 25000, currency: "TRY", bankName: "Garanti BBVA", iban: "TR12 0006 2000 0000 0000 0000 00", accountHolder: "Oriens Danışmanlık", reminderCount: 1, locale: "tr" }),
-    () => renderStudentPaymentReminderEmail({ paymentReference: "TX-789012", studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", amount: 25000, currency: "TRY", bankName: "Garanti BBVA", iban: "TR12 0006 2000 0000 0000 0000 00", accountHolder: "Oriens Consultancy", reminderCount: 1, locale: "en" })
-  );
-
-  testTemplate("14", "C. Paket / Ödeme", "Öğrenci Havale Ödeme Onaylandı",
-    () => renderStudentBankTransferApprovedEmail({ paymentReference: "TX-789012", studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", totalLessons: 10, amountPaid: 25000, currency: "TRY", locale: "tr" }),
-    () => renderStudentBankTransferApprovedEmail({ paymentReference: "TX-789012", studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", totalLessons: 10, amountPaid: 25000, currency: "TRY", locale: "en" })
-  );
-
-  testTemplate("15", "C. Paket / Ödeme", "Admin Yeni Ödeme Bildirimi",
-    () => renderAdminPaymentNotificationEmail({ paymentReference: "PAY-2026-001", payerName: "Canan Şahin", payerEmail: TARGET_EMAIL, payerPhone: "+90 555 987 65 43", packageName: "10 Derslik Paket", amount: 25000, currency: "TRY", paymentMethod: "card", status: "paid", createdAt: nowIso }, "tr"),
-    () => renderAdminPaymentNotificationEmail({ paymentReference: "PAY-2026-001", payerName: "Canan Sahin", payerEmail: TARGET_EMAIL, payerPhone: "+90 555 987 65 43", packageName: "10-Lesson Package", amount: 25000, currency: "TRY", paymentMethod: "card", status: "paid", createdAt: nowIso }, "en")
-  );
-
-  testTemplate("16", "C. Paket / Ödeme", "Öğrenci Paket Aktif Edildi",
-    () => renderStudentPackageActivatedEmail({ studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", totalLessons: 10, locale: "tr" }),
-    () => renderStudentPackageActivatedEmail({ studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", totalLessons: 10, locale: "en" })
-  );
-
-  testTemplate("17", "C. Paket / Ödeme", "Öğrenci Paket Bitmek Üzere",
-    () => renderStudentPackageLowBalanceEmail({ studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", totalLessons: 10, lessonsUsed: 9, lessonsRemaining: 1, locale: "tr" }),
-    () => renderStudentPackageLowBalanceEmail({ studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", totalLessons: 10, lessonsUsed: 9, lessonsRemaining: 1, locale: "en" })
-  );
-
-  testTemplate("18", "C. Paket / Ödeme", "Öğrenci Paket Tamamlandı",
-    () => renderStudentPackageCompletedEmail({ studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", totalLessons: 10, lessonsUsed: 10, lessonsRemaining: 0, locale: "tr" }),
-    () => renderStudentPackageCompletedEmail({ studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", totalLessons: 10, lessonsUsed: 10, lessonsRemaining: 0, locale: "en" })
-  );
-
-  testTemplate("19", "C. Paket / Ödeme", "Öğrenci Paket Yenileme Önerisi",
-    () => renderStudentPackageRenewalEmail({ studentName: "Canan Şahin", studentEmail: TARGET_EMAIL, packageName: "10 Derslik Paket", totalLessons: 10, recommendedPackageName: "20 Derslik İleri Düzey Sınav Paketi", recommendedPackageUrl: "https://oriens-academy.com/tr/fiyatlandirma", locale: "tr" }),
-    () => renderStudentPackageRenewalEmail({ studentName: "Canan Sahin", studentEmail: TARGET_EMAIL, packageName: "10-Lesson Package", totalLessons: 10, recommendedPackageName: "20-Lesson Advanced Exam Package", recommendedPackageUrl: "https://oriens-academy.com/en/pricing", locale: "en" })
-  );
 
   // 4. Homework & Academic Tracking
-  testTemplate("20", "D. Ödev & Akademik", "Öğrenci Yeni Ödev Atandı",
-    () => renderStudentHomeworkAssignedEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C: Mechanics Work & Energy Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", description: "Lütfen 1'den 12'ye kadar olan soruları çözüp çözümlerinizi portala yükleyiniz.", locale: "tr" }),
-    () => renderStudentHomeworkAssignedEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C: Mechanics Work & Energy Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", description: "Please complete problems 1 through 12 and submit via the portal.", locale: "en" })
-  );
-
-  testTemplate("21", "D. Ödev & Akademik", "Öğrenci Ödev Teslim Tarihi Yaklaşıyor",
-    () => renderStudentHomeworkDueReminderEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C: Mechanics Work & Energy Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", locale: "tr" }),
-    () => renderStudentHomeworkDueReminderEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C: Mechanics Work & Energy Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", locale: "en" })
-  );
-
-  testTemplate("22", "D. Ödev & Akademik", "Öğretmen Ödev Teslim Edildi",
-    () => renderTeacherHomeworkSubmittedEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", submissionText: "Tüm sorular çözüldü, ek dosya ektedir.", submittedAt: nowIso, locale: "tr" }, "tr"),
-    () => renderTeacherHomeworkSubmittedEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", submissionText: "All problems solved.", submittedAt: nowIso, locale: "en" }, "en")
-  );
-
-  testTemplate("23", "D. Ödev & Akademik", "Öğrenci Ödev Geri Bildirimi",
-    () => renderStudentHomeworkReviewedEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", teacherFeedback: "Tebrikler! Enerji korunumu yaklaşımınız çok başarılı. Soru 7'deki sürtünme katsayısı entegrasyonunu derste detaylandıracağız.", locale: "tr" }),
-    () => renderStudentHomeworkReviewedEmail({ homeworkId: "hw-1", studentName: "Kaan Kurt", studentEmail: TARGET_EMAIL, assignmentTitle: "AP Physics C Set 4", subjectOrLesson: "AP Physics C", dueDate: "2026-08-30T21:00:00Z", teacherFeedback: "Great work on conservation of energy! We will review Problem 7 together in our next session.", locale: "en" })
-  );
 
   // 5. Account & Security
   testTemplate("24", "E. Hesap & Güvenlik", "Öğrenci Hoş Geldiniz",
@@ -201,34 +120,23 @@ async function runEmailTestSuite() {
     () => renderAccountPasswordRecoveryEmail(TARGET_EMAIL, "TEMP-PASS-2026-XYZ", "en")
   );
 
-  testTemplate("26", "E. Hesap & Güvenlik", "Kullanıcı Güvenlik Bildirimi",
-    () => renderAccountSecurityAlertEmail({ studentEmail: TARGET_EMAIL, actionTitle: "Hesap Şifresi Güncellendi", actionDescription: "Öğrenci portalı giriş şifreniz başarıyla değiştirildi.", timestamp: nowIso, device: "Chrome / Windows 11", ipAddress: "88.255.120.45", locale: "tr" }),
-    () => renderAccountSecurityAlertEmail({ studentEmail: TARGET_EMAIL, actionTitle: "Password Updated", actionDescription: "Your account password was successfully updated.", timestamp: nowIso, device: "Chrome / Windows 11", ipAddress: "88.255.120.45", locale: "en" })
-  );
-
   // 6. Live Lessons & Tracking
   testTemplate("27", "F. Canlı Ders & Takip", "Canlı Ders Bağlantısı",
     () => renderStudentLiveLessonLinkEmail({ lessonId: "lsn-1", studentName: "Ece Yılmaz", studentEmail: TARGET_EMAIL, lessonTitle: "Birebir SAT Matematik Dersi", subject: "Matematik", examCode: "SAT", lessonDate: "2026-08-28T16:00:00Z", durationMinutes: 60, liveMeetingUrl: "https://meet.google.com/abc-defg-hij", teacherName: "Dr. Selin Demir", teacherNote: "Derse başlamadan önce Deneme 3 çözümlerinizi hazır bulundurunuz.", locale: "tr" }),
     () => renderStudentLiveLessonLinkEmail({ lessonId: "lsn-1", studentName: "Ece Yilmaz", studentEmail: TARGET_EMAIL, lessonTitle: "1-on-1 SAT Math Session", subject: "Mathematics", examCode: "SAT", lessonDate: "2026-08-28T16:00:00Z", durationMinutes: 60, liveMeetingUrl: "https://meet.google.com/abc-defg-hij", teacherName: "Dr. Selin Demir", teacherNote: "Please prepare your Practice Test 3 answers before the session.", locale: "en" })
   );
 
-  testTemplate("28", "F. Canlı Ders & Takip", "Ders Tamamlandı & Kalan Ders",
-    () => renderStudentLessonCompletedEmail({ lessonId: "lsn-1", studentName: "Ece Yılmaz", studentEmail: TARGET_EMAIL, lessonTitle: "Birebir SAT Matematik Dersi", subject: "Matematik", lessonDate: "2026-08-28T16:00:00Z", packageName: "10 Derslik SAT Hazırlık Paketi", remainingLessons: 7, totalLessons: 10, teacherNote: "Fonksiyon grafikleri ve trigonometrik oranlar üzerinde çalışıldı.", locale: "tr" }),
-    () => renderStudentLessonCompletedEmail({ lessonId: "lsn-1", studentName: "Ece Yilmaz", studentEmail: TARGET_EMAIL, lessonTitle: "1-on-1 SAT Math Session", subject: "Mathematics", lessonDate: "2026-08-28T16:00:00Z", packageName: "10-Lesson SAT Prep Package", remainingLessons: 7, totalLessons: 10, teacherNote: "Reviewed function graphs and trigonometric ratios.", locale: "en" })
-  );
-
   console.table(results.map(r => ({ "#": r.id, Category: r.category, Name: r.name, "TR Subject": r.trSubject, "EN Subject": r.enSubject, Status: "PASS" })));
 
-  const scratchDir = path.resolve("C:\\Users\\merto\\.gemini\\antigravity-ide\\brain\\6aba360d-498b-4240-a412-57970e1f8bea\\scratch");
-  if (!fs.existsSync(scratchDir)) fs.mkdirSync(scratchDir, { recursive: true });
-  fs.writeFileSync(path.join(scratchDir, "email_all_26_templates_preview.html"), `
-    <!DOCTYPE html><html><head><meta charset="utf-8"><title>Oriens Academy 26 Transactional Email Previews</title></head>
-    <body style="background:#eef2ee;margin:0;padding:20px;">
-      <h1 style="text-align:center;font-family:sans-serif;color:#10271B;">Oriens Academy &mdash; 26 Transactional Email Templates Preview</h1>
-      ${htmlPreviews.join("\n")}
-    </body></html>
-  `, "utf8");
-  console.log("\n[PREVIEW GENERATED]: file:///C:/Users/merto/.gemini/antigravity-ide/brain/6aba360d-498b-4240-a412-57970e1f8bea/scratch/email_all_26_templates_preview.html");
+  // Önizleme isteğe bağlı: EMAIL_PREVIEW_DIR verilirse yazılır.
+  const scratchDir = process.env.EMAIL_PREVIEW_DIR;
+  if (scratchDir) {
+    if (!fs.existsSync(scratchDir)) fs.mkdirSync(scratchDir, { recursive: true });
+    const previewFile = path.join(scratchDir, "email_templates_preview.html");
+    fs.writeFileSync(previewFile, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Oriens Academy Email Previews</title></head><body style="background:#eef2ee;margin:0;padding:20px;">${htmlPreviews.join(String.fromCharCode(10))}</body></html>`, "utf8");
+    console.log(`[PREVIEW GENERATED]: ${previewFile}`);
+  }
+  console.log(`${results.length} templates PASS`);
 }
 
 runEmailTestSuite().catch((err) => {

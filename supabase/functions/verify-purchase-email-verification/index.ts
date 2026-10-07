@@ -1,6 +1,8 @@
 import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { computeOtpHash, normalizeOtpCode, normalizeOtpEmail } from "../_shared/otp/hash.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
+import { sanitizeAuditError, writeEdgeAuditEvent } from "../_shared/audit.ts";
 
 /**
  * Purchase / signup email verification — 6-digit OTP only.
@@ -75,7 +77,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceRoleKey = getSupabaseAdminKey();
   const hmacSecret = Deno.env.get("PURCHASE_OTP_HMAC_SECRET") ?? "";
   if (!supabaseUrl || !serviceRoleKey || !hmacSecret) {
     console.error("[verify-purchase-email-verification] Required server configuration is missing.");
@@ -128,6 +130,7 @@ Deno.serve(async (req: Request) => {
   });
 
   if (error) {
+    await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.otp_verification_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: sanitizeAuditError(error, { operation: "verify_purchase_email_otp" }) });
     // An infrastructure failure must never be presented as a wrong code -- that
     // is what previously burned the user's attempts on a healthy code.
     console.error("[verify-purchase-email-verification] verify RPC failed:", error.message);
@@ -142,6 +145,7 @@ Deno.serve(async (req: Request) => {
 
   if (!result.success) {
     const code_ = result.error_code || "INTERNAL_ERROR";
+    await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.otp_verification_failed", category: "auth", severity: code_ === "INTERNAL_ERROR" ? "error" : "warning", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: { operation: "verify_purchase_email_otp", safe_error_code: code_, remaining_attempts: result.remaining_attempts } });
     const remaining = result.remaining_attempts;
     const base = message(code_, locale);
     return buildJsonResponse(
@@ -170,7 +174,8 @@ Deno.serve(async (req: Request) => {
     try {
       await supabaseAdmin.auth.admin.updateUserById(user.id, { email: candidateEmail, email_confirm: true });
     } catch (authUpdateErr) {
-      console.error("[verify-purchase-email-verification] Auth email sync failed:", authUpdateErr);
+      await writeEdgeAuditEvent(supabaseAdmin, { action: "edge.function_failed", category: "edge", severity: "error", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: sanitizeAuditError(authUpdateErr, { operation: "sync_verified_auth_email" }) });
+      console.error(`[verify-purchase-email-verification] Auth email sync failed type=${authUpdateErr instanceof Error ? authUpdateErr.name : "unknown"}`);
     }
   }
 

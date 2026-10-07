@@ -3,10 +3,11 @@
 import { FaInstagram } from "react-icons/fa6";
 import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
 import { ContactForm } from "./ContactForm";
 
 export function ContactPage() {
+  const CONTACT = useSiteContact();
   const locale = useLocale();
   const isTr = locale === "tr";
 

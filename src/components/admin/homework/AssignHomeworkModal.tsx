@@ -16,6 +16,7 @@ import {
 } from "@/lib/homework";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
+import { RefDatePicker, RefTimeSelect } from "@/components/admin/RefDatePicker";
 
 interface StudentOption {
   id: string;
@@ -57,7 +58,11 @@ export function AssignHomeworkModal({
   const [studentSearch, setStudentSearch] = useState("");
 
   // Assignment metadata
-  const [dueDate, setDueDate] = useState("");
+  // Referans seçiciler: GG.AA.YYYY takvim (Pazartesi başlangıçlı) + saat 00–23 / dakika 00·15·30·45.
+  const [dueDay, setDueDay] = useState("");
+  const [dueHour, setDueHour] = useState("23");
+  const [dueMinute, setDueMinute] = useState("45");
+  const dueDate = dueDay ? `${dueDay}T${dueHour}:${dueMinute}` : "";
   const [lessonId, setLessonId] = useState("");
   const [customTitle, setCustomTitle] = useState(
     () => initialTemplate?.title || ""
@@ -374,12 +379,10 @@ export function AssignHomeworkModal({
               <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-1">
                 Son Teslim Tarihi
               </label>
-              <input
-                type="datetime-local"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-xl border border-input px-3 py-2 text-xs text-ink outline-hidden focus:border-primary"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <RefDatePicker value={dueDay} onChange={setDueDay} ariaLabel="Son teslim tarihi" />
+                {dueDay ? <RefTimeSelect hour={dueHour} minute={dueMinute} onChange={(hour, minute) => { setDueHour(hour); setDueMinute(minute); }} /> : null}
+              </div>
             </div>
 
             <div>

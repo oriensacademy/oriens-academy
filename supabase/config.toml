@@ -426,6 +426,9 @@ verify_jwt = false
 [functions.send-contact-reply]
   verify_jwt = true
 
+[functions.tcmb-eur-rate]
+  verify_jwt = true
+
 [functions.process-notification-outbox]
 verify_jwt = false
 

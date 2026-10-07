@@ -43,7 +43,7 @@ export class AdmissionSourceCollectorEngine {
       this.supabase = supabaseClient;
     } else {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
-      const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
+      const key = process.env.SUPABASE_SECRET_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
       this.supabase = createClient(url, key);
     }
   }

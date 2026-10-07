@@ -1,14 +1,13 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Locale } from "@/content/dictionaries";
+import { trPhoneInputDigits } from "@/lib/format/phone";
 
 export interface StudentRegistrationInput {
   fullName: string;
   email: string;
   password: string;
   locale: Locale;
-  school?: string;
   targetExam?: string;
-  targetCountry?: string;
   captchaToken?: string;
 }
 
@@ -99,9 +98,7 @@ export async function registerStudent(input: StudentRegistrationInput) {
       data: {
         full_name: input.fullName.trim(),
         preferred_language: input.locale,
-        school: input.school?.trim() || null,
         target_exam: input.targetExam?.trim() || null,
-        target_country: input.targetCountry?.trim() || null,
       },
     },
   });
@@ -257,11 +254,16 @@ export async function updateStudentPassword(password: string) {
   return getSupabaseClient().auth.updateUser({ password });
 }
 
-export async function updateGuardianProfile(input: { fullName: string; contactAddress?: string; preferredLanguage: Locale }) {
+export async function updateGuardianProfile(input: { fullName: string; contactAddress?: string; preferredLanguage: Locale; phone?: string | null }) {
+  // Telefon kanonik biçimi: 10 hane ya da NULL (src/lib/format/phone.ts).
+  // phone verilmezse (undefined) RPC kayıtlı telefonu korur; "" / null telefonu siler.
+  const phone = input.phone === undefined ? undefined : input.phone ? trPhoneInputDigits(input.phone) : "";
   return getSupabaseClient().rpc("update_guardian_profile", {
     p_full_name: input.fullName.trim().replace(/\s+/g, " "),
-    p_contact_address: input.contactAddress ? input.contactAddress.trim().replace(/\s+/g, " ") : undefined,
+    // null: kayıtlı adres korunur (Hesabım formunda adres alanı yok).
+    p_contact_address: (input.contactAddress ? input.contactAddress.trim().replace(/\s+/g, " ") : null) as string,
     p_preferred_language: input.preferredLanguage,
+    ...(phone === undefined ? {} : { p_phone: phone }),
   });
 }
 

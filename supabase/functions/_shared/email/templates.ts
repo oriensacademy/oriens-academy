@@ -77,6 +77,21 @@ export function normalizeLocale(locale?: string | null): "tr" | "en" {
   return primary === "en" ? "en" : "tr";
 }
 
+export function turkishGenitiveSuffix(value: string): string {
+  const normalized = value.trim().toLocaleLowerCase("tr-TR");
+  const lastLetter = normalized.match(/[a-zçğıöşüâîû](?=[^a-zçğıöşüâîû]*$)/u)?.[0] || "";
+  const lastVowel = [...normalized].reverse().find((character) => "aeıioöuüâîû".includes(character));
+  const ending = lastVowel && "aıâ".includes(lastVowel)
+    ? "ın"
+    : lastVowel && "eiî".includes(lastVowel)
+      ? "in"
+      : lastVowel && "ouû".includes(lastVowel)
+        ? "un"
+        : "ün";
+  const buffer = "aeıioöuüâîû".includes(lastLetter) ? "n" : "";
+  return `'${buffer}${ending}`;
+}
+
 export type WelcomeEmailData = {
   studentUserId?: string;
   studentName: string;
@@ -93,8 +108,10 @@ export type LiveLessonLinkEmailData = {
   subject: string;
   examCode?: string | null;
   lessonDate: string;
+  lessonTimezone?: string;
+  lessonTimezoneLabel?: string;
   durationMinutes: number;
-  liveMeetingUrl: string;
+  liveMeetingUrl?: string | null;
   teacherName?: string | null;
   teacherNote?: string | null;
   isUpdate?: boolean;
@@ -142,7 +159,7 @@ const BASE_URL = "https://oriens-academy.com";
 // UTILITY & ESCAPING HELPERS
 // ----------------------------------------------------------------------------
 
-function escapeHtml(value: string | null | undefined): string {
+export function escapeHtml(value: string | null | undefined): string {
   return (value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
     "<": "&lt;",
@@ -165,7 +182,7 @@ function formatCurrency(amount: number | null | undefined, currency = "TRY", loc
   }
 }
 
-function formatDateTime(isoStr?: string | null, locale: "tr" | "en" = "tr"): string {
+function formatDateTime(isoStr?: string | null, locale: "tr" | "en" = "tr", timeZone = "Europe/Istanbul"): string {
   if (!isoStr) return "";
   try {
     const d = new Date(isoStr);
@@ -176,7 +193,7 @@ function formatDateTime(isoStr?: string | null, locale: "tr" | "en" = "tr"): str
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: "Europe/Istanbul",
+      timeZone,
     });
   } catch {
     return isoStr;
@@ -271,6 +288,19 @@ export function infoBadge(text: string, variant: "gold" | "sage" | "forest" | "n
   return `<span style="display:inline-block;vertical-align:middle;padding:4px 10px;font-size:11px;font-weight:700;line-height:100%;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;background-color:${bg};color:${color};border:1px solid ${border};mso-line-height-rule:exactly;">${escapeHtml(text)}</span>`;
 }
 
+export const NORMAL_CONTENT_BLOCK_STYLE = "width:100%;border-collapse:collapse;background:#F6F8F7;border-radius:10px;margin:0 0 20px;";
+export const NORMAL_CONTENT_CELL_STYLE = "padding:7px 12px;";
+
+export function sectionHeading(title: string): string {
+  return `<h3 style="margin:0 0 8px;color:#10271B;font-size:14px;letter-spacing:.04em;">${escapeHtml(title)}</h3>`;
+}
+
+export function normalContentBlock(contentHtml: string): string {
+  return `<table role="presentation" data-normal-content-block="true" width="100%" cellpadding="0" cellspacing="0" style="${NORMAL_CONTENT_BLOCK_STYLE}">
+    <tr><td style="${NORMAL_CONTENT_CELL_STYLE}">${contentHtml}</td></tr>
+  </table>`;
+}
+
 export function summaryCard(title: string | null, items: Array<{ label: string; value: string; fullWidth?: boolean }>): string {
   // Group into pairs for 2-column layout
   const rows: string[] = [];
@@ -306,13 +336,13 @@ export function summaryCard(title: string | null, items: Array<{ label: string; 
     rows.push(`<tr>${currentRow.join("")}</tr>`);
   }
 
-  return `
-    <div style="margin-top:20px;background-color:${PALETTE.surfaceMuted};border:1px solid ${PALETTE.border};border-radius:12px;padding:16px 14px;">
-      ${title ? `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${PALETTE.primary};margin:0 0 12px 10px;">${escapeHtml(title)}</div>` : ""}
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;">
-        ${rows.join("")}
-      </table>
-    </div>`;
+  const content = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;">
+    ${rows.join("")}
+  </table>`;
+  return `<div style="margin-top:20px;">
+    ${title ? sectionHeading(title) : ""}
+    ${normalContentBlock(content)}
+  </div>`;
 }
 
 export function metricCard(opts: {
@@ -399,6 +429,109 @@ export function bankDetailsCard(bank: {
 // ROOT EMAIL SHELL (RESPONSIVE, ROBUST, INLINE-STYLED)
 // ----------------------------------------------------------------------------
 
+export type EmailVisualVariant = "verification" | "payment-confirmation" | "account-created" | "lesson-report";
+
+function renderReferenceEmailShell(opts: {
+  locale: "tr" | "en";
+  eyebrow: string;
+  title: string;
+  bodyHtml: string;
+  footerNote?: string;
+  footerEmail?: string;
+  visualVariant: EmailVisualVariant;
+}): string {
+  const { locale, eyebrow, title, bodyHtml, footerNote, footerEmail = "info@oriens-academy.com", visualVariant } = opts;
+  const isTr = locale === "tr";
+  const centered = visualVariant === "payment-confirmation";
+  const outerBg = visualVariant === "verification"
+    ? "#F4F3EE"
+    : visualVariant === "account-created"
+      ? "#F3F1EC"
+      : visualVariant === "lesson-report"
+        ? "#F4F5F1"
+        : "#F3F5F1";
+  const accent = visualVariant === "verification"
+    ? "#9C7C34"
+    : visualVariant === "account-created" || visualVariant === "lesson-report"
+      ? "#B8975A"
+      : "#C8A96A";
+  const cardBorder = visualVariant === "verification"
+    ? "#E6E3D8"
+    : visualVariant === "account-created"
+      ? "#E6E2D8"
+      : visualVariant === "payment-confirmation"
+        ? "#E4E7E2"
+        : "#E6E7E1";
+  const footerBg = visualVariant === "verification"
+    ? "#F7F6F1"
+    : visualVariant === "account-created"
+      ? "#F6F5F1"
+      : visualVariant === "payment-confirmation"
+        ? "#F3F5F1"
+        : "#F7F7F4";
+  const horizontalPadding = visualVariant === "lesson-report" ? "40px" : "48px";
+  const containerWidth = visualVariant === "lesson-report" ? 680 : 600;
+  const logoWidth = visualVariant === "account-created" ? 170 : visualVariant === "lesson-report" ? 175 : 180;
+  const titleSize = visualVariant === "verification" || visualVariant === "lesson-report" ? "24px" : "26px";
+  const titleLineHeight = visualVariant === "verification" || visualVariant === "lesson-report" ? "32px" : "34px";
+  const titleColor = visualVariant === "lesson-report" ? "#141B2D" : "#1B2A22";
+
+  return `<!DOCTYPE html>
+<html lang="${locale}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>${escapeHtml(title)}</title>
+<style>
+  body { margin:0; padding:0; width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  table { border-collapse:collapse; mso-table-lspace:0; mso-table-rspace:0; }
+  img { border:0; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+  a { text-decoration:none; }
+  @media only screen and (max-width:620px) {
+    .reference-container { width:100% !important; border-radius:0 !important; }
+    .reference-px { padding-left:24px !important; padding-right:24px !important; }
+    .reference-title { font-size:22px !important; line-height:30px !important; }
+    .lesson-report-title { white-space:normal !important; }
+    .reference-row-label, .reference-row-value { display:block !important; width:100% !important; text-align:left !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:${outerBg};font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background-color:${outerBg};">
+  <tr><td align="center" style="padding:32px 12px;">
+    <table role="presentation" class="reference-container" width="${containerWidth}" cellpadding="0" cellspacing="0" style="width:100%;max-width:${containerWidth}px;background-color:#FFFFFF;border:1px solid ${cardBorder};border-radius:16px;overflow:hidden;">
+      ${visualVariant === "verification"
+        ? `<tr><td style="height:4px;line-height:4px;font-size:0;background-color:#B8975A;background-image:linear-gradient(90deg,#9C7C34 0%,#D6B46A 50%,#9C7C34 100%);">&nbsp;</td></tr>`
+        : visualVariant !== "lesson-report" ? `<tr><td style="height:4px;line-height:4px;font-size:0;background-color:${accent};">&nbsp;</td></tr>` : ""}
+      <tr><td class="reference-px" align="${centered ? "center" : "left"}" style="padding:36px ${horizontalPadding} 0 ${horizontalPadding};text-align:${centered ? "center" : "left"};">
+        <a href="${BASE_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+          <img src="${ORIENS_LOGO_URL}" width="${logoWidth}" alt="Oriens Academy" style="display:block;width:${logoWidth}px;max-width:100%;height:auto;margin:${centered ? "0 auto" : "0"};" />
+        </a>
+      </td></tr>
+      ${visualVariant === "lesson-report" ? `<tr><td class="reference-px" style="padding:18px ${horizontalPadding} 0 ${horizontalPadding};"><div style="width:48px;height:3px;background-color:${accent};font-size:0;line-height:0;">&nbsp;</div></td></tr>` : ""}
+      <tr><td class="reference-px" align="${centered ? "center" : "left"}" style="padding:${centered ? "28px" : "24px"} ${horizontalPadding} 0 ${horizontalPadding};text-align:${centered ? "center" : "left"};">
+        ${visualVariant === "payment-confirmation" ? `<div style="display:inline-block;border-radius:999px;background-color:#E8F3EC;padding:6px 14px;color:#2F7A4F;font-size:13px;line-height:18px;font-weight:600;text-align:center;">&#10003;&nbsp; ${isTr ? "Ödeme onaylandı" : "Payment confirmed"}</div>` : ""}
+        ${visualVariant === "account-created" ? `<div style="margin:0 0 10px 0;font-size:12px;line-height:16px;letter-spacing:2px;text-transform:uppercase;color:${accent};font-weight:600;">${escapeHtml(eyebrow)}</div>` : ""}
+        <h1 class="reference-title${visualVariant === "lesson-report" ? " lesson-report-title" : ""}" style="margin:${visualVariant === "payment-confirmation" ? "16px" : "0"} 0 0 0;font-size:${titleSize};line-height:${titleLineHeight};font-weight:700;color:${titleColor};letter-spacing:-.01em;overflow-wrap:anywhere;${visualVariant === "lesson-report" ? "white-space:nowrap;" : ""}">${escapeHtml(title)}</h1>
+      </td></tr>
+      <tr><td class="reference-px" style="padding:20px ${horizontalPadding} 32px ${horizontalPadding};font-size:15px;line-height:1.65;color:#3D4741;">${bodyHtml}</td></tr>
+      <tr><td class="reference-px" style="padding:24px ${horizontalPadding} 28px ${horizontalPadding};background-color:${footerBg};border-top:1px solid #EBEBE6;">
+        ${footerNote ? `<div style="font-size:12px;color:#7D857F;margin-bottom:14px;line-height:1.45;">${footerNote}</div>` : ""}
+        <div style="font-size:14px;font-weight:700;color:#1B2A22;">Oriens Academy</div>
+        <div style="font-size:13px;color:#6B7078;margin-top:5px;line-height:20px;"><a href="mailto:${escapeHtml(footerEmail)}" style="color:#6B7078;">${escapeHtml(footerEmail)}</a> &middot; <a href="tel:+908503040467" style="color:#6B7078;">0850 304 04 67</a> &middot; <a href="https://wa.me/905442939040" style="color:#6B7078;">WhatsApp: +90 544 293 90 40</a></div>
+        <div style="font-size:12px;color:#8D9198;margin-top:5px;line-height:18px;">${isTr ? "Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul" : "Emaar Square, The Heights E Block, Ünalan Neighborhood, Libadiye Street No:82, Üsküdar / Istanbul"}</div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+}
+
 export function renderEmailShell(opts: {
   locale: "tr" | "en";
   eyebrow: string;
@@ -406,8 +539,10 @@ export function renderEmailShell(opts: {
   bodyHtml: string;
   footerNote?: string;
   footerEmail?: string;
+  visualVariant?: EmailVisualVariant;
 }): string {
-  const { locale, eyebrow, title, bodyHtml, footerNote, footerEmail = "info@oriens-academy.com" } = opts;
+  if (opts.visualVariant) return renderReferenceEmailShell({ ...opts, visualVariant: opts.visualVariant });
+  const { locale, title, bodyHtml, footerNote, footerEmail = "info@oriens-academy.com" } = opts;
   const isTr = locale === "tr";
 
   return `<!DOCTYPE html>
@@ -439,11 +574,10 @@ export function renderEmailShell(opts: {
           </td>
         </tr>
 
-        <!-- SUBJECT & EYEBROW -->
+        <!-- SUBJECT -->
         <tr>
-          <td style="padding:20px 36px 0 36px;">
-            <div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${PALETTE.sage};">${escapeHtml(eyebrow)}</div>
-            <div style="font-size:22px;font-weight:700;color:${PALETTE.primary};line-height:1.3;margin-top:6px;letter-spacing:-.01em;">${escapeHtml(title)}</div>
+          <td style="padding:18px 36px 0 36px;">
+            <div style="font-size:22px;font-weight:700;color:${PALETTE.primary};line-height:1.3;letter-spacing:-.01em;">${escapeHtml(title)}</div>
           </td>
         </tr>
 
@@ -498,8 +632,8 @@ export function renderAdminBookingEmail(data: BookingEmailData, adminLocale: "tr
   const examSuffix = examInfo ? ` — ${examInfo}` : "";
 
   const subject = isTr
-    ? `Yeni Görüşme Talebi${examSuffix} | Oriens Academy`
-    : `New Consultation Request${examSuffix} | Oriens Academy`;
+    ? `Yeni Görüşme Talebi${examSuffix}`
+    : `New Consultation Request${examSuffix}`;
 
   const formattedTime = formatDateTime(data.startsAt, adminLocale);
   const supportLabel = formatSupportLabel(data.supportType, adminLocale);
@@ -548,8 +682,8 @@ export function renderAdminBookingEmail(data: BookingEmailData, adminLocale: "tr
 export function renderStudentBookingEmail(data: BookingEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? "Görüşme Talebiniz Alındı | Oriens Academy"
-    : "Your Consultation Request Received | Oriens Academy";
+    ? "Görüşme Talebiniz Alındı"
+    : "Your Consultation Request Received";
   const safeName = escapeHtml(data.fullName);
   const formattedTime = formatDateTime(data.startsAt, data.locale);
   const supportLabel = formatSupportLabel(data.supportType, data.locale);
@@ -597,8 +731,8 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
   const isTr = adminLocale === "tr";
   const isQuick = data.source === "quick_contact";
   const subject = isTr
-    ? "Yeni İletişim Talebi | Oriens Academy"
-    : "New Contact Request | Oriens Academy";
+    ? "Yeni İletişim Talebi"
+    : "New Contact Request";
 
   const packagePrice = data.package?.price
     ? formatCurrency(data.package.price, data.package.currency, adminLocale)
@@ -615,11 +749,10 @@ export function renderAdminContactEmail(data: ContactEmailData, adminLocale: "tr
 
   const cardHtml = summaryCard(isTr ? "İletişim Bilgileri" : "Contact Information", cardItems);
 
-  const messageHtml = data.message ? `
-    <div style="margin-top:16px;background-color:${PALETTE.surfaceMuted};border:1px solid ${PALETTE.border};border-radius:12px;padding:16px 18px;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${PALETTE.sage};margin-bottom:6px;">${isTr ? "Ziyaretçi Mesajı" : "Visitor Message"}</div>
-      <div style="font-size:14px;line-height:1.6;color:${PALETTE.primary};white-space:pre-wrap;">${escapeHtml(data.message)}</div>
-    </div>` : "";
+  const messageHtml = data.message ? `<div style="margin-top:16px;">
+    ${sectionHeading(isTr ? "Ziyaretçi Mesajı" : "Visitor Message")}
+    ${normalContentBlock(`<div style="font-size:14px;line-height:1.6;color:${PALETTE.primary};white-space:pre-wrap;">${escapeHtml(data.message)}</div>`)}
+  </div>` : "";
 
   const bodyHtml = `
     <div>${isTr ? "Web sitesi iletişim formu üzerinden yeni bir mesaj iletildi." : "A new message has been submitted via the website contact form."}</div>
@@ -655,20 +788,22 @@ export function renderStudentContactEmail(data: ContactEmailData) {
   const isTr = data.locale === "tr";
   const isQuick = data.source === "quick_contact";
   const subject = isTr
-    ? "Mesajınız Bize Ulaştı | Oriens Academy"
-    : "We Received Your Message | Oriens Academy";
+    ? "Mesajınız Bize Ulaştı"
+    : "We Received Your Message";
   const safeName = escapeHtml(data.fullName);
 
   const intro = isTr
     ? `${isQuick ? "Merhaba" : `Merhaba <strong>${safeName}</strong>`},<br><br>Oriens Academy'ye ilettiğiniz mesaj başarıyla alınmıştır. Akademik danışmanlarımız talebinizi inceleyerek en geç 24 saat içinde sizinle iletişime geçecektir.`
     : `${isQuick ? "Hello" : `Hello <strong>${safeName}</strong>`},<br><br>Thank you for reaching out to Oriens Academy. Our academic advisors have received your inquiry and will respond within 24 hours.`;
 
+  const submittedDetails = `
+    <div style="font-size:14px;font-weight:600;color:${PALETTE.primary};">${escapeHtml(data.subject || (isTr ? "Genel Danışmanlık" : "General Inquiry"))}</div>
+    ${data.message ? `<div style="font-size:13px;color:${PALETTE.textMuted};margin-top:6px;line-height:1.5;">${escapeHtml(data.message)}</div>` : ""}`;
   const bodyHtml = `
     <div>${intro}</div>
-    <div style="margin-top:20px;padding:16px 18px;background-color:${PALETTE.surfaceMuted};border:1px solid ${PALETTE.border};border-radius:12px;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:${PALETTE.sage};">${isTr ? "İletilen Bilgiler" : "Submitted Details"}</div>
-      <div style="font-size:14px;font-weight:600;color:${PALETTE.primary};margin-top:6px;">${escapeHtml(data.subject || (isTr ? "Genel Danışmanlık" : "General Inquiry"))}</div>
-      ${data.message ? `<div style="font-size:13px;color:${PALETTE.textMuted};margin-top:6px;line-height:1.5;">${escapeHtml(data.message)}</div>` : ""}
+    <div style="margin-top:20px;">
+      ${sectionHeading(isTr ? "İletilen Bilgiler" : "Submitted Details")}
+      ${normalContentBlock(submittedDetails)}
     </div>`;
 
   const html = renderEmailShell({
@@ -703,8 +838,8 @@ export function renderContactReplyEmail(params: {
       ? params.originalSubject
       : `Re: ${params.originalSubject}`
     : isTr
-      ? "İletişim Talebiniz Hakkında | Oriens Academy"
-      : "Regarding Your Inquiry | Oriens Academy";
+      ? "İletişim Talebiniz Hakkında"
+      : "Regarding Your Inquiry";
 
   const safeName = params.fullName ? escapeHtml(params.fullName) : "";
   const greeting = safeName
@@ -758,8 +893,8 @@ export function renderContactReplyEmail(params: {
 export function renderStudentAppointmentConfirmedEmail(data: AppointmentEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? `Ders Randevunuz Onaylandı: ${data.lessonTitle} | Oriens Academy`
-    : `Lesson Appointment Confirmed: ${data.lessonTitle} | Oriens Academy`;
+    ? `Ders Randevunuz Onaylandı: ${data.lessonTitle}`
+    : `Lesson Appointment Confirmed: ${data.lessonTitle}`;
 
   const formattedTime = formatDateTime(data.startsAt, data.locale);
 
@@ -801,8 +936,8 @@ export function renderStudentAppointmentConfirmedEmail(data: AppointmentEmailDat
 export function renderAdminAppointmentCreatedEmail(data: AppointmentEmailData, adminLocale: "tr" | "en" = "tr") {
   const isTr = adminLocale === "tr";
   const subject = isTr
-    ? `Yeni Ders Randevusu: ${data.studentName} — ${data.lessonTitle} | Oriens Academy`
-    : `New Lesson Scheduled: ${data.studentName} — ${data.lessonTitle} | Oriens Academy`;
+    ? `Yeni Ders Randevusu: ${data.studentName} — ${data.lessonTitle}`
+    : `New Lesson Scheduled: ${data.studentName} — ${data.lessonTitle}`;
 
   const formattedTime = formatDateTime(data.startsAt, adminLocale);
 
@@ -837,8 +972,8 @@ export function renderAdminAppointmentCreatedEmail(data: AppointmentEmailData, a
 export function renderStudentAppointmentUpdatedEmail(data: AppointmentEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? `Ders / Görüşme Bilgileriniz Güncellendi: ${data.lessonTitle} | Oriens Academy`
-    : `Your Lesson / Meeting Has Been Updated: ${data.lessonTitle} | Oriens Academy`;
+    ? `Ders / Görüşme Bilgileriniz Güncellendi: ${data.lessonTitle}`
+    : `Your Lesson / Meeting Has Been Updated: ${data.lessonTitle}`;
 
   const newTime = formatDateTime(data.startsAt, data.locale);
   const oldTime = data.previousStartsAt ? formatDateTime(data.previousStartsAt, data.locale) : null;
@@ -882,8 +1017,8 @@ export function renderStudentAppointmentUpdatedEmail(data: AppointmentEmailData)
 export function renderStudentAppointmentCancelledEmail(data: AppointmentEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? `Ders Randevusu İptali: ${data.lessonTitle} | Oriens Academy`
-    : `Lesson Cancelled: ${data.lessonTitle} | Oriens Academy`;
+    ? `Ders Randevusu İptali: ${data.lessonTitle}`
+    : `Lesson Cancelled: ${data.lessonTitle}`;
 
   const formattedTime = formatDateTime(data.startsAt, data.locale);
 
@@ -916,8 +1051,8 @@ export function renderStudentAppointmentCancelledEmail(data: AppointmentEmailDat
 export function renderStudentAppointmentReminderEmail(data: AppointmentEmailData) {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? `Hatırlatma: Yarınki Dersiniz — ${data.lessonTitle} | Oriens Academy`
-    : `Reminder: Upcoming Lesson — ${data.lessonTitle} | Oriens Academy`;
+    ? `Hatırlatma: Yarınki Dersiniz — ${data.lessonTitle}`
+    : `Reminder: Upcoming Lesson — ${data.lessonTitle}`;
 
   const formattedTime = formatDateTime(data.startsAt, data.locale);
 
@@ -1134,11 +1269,12 @@ export function renderAccountPasswordRecoveryEmail(
  */
 export function renderStudentLiveLessonLinkEmail(data: LiveLessonLinkEmailData) {
   const isTr = data.locale === "tr";
+  const hasMeetingLink = Boolean(data.liveMeetingUrl?.trim());
   const subject = data.isUpdate
-    ? (isTr ? `Canlı Ders Bağlantınız Güncellendi: ${data.lessonTitle} | Oriens Academy` : `Your Live Lesson Link Has Been Updated: ${data.lessonTitle} | Oriens Academy`)
-    : (isTr ? `Canlı Ders Bağlantınız: ${data.lessonTitle} | Oriens Academy` : `Your Live Lesson Link: ${data.lessonTitle} | Oriens Academy`);
+    ? (isTr ? `Canlı Ders Bilgileriniz Güncellendi: ${data.lessonTitle}` : `Your Live Lesson Details Have Been Updated: ${data.lessonTitle}`)
+    : (isTr ? `Canlı Dersiniz Planlandı: ${data.lessonTitle}` : `Your Live Lesson Is Scheduled: ${data.lessonTitle}`);
 
-  const formattedTime = formatDateTime(data.lessonDate, data.locale);
+  const formattedTime = `${formatDateTime(data.lessonDate, data.locale, data.lessonTimezone || "Europe/Istanbul")} ${data.lessonTimezoneLabel || "TR"}`;
 
   const cardHtml = summaryCard(isTr ? "Canlı Ders Bilgileri" : "Live Lesson Details", [
     { label: isTr ? "Ders / Konu" : "Lesson Title", value: escapeHtml(data.lessonTitle) },
@@ -1146,14 +1282,14 @@ export function renderStudentLiveLessonLinkEmail(data: LiveLessonLinkEmailData) 
     { label: isTr ? "Tarih ve Saat" : "Date & Time", value: `<strong style="color:${PALETTE.goldDark};">${formattedTime}</strong>` },
     { label: isTr ? "Süre" : "Duration", value: `${data.durationMinutes} ${isTr ? "Dakika" : "Minutes"}` },
     { label: isTr ? "Eğitmen" : "Instructor", value: data.teacherName ? escapeHtml(data.teacherName) : "Oriens Faculty" },
-    { label: isTr ? "Bağlantı" : "Meeting Link", value: `<a href="${data.liveMeetingUrl}" target="_blank" rel="noopener noreferrer" style="color:${PALETTE.primary};font-weight:700;word-break:break-all;">${escapeHtml(data.liveMeetingUrl)} &rarr;</a>`, fullWidth: true },
+    hasMeetingLink ? { label: isTr ? "Bağlantı" : "Meeting Link", value: `<a href="${data.liveMeetingUrl}" target="_blank" rel="noopener noreferrer" style="color:${PALETTE.primary};font-weight:700;word-break:break-all;">${escapeHtml(data.liveMeetingUrl)} &rarr;</a>`, fullWidth: true } : { label: "", value: "" },
     data.teacherNote ? { label: isTr ? "Eğitmen Notu" : "Teacher Note", value: escapeHtml(data.teacherNote), fullWidth: true } : { label: "", value: "" },
   ]);
 
   const bodyHtml = `
-    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Yaklaşan birebir canlı dersinizin bağlantısı hazırlanmıştır. Ders saatinde aşağıdaki butona tıklayarak online ders odasına katılabilirsiniz.` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>The link for your upcoming live 1-on-1 lesson is ready. You can join the online classroom at the scheduled time using the button below.`}</div>
+    <div>${isTr ? `Merhaba <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Yaklaşan birebir canlı dersiniz planlanmıştır.${hasMeetingLink ? " Ders bağlantınız aşağıdadır." : " Katılım bağlantısı daha sonra ayrıca paylaşılabilir."}` : `Hello <strong>${escapeHtml(data.studentName)}</strong>,<br><br>Your upcoming live 1-on-1 lesson has been scheduled.${hasMeetingLink ? " Your lesson link is below." : " The joining link may be shared separately later."}`}</div>
     ${cardHtml}
-    ${actionButton(isTr ? "Derse Katıl" : "Join Lesson", data.liveMeetingUrl)}
+    ${hasMeetingLink ? actionButton(isTr ? "Derse Katıl" : "Join Lesson", data.liveMeetingUrl!) : ""}
     <div style="margin-top:18px;font-size:13px;color:${PALETTE.textMuted};">
       ${isTr ? "Ders saatinden 5 dakika önce hazır olmanızı, kamera ve mikrofon bağlantılarınızı kontrol etmenizi öneririz." : "Please be ready 5 minutes prior to the lesson and verify your audio/video settings."}
     </div>`;
@@ -1161,7 +1297,7 @@ export function renderStudentLiveLessonLinkEmail(data: LiveLessonLinkEmailData) 
   const html = renderEmailShell({
     locale: data.locale,
     eyebrow: isTr ? "Canlı Ders" : "Live Lesson",
-    title: isTr ? "Canlı Ders Bağlantınız" : "Your Live Lesson Link",
+    title: isTr ? "Canlı Ders Bilgileriniz" : "Your Live Lesson Details",
     bodyHtml,
     footerNote: isTr ? "Ders saati veya bağlantıyla ilgili sorularınız için info@oriens-academy.com üzerinden bize ulaşabilirsiniz." : "For questions regarding your lesson link or schedule, contact info@oriens-academy.com.",
     footerEmail: "info@oriens-academy.com",
@@ -1171,7 +1307,7 @@ export function renderStudentLiveLessonLinkEmail(data: LiveLessonLinkEmailData) 
     `ORIENS ACADEMY - ${subject}`, "",
     `${isTr ? "Ders" : "Lesson"}: ${data.lessonTitle}`,
     `${isTr ? "Zaman" : "Time"}: ${formattedTime}`,
-    `${isTr ? "Derse Katıl" : "Join Lesson"}: ${data.liveMeetingUrl}`,
+    hasMeetingLink ? `${isTr ? "Derse Katıl" : "Join Lesson"}: ${data.liveMeetingUrl}` : null,
     data.teacherNote ? `${isTr ? "Not" : "Note"}: ${data.teacherNote}` : null,
   ]);
 
@@ -1206,9 +1342,13 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
 } {
   const isTr = data.locale === "tr";
   const minutes = data.expiresInMinutes || 10;
+  // Kod başa alındı: mobil bildirim önizlemesinde başlığın ilk kelimeleri
+  // görünür, kullanıcı maili açmadan kodu okuyabilir. Eski sıralama
+  // ("Oriens Academy — 123456 E-posta Doğrulama Kodunuz") hem devrik hem de
+  // önizlemede kodu markanın arkasında bırakıyordu.
   const subject = isTr
-    ? `Oriens Academy — ${data.otp} E-posta Doğrulama Kodunuz`
-    : `Oriens Academy — ${data.otp} Your Email Verification Code`;
+    ? `${data.otp} — E-posta doğrulama kodunuz`
+    : `${data.otp} — Your email verification code`;
 
   const eyebrow = isTr ? "GÜVENLİK & DOĞRULAMA" : "SECURITY & VERIFICATION";
   const title = isTr ? "E-posta Adresinizi Doğrulayın" : "Verify Your Email Address";
@@ -1220,11 +1360,11 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
         : "To activate your Oriens Academy account, please verify your email address:"}
     </p>
 
-    <div style="background-color:${PALETTE.surfaceGold};border:1px solid ${PALETTE.borderGold};border-radius:12px;padding:24px 20px;text-align:center;margin:20px 0;">
+    <div style="background-color:#FAF6EA;border:1px solid #EAD9A8;border-radius:12px;padding:28px 16px;text-align:center;margin:20px 0;">
       <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${PALETTE.goldDark};margin-bottom:8px;">
         ${isTr ? "6 HANELİ DOĞRULAMA KODU" : "6-DIGIT VERIFICATION CODE"}
       </div>
-      <div style="font-size:36px;font-weight:800;letter-spacing:.25em;color:${PALETTE.primary};font-family:ui-monospace,Menlo,Monaco,'Cascadia Mono','Segoe UI Mono','Roboto Mono',monospace;">
+      <div style="font-size:40px;line-height:48px;font-weight:700;letter-spacing:12px;color:${PALETTE.primary};font-family:ui-monospace,Menlo,Monaco,'Cascadia Mono','Segoe UI Mono','Roboto Mono',monospace;padding-left:12px;">
         ${escapeHtml(data.otp)}
       </div>
       <div style="font-size:12px;color:${PALETTE.textMuted};margin-top:10px;">
@@ -1234,7 +1374,7 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
       </div>
     </div>
 
-    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.5;color:${PALETTE.textMuted};">
+    <p style="margin:16px 0 0 0;padding:2px 0 2px 14px;border-left:3px solid #B8975A;font-size:13px;line-height:1.5;color:${PALETTE.textMuted};">
       ${isTr
         ? "Eğer bu işlemi siz başlatmadıysanız bu e-postayı dikkate almayınız. Güvenliğiniz için bu kodu kimseyle paylaşmayınız."
         : "If you did not initiate this request, please disregard this email. For your security, do not share this code with anyone."}
@@ -1245,7 +1385,8 @@ export function renderPurchaseEmailVerificationOtpEmail(data: PurchaseEmailVerif
     eyebrow,
     title,
     bodyHtml,
-    footerEmail: "payments@oriens-academy.com",
+    footerEmail: "info@oriens-academy.com",
+    visualVariant: "verification",
     footerNote: isTr
       ? "Bu otomatik bir güvenlik ve işlem e-postasıdır."
       : "This is an automated security and transaction email.",
@@ -1336,8 +1477,8 @@ export function renderEmailChangeOtpEmail(data: EmailChangeOtpEmailData): EmailT
   const isTr = data.locale === "tr";
   const minutes = data.expiresInMinutes || 10;
   const subject = isTr
-    ? `Yeni E-posta Adresinizi Doğrulayın | Oriens Academy`
-    : `Verify Your New Email Address | Oriens Academy`;
+    ? `Yeni E-posta Adresinizi Doğrulayın`
+    : `Verify Your New Email Address`;
 
   const eyebrow = isTr ? "GÜVENLİK & DOĞRULAMA" : "SECURITY & VERIFICATION";
   const title = isTr ? "Yeni E-posta Adresinizi Doğrulayın" : "Verify Your New Email Address";
@@ -1399,8 +1540,8 @@ export function renderEmailChangeOtpEmail(data: EmailChangeOtpEmailData): EmailT
 export function renderEmailChangeSecurityNoticeEmail(data: EmailChangeSecurityNoticeEmailData): EmailTemplateResult {
   const isTr = data.locale === "tr";
   const subject = isTr
-    ? "E-posta Adresiniz Değiştirildi | Oriens Academy"
-    : "Email Address Changed | Oriens Academy";
+    ? "E-posta Adresiniz Değiştirildi"
+    : "Email Address Changed";
 
   const eyebrow = isTr ? "GÜVENLİK BİLDİRİMİ" : "SECURITY NOTICE";
   const title = isTr ? "E-posta Adresiniz Değiştirildi" : "Email Address Changed";
@@ -1462,4 +1603,3 @@ export function renderEmailChangeSecurityNoticeEmail(data: EmailChangeSecurityNo
 
   return { subject, html, text };
 }
-

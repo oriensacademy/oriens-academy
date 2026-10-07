@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
+import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 
 /**
  * Self-service account deletion.
@@ -21,8 +22,8 @@ Deno.serve(async (req: Request) => {
   if (invalid) return invalid;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const serviceRoleKey = getSupabaseAdminKey();
+  const anonKey = getSupabasePublishableKey();
   if (!supabaseUrl || !serviceRoleKey || !anonKey) {
     console.error("[delete-student-account] Required server configuration is missing.");
     return buildJsonResponse({ error_code: "SERVER_CONFIG_ERROR", message: "Server configuration error." }, 503, req);

@@ -2,14 +2,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { dispatchWelcomeEmail } from "../_shared/email/service.ts";
 import { normalizeLocale } from "../_shared/email/templates.ts";
+import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 
 Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
   if (invalid) return invalid;
 
   const url = Deno.env.get("SUPABASE_URL") || "";
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const anon = getSupabasePublishableKey();
+  const service = getSupabaseAdminKey();
   const authorization = req.headers.get("authorization") || "";
 
   if (!url || !anon || !service) {

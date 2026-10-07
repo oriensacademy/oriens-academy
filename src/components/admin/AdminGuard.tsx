@@ -33,7 +33,15 @@ export function AdminGuard({ children }: AdminGuardProps) {
     }
   }, [accountType, isInitializing, mustChangePassword, pathname, router, studentLocale]);
 
-  if (isInitializing || accountType !== "admin" || mustChangePassword) {
+  // `isInitializing` bilerek buraya dahil EDİLMEDİ. Panelin görünürlüğü tek
+  // bir gerçeğe bağlı: hesap çözümlenmiş ve admin mi? `accountType` yalnızca
+  // çözümleme başarıyla bittiğinde "admin" olur; oturum düşerse `clearAccount`
+  // onu anında "unauthenticated" yapar. Dolayısıyla bu koşul güvenlik açısından
+  // eskisi kadar sıkı, ama arka planda bir auth tazelemesi (sekmeye dönüş,
+  // token yenileme) sırasında tüm paneli unmount edip yeniden kurmuyor --
+  // audit'te ölçülen ~400 ms'lik "her şey kayboldu, yeniden yükleniyor"
+  // davranışının kaynağı buydu.
+  if (accountType !== "admin" || mustChangePassword) {
     return <AdminAuthLoader />;
   }
 

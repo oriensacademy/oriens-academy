@@ -24,6 +24,7 @@ import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { ButtonLink } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format/currency";
+import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 
 export function CartPage() {
   const locale = useLocale();
@@ -226,7 +227,8 @@ export function CartPage() {
                 {cartPackages.map((pkg) => {
                   const pkgName = isTr ? pkg.name_tr : pkg.name_en || pkg.name_tr;
                   const finalPrice = Number(pkg.current_total ?? pkg.price_amount ?? 0);
-                  const hasDiscount = Boolean(pkg.old_total && pkg.old_total > finalPrice);
+                  const displayPrice = getLocalizedPackageDisplayPrice({ locale, tryAmount: finalPrice, eurAmount: pkg.price_eur });
+                  const hasDiscount = isTr && Boolean(pkg.old_total && pkg.old_total > finalPrice);
                   const listPrice = hasDiscount ? (pkg.old_total as number) : finalPrice;
                   const discountVal = listPrice - finalPrice;
                   const discountPct = pkg.discount_percentage || Math.round((discountVal / listPrice) * 100);
@@ -243,7 +245,7 @@ export function CartPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-heading text-lg text-ink">{pkgName}</h3>
-                            {pkg.badge_tr && (
+                            {(isTr ? pkg.badge_tr : pkg.badge_en) && (
                               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                                 {isTr ? pkg.badge_tr : pkg.badge_en}
                               </span>
@@ -266,7 +268,7 @@ export function CartPage() {
                             </div>
                           )}
                           <span className="block text-base font-bold text-ink sm:text-lg">
-                            {money(finalPrice, pkg.currency)}
+                            {displayPrice.formatted}
                           </span>
                         </div>
                         <button
@@ -290,6 +292,12 @@ export function CartPage() {
                   <h2 className="font-heading text-xl text-ink">{isTr ? "Sipariş Özeti" : "Order Summary"}</h2>
                 </div>
 
+                {!isTr ? (
+                  <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                    Package prices are displayed in EUR. Your payment will be processed in TRY.
+                  </p>
+                ) : null}
+
                 <div className="mt-5 space-y-3 text-sm">
                   <div className="flex justify-between text-muted-foreground">
                     <span>{isTr ? "Paket Sayısı" : "Package Count"}</span>
@@ -301,7 +309,7 @@ export function CartPage() {
                   </div>
 
                   <div className="flex justify-between text-muted-foreground border-t border-border pt-3">
-                    <span>{isTr ? "Ara Toplam" : "Subtotal"}</span>
+                    <span>{isTr ? "Ara Toplam" : "TRY subtotal"}</span>
                     <span>{money(pricingBreakdown.subtotal, currency)}</span>
                   </div>
 
@@ -313,7 +321,7 @@ export function CartPage() {
                   ) : null}
 
                   <div className="flex items-center justify-between border-t border-border pt-4 text-base font-heading text-ink sm:text-xl">
-                    <span>{isTr ? "Toplam Tutar" : "Total Amount"}</span>
+                    <span>{isTr ? "Toplam Tutar" : "Payment amount (TRY)"}</span>
                     <span className="font-bold text-ink">{money(pricingBreakdown.finalTotal, currency)}</span>
                   </div>
                 </div>

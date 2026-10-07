@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Manrope, DM_Serif_Display } from "next/font/google";
+import { Inter, Manrope, Newsreader, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { CompassLoader } from "@/components/brand/CompassLoader";
 import { AccountProvider } from "@/lib/auth/account-context";
@@ -16,6 +16,12 @@ const inter = Inter({
 const manrope = Manrope({
   subsets: ["latin", "latin-ext"],
   variable: "--font-manrope",
+  display: "swap",
+});
+
+const newsreader = Newsreader({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-newsreader",
   display: "swap",
 });
 
@@ -66,9 +72,14 @@ export default function RootLayout({
       lang="tr"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${inter.variable} ${manrope.variable} ${dmSerif.variable}`}
+      className={`${inter.variable} ${manrope.variable} ${newsreader.variable} ${dmSerif.variable}`}
     >
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){if(location.pathname!=="/"&&location.pathname!=="/index.html")return;try{var m=document.cookie.match(/(?:^|;\\s*)oriens_locale=(tr|en)(?:;|$)/);var l=m?m[1]:(navigator.language||"").toLowerCase().indexOf("en")===0?"en":"tr";location.replace("/"+l+"/");}catch(e){location.replace("/tr/");}})();`,
+          }}
+        />
         <meta name="oriens-build-version" content={RELEASE_VERSION} />
         {/* Google tag (gtag.js) */}
         <script

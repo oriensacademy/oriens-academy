@@ -10,9 +10,13 @@ import {
   X,
   CreditCard,
   AlertCircle,
-  CheckCircle2,
+  RefreshCw,
 } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
+import { toast } from "@/components/ui/toast";
+import { getAdminTcmbEurRate } from "@/lib/admin/tcmb";
+import { getTcmbEurRecommendation, type TcmbEurRate } from "@/lib/pricing/tcmb";
+import { formatCurrency } from "@/lib/format/currency";
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -29,11 +33,14 @@ export function PricingModal({
 }: PricingModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Form State
   const [id, setId] = useState("");
   const [priceAmount, setPriceAmount] = useState<string>("");
+  const [priceEur, setPriceEur] = useState<string>("");
+  const [tcmbRate, setTcmbRate] = useState<TcmbEurRate | null>(null);
+  const [tcmbLoading, setTcmbLoading] = useState(false);
+  const [tcmbError, setTcmbError] = useState<string | null>(null);
   const [currency, setCurrency] = useState("TRY");
   const [billingBasis, setBillingBasis] = useState<BillingBasis>("session");
   const [displayOrder, setDisplayOrder] = useState<number>(0);
@@ -54,6 +61,7 @@ export function PricingModal({
         setId(editingPackage.id);
         const effectivePrice = editingPackage.current_total ?? editingPackage.price_amount;
         setPriceAmount(effectivePrice !== null ? String(effectivePrice) : "");
+        setPriceEur(editingPackage.price_eur !== null ? String(editingPackage.price_eur) : "");
         setCurrency(editingPackage.currency || "TRY");
         setBillingBasis(editingPackage.billing_basis as BillingBasis);
         setDisplayOrder(editingPackage.display_order || 0);
@@ -70,6 +78,7 @@ export function PricingModal({
       } else {
         setId("");
         setPriceAmount("");
+        setPriceEur("");
         setCurrency("TRY");
         setBillingBasis("session");
         setDisplayOrder(0);
@@ -85,11 +94,22 @@ export function PricingModal({
         setBadgeEn("");
       }
       setErrorMsg(null);
-      setSuccessMsg(null);
     }, 0);
 
     return () => clearTimeout(timer);
   }, [editingPackage, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    getAdminTcmbEurRate().then((result) => {
+      if (!active) return;
+      setTcmbRate(result.data);
+      setTcmbError(result.error);
+      setTcmbLoading(false);
+    });
+    return () => { active = false; };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -115,15 +135,20 @@ export function PricingModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    setSuccessMsg(null);
     setSubmitting(true);
 
     const parsedPrice = priceAmount.trim() !== "" ? parseFloat(priceAmount) : null;
+    const parsedPriceEur = priceEur.trim() !== "" ? Number(priceEur) : null;
     const parsedLessons = parseInt(lessonCount, 10) || 1;
     const numberOrNull = (value: string) => (value.trim() === "" ? null : Number(value));
 
     if (parsedPrice === null || isNaN(parsedPrice) || parsedPrice < 0) {
       setErrorMsg("Fiyat tutarı geçerli ve pozitif bir sayı olmalıdır.");
+      setSubmitting(false);
+      return;
+    }
+    if (parsedPriceEur === null || !Number.isFinite(parsedPriceEur) || parsedPriceEur <= 0 || parsedPriceEur > 1_000_000 || !/^\d+(?:\.\d{1,2})?$/.test(priceEur.trim())) {
+      setErrorMsg("Euro fiyatı pozitif olmalı ve en fazla 2 ondalık basamak içermelidir.");
       setSubmitting(false);
       return;
     }
@@ -145,6 +170,7 @@ export function PricingModal({
       badge_tr: badgeTr.trim() || null,
       badge_en: badgeEn.trim() || null,
       purchase_mode: "purchasable" as const,
+      price_eur: parsedPriceEur,
     };
 
     if (editingPackage) {
@@ -162,11 +188,9 @@ export function PricingModal({
       if (error) {
         setErrorMsg(error);
       } else if (success) {
-        setSuccessMsg("Fiyat paketi başarıyla güncellendi.");
-        setTimeout(() => {
-          onSaved();
-          onClose();
-        }, 800);
+        toast.success("Fiyat paketi başarıyla güncellendi.");
+        onSaved();
+        onClose();
       }
     } else {
       const { error } = await createAdminPricingPackage({
@@ -184,13 +208,27 @@ export function PricingModal({
       if (error) {
         setErrorMsg(error);
       } else {
-        setSuccessMsg("Yeni fiyat paketi başarıyla oluşturuldu.");
-        setTimeout(() => {
-          onSaved();
-          onClose();
-        }, 800);
+        toast.success("Yeni fiyat paketi başarıyla oluşturuldu.");
+        onSaved();
+        onClose();
       }
     }
+  };
+
+  const parsedTryForAdvice = Number(priceAmount);
+  const parsedEurForAdvice = priceEur.trim() ? Number(priceEur) : null;
+  const recommendation = getTcmbEurRecommendation({
+    tryAmount: parsedTryForAdvice,
+    manualEur: parsedEurForAdvice,
+    eurTryRate: tcmbRate?.rate ?? null,
+  });
+
+  const refreshTcmbRate = async () => {
+    setTcmbLoading(true);
+    const result = await getAdminTcmbEurRate(true);
+    setTcmbRate(result.data);
+    setTcmbError(result.error);
+    setTcmbLoading(false);
   };
 
   return (
@@ -202,7 +240,7 @@ export function PricingModal({
       />
 
       {/* Modal Dialog */}
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl space-y-5 overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-2xl">
+      <div role="dialog" aria-modal="true" className="relative z-10 max-h-[90vh] w-full max-w-2xl space-y-5 overflow-y-auto rounded-2xl border border-border bg-white p-6 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">
@@ -213,6 +251,7 @@ export function PricingModal({
           </div>
           <button
             type="button"
+            aria-label="Kapat"
             onClick={onClose}
             className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
           >
@@ -228,12 +267,7 @@ export function PricingModal({
           </div>
         )}
 
-        {successMsg && (
-          <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-            <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
-            <span>{successMsg}</span>
-          </div>
-        )}
+
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -260,7 +294,7 @@ export function PricingModal({
           </div>
 
           {/* Primary Price and Lesson Count */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 Paket Satış Fiyatı (TL) *
@@ -275,6 +309,43 @@ export function PricingModal({
                 placeholder="Örn: 27000"
                 className="w-full rounded-lg border border-input bg-white p-2 text-xs font-bold text-foreground"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                Euro Fiyatı (€)
+              </label>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0.01"
+                max="1000000"
+                value={priceEur}
+                onChange={(event) => setPriceEur(event.target.value)}
+                placeholder="Örn: 499.99"
+                className="w-full rounded-lg border border-input bg-white p-2 text-xs font-bold text-foreground"
+              />
+              <div className="mt-1.5 space-y-0.5 text-[10px] leading-4 text-muted-foreground" aria-live="polite">
+                {tcmbLoading ? (
+                  <span className="inline-flex items-center gap-1"><Wave className="h-2.5 w-5" aria-label="Kur yükleniyor" /> Kur bilgisi alınıyor…</span>
+                ) : tcmbRate ? (
+                  <>
+                    <p>Güncel kur: 1 EUR = {tcmbRate.rate.toFixed(2)} TL · TCMB · {tcmbRate.sourceDate}</p>
+                    {recommendation.suggestedEur !== null ? (
+                      <p className={recommendation.status === "suitable" ? "font-medium text-emerald-700" : recommendation.status === "review" || recommendation.status === "missing" ? "font-medium text-red-700" : ""}>
+                        Önerilen fiyat: {formatCurrency(recommendation.suggestedEur, { currency: "EUR", locale: "en", forceDecimals: true })}
+                        {recommendation.status === "suitable" ? " · Uygun" : recommendation.status === "review" ? " · Fiyatı kontrol edin" : recommendation.status === "missing" ? " · Euro fiyatı girilmemiş" : ""}
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p>{tcmbError || "Güncel kur bilgisi alınamadı."}</p>
+                )}
+                <button type="button" onClick={refreshTcmbRate} disabled={tcmbLoading} className="inline-flex items-center gap-1 font-medium text-[#526458] underline underline-offset-2 disabled:opacity-50">
+                  <RefreshCw className="size-2.5" /> Kuru yenile
+                </button>
+              </div>
             </div>
 
             <div>

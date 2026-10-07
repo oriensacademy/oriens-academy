@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { humanizeNotificationSubject, humanizeEventType } from "./notifications";
 import { ADMIN_PAYMENT_VISIBILITY_FILTER } from "./payments";
 import { ensureTrailingSlash } from "@/lib/routes";
+import { useAccount } from "@/lib/auth/account-context";
 
 export interface AdminActionNotification {
   id: string;
@@ -23,6 +24,8 @@ export interface AdminNotificationCounts {
   payments: number;
   notifications: number;
   homework: number;
+  /** Onay bekleyen ödemeler (havale/EFT: pending, requires_action). Sol menü rozeti. */
+  pendingPayments: number;
 }
 
 interface AdminNotificationsContextValue {
@@ -31,11 +34,18 @@ interface AdminNotificationsContextValue {
   loading: boolean;
   refresh: () => Promise<void>;
   markAllRead: () => Promise<void>;
+  /** Clears the Ödemeler badge; called when the payments page is opened. */
+  markPaymentsSeen: () => Promise<void>;
 }
 
 const AdminNotificationsContext = createContext<AdminNotificationsContextValue | null>(null);
 
 export function AdminNotificationsProvider({ children }: { children: React.ReactNode }) {
+  // Admin RPC'leri (admin_payments_seen_at vb.) yalnızca sunucuda doğrulanmış
+  // bir admin oturumundan sonra çağrılır; anonim ziyaretçi /admin/ açtığında
+  // giriş sayfasına yönlenirken arka planda hiçbir admin isteği gitmez.
+  const { accountType, isInitializing } = useAccount();
+  const isVerifiedAdmin = !isInitializing && accountType === "admin";
   const [notifications, setNotifications] = useState<AdminActionNotification[]>([]);
   const [counts, setCounts] = useState<AdminNotificationCounts>({
     totalUnread: 0,
@@ -43,21 +53,48 @@ export function AdminNotificationsProvider({ children }: { children: React.React
     payments: 0,
     notifications: 0,
     homework: 0,
+    pendingPayments: 0,
   });
   const [loading, setLoading] = useState(false);
+  /**
+   * A 45s poll, manual refreshes and "mark seen" all write the same state. A
+   * request that started before a state change must not land after it, or the
+   * badge the admin just cleared comes straight back.
+   */
+  const requestSeqRef = useRef(0);
 
   const fetchActionableNotifications = useCallback(async () => {
     const supabase = getSupabaseClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const anySupabase = supabase as any;
+    const seq = (requestSeqRef.current += 1);
     try {
       setLoading(true);
+
+      // Payments are "unread" until the admin opens /admin/odemeler. Without
+      // this the badge showed every visible transaction and never cleared.
+      let paymentsSeenAt: string | null = null;
+      try {
+        const seen = await anySupabase.rpc("admin_payments_seen_at");
+        paymentsSeenAt = (seen?.data as string | null) ?? null;
+      } catch {
+        paymentsSeenAt = null;
+      }
+
+      let paymentsQuery = anySupabase
+        .from("payment_transactions")
+        .select("id, amount, currency, payment_method, payer_email, created_at, status", { count: "exact" })
+        .eq("is_archived", false)
+        .or(ADMIN_PAYMENT_VISIBILITY_FILTER);
+      if (paymentsSeenAt) paymentsQuery = paymentsQuery.gt("created_at", paymentsSeenAt);
+      paymentsQuery = paymentsQuery.order("created_at", { ascending: false }).limit(10);
 
       const [
         contactsRes,
         paymentsRes,
         deliveriesRes,
         homeworkRes,
+        pendingPaymentsRes,
       ] = await Promise.all([
         // 1. New contact requests
         anySupabase
@@ -67,14 +104,8 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           .order("created_at", { ascending: false })
           .limit(10),
 
-        // 3. Pending payments (e.g. bank transfer pending)
-        anySupabase
-          .from("payment_transactions")
-          .select("id, amount, currency, payment_method, payer_email, created_at, status", { count: "exact" })
-          .eq("is_archived", false)
-          .or(ADMIN_PAYMENT_VISIBILITY_FILTER)
-          .order("created_at", { ascending: false })
-          .limit(10),
+        // 3. Payments the admin has not seen yet
+        paymentsQuery,
 
         // 4. Failed notification deliveries
         anySupabase
@@ -91,6 +122,14 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           .eq("status", "submitted")
           .order("created_at", { ascending: false })
           .limit(10),
+
+        // 6. Payments waiting for approval (sidebar badge, read-only count)
+        anySupabase
+          .from("payment_transactions")
+          .select("id", { count: "exact", head: true })
+          .eq("is_archived", false)
+          .eq("payment_method", "bank_transfer")
+          .in("status", ["pending", "requires_action"]),
       ]);
 
       const items: AdminActionNotification[] = [];
@@ -159,7 +198,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
           subtitle: `${name} · ${h.title}`,
           timestamp: h.created_at,
           isRead: false,
-          link: ensureTrailingSlash(`/admin/odevler`),
+          link: h.student_user_id ? `${ensureTrailingSlash("/admin/ogrenciler/detay")}?student=${encodeURIComponent(h.student_user_id)}` : ensureTrailingSlash("/admin/ogrenciler"),
           severity: "normal",
         });
       });
@@ -173,6 +212,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
       const homeworkCount = homework.length;
       const totalUnread = communicationCount + paymentsCount + notificationsCount + homeworkCount;
 
+      if (seq !== requestSeqRef.current) return; // superseded while awaiting
       setNotifications(items);
       setCounts({
         totalUnread,
@@ -180,6 +220,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
         payments: paymentsCount,
         notifications: notificationsCount,
         homework: homeworkCount,
+        pendingPayments: pendingPaymentsRes?.count ?? 0,
       });
     } catch (err) {
       console.warn("[AdminNotificationsContext] Error fetching notifications:", err);
@@ -204,7 +245,33 @@ export function AdminNotificationsProvider({ children }: { children: React.React
     }
   }, []);
 
+  const markPaymentsSeen = useCallback(async () => {
+    // Optimistic: the page the admin just opened should not keep its own badge.
+    // Bumping the sequence discards any fetch that started before this point.
+    requestSeqRef.current += 1;
+    setNotifications((prev) => prev.filter((item) => item.type !== "payment"));
+    setCounts((prev) => ({
+      ...prev,
+      payments: 0,
+      totalUnread: Math.max(0, prev.totalUnread - prev.payments),
+    }));
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (getSupabaseClient() as any).rpc("admin_mark_payments_seen");
+      if (error) throw error;
+      // Recount against the stamp we just wrote, so anything that arrived in
+      // the meantime is still reported as unread.
+      void fetchActionableNotifications();
+    } catch (err) {
+      console.warn("[AdminNotificationsContext] Error marking payments seen:", err);
+      // Put the real numbers back so the badge never lies about unread work.
+      void fetchActionableNotifications();
+    }
+  }, [fetchActionableNotifications]);
+
   useEffect(() => {
+    if (!isVerifiedAdmin) return;
     const timer = window.setTimeout(() => {
       void fetchActionableNotifications();
     }, 0);
@@ -215,7 +282,7 @@ export function AdminNotificationsProvider({ children }: { children: React.React
       window.clearTimeout(timer);
       window.clearInterval(interval);
     };
-  }, [fetchActionableNotifications]);
+  }, [fetchActionableNotifications, isVerifiedAdmin]);
 
   const value = useMemo(
     () => ({
@@ -224,8 +291,9 @@ export function AdminNotificationsProvider({ children }: { children: React.React
       loading,
       refresh: fetchActionableNotifications,
       markAllRead,
+      markPaymentsSeen,
     }),
-    [notifications, counts, loading, fetchActionableNotifications, markAllRead]
+    [notifications, counts, loading, fetchActionableNotifications, markAllRead, markPaymentsSeen]
   );
 
   return (
@@ -240,10 +308,11 @@ export function useAdminNotifications() {
   if (!context) {
     return {
       notifications: [],
-      counts: { totalUnread: 0, communicationSupport: 0, payments: 0, notifications: 0, homework: 0 },
+      counts: { totalUnread: 0, communicationSupport: 0, payments: 0, notifications: 0, homework: 0, pendingPayments: 0 },
       loading: false,
       refresh: async () => {},
       markAllRead: async () => {},
+      markPaymentsSeen: async () => {},
     };
   }
   return context;

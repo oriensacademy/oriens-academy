@@ -11,6 +11,7 @@ export type StudentBooking = Pick<
   | "exam_code"
   | "custom_exam"
   | "created_at"
+  | "updated_at"
   | "appointment_subject"
   | "event_type"
   | "live_meeting_url"
@@ -30,10 +31,13 @@ export type StudentPayment = Pick<
   | "payment_method"
   | "status"
   | "created_at"
+  | "paid_at"
+  | "updated_at"
   | "public_reference"
   | "metadata"
   | "refunded_amount"
   | "refund_status"
+  | "last_refunded_at"
 >;
 
 export type StudentAdjustment = {
@@ -68,6 +72,8 @@ export interface StudentPortalData {
   adjustments: StudentAdjustment[];
   currentPackage: StudentPurchase | null;
   entitlement: StudentEntitlementSummary;
+  /** instructor_id -> görünen ad; yalnız bu öğrencinin derslerindeki eğitmenler (C1). */
+  instructorNames: Record<string, string>;
 }
 
 /**
@@ -75,6 +81,7 @@ export interface StudentPortalData {
  * Supports stacked package purchases and calculates total remaining lessons correctly.
  */
 export function getStudentEntitlementSummary(purchases: StudentPurchase[]): StudentEntitlementSummary {
+  purchases = purchases.filter((purchase) => !(purchase as StudentPurchase & { is_archived?: boolean }).is_archived);
   if (!purchases || purchases.length === 0) {
     return {
       totalGrantedLessons: 0,
@@ -159,7 +166,7 @@ export async function getStudentPortalData(
   userId: string
 ): Promise<{ data: StudentPortalData | null; error: string | null }> {
   const supabase = getSupabaseClient();
-  const [profile, bookings, lessons, homework, purchases, payments, adjustments] =
+  const [profile, bookings, lessons, homework, purchases, payments, adjustments, instructors] =
     await Promise.all([
       supabase.from("student_profiles").select("*").eq("id", userId).maybeSingle(),
       supabase
@@ -173,6 +180,7 @@ export async function getStudentPortalData(
         .from("student_lessons")
         .select("*")
         .eq("student_user_id", userId)
+        .eq("is_archived", false)
         .order("lesson_date", { ascending: false }),
       supabase
         .from("student_homework")
@@ -183,31 +191,34 @@ export async function getStudentPortalData(
         .from("student_package_purchases")
         .select("*,pricing_packages(name_tr,name_en)")
         .eq("student_user_id", userId)
+        .eq("is_archived", false)
         .order("created_at", { ascending: false }),
       supabase
         .from("payment_transactions")
         .select(
-          "id,package_id,amount,currency,payment_method,status,created_at,public_reference,metadata,refunded_amount,refund_status"
+          "id,package_id,amount,currency,payment_method,status,created_at,paid_at,updated_at,public_reference,metadata,refunded_amount,refund_status,last_refunded_at"
         )
-        .eq("student_user_id", userId)
+        .or(`student_user_id.eq.${userId},package_owner_student_id.eq.${userId},purchaser_guardian_user_id.eq.${userId}`)
         .eq("is_archived", false)
         .order("created_at", { ascending: false }),
       supabase
         .from("student_package_adjustments" as never)
         .select("*")
         .eq("student_user_id", userId)
+        .eq("is_archived", false)
         .order("created_at", { ascending: false }),
+      // instructors tablosu yalnız admin'e açık; veli yalnız kendi öğrencisinin
+      // derslerindeki eğitmen adlarını bu dar RPC ile tek seferde alır.
+      supabase.rpc("get_guardian_lesson_instructor_names" as never, { p_student_id: userId } as never),
     ]);
 
-  const firstError =
-    profile.error ||
-    bookings.error ||
-    lessons.error ||
-    homework.error ||
-    purchases.error ||
-    payments.error;
-  if (firstError || !profile.data) {
-    return { data: null, error: firstError?.message || "STUDENT_PROFILE_NOT_FOUND" };
+  // Yalnızca profil zorunlu. Önceden ikincil tablolardan HERHANGİ birinin
+  // hatası tüm portalı `data: null` yapıyordu; StudentPortal bunu pulsing bir
+  // iskelet olarak gösterdiği için kullanıcı "loading hiç bitmiyor" görüyordu.
+  // Artık ders/ödev/ödeme tarafındaki geçici bir hata portalı kapatmıyor,
+  // ilgili bölüm boş görünüyor ve bir sonraki tazelemede doluyor.
+  if (profile.error || !profile.data) {
+    return { data: null, error: profile.error?.message || "STUDENT_PROFILE_NOT_FOUND" };
   }
 
   const profileRecord = profile.data as unknown as Record<string, unknown>;
@@ -251,6 +262,11 @@ export async function getStudentPortalData(
       adjustments: (adjustments.data || []) as unknown as StudentAdjustment[],
       currentPackage,
       entitlement,
+      instructorNames: Object.fromEntries(
+        ((instructors.data || []) as unknown as { instructor_id: string; display_name: string }[])
+          .filter((row) => row.instructor_id && row.display_name)
+          .map((row) => [row.instructor_id, row.display_name])
+      ),
     },
     error: null,
   };
@@ -271,7 +287,6 @@ export async function setupLearnerProfile(input: {
   fullName: string;
   email: string;
   phone?: string | null;
-  school?: string | null;
   preferredLanguage: "tr" | "en";
 }) {
   const supabase = getSupabaseClient();
@@ -281,7 +296,7 @@ export async function setupLearnerProfile(input: {
     p_full_name: input.fullName.trim(),
     p_email: input.email.trim().toLowerCase(),
     p_phone: input.phone?.trim() || null,
-    p_school: input.school?.trim() || null,
+    p_school: null,
     p_preferred_language: input.preferredLanguage,
   });
 }
@@ -326,4 +341,25 @@ export async function submitStudentHomework(
     .eq("id", id)
     .select()
     .single();
+}
+
+/**
+ * Form ön-doldurma için hafif profil okuması.
+ *
+ * `getStudentPortalData` 7 tablo sorguluyor; iletişim ve randevu formları bunu
+ * sadece ad/e-posta/hedef sınav için çağırıyordu ve efekt `user` nesnesinin
+ * kimliğine bağlı olduğu için tarayıcı sekmesine her dönüşte tekrar
+ * çalışıyordu. Ön-doldurmanın tek bir satıra ihtiyacı var.
+ */
+export async function getStudentPrefillProfile(userId: string): Promise<{
+  full_name: string | null;
+  email: string | null;
+  target_exam: string | null;
+} | null> {
+  const { data } = await getSupabaseClient()
+    .from("student_profiles")
+    .select("full_name,email,target_exam")
+    .eq("id", userId)
+    .maybeSingle();
+  return (data as { full_name: string | null; email: string | null; target_exam: string | null } | null) ?? null;
 }

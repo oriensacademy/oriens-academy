@@ -41,7 +41,7 @@ async function getPublicAvailabilityFallback(): Promise<PublicAvailabilitySlot[]
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
       },
     });
 

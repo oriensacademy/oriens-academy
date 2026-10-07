@@ -23,7 +23,7 @@ const paymentPage = readFileSync(new URL("../src/components/payment/PaymentPage.
 
 // Verify isCartCheckout determination
 assert.match(paymentPage, /const\s*isCartCheckout\s*=\s*sourceParam\s*===\s*"cart"\s*\|\|\s*\(!isDirectPackageMode\s*&&\s*cartItems\.length\s*>\s*0\)/);
-assert.match(paymentPage, /!isCartCheckout\s*\?\s*<label[\s\S]*?<select/);
+assert.match(paymentPage, /\{!isCartCheckout(?:\s*&&[^?{}]*)?\s*\?\s*\(\s*<label[\s\S]*?<select/);
 console.log("✓ Test 3 Passed: PaymentPage.tsx locks cart mode and omits <select> dropdown in cart checkout.");
 
 // Verify login redirect preserves source=cart
@@ -33,14 +33,14 @@ console.log("✓ Test 4 Passed: PaymentPage preserves source=cart on login redir
 // 3. Check HostedCardPanel.tsx source
 const hostedCardPanel = readFileSync(new URL("../src/components/payment/HostedCardPanel.tsx", import.meta.url), "utf8");
 
-// Verify sortedPackagesKey memoization
-assert.match(hostedCardPanel, /const\s*sortedPackagesKey\s*=\s*useMemo\(\(\)\s*=>\s*\[\.\.\.packageIds\]\.sort\(\)\.join\(","\),\s*\[packageIds\]\)/);
-
-// Verify inFlightKeyRef and preparedKeyRef locks
-assert.match(hostedCardPanel, /const\s*inFlightKeyRef\s*=\s*useRef<string>\(""\)/);
-assert.match(hostedCardPanel, /const\s*preparedKeyRef\s*=\s*useRef<string>\(""\)/);
-assert.match(hostedCardPanel, /if\s*\(inFlightKeyRef\.current\s*===\s*currentContextKey\s*\|\|\s*preparedKeyRef\.current\s*===\s*currentContextKey\)\s*\{\s*return;\s*\}/);
-console.log("✓ Test 5 Passed: HostedCardPanel enforces single-flight and prepared locks.");
+// 585f284: sayfa yüklenirken PayTR ön yüklemesi kaldırıldı; oturum yalnızca
+// "Ödemeye Geç" tıklamasıyla açılır. Tek uçuş kilidi tıklama anında tutulur.
+assert.match(hostedCardPanel, /const\s*inFlightRef\s*=\s*useRef\(false\)/);
+assert.match(hostedCardPanel, /if\s*\(inFlightRef\.current\s*\|\|\s*!contextReady\)\s*return;\s*inFlightRef\.current\s*=\s*true;/);
+assert.match(hostedCardPanel, /finally\s*\{\s*inFlightRef\.current\s*=\s*false;/);
+assert.equal((hostedCardPanel.match(/createPaytrToken\(/g) || []).length, 2, "yalnızca ilk deneme + tek PAYMENT_SESSION_RETRY");
+assert.doesNotMatch(hostedCardPanel, /useEffect\([^)]*createPaytrToken/);
+console.log("✓ Test 5 Passed: HostedCardPanel enforces click-time single-flight lock (no preload).");
 
 // 4. Check paytr-create-token function
 const paytrCreateToken = readFileSync(new URL("../supabase/functions/paytr-create-token/index.ts", import.meta.url), "utf8");
@@ -54,7 +54,10 @@ console.log("✓ Test 6 Passed: paytr-create-token enforces server-side idempote
 
 // 5. Check admin payments query filter
 const adminPayments = readFileSync(new URL("../src/lib/admin/payments.ts", import.meta.url), "utf8");
-assert.match(adminPayments, /\.or\("is_preload\.eq\.false,is_preload\.is\.null,status\.neq\.pending"\)/);
+// Kanonik görünürlük filtresi: yalnızca paid/refunded ve bekleyen havale;
+// bekleyen kart (ön yükleme dahil) satırları normal ödeme olarak listelenmez.
+assert.match(adminPayments, /ADMIN_PAYMENT_VISIBILITY_FILTER =\s*"status\.in\.\(paid,refunded\),and\(payment_method\.eq\.bank_transfer,status\.in\.\(pending,requires_action\)\)"/);
+assert.ok((adminPayments.match(/\.or\(ADMIN_PAYMENT_VISIBILITY_FILTER\)/g) || []).length >= 2);
 console.log("✓ Test 7 Passed: listAdminPaymentsPaginated excludes unattempted pure preloads.");
 
 // 6. Test in-memory cart merge simulation

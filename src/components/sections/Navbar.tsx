@@ -21,7 +21,6 @@ import { unifiedLoginPath } from "@/lib/routes";
 import { Wave } from "@/components/ui/wave";
 import { publicNavigation } from "@/lib/public-navigation";
 import { AccountMenu } from "@/components/auth/AccountMenu";
-import { LogoutConfirmationModal } from "@/components/auth/LogoutConfirmationModal";
 import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
 
 const focusableSelector = [
@@ -43,9 +42,10 @@ export function Navbar() {
   const { showPricing } = usePublicSettings();
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
-  const [mobileLogoutOpen, setMobileLogoutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const isStudent = accountType === "student";
+  // Oturum açmış kullanıcıya "Ücretsiz Görüşme Planla" gösterilmez.
+  const showConsultationCta = accountType !== "student" && accountType !== "admin";
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -179,7 +179,7 @@ export function Navbar() {
               alt="Oriens Academy"
               width={217}
               height={80}
-              className="h-auto w-[116px] object-contain md:w-[155px]"
+              className="h-auto w-[96px] object-contain min-[360px]:w-[116px] md:w-[155px]"
               priority
             />
           </Link>
@@ -229,19 +229,19 @@ export function Navbar() {
                   href={accountHref}
                   aria-current={isAccountActive ? "page" : undefined}
                   className={cn(
-                    "flex min-h-11 min-w-fit shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border px-3 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    "flex min-h-11 min-w-fit shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-primary-hover bg-primary-hover px-3 text-sm font-semibold text-primary-foreground transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     isAccountActive
-                      ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25 shadow-xs"
-                      : "border-border text-ink hover:bg-surface-muted",
+                      ? "ring-1 ring-primary/25 shadow-xs xl:border-primary xl:bg-primary/10 xl:text-primary"
+                      : "xl:border-border xl:bg-transparent xl:text-ink xl:hover:bg-surface-muted",
                     accountType === "admin" && "size-11 px-0"
                   )}
                   aria-label={accountLabel}
                 >
-                  <UserRound className="size-4" />
+                  <UserRound className="size-[18px] stroke-[2.25] text-primary-foreground xl:size-4 xl:stroke-2 xl:text-current" />
                   {accountType !== "admin" && <span className="hidden sm:inline">{accountLabel}</span>}
                 </Link>
               )}
-              <ButtonLink href={`/${locale}#consultation-form`} directional size="lg" className="hidden h-11 px-5 text-[13px] xl:flex">
+              <ButtonLink href={`/${locale}#consultation-form`} directional size="lg" className={showConsultationCta ? "hidden h-11 px-5 text-[13px] xl:flex" : "hidden"}>
                 {nav.ctaBook}
                 <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />
               </ButtonLink>
@@ -252,11 +252,11 @@ export function Navbar() {
             ref={menuTriggerRef}
             type="button"
             onClick={() => setOpen(true)}
-            className="ml-1 flex h-11 w-11 items-center justify-center rounded-md text-ink xl:hidden"
+            className="ml-1 flex h-11 w-11 items-center justify-center rounded-md border border-primary-hover bg-primary-hover text-primary-foreground shadow-xs transition-colors hover:bg-primary-hover xl:hidden"
             aria-label={nav.openMenu}
             aria-expanded={open}
           >
-            <Menu className="size-6" aria-hidden="true" />
+            <Menu className="size-6 stroke-[2.5]" aria-hidden="true" />
           </button>
         </div>
       </header>
@@ -315,13 +315,17 @@ export function Navbar() {
               onClick={() => setOpen(false)}
               directional
               size="lg"
-              className="mx-6 mt-4 h-12 text-base"
+              className={showConsultationCta ? "mx-6 mt-4 h-12 text-base" : "hidden"}
             >
               {nav.ctaBook}
               <ArrowRight data-directional-arrow className="size-4" aria-hidden="true" />
             </ButtonLink>
 
-            <nav aria-label={nav.primaryAriaLabel} className="mt-10 flex-1 px-6">
+            <nav
+              aria-label={nav.primaryAriaLabel}
+              className="mt-10 flex-1 px-6"
+              style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif' }}
+            >
               <ul className="flex flex-col gap-1">
                 {mobileItems.map((item) => {
                   const active = isPrimaryNavigationActive(item.href, pathname, locale);
@@ -331,7 +335,7 @@ export function Navbar() {
                       onClick={() => setOpen(false)}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "py-4 font-heading text-2xl text-ink decoration-brand-accent underline-offset-[6px]",
+                        "py-4 text-[1.375rem] leading-[1.2] tracking-[-0.018em] text-ink decoration-brand-accent underline-offset-[6px]",
                         active ? "inline-block font-semibold underline decoration-2" : "block font-medium"
                       )}
                     >
@@ -339,7 +343,7 @@ export function Navbar() {
                     </Link>
                   </li>
                 })}
-                {isStudent && <AccountMenu locale={locale} mobile onNavigate={() => setOpen(false)} onRequestLogout={() => { setOpen(false); setMobileLogoutOpen(true); }} />}
+                {isStudent && <AccountMenu locale={locale} mobile onNavigate={() => setOpen(false)} onRequestLogout={() => { setOpen(false); void confirmMobileLogout(); }} />}
               </ul>
             </nav>
 
@@ -351,7 +355,6 @@ export function Navbar() {
         </>
       )}
     </AnimatePresence>
-      <LogoutConfirmationModal open={mobileLogoutOpen} signingOut={signingOut} locale={locale} returnFocusRef={menuTriggerRef} onCancel={() => setMobileLogoutOpen(false)} onConfirm={confirmMobileLogout} />
     </>
   );
 }

@@ -44,6 +44,14 @@ export function BlogDetailPage() {
   // Client-set metadata: a real, disclosed limitation of the static-export +
   // client-fetch architecture -- these are not present in the initial static
   // HTML payload, only after the post loads in the browser.
+  //
+  // KNOWN LIMITATION: description and canonical below do take effect, but the
+  // document.title write does not survive -- React owns the <title> hoisted
+  // from Next's generateMetadata and restores it on the next render, so post
+  // pages keep the generic "Blog | Oriens Academy" tab title. Rendering our own
+  // <title> here does not help either: it is hoisted as an ADDITIONAL tag and
+  // the first one still wins. Fixing it means moving the title out of this
+  // route's generateMetadata, which is a separate change.
   useEffect(() => {
     if (!post) return;
     document.title = `${post.title} | Oriens Academy Blog`;

@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { INFO_EMAIL, sendTransactionalEmail } from "../_shared/email/service.ts";
 import { renderContactReplyEmail, normalizeLocale } from "../_shared/email/templates.ts";
+import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -11,8 +12,8 @@ Deno.serve(async (req: Request) => {
   if (invalid) return invalid;
 
   const url = Deno.env.get("SUPABASE_URL") || "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const anonKey = getSupabasePublishableKey();
+  const serviceKey = getSupabaseAdminKey();
   const authorization = req.headers.get("authorization") || "";
   if (!url || !anonKey || !serviceKey || !authorization) {
     return buildJsonResponse({ error_code: "SERVER_CONFIG_ERROR" }, 500, req);

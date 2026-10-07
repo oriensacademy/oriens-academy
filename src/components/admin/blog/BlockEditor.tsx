@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -138,30 +138,51 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } })
   );
 
+  /**
+   * Uploads are awaited, and the author keeps typing while they run. Reading
+   * `blocks` from the render closure after an await therefore rebuilds the list
+   * from a snapshot taken BEFORE the upload started, silently discarding every
+   * edit made in the meantime (and dropping the first image when two uploads
+   * overlap). Every mutation below goes through this ref so it always composes
+   * onto the newest list.
+   */
+  const blocksRef = useRef(blocks);
+  useEffect(() => {
+    blocksRef.current = blocks;
+  }, [blocks]);
+
+  function commit(next: BlogBlock[]) {
+    blocksRef.current = next;
+    onChange(next);
+  }
+
   function updateBlock(id: string, next: BlogBlock) {
-    onChange(blocks.map((block) => (block.id === id ? next : block)));
+    commit(blocksRef.current.map((block) => (block.id === id ? next : block)));
   }
 
   function removeBlock(id: string) {
-    onChange(blocks.filter((block) => block.id !== id));
+    commit(blocksRef.current.filter((block) => block.id !== id));
   }
 
   function moveBlock(index: number, delta: number) {
     const target = index + delta;
-    if (target < 0 || target >= blocks.length) return;
-    onChange(arrayMove(blocks, index, target));
+    if (target < 0 || target >= blocksRef.current.length) return;
+    commit(arrayMove(blocksRef.current, index, target));
   }
 
   function duplicateAt(index: number) {
-    const next = blocks.slice();
-    next.splice(index + 1, 0, duplicateBlock(blocks[index]));
-    onChange(next);
+    const next = blocksRef.current.slice();
+    next.splice(index + 1, 0, duplicateBlock(next[index]));
+    commit(next);
   }
 
   function insertAt(index: number, inserted: BlogBlock[]) {
-    const next = blocks.slice();
-    next.splice(index, 0, ...inserted);
-    onChange(next);
+    const next = blocksRef.current.slice();
+    // The index was chosen before an upload may have awaited; clamp it so a
+    // list that shrank meanwhile still receives the block instead of throwing
+    // it past the end.
+    next.splice(Math.min(Math.max(index, 0), next.length), 0, ...inserted);
+    commit(next);
   }
 
   async function insertImageAt(index: number, file: File) {
@@ -201,6 +222,12 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
     insertAt(index, [{ id: pendingId, type: "file", url: result.url, name: file.name, size: result.size }]);
   }
 
+  /** The live block for an id, or null if it changed type or was deleted mid-upload. */
+  function currentBlock<T extends BlogBlock["type"]>(id: string, type: T) {
+    const found = blocksRef.current.find((entry) => entry.id === id);
+    return found && found.type === type ? (found as Extract<BlogBlock, { type: T }>) : null;
+  }
+
   async function replaceImage(block: Extract<BlogBlock, { type: "image" }>, file: File) {
     setUploadingId(block.id);
     const result = await onUploadImage(file);
@@ -209,7 +236,9 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
       onError(result.error || "Görsel yüklenemedi.");
       return;
     }
-    updateBlock(block.id, { ...block, url: result.url });
+    const live = currentBlock(block.id, "image");
+    if (!live) return;
+    updateBlock(live.id, { ...live, url: result.url });
   }
 
   async function replaceFile(block: Extract<BlogBlock, { type: "file" }>, file: File) {
@@ -220,7 +249,9 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
       onError(result.error || "Dosya yüklenemedi.");
       return;
     }
-    updateBlock(block.id, { ...block, url: result.url, name: file.name, size: result.size });
+    const live = currentBlock(block.id, "file");
+    if (!live) return;
+    updateBlock(live.id, { ...live, url: result.url, name: file.name, size: result.size });
   }
 
   async function addGalleryImage(block: Extract<BlogBlock, { type: "gallery" }>, file: File) {
@@ -231,9 +262,11 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
       onError(result.error || "Görsel yüklenemedi.");
       return;
     }
-    updateBlock(block.id, {
-      ...block,
-      items: [...block.items, { id: newBlockId(), url: result.url, alt: "", caption: "" }],
+    const live = currentBlock(block.id, "gallery");
+    if (!live) return;
+    updateBlock(live.id, {
+      ...live,
+      items: [...live.items, { id: newBlockId(), url: result.url, alt: "", caption: "" }],
     });
   }
 
@@ -247,7 +280,7 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
     const target = paneTargetRef.current;
     paneTargetRef.current = null;
     if (!target) return;
-    const block = blocks.find((entry) => entry.id === target.blockId);
+    const block = blocksRef.current.find((entry) => entry.id === target.blockId);
     if (!block || block.type !== "split") return;
     setUploadingId(`${target.blockId}:${target.side}`);
     const result = await onUploadImage(file);
@@ -256,8 +289,9 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
       onError(result.error || "Görsel yüklenemedi.");
       return;
     }
-    // Re-read from props: the author may have edited the other pane meanwhile.
-    const current = blocks.find((entry) => entry.id === target.blockId);
+    // Re-read the live list: the author may have edited the other pane, or
+    // deleted the block entirely, while the upload was in flight.
+    const current = blocksRef.current.find((entry) => entry.id === target.blockId);
     if (!current || current.type !== "split") return;
     updateBlock(current.id, { ...current, [target.side]: imagePaneFromUrl(result.url) });
   }
@@ -276,9 +310,10 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
     updateBlock(block.id, convertTextBlock(block, target));
   }
 
-  function renderAddMenu(index: number) {
+  function renderAddMenu(index: number, variant: "inline" | "prominent" = "inline") {
     return (
       <AddBlockMenu
+        variant={variant}
         onInsert={(type) => insertAt(index, [emptyBlock(type)])}
         onInsertImage={(file) => void insertImageAt(index, file)}
         onInsertFile={(file) => void insertFileAt(index, file)}
@@ -290,11 +325,10 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={blocks.map((block) => block.id)} strategy={verticalListSortingStrategy}>
-        <div className="group">
-          {renderAddMenu(0)}
+        <div className="be-blocks">
           {blocks.map((block, index) => (
-            <div key={block.id} className="group">
               <BlockShell
+                key={block.id}
                 id={block.id}
                 label={BLOCK_LABEL[block.type]}
                 canMoveUp={index > 0}
@@ -353,17 +387,11 @@ export function BlockEditor({ blocks, onChange, onUploadImage, onUploadFile, onE
                   <SpacerBlockEditor block={block} onChange={(next) => updateBlock(block.id, next)} />
                 )}
               </BlockShell>
-              {renderAddMenu(index + 1)}
-            </div>
           ))}
         </div>
+        {/* Referans: blok yokken be-addbig, varken listenin sonunda be-addsm. */}
+        {renderAddMenu(blocks.length, blocks.length ? "inline" : "prominent")}
       </SortableContext>
-
-      {!blocks.length ? (
-        <p className="py-8 text-center text-xs text-muted-foreground">
-          Yukarıdaki “+” ile ilk bloğunuzu ekleyin veya hazır bir bölüm seçin.
-        </p>
-      ) : null}
 
       <input
         ref={paneInputRef}

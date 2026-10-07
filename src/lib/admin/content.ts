@@ -31,6 +31,8 @@ export interface CreateTestimonialInput {
   profile_image_url?: string | null;
   pinned_at?: string | null;
   pin_order?: number | null;
+  /** Yorumun tarihi (referans "Tarih" alanı). */
+  created_at?: string;
 }
 
 export interface UpdateTestimonialInput {
@@ -46,6 +48,8 @@ export interface UpdateTestimonialInput {
   profile_image_url?: string | null;
   pinned_at?: string | null;
   pin_order?: number | null;
+  /** Yorumun tarihi (referans "Tarih" alanı). */
+  created_at?: string;
 }
 
 export async function getPublicTestimonials(locale?: string): Promise<PublicTestimonialsResult> {
@@ -133,6 +137,7 @@ export async function createAdminTestimonial(
       display_order: input.display_order || 0,
       profile_image_url: input.profile_image_url?.trim() || null,
       updated_by: userData.user?.id || null,
+      ...(input.created_at ? { created_at: input.created_at } : {}),
     };
 
     const { data, error } = await supabase
@@ -194,6 +199,7 @@ export async function updateAdminTestimonial(
     if (input.profile_image_url !== undefined) updatePayload.profile_image_url = input.profile_image_url?.trim() || null;
     if (input.pinned_at !== undefined) (updatePayload as Record<string, unknown>).pinned_at = input.pinned_at;
     if (input.pin_order !== undefined) (updatePayload as Record<string, unknown>).pin_order = input.pin_order;
+    if (input.created_at !== undefined) updatePayload.created_at = input.created_at;
 
     const { error } = await supabase
       .from("testimonials")

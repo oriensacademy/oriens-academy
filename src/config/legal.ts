@@ -46,7 +46,7 @@ export const LEGAL_CONFIG: LegalEntityConfig = {
     info: "info@oriens-academy.com",
     contact: "info@oriens-academy.com",
     support: "info@oriens-academy.com",
-    payments: "payments@oriens-academy.com",
+    payments: "info@oriens-academy.com",
   },
 };
 
@@ -97,7 +97,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "1. Taraflar",
           paragraphs: [
-            "HİZMET SAĞLAYICI: Oriens Academy\nWeb Sitesi: https://oriens-academy.com\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nGenel E-posta: info@oriens-academy.com | Ödeme/Muhasebe: payments@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
+            "HİZMET SAĞLAYICI: Oriens Academy\nWeb Sitesi: https://oriens-academy.com\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nGenel E-posta: info@oriens-academy.com | Ödeme/Muhasebe: info@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
             "ALICI / HİZMET ALAN: Oriens Academy web sitesi (oriens-academy.com) üzerinden çevrim içi eğitim, sınav hazırlığı veya akademik danışmanlık hizmeti satın alan, sipariş/ödeme aşamasında bilgilerini sisteme giren veya kayıtlı kullanıcı hesabını kullanan gerçek veya tüzel kişidir.",
           ],
         },
@@ -179,7 +179,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "15. İletişim ve Destek Kanalları",
           paragraphs: [
-            "Hizmet sürecine, faturalandırmaya veya ders planlamasına ilişkin tüm soru ve bildirimler için info@oriens-academy.com, payments@oriens-academy.com e-posta adresleri veya 0850 304 04 67 numaralı kurumsal hat üzerinden Hizmet Sağlayıcı'ya ulaşılabilir.",
+            "Hizmet sürecine, faturalandırmaya veya ders planlamasına ilişkin tüm soru ve bildirimler için info@oriens-academy.com, info@oriens-academy.com e-posta adresleri veya 0850 304 04 67 numaralı kurumsal hat üzerinden Hizmet Sağlayıcı'ya ulaşılabilir.",
           ],
         },
         {
@@ -208,7 +208,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "1. Hizmet Sağlayıcı Bilgileri",
           paragraphs: [
-            "Hizmet Sağlayıcı: Oriens Academy\nWeb Sitesi: https://oriens-academy.com\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nE-posta: info@oriens-academy.com / payments@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
+            "Hizmet Sağlayıcı: Oriens Academy\nWeb Sitesi: https://oriens-academy.com\nAdres: Emaar Square, The Heights E Blok, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / İstanbul\nE-posta: info@oriens-academy.com / info@oriens-academy.com\nTelefon: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
           ],
         },
         {
@@ -285,13 +285,13 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "4. İade Süreci ve Geri Ödeme Şekli",
           paragraphs: [
-            "İade talepleri payments@oriens-academy.com e-posta adresine yazılı olarak iletilir. İncelenen ve onaylanan iadeler, ödemenin yapıldığı karta veya banka hesabına, bankacılık ve ödeme kuruluşu işlem süreleri dahilinde aktarılır.",
+            "İade talepleri info@oriens-academy.com e-posta adresine yazılı olarak iletilir. İncelenen ve onaylanan iadeler, ödemenin yapıldığı karta veya banka hesabına, bankacılık ve ödeme kuruluşu işlem süreleri dahilinde aktarılır.",
           ],
         },
         {
           heading: "5. İletişim",
           paragraphs: [
-            "İptal, iade ve muhasebe süreçlerine dair tüm destek talepleriniz için payments@oriens-academy.com veya 0850 304 04 67 numaralı destek hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
+            "İptal, iade ve muhasebe süreçlerine dair tüm destek talepleriniz için info@oriens-academy.com veya 0850 304 04 67 numaralı destek hattımız üzerinden Hizmet Sağlayıcı'ya ulaşabilirsiniz.",
           ],
         },
       ],
@@ -466,7 +466,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "1. Parties",
           paragraphs: [
-            "SERVICE PROVIDER: Oriens Academy\nWebsite: https://oriens-academy.com\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com / payments@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
+            "SERVICE PROVIDER: Oriens Academy\nWebsite: https://oriens-academy.com\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com / info@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
             "BUYER / SERVICE RECIPIENT: The individual or legal entity purchasing online academic tutoring, exam preparation, or admissions advisory packages on oriens-academy.com whose contact and billing details are registered during checkout or within their student account.",
           ],
         },
@@ -548,7 +548,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "15. Contact and Support",
           paragraphs: [
-            "For billing, scheduling, or service inquiries, you can reach the Service Provider via info@oriens-academy.com, payments@oriens-academy.com, or 0850 304 04 67.",
+            "For billing, scheduling, or service inquiries, you can reach the Service Provider via info@oriens-academy.com, info@oriens-academy.com, or 0850 304 04 67.",
           ],
         },
         {
@@ -577,7 +577,7 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "1. Service Provider Details",
           paragraphs: [
-            "Service Provider: Oriens Academy\nWebsite: https://oriens-academy.com\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com / payments@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
+            "Service Provider: Oriens Academy\nWebsite: https://oriens-academy.com\nAddress: Emaar Square, The Heights E Block, Ünalan Mah., Libadiye Cd. No:82, Üsküdar / Istanbul\nEmail: info@oriens-academy.com / info@oriens-academy.com\nPhone: 0850 304 04 67 | WhatsApp: +90 544 293 90 40",
           ],
         },
         {
@@ -653,13 +653,13 @@ export const LEGAL_DOCS: Record<"tr" | "en", Record<LegalDocKey, LegalDocument>>
         {
           heading: "4. Processing and Payouts",
           paragraphs: [
-            "Refund requests must be submitted in writing to payments@oriens-academy.com. Approved refunds are credited back to the original card or bank account according to standard banking processing cycles.",
+            "Refund requests must be submitted in writing to info@oriens-academy.com. Approved refunds are credited back to the original card or bank account according to standard banking processing cycles.",
           ],
         },
         {
           heading: "5. Support Contact",
           paragraphs: [
-            "For inquiries regarding refunds and accounting, please contact payments@oriens-academy.com or our support line at 0850 304 04 67.",
+            "For inquiries regarding refunds and accounting, please contact info@oriens-academy.com or our support line at 0850 304 04 67.",
           ],
         },
       ],

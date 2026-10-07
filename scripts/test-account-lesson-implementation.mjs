@@ -61,11 +61,13 @@ complete("past:one");
 assert.deepEqual(packageState, { total: 10, used: 1 });
 assert.equal(packageState.total - packageState.used, 9);
 
-assert.match(files.worker, /role === "self"/);
-assert.match(files.worker, /role === "parent" \|\| role === "guardian"/);
-assert.match(files.worker, /Kalan ders hakkınız/);
-assert.match(files.worker, /öğrenciniz.*için ders tamamlandı/s);
-assert.match(files.worker, /Oriens Academy üzerinden yenileyebilir ve ödeyebilirsiniz/);
+// MAIL-027: ders tamamlandı e-postası tek kanonik "ders sonu raporu" kopyasına
+// taşındı (hesap sahibine, canlı bakiye ile); eski rol bazlı metinler kalktı.
+assert.match(files.worker, /row\.template === "lesson_completed_guardian" \|\|\s*row\.template === "lesson_completed_student"/);
+assert.match(files.worker, /Ders Sonu Raporunuz ve Güncel Ders Bakiyeniz/);
+assert.match(files.worker, /Öğrencimiz \$\{studentName\}/);
+assert.match(files.worker, /Güncel ders bakiyeniz sıfırdır\. Yeni paketinizi Havale\/EFT ile veya site üzerinden kredi kartı ile satın alabilirsiniz\./);
+assert.match(files.worker, /if \(report\.length < 5\) throw new Error\("REPORT_REQUIRED"\)/);
 assert.doesNotMatch(files.liveLesson, /dispatchLessonCompletedEmail/);
 
 const transparentPricingCount = (files.pricing.match(/Şeffaf Fiyatlandırma/g) || []).length

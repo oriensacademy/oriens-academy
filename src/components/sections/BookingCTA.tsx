@@ -11,12 +11,14 @@ import { submitContact } from "@/lib/contact/api";
 import { Wave } from "@/components/ui/wave";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { useAccount } from "@/lib/auth/account-context";
-import { getStudentPortalData } from "@/lib/student/data";
-import { CONTACT } from "@/config/contact";
+import { getStudentPrefillProfile } from "@/lib/student/data";
+import { useSiteContact } from "@/lib/contact-settings";
+import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 
 const CONSULTATION_PACKAGE_IDS = new Set(["single", "package5", "package10", "package20", "package30"]);
 
 export function BookingCTA() {
+  const CONTACT = useSiteContact();
   const { bookingCTA } = useHomeContent();
   const locale = useLocale();
   const isTr = locale === "tr";
@@ -41,17 +43,19 @@ export function BookingCTA() {
   // Prefill for authenticated student
   useEffect(() => {
     if (user && accountType === "student") {
-      getStudentPortalData(user.id).then((res) => {
-        if (res.data?.profile) {
-          if (res.data.profile.full_name) setNameVal(res.data.profile.full_name);
-          if (res.data.profile.email) setEmailVal(res.data.profile.email);
-          if (res.data.profile.target_exam) {
-            setExam({ type: "exam", code: res.data.profile.target_exam.toLowerCase() });
-          }
+      getStudentPrefillProfile(user.id).then((profile) => {
+        if (!profile) return;
+        if (profile.full_name) setNameVal(profile.full_name);
+        if (profile.email) setEmailVal(profile.email);
+        if (profile.target_exam) {
+          setExam({ type: "exam", code: profile.target_exam.toLowerCase() });
         }
       });
     }
-  }, [user, accountType]);
+    // Bağımlılık `user` nesnesi değil `user?.id`: Supabase sekme dönüşlerinde
+    // yeni bir session/user nesnesi yayıyor ve bu efekt her seferinde
+    // gereksizce yeniden çalışıyordu.
+  }, [user?.id, accountType]);
 
   useEffect(() => {
     const packageId = new URLSearchParams(window.location.search).get("package");
@@ -152,7 +156,7 @@ export function BookingCTA() {
           <Reveal delay={0.1}><h2 className="mt-3 font-heading text-[clamp(2rem,3.5vw,3.25rem)] leading-[1.04]">{isTr ? "Bir sonraki adımınızı konuşalım." : "Let's talk about your next step."}</h2></Reveal>
           <Reveal delay={0.14}><p className="mt-4 max-w-md text-base leading-7 text-[#10271B]/80">{isTr ? "Hedeflediğiniz sınavı, üniversiteyi veya hazırlık sürecinizi birlikte değerlendirelim. İlk tanışma görüşmesi ücretsizdir." : "Tell us about your exam, university or academic goals. Your introductory consultation is free."}</p></Reveal>
           <Reveal delay={0.18} className="mt-6 space-y-2">
-            <a href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · {CONTACT.whatsappDisplay}</a>
+            <a href={`${CONTACT.whatsappHref}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><MessageCircle className="size-4" />WhatsApp · {CONTACT.whatsappDisplay}</a>
             <a href={CONTACT.landlineHref} className="flex min-h-11 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 text-sm font-semibold"><Phone className="size-4" />{isTr ? "Telefon" : "Phone"} · {CONTACT.landlineDisplay}</a>
             <a href={CONTACT.emailHref} className="flex min-h-11 min-w-0 items-center gap-3 rounded-xl border border-white/35 bg-white/20 px-4 py-2 text-sm font-semibold"><Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">{CONTACT.email}</span></a>
           </Reveal>
@@ -167,7 +171,7 @@ export function BookingCTA() {
               <p className="mt-6 font-semibold text-ink">{isTr ? "Beklemeye vaktiniz yok mu?" : "Can’t wait?"}</p>
               <p className="mt-1 text-sm text-ink/65">{isTr ? "WhatsApp üzerinden bize hemen ulaşabilirsiniz." : "You can reach us immediately on WhatsApp."}</p>
               <div className="mt-6 grid w-full max-w-lg gap-3 sm:grid-cols-2">
-                <ButtonLink href={`https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" size="lg" className="min-h-12"><MessageCircle className="size-4" />{isTr ? "WhatsApp’tan Yaz" : "Message on WhatsApp"}</ButtonLink>
+                <ButtonLink href={`${CONTACT.whatsappHref}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" size="lg" className="min-h-12"><MessageCircle className="size-4" />{isTr ? "WhatsApp’tan Yaz" : "Message on WhatsApp"}</ButtonLink>
                 <Button type="button" onClick={resetForm} variant="outline" size="lg" className="min-h-12">{isTr ? "Yeni Talep Oluştur" : "Create a New Request"}<ArrowRight className="size-4" /></Button>
                 <ButtonLink href={CONTACT.landlineHref} variant="ghost" className="min-h-11 sm:col-span-2"><Phone className="size-4" />{isTr ? "Bizi Ara" : "Call Us"}</ButtonLink>
               </div>
@@ -180,7 +184,7 @@ export function BookingCTA() {
                   <span className="text-[11px] font-bold uppercase tracking-[.12em] text-[#819586]">{isTr ? "Seçilen paket" : "Selected package"}</span>
                   <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
                     <strong>{isTr ? selectedPackage.name_tr : selectedPackage.name_en || selectedPackage.name_tr}</strong>
-                    <span className="font-semibold">{new Intl.NumberFormat(isTr ? "tr-TR" : "en-GB", { style: "currency", currency: selectedPackage.currency, maximumFractionDigits: 0 }).format(selectedPackage.current_total ?? selectedPackage.price_amount ?? 0)}</span>
+                    <span className="font-semibold">{getLocalizedPackageDisplayPrice({ locale, tryAmount: selectedPackage.current_total ?? selectedPackage.price_amount, eurAmount: selectedPackage.price_eur }).formatted}</span>
                   </div>
                 </div>
               )}

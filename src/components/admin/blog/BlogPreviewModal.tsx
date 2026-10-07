@@ -77,6 +77,7 @@ export function BlogPreviewModal({ source, onClose }: { source: PreviewSource; o
       content_json: safe as unknown as BlogPostRow["content_json"],
       cover_image_url: source.coverImageUrl || null,
       author_name: source.authorName.trim() || null,
+      tags: [],
       status: "draft",
       published_at: source.publishedAt || now,
       created_at: now,
@@ -96,7 +97,10 @@ export function BlogPreviewModal({ source, onClose }: { source: PreviewSource; o
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-ink">Önizleme</span>
+          <span className="flex flex-col leading-tight">
+            <span className="text-xs font-bold text-ink">Önizleme</span>
+            <span className="text-[11px] text-muted-foreground">Yazının sitede görüneceği hali</span>
+          </span>
           <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900">
             Kaydedilmemiş değişiklikler dahil
           </span>

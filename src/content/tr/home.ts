@@ -14,7 +14,7 @@ export const trustResults = {
   eyebrow: "Akademik hedefe göre yapılandırılmış destek",
   items: [
     { title: "Uluslararası sınav hazırlığı", description: "Hedefe yönelik sınav hazırlık kurgusu ve birebir antrenman." },
-    { title: "Üniversite ders desteği", description: "Calculus, Lineer Cebir, Diferansiyel Denklemler, İstatistik ve Fizik I-II takviyesi." },
+    { title: "Üniversite ders desteği", description: "Calculus, Lineer Cebir, Diferansiyel Denklemler, Fizik I-II, İstatistik, Kimya ve Biyoloji gibi çeşitli alanlarda ders takviyesi." },
     { title: "Türkçe ve İngilizce", description: "İki dilde erişilebilen akademik içerik ve ders akışı." },
     { title: "Şeffaf ücretlendirme", description: "Haziran 2027'ye kadar sabit paket ücretleri ve ücretsiz tanışma görüşmesi." },
   ],
@@ -318,7 +318,7 @@ export const bookingFlow = {
   ],
   supportTypeOptions: [
     { value: "exam_preparation", label: "Sınav Hazırlığı", description: "IB, AP, SAT veya üniversite giriş sınavlarına yönelik özel destek." },
-    { value: "university_support", label: "Üniversite Ders Desteği", description: "Calculus, Lineer Cebir, Fizik ve nicel ders desteği." },
+    { value: "university_support", label: "Üniversite Ders Desteği", description: "Calculus, Lineer Cebir, Diferansiyel Denklemler, İstatistik, Fizik I-II ve Biyoloji takviyesi." },
     { value: "general_consultation", label: "Genel Akademik Danışmanlık", description: "Yol haritası analizi ve genel akademik strateji kurgusu." },
   ],
   step1: {

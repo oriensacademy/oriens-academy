@@ -10,6 +10,8 @@ import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin
 import { calculateAuthoritativeTotal } from "@/lib/payments/pricing";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { formatCurrency } from "@/lib/format/currency";
+import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
+import { packageDisplayName } from "@/lib/packages/display";
 import { useAccount } from "@/lib/auth/account-context";
 import { useCart } from "@/lib/cart/cart-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
@@ -32,7 +34,7 @@ export function PaymentPage() {
   const copy = getPaymentCopy(locale);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { accountType, user, isInitializing, refreshAccount } = useAccount();
+  const { accountType, user, isInitializing } = useAccount();
   const { items: cartItems, isHydrated: cartHydrated, appliedCoupon } = useCart();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
@@ -116,12 +118,14 @@ export function PaymentPage() {
     });
   }, [accountType, user?.id, packageParam]);
 
-  // Listen to window focus & visibilitychange to refresh guardian state if verified in another tab/device
+  // Refresh only the guardian row when checkout regains focus (for example after
+  // email verification in another tab). Calling the account-wide refresh here
+  // sets `isInitializing`, unmounts HostedCardPanel, and destroys an active
+  // PayTR iframe when the iframe/3D flow moves browser focus.
   useEffect(() => {
     const handleCheck = () => {
       if (document.visibilityState === "visible") {
         void refreshGuardianData();
-        void refreshAccount();
       }
     };
     window.addEventListener("focus", handleCheck);
@@ -130,7 +134,7 @@ export function PaymentPage() {
       window.removeEventListener("focus", handleCheck);
       document.removeEventListener("visibilitychange", handleCheck);
     };
-  }, [refreshGuardianData, refreshAccount]);
+  }, [refreshGuardianData]);
 
   const selectedGuardian = guardians.find((item) => item.user_id === guardianId) ?? null;
 
@@ -175,7 +179,7 @@ export function PaymentPage() {
   const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch && isPhoneValid);
 
   const orderSnapshot: LegalOrderSnapshot = {
-    packageName: checkoutPackages.map((pkg) => (isTr ? pkg.name_tr : pkg.name_en) || pkg.id).join(", ") || (isTr ? "Eğitim Paketi" : "Lesson Package"),
+    packageName: checkoutPackages.map((pkg) => packageDisplayName(pkg, locale)).join(", ") || (isTr ? "Ders Paketi" : "Lesson Package"),
     lessonCount: checkoutPackages.reduce((sum, pkg) => sum + (pkg.lesson_count || 0), 0), baseAmount: basePrice,
     discountAmount: discountAmount || undefined, couponCode: appliedCoupon?.code, finalAmount: finalPrice, currency,
     payerName: selectedGuardian?.full_name, payerEmail: selectedGuardian?.email, paymentMethod: "card",
@@ -209,7 +213,7 @@ export function PaymentPage() {
               <option value="">{isTr ? "Paket seçin" : "Select package"}</option>
               {packages.map((pkg) => (
                 <option key={pkg.id} value={pkg.id}>
-                  {isTr ? pkg.name_tr : pkg.name_en} — {money(Number(pkg.current_total ?? pkg.price_amount), pkg.currency)}
+                  {packageDisplayName(pkg, locale)} — {getLocalizedPackageDisplayPrice({ locale, tryAmount: pkg.current_total ?? pkg.price_amount, eurAmount: pkg.price_eur }).formatted}
                 </option>
               ))}
             </select>
@@ -220,14 +224,15 @@ export function PaymentPage() {
           {checkoutPackages.map((pkg) => {
             const regularTotal = Number(pkg.old_total ?? pkg.price_amount ?? 0);
             const currentTotal = Number(pkg.current_total ?? pkg.price_amount ?? 0);
-            const hasDiscount = regularTotal > currentTotal;
+            const displayPrice = getLocalizedPackageDisplayPrice({ locale, tryAmount: currentTotal, eurAmount: pkg.price_eur });
+            const hasDiscount = isTr && regularTotal > currentTotal;
             const discountPct = pkg.discount_percentage || (hasDiscount ? Math.round(((regularTotal - currentTotal) / regularTotal) * 100) : 0);
 
             return (
               <div key={pkg.id} className="rounded-2xl border border-border bg-surface-muted p-3.5 text-xs space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="font-semibold text-ink text-sm">{isTr ? pkg.name_tr : pkg.name_en}</h3>
+                    <h3 className="font-semibold text-ink text-sm">{packageDisplayName(pkg, locale)}</h3>
                     {pkg.lesson_count ? (
                       <span className="text-[11px] text-muted-foreground">
                         {pkg.lesson_count} {isTr ? "Ders" : "Lessons"}
@@ -241,7 +246,7 @@ export function PaymentPage() {
                       </span>
                     )}
                     <span className="text-sm font-bold text-ink">
-                      {money(currentTotal, pkg.currency)}
+                      {displayPrice.formatted}
                     </span>
                   </div>
                 </div>
@@ -270,9 +275,15 @@ export function PaymentPage() {
         ) : null}
 
         <div className="mt-5 rounded-2xl bg-surface-muted p-4 text-sm space-y-2">
+          {!isTr ? (
+            <div className="mb-3 border-b border-border pb-3 text-xs leading-5 text-muted-foreground">
+              <p>Displayed package prices are in EUR.</p>
+              <p className="font-semibold text-ink">Your payment will be processed in TRY.</p>
+            </div>
+          ) : null}
           {checkoutPackages.some((pkg) => Number(pkg.old_total ?? 0) > Number(pkg.current_total ?? 0)) && (
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{isTr ? "Paket Liste Fiyatı" : "Package Regular Price"}</span>
+              <span>{isTr ? "Paket Liste Fiyatı" : "TRY list amount"}</span>
               <span className="line-through">
                 {money(
                   checkoutPackages.reduce((sum, pkg) => sum + Number(pkg.old_total ?? pkg.price_amount ?? 0), 0),
@@ -282,7 +293,7 @@ export function PaymentPage() {
             </div>
           )}
           <div className="flex justify-between font-medium">
-            <span>{isTr ? "Ara Toplam" : "Subtotal"}</span>
+            <span>{isTr ? "Ara Toplam" : "TRY subtotal"}</span>
             <span>{money(basePrice, currency)}</span>
           </div>
           {appliedCoupon && discountAmount > 0 ? (
@@ -292,7 +303,7 @@ export function PaymentPage() {
             </div>
           ) : null}
           <div className="pt-2 border-t border-border/80 flex justify-between text-base">
-            <span className="font-bold text-ink">{isTr ? "Ödenecek Tutar" : "Total Amount"}</span>
+            <span className="font-bold text-ink">{isTr ? "Ödenecek Tutar" : "Payment amount (TRY)"}</span>
             <strong className="text-primary font-bold">{money(finalPrice, currency)}</strong>
           </div>
         </div>
@@ -328,6 +339,23 @@ export function PaymentPage() {
         )}
       </aside>
       <div className="rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8"><h2 className="font-heading text-2xl text-ink">{isTr ? "Kart ile Ödeme" : "Pay by Card"}</h2>
+        {appliedCoupon && discountAmount > 0 ? (
+          <div data-testid="payment-coupon-summary" className="mt-5 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
+            <div className="flex items-center gap-2 font-bold">
+              <Tag className="size-4 text-emerald-700" />
+              <span>{isTr ? "Kupon bu ödemeye uygulandı" : "Coupon applied to this payment"}</span>
+              <span className="rounded-md bg-white px-2 py-0.5 font-mono text-xs">{appliedCoupon.code}</span>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold sm:text-sm">
+              <span className="line-through text-muted-foreground">{money(basePrice, currency)}</span>
+              <span aria-hidden="true">−</span>
+              <span className="text-emerald-800">{money(discountAmount, currency)}</span>
+              <span aria-hidden="true">=</span>
+              <strong className="text-base text-primary">{money(finalPrice, currency)}</strong>
+              <span>{isTr ? "kartınızdan çekilecek" : "will be charged to your card"}</span>
+            </div>
+          </div>
+        ) : null}
         {accountType === "admin" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-900">{isTr ? "Yönetici işlemi için hesap sahibi ve öğrenci bağlamını seçin." : "Select the account holder and learner for this admin-assisted payment."}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><select value={guardianId} onChange={(event) => { setGuardianId(event.target.value); setLearnerId(""); }} className="min-h-11 rounded-xl border bg-white px-3 text-xs"><option value="">{isTr ? "Hesap sahibi seçin" : "Select account holder"}</option>{guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}</select><select value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className="min-h-11 rounded-xl border bg-white px-3 text-xs disabled:opacity-50"><option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></div></div> : null}
         {(selectedGuardian?.full_name || selectedGuardian?.email) ? (
           <div className="mt-6 border-t border-border pt-6">

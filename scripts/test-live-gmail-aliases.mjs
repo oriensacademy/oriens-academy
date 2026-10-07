@@ -81,8 +81,8 @@ async function runLiveTest() {
     },
     {
       channel: "payments",
-      from: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      from: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       subject: "Oriens Academy Ödemeler Kanalı Doğrulama Testi",
     },
     {

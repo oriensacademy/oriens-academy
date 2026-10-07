@@ -14,7 +14,7 @@ import {
 import { useExamsContent, useLocale } from "@/content/locale-context";
 import { examDetailPath, localizedPath } from "@/lib/routes";
 import { OriensLottie } from "@/components/ui/OriensLottie";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
 import { ThreeDExamCarousel, type ExamOverviewCard } from "@/components/ui/three-d-exam-carousel";
 import type { AcademicIconType } from "@/components/academic/AcademicIcon";
 
@@ -37,6 +37,7 @@ const examIconTypes: Record<ExamCode, AcademicIconType> = {
 };
 
 export function ExamHub() {
+  const CONTACT = useSiteContact();
   const locale = useLocale();
   const { page, categories, examText } = useExamsContent();
   const featured = examRecords.filter((exam) => exam.featured);
@@ -211,7 +212,7 @@ export function ExamHub() {
                               <p className="mt-2 text-sm leading-relaxed text-ink/75">{text.shortDescription}</p>
                             </div>
                             <div className="md:col-span-3">
-                              <p className="text-xs font-semibold tracking-[0.08em] text-secondary uppercase">{page.purposeLabel}</p>
+                              <p className="text-xs font-semibold tracking-[0.08em] text-secondary">{page.purposeLabel}</p>
                               <p className="mt-2 text-sm leading-relaxed text-ink/75">{text.purpose}</p>
                               <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1">
                                 {text.subjects.slice(0, 3).map((subject) => <span key={subject} className="text-xs text-muted-foreground">{subject}</span>)}

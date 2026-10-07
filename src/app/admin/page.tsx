@@ -1,306 +1,223 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
-import { CountingNumber } from "@/components/ui/counting-number";
-import { useAdminAuth } from "@/lib/admin/auth-context";
-import type { DashboardMetrics } from "@/lib/admin/dashboard";
-import { getAdminDashboardMetrics } from "@/lib/admin/dashboard";
-import { ensureTrailingSlash } from "@/lib/routes";
-import {
-  ShieldCheck,
-  CalendarCheck,
-  MessageSquare,
-  Users,
-  WalletCards,
-  CreditCard,
-  Bell,
-  Settings,
-  AlertTriangle,
-  ChevronRight,
-  ListChecks,
-  Newspaper,
-} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { getAdminOverview, type OverviewFeedItem, type OverviewFeedKind } from "@/lib/admin/overview";
+import { queryKeys, useQuery } from "@/lib/data/query-store";
+import { compareTr, formatTrLira } from "@/lib/format/turkish";
+import pages from "@/components/admin/admin-pages.module.css";
 
-export default function AdminDashboardPage() {
-  return <DashboardContent />;
+// Genel Bakış (referans #view-panel). Tüm sayılar canlı kayıtlardan hesaplanır;
+// tahsilat = ödendi/iade edilmiş ve ücretsiz olmayan işlemlerin net tutarı (iade düşülür).
+
+const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+function Svg({ children, size = 18 }: { children: ReactNode; size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>;
+}
+const Chevron = () => <Svg size={16}><path d="m9 18 6-6-6-6" /></Svg>;
+
+const FEED_ICON: Record<OverviewFeedKind, ReactNode> = {
+  pay: <Svg size={16}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></Svg>,
+  il: <Svg size={16}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Svg>,
+  ders: <Svg size={16}><path d="M2 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H2z" /><path d="M22 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8z" /></Svg>,
+  pk: <Svg size={16}><path d="m12 2 9 5-9 5-9-5 9-5z" /><path d="m3 12 9 5 9-5" /></Svg>,
+  lock: <Svg size={16}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></Svg>,
+  mail: <Svg size={16}><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 6-10 7L2 6" /></Svg>,
+};
+
+function dayDiff(iso: string, now: Date) {
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  d.setHours(0, 0, 0, 0);
+  const b = new Date(now);
+  b.setHours(0, 0, 0, 0);
+  return Math.round((b.getTime() - d.getTime()) / 86_400_000);
 }
 
-function DashboardContent() {
-  const { user, profile } = useAdminAuth();
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
+function ago(iso: string, now: Date) {
+  const minutes = Math.round((now.getTime() - new Date(iso).getTime()) / 60_000);
+  if (minutes < 1) return "şimdi";
+  if (minutes < 60) return `${minutes} dk önce`;
+  const days = dayDiff(iso, now);
+  if (minutes < 60 * 24 && days === 0) return `${Math.round(minutes / 60)} saat önce`;
+  if (days === 1) return "dün";
+  if (days < 7) return `${days} gün önce`;
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
+function shortDate(iso: string) {
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]}`;
+}
+
+export default function AdminDashboardPage() {
+  const router = useRouter();
+  const { data, loading } = useQuery(`${queryKeys.adminDashboard}:overview`, getAdminOverview, { staleTime: 20_000 });
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      getAdminDashboardMetrics().then(({ metrics: mData }) => {
-        if (mounted) {
-          setMetrics(mData);
-          setLoading(false);
-        }
-      });
-    }, 0);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
+    const update = () => setNow(new Date());
+    const initial = window.setTimeout(update, 0);
+    const interval = window.setInterval(update, 60_000);
+    return () => { window.clearTimeout(initial); window.clearInterval(interval); };
   }, []);
 
+  const view = useMemo(() => {
+    if (!data || !now) return null;
+    const students = data.students;
+    const week = students.filter((s) => s.lastLessonDate && dayDiff(s.lastLessonDate, now) <= 7).length;
+    const remaining = students.reduce((total, s) => total + (s.packageLabel ? s.remaining : 0), 0);
+    const remainingValue = students.reduce((total, s) => total + (s.packageLabel ? s.remaining * s.lessonPrice : 0), 0);
+    const collected = data.ledger.filter((row) => (row.status === "odendi" || row.status === "iade") && row.source !== "ucretsiz");
+    const monthTotal = (y: number, m: number) => collected
+      .filter((row) => { const d = new Date(row.at); return d.getFullYear() === y && d.getMonth() === m; })
+      .reduce((total, row) => total + row.netAmount - row.refundedAmount, 0);
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const counts = {
+      az: students.filter((s) => s.packageLabel && s.remaining > 0 && s.remaining <= 3).length,
+      yok: students.filter((s) => !s.packageLabel || s.remaining <= 0).length,
+      uzun: students.filter((s) => s.packageLabel && s.lastLessonDate && dayDiff(s.lastLessonDate, now) >= 7).length,
+      bek: data.ledger.filter((row) => row.status === "bekliyor").length,
+      fail: data.failedEmails,
+      ilet: data.newContacts,
+    };
+    const parts: string[] = [];
+    if (counts.ilet) parts.push(`${counts.ilet} yeni talep`);
+    if (counts.az) parts.push(`${counts.az} yenileme bekleyen öğrenci`);
+    if (counts.yok) parts.push(`${counts.yok} paketi olmayan öğrenci`);
+    if (counts.bek) parts.push(`${counts.bek} bekleyen ödeme`);
+    if (counts.fail) parts.push(`${counts.fail} gönderilemeyen e-posta`);
+    const sentence = parts.length
+      ? `Bugün ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} ve ${parts[parts.length - 1]}` : parts[0]} var.`
+      : "Bugün bekleyen bir iş yok, her şey yolunda.";
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      return { y: d.getFullYear(), m: d.getMonth(), total: monthTotal(d.getFullYear(), d.getMonth()) };
+    });
+    const monthMax = Math.max(...months.map((item) => item.total)) || 1;
+    const recent = students
+      .filter((s) => s.lastLessonDate)
+      .sort((a, b) => ((a.lastLessonDate as string) < (b.lastLessonDate as string) ? 1 : (a.lastLessonDate as string) > (b.lastLessonDate as string) ? -1 : compareTr(a.name, b.name)))
+      .slice(0, 7);
+    return {
+      week, remaining, remainingValue, counts, sentence, months, monthMax, recent,
+      thisMonth: monthTotal(now.getFullYear(), now.getMonth()),
+      prevMonth: monthTotal(prev.getFullYear(), prev.getMonth()),
+      prevLabel: MONTHS[prev.getMonth()],
+    };
+  }, [data, now]);
+
+  const hour = now?.getHours() ?? 12;
+  const greeting = `${hour < 5 ? "İyi geceler" : hour < 12 ? "Günaydın" : hour < 18 ? "İyi günler" : "İyi akşamlar"}, Oriens Academy`;
+
+  const todo: Array<{ n: number; tone: "warn" | "bad"; title: string; sub: string; href: string; icon: ReactNode }> = view ? [
+    { n: view.counts.az, tone: "warn" as const, title: "Az ders kalan", sub: "3 ders veya daha az · yenileme hatırlatın", href: "/admin/ogrenciler?durum=az", icon: <Svg><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg> },
+    { n: view.counts.yok, tone: "bad" as const, title: "Paketi olmayan", sub: "Yeni paket tanımlanmalı", href: "/admin/ogrenciler?durum=yok", icon: <Svg><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></Svg> },
+    { n: view.counts.uzun, tone: "warn" as const, title: "7+ gündür ders yapılmayan", sub: "Paketi olduğu hâlde ders yapılmıyor", href: "/admin/ogrenciler?durum=uzun", icon: <Svg><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></Svg> },
+    { n: view.counts.ilet, tone: "bad" as const, title: "Yeni iletişim talebi", sub: "Web sitesinden gelen formlar", href: "/admin/iletisim", icon: <Svg><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Svg> },
+    { n: data?.guardiansNotSignedIn ?? 0, tone: "warn" as const, title: "14+ gündür giriş yapmayan veli", sub: "Ders raporlarını görmüyor olabilir", href: "/admin/denetim", icon: <Svg><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></Svg> },
+    { n: view.counts.bek, tone: "warn" as const, title: "Bekleyen ödeme", sub: "Tamamlanmamış ödeme işlemleri", href: "/admin/odemeler", icon: <Svg><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></Svg> },
+    { n: view.counts.fail, tone: "bad" as const, title: "Gönderilemeyen e-posta", sub: "E-posta Geçmişi’nden tekrar gönderin", href: "/admin/bildirimler", icon: <Svg><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 6-10 7L2 6" /></Svg> },
+  ].sort((a, b) => Number(b.n > 0) - Number(a.n > 0)) : [];
+
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="rounded-xl border border-border bg-white p-6 shadow-xs">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="size-5 text-[#819586]" />
-              <h1 className="text-lg font-bold tracking-tight text-[#10271B]">
-                Oriens Academy Yönetim Paneli
-              </h1>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Hoş geldiniz,{" "}
-              <span className="font-semibold text-foreground">
-                {profile?.display_name || "Yönetici"}
-              </span>{" "}
-              ({user?.email})
-            </p>
-          </div>
-
-          <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs text-emerald-800">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
-            </span>
-            <span className="font-medium">Sistem Aktif</span>
+    <div id="view-panel" className={`pgv ${pages.root}`}>
+      <div className="page"><div className="wrap">
+        <div className="head">
+          <div><h1 data-db-selam>{greeting}</h1><p data-db-tarih>{view?.sentence ?? (loading ? "Özet hazırlanıyor…" : "")}</p></div>
+          <div className="db-head-act">
+            <button type="button" className="fx-btn" onClick={() => router.push("/admin/blog/editor")}><Svg size={16}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></Svg>Blog Yazısı</button>
+            <button type="button" className="fx-btn primary" onClick={() => router.push("/admin/ogrenciler?yeni=1")}><Svg size={16}><path d="M12 5v14M5 12h14" /></Svg>Yeni Öğrenci</button>
           </div>
         </div>
-      </div>
-
-      {/* Failed Deliveries Alert Banner */}
-      {metrics && metrics.failedDeliveries > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-red-100 text-red-700">
-              <AlertTriangle className="size-5" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-red-900">
-                Teslim Edilemeyen E-Posta Bildirimi Var!
-              </div>
-              <div className="text-[11px] text-red-700">
-                Son dönemde {metrics.failedDeliveries} adet bildirim teslimatı başarısız oldu.
-              </div>
-            </div>
-          </div>
-          <Link
-            href={ensureTrailingSlash("/admin/bildirimler?status=failed")}
-            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 shrink-0"
-          >
-            <span>İncele</span>
-            <ChevronRight className="size-3.5" />
-          </Link>
+        {data?.errors.length ? <p role="alert" className="ma-note" style={{ color: "#9A3324" }}>{data.errors[0]}</p> : null}
+        <div className="db-kpis" id="db-kpis" aria-busy={!view}>
+          <Link className="db-kpi g" href="/admin/ogrenciler"><span className="ic"><Svg><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></Svg></span><span className="l">Aktif öğrenci</span><b>{data?.students.length ?? "—"}</b><span className="s">son 7 günde derste: {view?.week ?? "—"}</span></Link>
+          <Link className="db-kpi" href="/admin/bildirimler"><span className="ic"><Svg><path d="M2 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H2z" /><path d="M22 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8z" /></Svg></span><span className="l">Bu haftaki dersler</span><b>{data?.weekLessons ?? "—"}</b><span className="s">ders raporlarına göre</span></Link>
+          <Link className="db-kpi y" href="/admin/mali-akis"><span className="ic"><Svg><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></Svg></span><span className="l">Bu ay tahsilat</span><b>{view ? formatTrLira(view.thisMonth) : "—"}</b><span className="s">{view ? `${view.prevLabel} ayı: ${formatTrLira(view.prevMonth)}` : ""}</span></Link>
+          <Link className="db-kpi" href="/admin/mali-akis"><span className="ic"><Svg><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Svg></span><span className="l">Kalan ders hakkı</span><b>{view?.remaining ?? "—"}</b><span className="s">{view ? `≈ ${formatTrLira(Math.round(view.remainingValue))} verilecek ders` : ""}</span></Link>
         </div>
-      )}
-
-      {/* Consolidated Actionable Operational KPIs */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold tracking-tight text-[#10271B]">
-          Operasyonel Veri Özeti
-        </h2>
-
-        {loading ? (
-          <div className="flex items-center justify-center rounded-xl border border-border bg-white p-8">
-            <AdminWaveStatus label="Metrikler sorgulanıyor…" className="text-xs text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <MetricCard
-              label="Aktif Öğrenci"
-              count={metrics?.activeStudents || 0}
-              subtext="Kayıtlı Profiller"
-              href="/admin/ogrenciler"
-            />
-            <MetricCard
-              label="Bugünkü Ders"
-              count={metrics?.todayLessons || 0}
-              subtext="Bugünkü Seanslar"
-              href="/admin/randevular"
-            />
-            <MetricCard
-              label="Bu Hafta Randevu"
-              count={metrics?.weekAppointments || 0}
-              subtext="Planlanan Seans"
-              href="/admin/randevular"
-            />
-            <MetricCard
-              label="Ödeme Bekliyor"
-              count={metrics?.awaitingPayments || 0}
-              subtext="İnceleme Gerekli"
-              href="/admin/odemeler"
-              highlight={Boolean(metrics?.awaitingPayments)}
-            />
-            <MetricCard
-              label="Hatalı E-Posta"
-              count={metrics?.failedDeliveries || 0}
-              subtext="Teslim Edilemeyen"
-              href="/admin/bildirimler"
-              alert={metrics ? metrics.failedDeliveries > 0 : false}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Module Quick Navigation Grid */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold tracking-tight text-[#10271B]">
-          Yönetim Modülleri
-        </h2>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <ModuleLinkCard
-            title="Öğrenci Yönetimi"
-            href="/admin/ogrenciler"
-            icon={Users}
-            description="Öğrenci profillerini ve ders geçmişlerini yönetin."
-          />
-          <ModuleLinkCard
-            title="Ders & Randevular"
-            href="/admin/randevular"
-            icon={CalendarCheck}
-            description="Seans randevularını ve takvimi yönetin."
-          />
-          <ModuleLinkCard
-            title="İletişim Talepleri"
-            href="/admin/iletisim-destek"
-            icon={MessageSquare}
-            description="Web iletişim ve danışmanlık taleplerini yönetin."
-          />
-          <ModuleLinkCard
-            title="Fiyatlandırma & Kuponlar"
-            href="/admin/fiyatlandirma"
-            icon={CreditCard}
-            description="Paket fiyatlarını ve indirim kuponlarını yönetin."
-          />
-          <ModuleLinkCard
-            title="Ödemeler & Finans"
-            href="/admin/odemeler"
-            icon={WalletCards}
-            description="Ödeme işlemlerini inceleyin."
-          />
-          <ModuleLinkCard
-            title="Değerlendirmeler"
-            href="/admin/degerlendirmeler"
-            icon={ListChecks}
-            description="Öğrenci ve veli yorumlarını, öne çıkan değerlendirmeleri yönetin."
-          />
-          <ModuleLinkCard
-            title="Blog"
-            href="/admin/blog"
-            icon={Newspaper}
-            description="TR/EN blog yazılarını oluşturun, düzenleyin ve yayınlayın."
-          />
-          <ModuleLinkCard
-            title="E-Posta Bildirimleri"
-            href="/admin/bildirimler"
-            icon={Bell}
-            description="Resend e-posta teslimat loglarını inceleyin."
-          />
-          <ModuleLinkCard
-            title="Site Ayarları"
-            href="/admin/ayarlar"
-            icon={Settings}
-            description="Bildirim yönlendirmeleri ve genel ayarları yönetin."
-          />
+        <div className="db-grid">
+          <section className="card db-card">
+            <div className="db-ch"><div><h2>Son ders yapılanlar</h2><p>Öğrenci, son ders ve kalan hak</p></div><Link className="db-more" href="/admin/ogrenciler">Öğrenciler<Svg size={14}><path d="m9 18 6-6-6-6" /></Svg></Link></div>
+            <ul className="db-son" id="db-son">
+              {view?.recent.map((s) => {
+                const days = dayDiff(s.lastLessonDate as string, now as Date);
+                const tone = !s.packageLabel || s.remaining <= 0 ? "yok" : s.remaining <= 3 ? "az" : "";
+                return (
+                  <li key={s.id}>
+                    <Link href={`/admin/ogrenciler/detay?student=${encodeURIComponent(s.id)}`}>
+                      <span className="sn">{s.name}<small>{s.program ?? ""}</small></span>
+                      <span className="sd">{days === 0 ? "Bugün" : days === 1 ? "Dün" : shortDate(s.lastLessonDate as string)}</span>
+                      <span className={`sk ${tone}`}>{s.packageLabel ? `${s.remaining} ders kaldı` : "Paket yok"}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+              {view && !view.recent.length ? <li className="db-bos">Henüz ders kaydı yok.</li> : null}
+            </ul>
+          </section>
+          <section className="card db-card">
+            <div className="db-ch"><div><h2>Son hareketler</h2><p>Ödemeler, talepler, dersler ve güvenlik</p></div><Link className="db-more" href="/admin/denetim">Tümünü gör<Svg size={14}><path d="m9 18 6-6-6-6" /></Svg></Link></div>
+            <ul className="db-feed" id="db-feed">
+              {data && now ? data.feed.map((item) => <FeedRow key={item.key} item={item} now={now} />) : null}
+              {data && !data.feed.length ? <li className="db-bos">Henüz hareket yok.</li> : null}
+            </ul>
+          </section>
         </div>
-      </div>
-
+        <div className="db-grid db-grid2">
+          <section className="card db-card">
+            <div className="db-ch"><div><h2>Dikkat gerektirenler</h2><p>Bugün göz atmanız gereken konular</p></div></div>
+            <ul className="db-todo" id="db-todo">
+              {todo.map((item) => {
+                const on = item.n > 0;
+                return (
+                  <li key={item.title}>
+                    <Link href={item.href} className={on ? item.tone : "ok"}>
+                      <span className="ti">{on ? item.icon : <Svg><path d="M20 6 9 17l-5-5" /></Svg>}</span>
+                      <span className="tt">{item.title}<span className="ts">{on ? item.sub : "Bekleyen yok"}</span></span>
+                      <span className="tn">{item.n}</span>
+                      <span className="tc"><Chevron /></span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+          <section className="card db-card">
+            <div className="db-ch"><div><h2>Gelir trendi</h2><p>Son 6 ay · iadeler düşülmüş net tahsilat</p></div><Link className="db-more" href="/admin/mali-akis">Gelir İstatistikleri<Svg size={14}><path d="m9 18 6-6-6-6" /></Svg></Link></div>
+            <div className="ma-chart db-chart" id="db-ay" role="img" aria-label="Son 6 ayın aylık tahsilat grafiği">
+              {view?.months.map((month, index) => {
+                const height = month.total ? Math.max(3, (month.total / view.monthMax) * 100) : 0;
+                return (
+                  <div key={`${month.y}-${month.m}`} className={`ma-col${index === 5 ? " cur" : ""}`} title={`${MONTHS[month.m]} ${month.y}: ${formatTrLira(month.total)}`}>
+                    <span className="v">{month.total ? formatTrLira(Math.round(month.total)) : "—"}</span>
+                    <span className="b"><i style={{ height: `${height}%` }} /></span>
+                    <span className="m">{MONTHS[month.m].slice(0, 3)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      </div></div>
     </div>
   );
 }
 
-function MetricCard({
-  label,
-  count,
-  subtext,
-  href,
-  highlight = false,
-  alert = false,
-}: {
-  label: string;
-  count: number;
-  subtext: string;
-  href: string;
-  highlight?: boolean;
-  alert?: boolean;
-}) {
+function FeedRow({ item, now }: { item: OverviewFeedItem; now: Date }) {
+  const who = item.href
+    ? <Link className="fx-ogr" href={item.href}>{item.who}</Link>
+    : item.studentId
+      ? <Link className="fx-ogr" href={`/admin/ogrenciler/detay?student=${encodeURIComponent(item.studentId)}`}>{item.who}</Link>
+      : <>{item.who}</>;
   return (
-    <Link
-      href={ensureTrailingSlash(href)}
-      className={`flex flex-col justify-between rounded-xl border p-3.5 shadow-2xs transition-all hover:shadow-md ${
-        alert
-          ? "border-red-300 bg-red-50/60"
-          : highlight
-          ? "border-amber-300 bg-amber-50/60"
-          : "border-border bg-white hover:border-input"
-      }`}
-    >
-      <div>
-        <div className="text-[11px] font-semibold text-muted-foreground truncate">
-          {label}
-        </div>
-        <div
-          className={`mt-1 text-xl font-extrabold font-mono ${
-            alert
-              ? "text-red-700"
-              : highlight
-              ? "text-amber-800"
-              : "text-[#10271B]"
-          }`}
-        >
-          <CountingNumber
-            target={count}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], type: "tween" }}
-          />
-        </div>
-      </div>
-      <div className="mt-2 text-[10px] text-muted-foreground truncate">{subtext}</div>
-    </Link>
-  );
-}
-
-function ModuleLinkCard({
-  title,
-  href,
-  icon: Icon,
-  description,
-}: {
-  title: string;
-  href: string;
-  icon: typeof CalendarCheck;
-  description: string;
-}) {
-  return (
-    <Link
-      href={ensureTrailingSlash(href)}
-      className="flex flex-col justify-between rounded-xl border border-border bg-white p-4 shadow-2xs transition-colors hover:border-[#10271B] hover:bg-background-soft/50"
-    >
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-[#10271B]">
-            <Icon className="size-4" />
-          </div>
-          <ChevronRight className="size-4 text-muted-foreground" />
-        </div>
-        <h3 className="text-xs font-bold text-foreground">
-          {title}
-        </h3>
-        <p className="text-[11px] text-muted-foreground leading-snug">{description}</p>
-      </div>
-    </Link>
+    <li>
+      <span className={`fi fi-c${item.tone}`}>{FEED_ICON[item.kind]}</span>
+      <span className="ft">{item.title} — {who}<small>{item.detail}</small></span>
+      <span className="fa">{item.amount !== null ? <b>{formatTrLira(item.amount)}</b> : null}{ago(item.at, now)}</span>
+    </li>
   );
 }

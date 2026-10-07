@@ -2,7 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
+import adminToastStyles from "./admin-toast.module.css";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,6 +19,12 @@ interface ToastItem {
   createdAt: number;
   /** milliseconds until auto-dismiss */
   duration: number;
+  action?: ToastAction;
+}
+
+export interface ToastAction {
+  label: string;
+  onAction: () => void;
 }
 
 interface ToastContextValue {
@@ -27,13 +35,17 @@ interface ToastContextValue {
   info: (message: string) => void;
 }
 
+// Bilgi/başarı bildirimleri 2.6 sn (admin kılavuzu). Hata ve uyarılar
+// okunabilmeleri için daha uzun kalır.
 const DURATIONS: Record<ToastVariant, number> = {
-  success: 4000,
+  success: 2600,
   error: 7000,
   warning: 5000,
-  info: 4000,
+  info: 2600,
 };
 
+// Referans listToast: eylem düğmeli bildirim 6 sn kalır.
+const ACTION_DURATION = 6000;
 const MAX_TOASTS = 5;
 const DEDUP_WINDOW_MS = 1000;
 
@@ -49,9 +61,16 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
+let globalPush: ((message: string, variant?: ToastVariant, action?: ToastAction) => void) | null = null;
+
+export const toast = {
+  success: (msg: string) => (globalPush ? globalPush(msg, "success") : console.log("[toast:success]", msg)),
+  error: (msg: string) => (globalPush ? globalPush(msg, "error") : console.error("[toast:error]", msg)),
+  warning: (msg: string) => (globalPush ? globalPush(msg, "warning") : console.warn("[toast:warning]", msg)),
+  info: (msg: string) => (globalPush ? globalPush(msg, "info") : console.info("[toast:info]", msg)),
+  /** Eylem düğmeli başarı bildirimi (ör. "Geri al", "Detayı aç"). */
+  action: (msg: string, action: ToastAction) => (globalPush ? globalPush(msg, "success", action) : console.log("[toast:action]", msg)),
+};
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -61,7 +80,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const push = useCallback((message: string, variant: ToastVariant = "success") => {
+  // Yönetim panelinde tek bildirim görünür; süresi dolunca öncekiler de kalkar.
+  const dismissThrough = useCallback((id: string) => {
+    setToasts((prev) => {
+      const index = prev.findIndex((t) => t.id === id);
+      return index < 0 ? prev : prev.slice(index + 1);
+    });
+  }, []);
+
+  const push = useCallback((message: string, variant: ToastVariant = "success", action?: ToastAction) => {
     const now = Date.now();
     // Duplicate prevention: same message within DEDUP_WINDOW_MS
     if (lastRef.current.message === message && now - lastRef.current.time < DEDUP_WINDOW_MS) {
@@ -70,14 +97,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     lastRef.current = { message, time: now };
 
     const id = `toast-${now}-${Math.random().toString(36).slice(2, 8)}`;
-    const duration = DURATIONS[variant];
+    const duration = action ? ACTION_DURATION : DURATIONS[variant];
 
     setToasts((prev) => {
-      const next = [...prev, { id, message, variant, createdAt: now, duration }];
+      const next = [...prev, { id, message, variant, createdAt: now, duration, action }];
       // Keep only the latest MAX_TOASTS
       return next.length > MAX_TOASTS ? next.slice(-MAX_TOASTS) : next;
     });
   }, []);
+
+  useEffect(() => {
+    globalPush = push;
+    return () => {
+      if (globalPush === push) globalPush = null;
+    };
+  }, [push]);
 
   const ctx: ToastContextValue = {
     toast: push,
@@ -90,7 +124,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={ctx}>
       {children}
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} onDismissThrough={dismissThrough} />
     </ToastContext.Provider>
   );
 }
@@ -99,10 +133,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 // Container (portalled to body)
 const emptySubscribe = () => () => {};
 
-function ToastContainer({ toasts, onDismiss }: { toasts: ToastItem[]; onDismiss: (id: string) => void }) {
+function ToastContainer({ toasts, onDismiss, onDismissThrough }: { toasts: ToastItem[]; onDismiss: (id: string) => void; onDismissThrough: (id: string) => void }) {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const pathname = usePathname();
 
   if (!mounted || typeof document === "undefined" || !toasts.length) return null;
+
+  // Yönetim paneli: referanstaki tek, alt-orta bildirim (son gelen gösterilir).
+  if (pathname?.startsWith("/admin")) {
+    const last = toasts[toasts.length - 1];
+    return createPortal(<AdminToast key={last.id} toast={last} onDismiss={onDismissThrough} />, document.body);
+  }
 
   return createPortal(
     <div
@@ -176,6 +217,46 @@ function ToastCard({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: str
       >
         <X className="size-3.5" />
       </button>
+    </div>
+  );
+}
+
+// Referans: oriens-admin.js listToast — #10271B zemin, altın ikon, 2.6 sn.
+// Hata/uyarı metinleri okunabilsin diye süreleri DURATIONS'tan gelir.
+function AdminToast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string) => void }) {
+  const [shown, setShown] = useState(false);
+  const usedRef = useRef(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(true));
+    const hide = setTimeout(() => setShown(false), toast.duration);
+    const remove = setTimeout(() => onDismiss(toast.id), toast.duration + 200);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(hide);
+      clearTimeout(remove);
+    };
+  }, [toast.id, toast.duration, onDismiss]);
+
+  // Eylem bir kez çalışır; tıklanınca bildirim hemen kapanır.
+  const runAction = () => {
+    if (usedRef.current || !toast.action) return;
+    usedRef.current = true;
+    setShown(false);
+    onDismiss(toast.id);
+    toast.action.onAction();
+  };
+
+  const failed = toast.variant === "error" || toast.variant === "warning";
+  return (
+    <div className={`${adminToastStyles.toast}${shown ? ` ${adminToastStyles.show}` : ""}${toast.action ? ` ${adminToastStyles.hasAct}` : ""}`} role={failed ? "alert" : "status"} aria-live={failed ? "assertive" : "polite"} id="toast">
+      {failed ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+      )}
+      <span>{toast.message}</span>
+      {toast.action ? <button type="button" className={adminToastStyles.act} onClick={runAction}>{toast.action.label}</button> : null}
     </div>
   );
 }

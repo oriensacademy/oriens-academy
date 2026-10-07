@@ -8,7 +8,7 @@ let clientInstance: SupabaseClient<Database> | null = null;
  *
  * Uses ONLY public browser-safe environment variables:
  * - NEXT_PUBLIC_SUPABASE_URL
- * - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or legacy NEXT_PUBLIC_SUPABASE_ANON_KEY)
+ * - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
  *
  * No privileged service-role credential is accepted by this browser-safe client.
  */
@@ -20,9 +20,7 @@ export function getSupabaseClient(): SupabaseClient<Database> {
   const supabaseUrl =
     process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const supabasePublishableKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
 
   if (!supabaseUrl || !supabasePublishableKey) {
     throw new Error(

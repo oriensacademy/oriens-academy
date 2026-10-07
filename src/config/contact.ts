@@ -1,11 +1,11 @@
-import { INFO_EMAIL, PAYMENTS_EMAIL } from "@/config/email";
+import { INFO_EMAIL } from "@/config/email";
 
 export const CONTACT = {
   email: INFO_EMAIL,
   emailHref: `mailto:${INFO_EMAIL}`,
   contactEmail: INFO_EMAIL,
   supportEmail: INFO_EMAIL,
-  paymentsEmail: PAYMENTS_EMAIL,
+  paymentsEmail: INFO_EMAIL,
   // WhatsApp
   whatsappDisplay: "+90 544 293 90 40",
   whatsappHref: "https://wa.me/905442939040",

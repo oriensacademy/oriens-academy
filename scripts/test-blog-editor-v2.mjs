@@ -220,16 +220,16 @@ console.log("\n[8] EDITOR UX CONTRACTS");
   check("duplicate re-keys ids (no aliasing)", /clone\.id = newBlockId\(\)/.test(editor));
   check("gallery duplicate re-keys item ids", /items\.map\(\(item\) => \(\{ \.\.\.item, id: newBlockId\(\) \}\)\)/.test(editor));
 
-  for (const label of ["Yazı Sol / Görsel Sağ", "Görsel Sol / Yazı Sağ", "İki Kolon", "Galeri", "Bilgi Kutusu", "CTA Bölümü", "Alıntı", "Metin", "Görsel"]) {
+  for (const label of ["Yazı Sol / Görsel Sağ", "Görsel Sol / Yazı Sağ", "İki Kolon", "Galeri", "Bilgi kutusu", "Buton", "Alıntı", "Metin", "Görsel"]) {
     check("add-block menu offers: " + label, menu.includes(label));
   }
   check("no technical placeholder names in the menu", !/Template \d|Layout [A-Z]|Sample|Lorem|TODO/i.test(readCode("src/components/admin/blog/blocks/AddBlockMenu.tsx")));
-  for (const preset of ["Giriş Bölümü", "Görselli Anlatım — Sağ Görsel", "Görselli Anlatım — Sol Görsel", "İki Konu Karşılaştırması", "Görsel Galeri", "Sonuç + CTA"]) {
+  for (const preset of ["Giriş Bölümü", "Görselli Anlatım — Sağ", "Görselli Anlatım — Sol", "Karşılaştırma", "Görsel Galeri", "Sonuç + Davet"]) {
     check("section preset offered: " + preset, menu.includes(preset));
   }
   check("presets expand into ordinary blocks", /function presetBlocks/.test(editor));
 
-  check("preview opens without awaiting a save (no popup-blocker race)", /function openPreview\(\) \{\s*\n\s*setError\(""\);\s*\n\s*setPreviewOpen\(true\);/.test(page));
+  check("preview opens without awaiting a save (no popup-blocker race)", /function openPreview\(\) \{\s*\n\s*setPreviewOpen\(true\);/.test(page));
   check("preview no longer depends on window.open", !readCode("src/components/admin/BlogEditorPage.tsx").includes("window.open"));
   check("preview renders live editor state", page.includes("blocks: form.blocks"));
   check("preview offers desktop + mobile", modal.includes('value: "desktop"') && modal.includes('value: "mobile"'));
@@ -238,8 +238,8 @@ console.log("\n[8] EDITOR UX CONTRACTS");
 
   check("explicit draft save action exists", /async function saveDraft/.test(page));
   check("publish is guarded against double submit", /if \(publishing\) return;/.test(page));
-  check("publish button shows a pending label", page.includes('publishing ? "Gönderiliyor…"'));
-  check("update label shown for an already published post", page.includes('"Güncelle ve Yayınla"'));
+  check("publish button shows a pending label", page.includes('publishing ? "Yayınlanıyor…"'));
+  check("reference publish label shown", page.includes('"Şimdi Yayınla"'));
   check("blob/object urls can never be persisted", /SAFE_MEDIA_URL_PATTERN = \/\^https:\\\/\\\/\/i/.test(read("src/lib/blog/blockSchema.ts")));
 }
 

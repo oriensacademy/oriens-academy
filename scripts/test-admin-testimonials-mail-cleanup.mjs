@@ -32,24 +32,26 @@ const nativeConfirms = sourceFiles.flatMap((file) => {
   return matches.map(() => file);
 });
 assert.deepEqual(nativeConfirms, []);
-assert.match(read("src/app/admin/indirim-kuponlari/page.tsx"), /useConfirmationDialog/);
+// Silme onayı referans fxConfirm penceresiyle (FxConfirmDialog) yapılır.
+assert.match(read("src/app/admin/indirim-kuponlari/page.tsx"), /<FxConfirmDialog/);
 
-const settings = read("src/app/admin/ayarlar/page.tsx");
-assert.match(settings, /Denetim Loglarını Görüntüle/);
-assert.match(settings, /\/admin\/denetim/);
+// Denetim Kayıtları referanstaki gibi ana menüde; sayfa referans
+// "Giriş kayıtları / Panel işlemleri" sekmeleri ve zaman filtresiyle çalışır.
+assert.match(read("src/components/admin/AdminSidebar.tsx"), /href: "\/admin\/denetim"/);
 const audit = read("src/app/admin/denetim/page.tsx");
-assert.match(audit, /dateFrom/);
-assert.match(audit, /actionFilter/);
+assert.match(audit, /id="dn-zaman"/);
+assert.match(audit, /Panel işlemleri/);
 
 const productMailFiles = [...walk("src"), ...walk("supabase/functions")].filter((file) => /\.(ts|tsx|js|jsx)$/.test(file));
 const productMailSource = productMailFiles.map(read).join("\n");
 assert.doesNotMatch(productMailSource, /(?:support|contact|notifications)@oriens-academy\.com/i);
-for (const email of ["admin@oriens-academy.com", "info@oriens-academy.com", "payments@oriens-academy.com", "zoom@oriens-academy.com"]) {
+for (const email of ["admin@oriens-academy.com", "info@oriens-academy.com", "zoom@oriens-academy.com"]) {
   assert.ok(productMailSource.includes(email), `${email} missing`);
 }
 const service = read("supabase/functions/_shared/email/service.ts");
 assert.match(service, /EMAIL_ARCHIVE_BCC = ADMIN_EMAIL/);
-assert.match(service, /case "zoom"/);
+assert.doesNotMatch(service, /case "zoom"/);
+assert.match(service, /FORBIDDEN_SENDER_ADDRESSES = new Set\(\[[^\]]*"zoom@oriens-academy\.com"/);
 
 console.log(JSON.stringify({
   testimonialColumns: "PASS",

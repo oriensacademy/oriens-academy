@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Mail } from "lucide-react";
 import AdminContactsPage from "../iletisim/page";
 
 /**
@@ -16,23 +15,7 @@ import AdminContactsPage from "../iletisim/page";
  */
 function CommunicationContent() {
   const params = useSearchParams();
-  const selectedId = params.get("id");
-
-  return (
-    <div className="space-y-5">
-      <header className="border-b border-border pb-5">
-        <h1 className="flex items-center gap-2 text-xl font-bold tracking-tight text-ink font-heading">
-          <Mail className="size-5 text-primary" />
-          İletişim Talepleri
-        </h1>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Web sitesi üzerinden gelen iletişim ve danışmanlık taleplerini yönetin.
-        </p>
-      </header>
-
-      <AdminContactsPage initialContactId={selectedId} embedded />
-    </div>
-  );
+  return <AdminContactsPage initialContactId={params.get("id")} />;
 }
 
 export default function CommunicationPage() {

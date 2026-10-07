@@ -3,6 +3,8 @@ import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
 import { renderPurchaseEmailVerificationOtpEmail, normalizeLocale } from "../_shared/email/templates.ts";
 import { computeOtpHash, generateOtpCode, normalizeOtpEmail } from "../_shared/otp/hash.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
+import { sanitizeAuditError, writeEdgeAuditEvent } from "../_shared/audit.ts";
 
 const OTP_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
@@ -24,7 +26,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceRoleKey = getSupabaseAdminKey();
   const hmacSecret = Deno.env.get("PURCHASE_OTP_HMAC_SECRET") ?? "";
   if (!supabaseUrl || !serviceRoleKey || !hmacSecret) {
     console.error("[request-purchase-email-verification] Required server configuration is missing.");
@@ -155,15 +157,14 @@ Deno.serve(async (req: Request) => {
     });
 
   if (insertError) {
-    console.error("[request-purchase-email-verification] Failed to save challenge:", insertError);
+    await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.otp_verification_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: sanitizeAuditError(insertError, { operation: "create_otp_challenge" }) });
+    console.error(`[request-purchase-email-verification] Failed to save challenge code=${insertError.code || "unknown"}`);
     return buildJsonResponse(
       { error_code: "DB_ERROR", message: "Doğrulama isteği kaydedilemedi." },
       500,
       req
     );
   }
-
-  // Build secure one-click verification URL pointing to the edge function callback
 
   // Render & dispatch: 6-digit OTP only. Verification links are deliberately
   // not issued -- see supabase/functions/_shared/email/templates.ts.
@@ -188,6 +189,7 @@ Deno.serve(async (req: Request) => {
   });
 
   if (delivery.status === "failed") {
+    await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.otp_verification_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: { operation: "dispatch_otp_email", safe_error_code: delivery.errorCode } });
     console.error("[request-purchase-email-verification] Email delivery failed:", delivery.errorCode);
   }
 

@@ -11,7 +11,8 @@ for (const label of ["Yaklaşan", "Tamamlandı", "İptal Edildi", "Tanışma Gö
 assert.ok(portal.indexOf("const upcoming") < portal.indexOf("const history"));
 
 const languageSwitch = read("src/components/sections/LanguageSwitch.tsx");
-assert.match(languageSwitch, /target === "tr" \? "TR" : "ENG"/);
+// f973d77: kısa dil etiketi "ENG" → "EN".
+assert.match(languageSwitch, /target === "tr" \? "TR" : "EN"/);
 assert.doesNotMatch(languageSwitch, />Türkçe<|>English<|\bGB\b|🇬🇧/);
 const navbar = read("src/components/sections/Navbar.tsx");
 assert.match(navbar, /whitespace-nowrap/);
@@ -19,7 +20,8 @@ assert.match(navbar, /shrink-0/);
 
 const testimonialQuery = read("src/lib/admin/content.ts");
 assert.match(testimonialQuery, /\.rpc\("get_public_testimonials_v2"/);
-assert.match(testimonialQuery, /p_limit: 16/);
+// 20260902210000: herkese açık seçim tam 20 yoruma çıkarıldı.
+assert.match(testimonialQuery, /p_limit: 20/);
 const testimonialMigration = read("supabase/migrations/20260902120000_bounded_public_testimonial_selection.sql");
 assert.match(testimonialMigration, /security definer/);
 assert.match(testimonialMigration, /set search_path = ''/);
@@ -35,16 +37,17 @@ assert.match(marquee, /line-clamp-6/);
 assert.match(read("src/app/globals.css"), /prefers-reduced-motion:[\s\S]*\.oriens-marquee-track/);
 
 const evaluations = read("src/app/admin/degerlendirmeler/page.tsx");
-assert.match(evaluations, /TestimonialsManager/);
+assert.match(evaluations, /listAdminTestimonials/);
 assert.doesNotMatch(evaluations, /AssignedHomeworkList|Değerlendirmeler \/ Evaluations|öğrenci çalışmalarını/);
 
 const sidebar = read("src/components/admin/AdminSidebar.tsx");
-for (const label of ["Gösterge Paneli", "Öğrenciler", "Ders & Randevular", "Değerlendirmeler", "İletişim & Destek", "Fiyatlandırma", "İndirim Kuponları", "Ödemeler", "Mali Akış", "Bildirimler", "Ayarlar"]) assert.ok(sidebar.includes(label));
+// Referans kenar çubuğu (oriens-admin_6.html) grupları ve bağlantıları.
+for (const label of ["Öğrenci Yönetimi", "Öğrenciler", "Finans", "Fiyatlandırma", "İndirim Kuponları", "Ödemeler", "Gelir İstatistikleri", "Web Sitesi Yönetimi", "Blog", "Değerlendirmeler", "İletişim Talepleri", "E-posta Geçmişi", "Denetim Kayıtları", "Ayarlar"]) assert.ok(sidebar.includes(`label: "${label}"`), label);
 assert.doesNotMatch(sidebar, /GENERAL|STUDENTS|FINANCE|NOTIFICATIONS|SYSTEM|labelEn/);
 
 const detail = read("src/components/admin/StudentDetailSheet.tsx");
 assert.doesNotMatch(detail, /id: "homework"|id: "exam_history"|İlişki Sınıflandırması|admin-relationship-select|Bekleyen Ödev/);
-for (const action of ["Ders Hakkı Ekle", "Ders Hakkı Azalt", "Geçmiş Ders Ekle", "Ders Yapıldı"]) {
+for (const action of ["Ders Hakkı Ekle", "Paket Hakkı Düzeltmesi", "Ders Kaydı Ekle", "Ders Yapıldı"]) {
   assert.ok(read("src/components/admin/StudentLearningManager.tsx").includes(action), `${action} missing`);
 }
 

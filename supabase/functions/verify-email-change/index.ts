@@ -3,6 +3,7 @@ import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
 import { computeOtpHash, normalizeOtpCode } from "../_shared/otp/hash.ts";
 import { renderEmailChangeSecurityNoticeEmail } from "../_shared/email/templates.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -26,7 +27,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceRoleKey = getSupabaseAdminKey();
   const hmacSecret =
     Deno.env.get("EMAIL_CHANGE_HMAC_SECRET") ||
     Deno.env.get("PURCHASE_OTP_HMAC_SECRET") ||

@@ -106,9 +106,9 @@ check(
   !/idempotencyKey: `(appt-update|lesson-link|pkg-assign|pkg-extra)[^`]*Date\.now\(\)/.test(service + read("supabase/functions/send-live-lesson-email/index.ts"))
 );
 check(
-  "MAIL-027 supports a deliberate resend",
-  /enqueue_completed_lesson_notifications\(\s*\n?\s*p_lesson_id uuid,\s*\n\s*p_dedupe_suffix text default null/.test(migrations) &&
-    /resend' \|\| v_sends::text/.test(migrations)
+  "MAIL-027 is idempotent per report version and supports a later edited version",
+  /'lesson_report:'\|\|v_lesson\.id::text\|\|':v'\|\|v_lesson\.report_version::text/.test(migrations) &&
+    /report_version=report_version\+1/.test(migrations)
 );
 
 console.log("\n[4] LESSON / APPOINTMENT: NO AUTOMATIC USER EMAIL");
@@ -116,10 +116,9 @@ check(
   "lesson creation RPC enqueues no email",
   !/create or replace function public\.admin_upsert_student_lesson[\s\S]{0,6000}?enqueue_email_notification/.test(migrations)
 );
-check(
-  "MAIL-027 is opt-in only inside the canonical completion",
-  /-- MAIL-027 \(manual completion\/feedback email\): explicit opt-in ONLY\.\s*\n\s*if p_send_email then/.test(migrations)
-);
+const reportMigration = read("supabase/migrations/20260909090000_lesson_report_manual_notification_flow.sql");
+const completionBody = reportMigration.slice(reportMigration.indexOf("create or replace function public.admin_record_completed_lesson"), reportMigration.indexOf("create or replace function public.admin_save_lesson_completion_report"));
+check("canonical completion enqueues no email", !/enqueue_email_notification/.test(completionBody));
 check("appointment notifications default to opt-out", /sendNotification = false/.test(read("src/lib/admin/bookings.ts")));
 check(
   "no admin booking path sends unless sendNotification === true",
@@ -135,29 +134,23 @@ check("MAIL-023 button label", /Tarih Değişikliği E-postası Gönder/.test(de
 check("MAIL-024 button label", /İptal E-postası Gönder/.test(detail));
 check("MAIL-025 button label", /Hatırlatma E-postası Gönder/.test(detail));
 check("MAIL-026 button label", /Linki Öğrenciye E-posta İle Gönder/.test(learning));
-check("MAIL-027 button label", /Ders Bilgilendirme E-postası Gönder/.test(learning));
+check("MAIL-027 save-and-send button label", /Raporu Kaydet ve Bildirimi Gönder/.test(learning));
 check("resend labels exist", /Tekrar Gönder/.test(detail) && /Tekrar Gönder/.test(learning));
 check(
   "lesson email buttons use per-button state, not the panel-wide busy flag",
   /sendingEmailKey/.test(learning) && !/disabled=\{busy\}\s*\n\s*onClick=\{\(\) => void handleSendLink/.test(learning)
 );
 
-console.log("\n[6] MAIL-040 (AUTOMATIC LIFECYCLE)");
-const mail040 = read("supabase/migrations/20260905110000_mail040_producer_fix.sql");
-check("producer lives in the canonical completion RPC", /create or replace function public\.admin_record_completed_lesson/.test(mail040));
-check("MAIL-040 is not gated by p_send_email", /always enqueued, independent of p_send_email/.test(mail040));
-check("dead parallel producer is dropped", /drop function if exists public\.internal_apply_lesson_completion/.test(mail040));
-check(
-  "send_at = max(lesson_end + 1h, completion_time)",
-  /v_target_send_at := v_lesson\.lesson_date \+ \(coalesce\(v_lesson\.duration_minutes, 60\) \|\| ' minutes'\)::interval \+ interval '1 hour'/.test(mail040) &&
-    /if p_completion_source = 'past' or v_target_send_at <= now\(\) then\s*\n\s*v_scheduled_email_at := now\(\);/.test(mail040)
-);
-check("recipient is the verified account holder only", /ga\.email_verified_at is not null/.test(mail040));
+console.log("\n[6] MAIL-040 RETIRED / MAIL-027 MANUAL REPORT");
+check("latest canonical completion has zero email producer", !/enqueue_email_notification/.test(completionBody));
+check("queued MAIL-040 is cancelled only while unsent", /template='lesson_remaining_rights_account_holder'[\s\S]*status in \('pending','queued'\)/.test(reportMigration));
+check("worker cancels retired MAIL-040", /row\.template === "lesson_remaining_rights_account_holder"/.test(outbox) && /TEMPLATE_DECOMMISSIONED/.test(outbox));
+check("recipient is the verified account holder only", /ga\.email_verified_at is not null/.test(reportMigration));
 check(
   "recipient never falls back to auth.users.email_confirmed_at",
-  !/email_confirmed_at/.test(mail040.replace(/^\s*--.*$/gm, ""))
+  !/email_confirmed_at/.test(reportMigration.replace(/^\s*--.*$/gm, ""))
 );
-check("dedupe key is per lesson", /'lesson_remaining_rights:' \|\| v_lesson\.id::text/.test(mail040));
+check("dedupe key is per lesson report version", /lesson_report:/.test(reportMigration) && /report_version/.test(reportMigration));
 check(
   "remaining rights are recomputed at send time",
   /calculate_student_usable_remaining_lessons/.test(outbox)

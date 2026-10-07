@@ -31,8 +31,8 @@ assert.deepEqual(canonicalExams.filter((exam) => exam.customerGroup === 2).map((
 assert.equal(new Set(canonicalExams.map((exam) => exam.slug)).size, 15);
 assert.ok(!canonicalExamCodes.includes("UKCAT" as never));
 assert.equal(resolveExamSlug("UKCAT"), "ucat");
-assert.equal(resolveExamRoute("tr", "UKCAT"), "/tr/sinavlar/ucat");
-assert.equal(resolveExamRoute("en", "UKCAT"), "/en/exams/ucat");
+assert.equal(resolveExamRoute("tr", "UKCAT"), "/tr/sinavlar/ucat/");
+assert.equal(resolveExamRoute("en", "UKCAT"), "/en/exams/ucat/");
 
 const allQuestions = canonicalExamCodes.flatMap((code) => examTests[code].questions);
 assert.equal(allQuestions.length, 90);
@@ -61,9 +61,9 @@ assert.equal(japan.noMatchMessageEn, "No direct country-wide match was found amo
 
 assert.deepEqual(pricingPackages.map((item) => item.priceAmount), [3200, 15000, 27000, 51000, 72000]);
 assert.equal(trPricing.packages.items.package5.description, "Düzenli çalışmaya başlamak ve kısa vadeli konu hedeflerini takip etmek için esnek paket.");
-assert.equal(trPricing.packages.items.package10.description, "Sınav hazırlığını, konu takibini ve düzenli ilerleme değerlendirmesini birlikte yürüten dengeli paket.");
+assert.equal(trPricing.packages.items.package10.description, "Sınav hazırlığı ve düzenli konu takibini birlikte yürüten dengeli paket.");
 assert.equal(enPricing.packages.items.package5.description, "A flexible package for starting structured study and tracking short-term topic goals.");
-assert.equal(enPricing.packages.items.package10.description, "A balanced package combining exam preparation, topic tracking and regular progress review.");
+assert.equal(enPricing.packages.items.package10.description, "A balanced package combining exam prep and regular progress review.");
 
 assert.equal(trAbout.hero.title, "Oriens Academy ile tanışın.");
 assert.equal(enAbout.hero.title, "Meet Oriens Academy.");
@@ -89,10 +89,10 @@ const footer = read("src/components/sections/Footer.tsx");
 assert.doesNotMatch(footer, /label:\s*["'](?:Metot|Method)["']/);
 assert.doesNotMatch(footer, /#method/);
 const pricingPage = read("src/components/pricing/PricingPage.tsx");
-assert.match(pricingPage, /Şeffaf Fiyatlandırma/);
-assert.match(pricingPage, /Her öğrenci için aynı standart ücretler/);
-assert.match(pricingPage, /Transparent Pricing/);
-assert.match(pricingPage, /The same standard rates for every student/);
+// cbe2e51: "Şeffaf Fiyatlandırma" şeridi kaldırıldı; şeffaflık mesajı paket girişinde.
+assert.doesNotMatch(pricingPage, /Şeffaf Fiyatlandırma|Transparent Pricing/);
+assert.equal(trPricing.packages.intro, "Haziran 2027'ye kadar fiyat garantisi ile şeffaf ve esnek ders paketleri.");
+assert.equal(enPricing.packages.intro, "Transparent and flexible lesson packages with a price guarantee until June 2027.");
 assert.match(read("src/components/pricing/PricingComparison.tsx"), /Birim Ders Ücreti/);
 assert.match(read("src/components/pricing/PricingComparison.tsx"), /Unit Lesson Price/);
 

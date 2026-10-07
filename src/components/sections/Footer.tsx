@@ -13,12 +13,13 @@ import {
   salesAgreementPath,
   termsPath,
 } from "@/lib/routes";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
 import { FooterSection } from "@/components/ui/footer-section";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { publicNavigation } from "@/lib/public-navigation";
 
 export function Footer() {
+  const CONTACT = useSiteContact();
   const locale = useLocale();
   const isTr = locale === "tr";
   const { showPricing } = usePublicSettings();

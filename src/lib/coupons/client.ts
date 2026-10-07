@@ -138,6 +138,7 @@ export async function listAdminCoupons(): Promise<{
     const { data: coupons, error } = await supabase
       .from("discount_coupons")
       .select("*")
+      .is("archived_at", null)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -278,11 +279,12 @@ export async function deleteAdminCoupon(
   id: string
 ): Promise<{ success: boolean; error: string | null }> {
   try {
-    const { error } = await getSupabaseClient()
-      .from("discount_coupons")
-      .delete()
-      .eq("id", id);
+    const { data, error } = await getSupabaseClient()
+      .rpc("admin_delete_discount_coupon", { p_coupon_id: id });
     if (error) return { success: false, error: error.message };
+    if (data === "not_found") {
+      return { success: false, error: "Kupon bulunamadı veya daha önce silindi." };
+    }
     return { success: true, error: null };
   } catch {
     return { success: false, error: "Kupon silinemedi." };

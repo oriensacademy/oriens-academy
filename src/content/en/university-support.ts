@@ -11,7 +11,7 @@ export const universitySupport = {
     eyebrow: "University Academic Support",
     title: "Beyond passing the course: understand what you are learning.",
     description:
-      "Oriens guides university students through the content and rhythm of their own course—clarifying concepts, structuring problem solving and turning study into a process that can be reviewed.",
+      "Oriens Academy guides university students through the content and rhythm of their own course—clarifying concepts, structuring problem solving and turning study into a process that can be reviewed.",
     primaryCta: "Book a Consultation",
     secondaryCta: "Explore Support Areas",
     visualLabel: "Academic support illustration for university learning, planning and feedback",
@@ -139,7 +139,7 @@ export const universitySupport = {
       { question: "Which university courses can Oriens support?", answer: "Existing project content establishes a general support scope across STEM and quantitative courses, problem sets, lab reports, research work and university study skills. Suitability for a specific course is confirmed after reviewing its syllabus and materials." },
       { question: "Is support only available during exam periods?", answer: "No. Study can follow weekly coursework and problem sets, or become more focused before a quiz, midterm or final." },
       { question: "Do I need to share my course materials?", answer: "A syllabus, lecture notes, assignment instructions and the scope of upcoming assessments help us structure support accurately. We establish what is needed at the beginning." },
-      { question: "Will Oriens complete my assignment or report for me?", answer: "No. Support focuses on understanding concepts, building structure, selecting methods, receiving feedback and improving the student's own work." },
+      { question: "Will Oriens Academy complete my assignment or report for me?", answer: "No. Support focuses on understanding concepts, building structure, selecting methods, receiving feedback and improving the student's own work." },
       { question: "How is study frequency decided?", answer: "We consider course workload, existing gaps and the academic calendar. A suitable rhythm is planned after the initial conversation and material review." },
     ],
   },

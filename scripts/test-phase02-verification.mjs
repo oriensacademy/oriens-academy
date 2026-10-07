@@ -22,7 +22,9 @@ const portalContent = fs.readFileSync(portalPath, "utf-8");
 assert.ok(portalContent.includes("SUPPORTED_EXAMS"), "StudentPortal must import SUPPORTED_EXAMS");
 assert.ok(portalContent.includes("SUPPORTED_DESTINATIONS"), "StudentPortal must import SUPPORTED_DESTINATIONS");
 assert.ok(portalContent.includes("saveStudentPreferences"), "StudentPortal must use saveStudentPreferences canonical flow");
-assert.ok(portalContent.includes("Kişisel Bilgiler"), "StudentPortal must render read-only personal fields section");
+// c614033 (Guardian Identity): "Kişisel Bilgiler" → "Hesap Sahibi Bilgileri"; telefon salt okunur.
+assert.ok(portalContent.includes("Hesap Sahibi Bilgileri"), "StudentPortal must render account holder fields section");
+assert.ok(/<input readOnly aria-readonly="true" value=\{\(guardian\?\.phone/.test(portalContent), "account holder phone stays read-only");
 assert.ok(portalContent.includes("Akademik Hedefler & Tercihler"), "StudentPortal must render academic preferences form");
 assert.ok(portalContent.includes("Hesap Güvenliği"), "StudentPortal must keep Hesap Güvenliği on the same page");
 console.log("✓ StudentPortal.tsx read-only personal fields and multi-select preferences verified.");

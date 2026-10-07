@@ -24,19 +24,14 @@ function check(title, condition) {
 console.log("\n[TEST GROUP 1: Exam Modals & Overlay]");
 const examTestResultsCode = fs.readFileSync("src/components/exam-test/ExamTestResults.tsx", "utf8");
 
-check("ExamTestResults contains reportPhone state",
-  examTestResultsCode.includes("const [reportPhone, setReportPhone] = useState")
+// 008c5fe (gizlilik yaşam döngüsü): sonuç penceresi artık telefon toplamıyor;
+// ad ve e-posta oturumdaki kullanıcıdan ön doldurulur.
+check("ExamTestResults no longer collects phone in the result modal",
+  !examTestResultsCode.includes("reportPhone") && !examTestResultsCode.includes("phone: reportPhone")
 );
-check("ExamTestResults syncs user email/name/phone on login",
-  examTestResultsCode.includes("setReportPhone(user.user_metadata.phone)") &&
-  examTestResultsCode.includes("setReportEmail(user.email)")
-);
-check("Exam email modal includes phone input",
-  examTestResultsCode.includes("value={reportPhone}") &&
-  examTestResultsCode.includes("onChange={(e) => setReportPhone(e.target.value)}")
-);
-check("Exam email modal passes phone to sendExamResultEmail",
-  examTestResultsCode.includes("phone: reportPhone.trim() || undefined")
+check("ExamTestResults prefills name/email from the signed-in user",
+  examTestResultsCode.includes('useState(() => user?.user_metadata?.full_name || "")') &&
+  examTestResultsCode.includes('useState(() => user?.email || "")')
 );
 check("Exam email modal has clean placeholders",
   examTestResultsCode.includes('placeholder={isTr ? "Adınız Soyadınız" : "Your full name"}') &&
@@ -52,7 +47,7 @@ check("Modal overlay uses rock-solid full viewport backdrop without bottom gap",
   examTestResultsCode.includes('className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity"')
 );
 check("Modal includes body scroll lock handling",
-  examTestResultsCode.includes('document.body.style.overflow = "hidden"')
+  examTestResultsCode.includes("const unlockBodyScroll = lockBodyScroll();") && examTestResultsCode.includes("return unlockBodyScroll;")
 );
 
 // 2. Consultation Form & Exam Selector Verification

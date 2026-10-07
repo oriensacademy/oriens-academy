@@ -1,35 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 const ALLOWED_PREVIEW_RECIPIENTS = ["admin@oriens-academy.com", "info@oriens-academy.com"];
 const DEFAULT_PREVIEW_RECIPIENT = "admin@oriens-academy.com";
-
-function verifyServiceRole(token: string): boolean {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return false;
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    const parsed = JSON.parse(jsonPayload);
-    return parsed.role === "service_role";
-  } catch {
-    return false;
-  }
-}
 
 Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
   if (invalid) return invalid;
 
   const url = Deno.env.get("SUPABASE_URL") || "";
-  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const service = getSupabaseAdminKey();
   const apikey = req.headers.get("apikey") || "";
   const authHeader = req.headers.get("authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -38,12 +20,7 @@ Deno.serve(async (req: Request) => {
     return buildJsonResponse({ error_code: "SERVER_CONFIG_ERROR" }, 500, req);
   }
 
-  // Authorize via Service Role JWT or Service Key string
-  const isAuthorized =
-    verifyServiceRole(token) ||
-    verifyServiceRole(apikey) ||
-    token === service ||
-    apikey === service;
+  const isAuthorized = token === service || apikey === service;
 
   if (!isAuthorized) {
     return buildJsonResponse({ error_code: "UNAUTHORIZED" }, 401, req);

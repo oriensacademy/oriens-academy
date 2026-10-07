@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Loader2, RotateCcw, X } from "lucide-react";
-import { getPaymentRefundCopy } from "@/content/payment-refund";
-import { formatCurrency } from "@/lib/format/currency";
 import { getAdminRefundContext, type AdminRefundContext, type AdminPaymentRow } from "@/lib/admin/payments";
-import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
+import { formatTrLira, formatTrListDate } from "@/lib/format/turkish";
+import pages from "./admin-pages.module.css";
 
 export interface RefundReviewRequest {
   context: AdminRefundContext;
@@ -14,108 +11,155 @@ export interface RefundReviewRequest {
   lessonsToRevoke: number;
   reason: string;
   idempotencyKey: string;
+  sendNotification: boolean;
 }
 
-export function PaymentRefundDialog({ row, onClose, onReview }: {
+// Referans "İade başlat" penceresi (#od-iade): özet, İade türü, (kısmi iadede)
+// İade tutarı, isteğe bağlı Açıklama ve sabit bilgi notu; başka görünür alan yok.
+// Sunucu kuralları aynen korunur: iade bağlamı admin_get_payment_refund_context'ten
+// gelir, işlem tek idempotency anahtarıyla mevcut paytr-refund ucuna gider.
+//  - Tam iadede kalan tüm ders hakları iptal edilir.
+//  - Kısmi iadede iptal edilecek hak, referans notundaki gibi iade tutarına
+//    göre hesaplanır (oransal, en az 1, pakette en az 1 hak kalır).
+//  - paytr-refund en az 3 karakterlik neden ister; Açıklama boş bırakılırsa
+//    sabit "Panelden iade" nedeni gönderilir.
+//  - Bilgilendirme e-postası gönderilmez (önceki varsayılan).
+export const REFUND_DEFAULT_REASON = "Panelden iade";
+
+export function partialLessonsForAmount(context: Pick<AdminRefundContext, "refundable_amount" | "remaining_lessons">, refundAmount: number): number {
+  const remaining = context.remaining_lessons;
+  if (remaining < 2 || !(context.refundable_amount > 0) || !(refundAmount > 0)) return 0;
+  const proportional = Math.round((refundAmount / context.refundable_amount) * remaining);
+  return Math.min(remaining - 1, Math.max(1, proportional));
+}
+
+export function refundReasonFromNote(note: string): string {
+  const clean = note.trim().replace(/\s+/g, " ");
+  if (clean.length >= 3) return clean;
+  return clean ? `${REFUND_DEFAULT_REASON}: ${clean}` : REFUND_DEFAULT_REASON;
+}
+
+export function PaymentRefundDialog({ row, subtitle, busy, onClose, onSubmit }: {
   row: AdminPaymentRow;
+  subtitle: string;
+  busy: boolean;
   onClose: () => void;
-  onReview: (request: RefundReviewRequest) => void;
+  onSubmit: (request: RefundReviewRequest) => void;
 }) {
-  const copy = getPaymentRefundCopy("tr");
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [context, setContext] = useState<AdminRefundContext | null>(null);
   const [error, setError] = useState("");
-  const [mode, setMode] = useState<"remaining" | "partial" | "full">("remaining");
+  const [mode, setMode] = useState<"partial" | "full">("full");
   const [amount, setAmount] = useState("");
-  const [lessons, setLessons] = useState("");
   const [reason, setReason] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
   const [idempotencyKey] = useState(() => `admin-refund-${crypto.randomUUID()}`);
-  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => { if (dialog?.open) dialog.close(); };
+  }, []);
 
   useEffect(() => {
     let active = true;
     getAdminRefundContext(row.id).then((result) => {
       if (!active) return;
       if (result.error || !result.data) setError(result.error || "İade bilgileri yüklenemedi.");
-      else {
-        setContext(result.data);
-        const defaults = refundDefaults(result.data, "remaining");
-        setLessons(String(defaults.lessons));
-        setAmount(defaults.amount.toFixed(2));
-      }
+      else setContext(result.data);
     });
     return () => { active = false; };
   }, [row.id]);
 
-  function selectMode(nextMode: "remaining" | "partial" | "full") {
-    setMode(nextMode);
-    if (!context) return;
-    const defaults = refundDefaults(context, nextMode);
-    setLessons(String(defaults.lessons));
-    setAmount(defaults.amount.toFixed(2));
+  function selectMode(next: "partial" | "full") {
+    setMode(next);
+    setShowErrors(false);
+    setSubmitError("");
+    if (next === "partial") setAmount("");
   }
 
-  useEffect(() => {
-    const unlockBodyScroll = lockBodyScroll();
-    closeRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKeyDown);
-    return () => { document.removeEventListener("keydown", onKeyDown); unlockBodyScroll(); };
-  }, [onClose]);
+  const refundAmount = context ? (mode === "full" ? context.refundable_amount : Number(amount)) : 0;
+  const lessonsToRevoke = context ? (mode === "full" ? context.remaining_lessons : partialLessonsForAmount(context, refundAmount)) : 0;
+  const amountValid = Boolean(context && Number.isFinite(refundAmount) && refundAmount > 0 && refundAmount <= context.refundable_amount && (mode === "full" || refundAmount < context.refundable_amount));
 
-  const refundAmount = Number(amount);
-  const lessonsToRevoke = Number(lessons);
-  const valid = Boolean(context && Number.isFinite(refundAmount) && refundAmount > 0 && refundAmount <= context.refundable_amount && Number.isInteger(lessonsToRevoke) && lessonsToRevoke > 0 && lessonsToRevoke <= context.remaining_lessons && reason.trim().length >= 3);
-  const money = (value: number) => formatCurrency(value, { currency: context?.currency || row.currency, locale: "tr" });
+  function submit() {
+    if (!context || busy) return;
+    if (!amountValid) { setShowErrors(true); return; }
+    if (context.remaining_lessons < 1) { setSubmitError("Bu pakette iptal edilecek kullanılmamış ders hakkı yok."); return; }
+    if (mode === "partial" && lessonsToRevoke < 1) { setSubmitError("Kısmi iade için pakette en az iki kullanılmamış ders hakkı olmalı."); return; }
+    onSubmit({ context, refundAmount, lessonsToRevoke, reason: refundReasonFromNote(reason), idempotencyKey, sendNotification: false });
+  }
 
-  return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6">
-      <button type="button" aria-label="İade penceresini kapat" onClick={onClose} className="absolute inset-0 bg-ink/45 backdrop-blur-sm" />
-      <section role="dialog" aria-modal="true" aria-labelledby="refund-dialog-title" className="relative z-10 max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-white p-5 shadow-2xl sm:p-7">
-        <button ref={closeRef} type="button" aria-label="Kapat" onClick={onClose} className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted"><X className="size-4" /></button>
-        <div className="flex size-11 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><RotateCcw className="size-5" /></div>
-        <h2 id="refund-dialog-title" className="mt-4 pr-12 font-heading text-2xl text-ink">{copy.title}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">{row.public_reference} · {row.payer_name || row.payer_email}</p>
+  function requestClose() {
+    if (!busy) onClose();
+  }
 
-        {!context && !error ? <div className="flex min-h-40 items-center justify-center"><Loader2 className="size-6 animate-spin text-primary" /></div> : null}
-        {error ? <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{error}</p> : null}
-        {context ? <>
-          <div className="mt-5 grid gap-3 rounded-2xl bg-surface-muted p-4 sm:grid-cols-3">
-            <Metric label={copy.paidAmount} value={money(context.paid_amount)} />
-            <Metric label={copy.refundedAmount} value={money(context.refunded_amount)} />
-            <Metric label={copy.refundableAmount} value={money(context.refundable_amount)} />
-            <Metric label={copy.completedLessons} value={String(context.completed_lessons)} />
-            <Metric label={copy.remainingLessons} value={String(context.remaining_lessons)} />
-            <Metric label="Paket / Öğrenci" value={context.learner ? `${context.package_id} · ${context.learner}` : context.package_id} />
+  const paidAt = context ? formatTrListDate(row.paid_at || row.created_at).primary : "";
+
+  return (
+    <div className={pages.root} style={{ display: "contents" }}>
+      <dialog
+        ref={dialogRef}
+        className="arc"
+        id="od-iade"
+        onCancel={(event) => { event.preventDefault(); requestClose(); }}
+        onClick={(event) => { if (event.target === event.currentTarget) requestClose(); }}
+      >
+        <div className="m-modal" role="dialog" aria-modal="true" aria-labelledby="odi-title">
+          <div className="m-head">
+            <div className="m-hicon" style={{ background: "#FBECEA", color: "#9A3324" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+              <h2 id="odi-title" className="m-htitle">İade başlat</h2>
+              <span className="m-hsub">{subtitle}</span>
+            </div>
+            <button type="button" className="m-close" aria-label="Kapat" onClick={requestClose}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
           </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3" role="group" aria-label="İade türü">
-            {([['remaining',copy.remainingRefund],['partial',copy.partialRefund],['full',copy.fullRefund]] as const).map(([value,label]) => <button key={value} type="button" onClick={() => selectMode(value)} className={`min-h-11 rounded-xl border px-3 text-xs font-semibold ${mode === value ? "border-purple-600 bg-purple-50 text-purple-900" : "border-border text-ink hover:bg-muted"}`}>{label}</button>)}
+          <div className="m-body" style={{ padding: "20px 24px 8px", gap: 14 }}>
+            {!context && !error ? <p className="arc-note">İade bilgileri yükleniyor…</p> : null}
+            {error ? <p role="alert" className="arc-note" style={{ color: "#9A3324" }}>{error}</p> : null}
+            {context ? (
+              <>
+                <div className="fx-sum">
+                  <span>Ödenen<b>{formatTrLira(context.paid_amount)}</b></span>
+                  <span>Tarih<b>{paidAt}</b></span>
+                  <span>Referans<b className="fx-mono" style={{ fontSize: 12, wordBreak: "break-all" }}>{context.reference}</b></span>
+                </div>
+                <div className="m-field">
+                  <span className="m-lab" id="odi-tur-l">İade türü</span>
+                  <div className="m-dur" role="radiogroup" aria-labelledby="odi-tur-l">
+                    <label><input type="radio" name="odi-tur" value="kismi" checked={mode === "partial"} onChange={() => selectMode("partial")} /><span>Kısmi iade</span></label>
+                    <label><input type="radio" name="odi-tur" value="tam" checked={mode === "full"} onChange={() => selectMode("full")} /><span>Tam iade</span></label>
+                  </div>
+                </div>
+                <div className={`m-field${showErrors && !amountValid ? " fx-err" : ""}`} hidden={mode !== "partial"}>
+                  <label htmlFor="odi-tutar" className="m-lab">İade tutarı</label>
+                  <div className="m-suffix">
+                    <input id="odi-tutar" type="number" min="1" step="0.01" max={context.refundable_amount} className="m-input" value={amount} onChange={(event) => { setAmount(event.target.value); setShowErrors(false); setSubmitError(""); }} />
+                    <span className="m-unit">₺</span>
+                  </div>
+                </div>
+                <div className="m-field">
+                  <label htmlFor="odi-not" className="m-lab">Açıklama <span className="m-opt">(isteğe bağlı)</span></label>
+                  <input id="odi-not" className="m-input" placeholder="Örn. Öğrenci kaydı bıraktı" maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
+                </div>
+                <p className="arc-note">İade, ödemenin yapıldığı kredi kartına yapılır. Öğrencinin paketindeki ders hakları iade tutarına göre güncellenmelidir.</p>
+                {submitError ? <p role="alert" className="arc-note" style={{ color: "#9A3324" }}>{submitError}</p> : null}
+              </>
+            ) : null}
           </div>
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="text-xs font-semibold text-ink">{copy.refundAmount}<input type="number" min="0.01" step="0.01" max={context.refundable_amount} value={amount} onChange={(event) => setAmount(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input px-3 text-sm" /></label>
-            <label className="text-xs font-semibold text-ink">{copy.lessonsToRevoke}<input type="number" min="1" step="1" max={context.remaining_lessons} value={lessons} onChange={(event) => setLessons(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-input px-3 text-sm" /></label>
-            <label className="text-xs font-semibold text-ink sm:col-span-2">{copy.refundReason}<textarea required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 min-h-24 w-full resize-y rounded-xl border border-input p-3 text-sm" /></label>
+          <div className="m-foot">
+            <button type="button" className="m-cancel" onClick={requestClose} disabled={busy}>Vazgeç</button>
+            <button type="button" className="m-delok" onClick={submit} disabled={!context || busy}>
+              {busy ? "İşleniyor…" : "İadeyi başlat"}
+            </button>
           </div>
-
-          {context.refunds.length ? <div className="mt-5 rounded-2xl border border-border p-4"><h3 className="text-xs font-semibold text-ink">İade Geçmişi</h3><div className="mt-3 space-y-2">{context.refunds.map((item) => <div key={item.id} className="grid gap-1 border-t border-border pt-2 text-[11px] text-muted-foreground sm:grid-cols-3"><span>{money(Number(item.amount))} · -{item.lessons} ders</span><span>{item.status} · {item.provider_reference}</span><span>{new Date(item.finalized_at || item.created_at).toLocaleString("tr-TR")} · {item.reason} · Yönetici: {item.admin_actor}</span></div>)}</div></div> : null}
-
-          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-border px-5 text-sm font-semibold text-ink">{copy.cancel}</button><button type="button" disabled={!valid} onClick={() => valid && onReview({ context, refundAmount, lessonsToRevoke, reason: reason.trim(), idempotencyKey })} className="min-h-11 rounded-xl bg-purple-700 px-5 text-sm font-semibold text-white hover:bg-purple-800 disabled:opacity-45">{copy.continue}</button></div>
-        </> : null}
-      </section>
-    </div>,
-    document.body
+        </div>
+      </dialog>
+    </div>
   );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div><span className="block text-[10px] text-muted-foreground">{label}</span><strong className="mt-1 block text-xs text-ink">{value}</strong></div>;
-}
-
-function refundDefaults(context: AdminRefundContext, mode: "remaining" | "partial" | "full") {
-  const previouslyRevoked = context.refunds.filter((item) => item.status === "refund_succeeded").reduce((sum, item) => sum + Number(item.lessons || 0), 0);
-  const originalLessons = context.total_lessons + previouslyRevoked;
-  const effectiveUnit = originalLessons > 0 ? context.paid_amount / originalLessons : 0;
-  const suggested = Math.min(context.refundable_amount, Math.round(context.remaining_lessons * effectiveUnit * 100) / 100);
-  return { lessons: context.remaining_lessons, amount: mode === "full" ? context.refundable_amount : suggested };
 }

@@ -37,15 +37,28 @@ export const SUPPORTED_DESTINATIONS: PreferenceOption[] = [
 export async function saveStudentPreferences(
   studentId: string,
   exams: string[],
-  countries: string[],
+  countries: string[] | undefined,
   markOnboardingCompleted = true,
   language?: "tr" | "en"
 ): Promise<{ success: boolean; profile: Record<string, unknown> | null; error: string | null }> {
   const supabase = getSupabaseClient();
   const normalizedExams = Array.from(new Set(exams.map((value) => value.trim()).filter(Boolean)));
-  const normalizedCountries = Array.from(new Set(countries.map((value) => value.trim()).filter(Boolean)));
 
   try {
+    let preservedCountries = countries;
+    if (preservedCountries === undefined) {
+      const { data: currentProfile, error: currentProfileError } = await supabase
+        .from("student_profiles")
+        .select("target_countries")
+        .eq("id", studentId)
+        .maybeSingle();
+      if (currentProfileError) return { success: false, profile: null, error: currentProfileError.message };
+      const currentCountries = (currentProfile as { target_countries?: unknown } | null)?.target_countries;
+      preservedCountries = Array.isArray(currentCountries)
+        ? currentCountries.filter((value): value is string => typeof value === "string")
+        : [];
+    }
+    const normalizedCountries = Array.from(new Set(preservedCountries.map((value) => value.trim()).filter(Boolean)));
     const canonicalLanguage: "tr" | "en" = language === "en" ? "en" : "tr";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any).rpc("save_student_preferences", {

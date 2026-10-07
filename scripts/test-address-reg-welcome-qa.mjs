@@ -83,11 +83,12 @@ check("TR Welcome Email contains account created statement",
   trWelcome.html.includes("Oriens Academy hesabınız başarıyla oluşturuldu.")
 );
 check("TR Welcome Email contains feature list",
-  trWelcome.html.includes("sınav geçmişinizi görüntüleyebilir") &&
+  // Güncel Hesabım kapsamı: ödev / sınav geçmişi maddeleri kaldırıldı.
   trWelcome.html.includes("ders ve randevularınızı takip edebilir") &&
-  trWelcome.html.includes("ödevlerinizi görüntüleyip teslim edebilir") &&
-  trWelcome.html.includes("paket ve ödeme bilgilerinizi inceleyebilir") &&
-  trWelcome.html.includes("destek ekibimizle iletişime geçebilirsiniz")
+  trWelcome.html.includes("kalan ders haklarınızı ve paketlerinizi inceleyebilir") &&
+  trWelcome.html.includes("ödeme bilgilerinizi görüntüleyebilir") &&
+  trWelcome.html.includes("destek ekibimizle iletişime geçebilirsiniz") &&
+  !trWelcome.html.includes("ödevlerinizi")
 );
 check("TR Welcome Email CTA label is 'Hesabıma Git'",
   trWelcome.html.includes("Hesabıma Git") && trWelcome.text.includes("Hesabıma Git")
@@ -118,11 +119,11 @@ check("EN Welcome Email contains account created statement",
   enWelcome.html.includes("Your Oriens Academy account has been created successfully.")
 );
 check("EN Welcome Email contains feature list",
-  enWelcome.html.includes("review your exam history") &&
   enWelcome.html.includes("track lessons and appointments") &&
-  enWelcome.html.includes("view and submit assignments") &&
-  enWelcome.html.includes("manage package and payment information") &&
-  enWelcome.html.includes("contact the Oriens Academy support team")
+  enWelcome.html.includes("review remaining lesson rights and packages") &&
+  enWelcome.html.includes("view payment information") &&
+  enWelcome.html.includes("contact the Oriens Academy support team") &&
+  !enWelcome.html.includes("assignments")
 );
 check("EN Welcome Email CTA label is 'Go to My Account'",
   enWelcome.html.includes("Go to My Account") && enWelcome.text.includes("Go to My Account")

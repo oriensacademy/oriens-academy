@@ -40,9 +40,9 @@ export type Database = {
         Relationships: []
       }
       guardian_accounts: {
-        Row: { user_id: string; full_name: string; email: string; phone: string | null; contact_address: string | null; preferred_language: string; email_verified_at: string | null; active: boolean; migration_source: string; created_at: string; updated_at: string }
-        Insert: { user_id: string; full_name: string; email: string; phone?: string | null; contact_address?: string | null; preferred_language?: string; email_verified_at?: string | null; active?: boolean; migration_source?: string; created_at?: string; updated_at?: string }
-        Update: { full_name?: string; phone?: string | null; contact_address?: string | null; preferred_language?: string; active?: boolean; updated_at?: string }
+        Row: { user_id: string; full_name: string; email: string; phone: string | null; contact_address: string | null; preferred_language: string; email_verified_at: string | null; active: boolean; archived_at: string | null; migration_source: string; created_at: string; updated_at: string }
+        Insert: { user_id: string; full_name: string; email: string; phone?: string | null; contact_address?: string | null; preferred_language?: string; email_verified_at?: string | null; active?: boolean; archived_at?: string | null; migration_source?: string; created_at?: string; updated_at?: string }
+        Update: { full_name?: string; phone?: string | null; contact_address?: string | null; preferred_language?: string; active?: boolean; archived_at?: string | null; updated_at?: string }
         Relationships: []
       }
       guardian_students: {
@@ -993,29 +993,38 @@ export type Database = {
         Row: {
           action: string
           actor_user_id: string | null
+          category: string
+          correlation_id: string | null
           created_at: string
           entity_id: string | null
           entity_type: string
           id: number
           metadata: Json | null
+          severity: string
         }
         Insert: {
           action: string
           actor_user_id?: string | null
+          category?: string
+          correlation_id?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type: string
           id?: never
           metadata?: Json | null
+          severity?: string
         }
         Update: {
           action?: string
           actor_user_id?: string | null
+          category?: string
+          correlation_id?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type?: string
           id?: never
           metadata?: Json | null
+          severity?: string
         }
         Relationships: []
       }
@@ -1128,10 +1137,12 @@ export type Database = {
       }
       contact_requests: {
         Row: {
+          archived_at: string | null
           created_at: string
           email: string
           full_name: string
           id: string
+          is_archived: boolean
           locale: string
           message: string
           metadata: Json
@@ -1143,10 +1154,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           email: string
           full_name: string
           id?: string
+          is_archived?: boolean
           locale?: string
           message: string
           metadata?: Json
@@ -1158,10 +1171,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           email?: string
           full_name?: string
           id?: string
+          is_archived?: boolean
           locale?: string
           message?: string
           metadata?: Json
@@ -1219,6 +1234,7 @@ export type Database = {
       }
       notification_deliveries: {
         Row: {
+          archived_at: string | null
           attempt_count: number
           channel: string
           created_at: string
@@ -1226,6 +1242,7 @@ export type Database = {
           entity_type: string
           event_type: string
           id: string
+          is_archived: boolean
           last_error_code: string | null
           provider: string
           provider_message_id: string | null
@@ -1234,6 +1251,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          archived_at?: string | null
           attempt_count?: number
           channel?: string
           created_at?: string
@@ -1241,6 +1259,7 @@ export type Database = {
           entity_type: string
           event_type: string
           id?: string
+          is_archived?: boolean
           last_error_code?: string | null
           provider?: string
           provider_message_id?: string | null
@@ -1249,6 +1268,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          archived_at?: string | null
           attempt_count?: number
           channel?: string
           created_at?: string
@@ -1256,6 +1276,7 @@ export type Database = {
           entity_type?: string
           event_type?: string
           id?: string
+          is_archived?: boolean
           last_error_code?: string | null
           provider?: string
           provider_message_id?: string | null
@@ -1265,22 +1286,46 @@ export type Database = {
         }
         Relationships: []
       }
+      instructors: {
+        Row: { id: string; name: string; active: boolean; sort_order: number; created_at: string; updated_at: string }
+        Insert: { id?: string; name: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Update: { id?: string; name?: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      lesson_topics: {
+        Row: { id: string; label: string; active: boolean; sort_order: number; created_at: string; updated_at: string }
+        Insert: { id?: string; label: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Update: { id?: string; label?: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      student_grade_options: {
+        Row: { id: string; label: string; active: boolean; sort_order: number; created_at: string; updated_at: string }
+        Insert: { id?: string; label: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Update: { id?: string; label?: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      student_exam_options: {
+        Row: { id: string; label: string; active: boolean; sort_order: number; created_at: string; updated_at: string }
+        Insert: { id?: string; label: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Update: { id?: string; label?: string; active?: boolean; sort_order?: number; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
       student_profiles: {
-        Row: { id: string; full_name: string; email: string; phone: string | null; date_of_birth: string | null; preferred_language: string; school: string | null; target_country: string | null; target_countries: string[]; target_university: string | null; target_exam: string | null; target_exams: string[]; onboarding_completed: boolean; active: boolean; created_at: string; updated_at: string }
-        Insert: { id: string; full_name: string; email: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_countries?: string[]; target_university?: string | null; target_exam?: string | null; target_exams?: string[]; onboarding_completed?: boolean; active?: boolean; created_at?: string; updated_at?: string }
-        Update: { id?: string; full_name?: string; email?: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; target_country?: string | null; target_countries?: string[]; target_university?: string | null; target_exam?: string | null; target_exams?: string[]; onboarding_completed?: boolean; active?: boolean; created_at?: string; updated_at?: string }
+        Row: { id: string; full_name: string; email: string; phone: string | null; date_of_birth: string | null; preferred_language: string; school: string | null; grade_level: string | null; education_program: string | null; exams_taken: string[]; target_country: string | null; target_countries: string[]; target_university: string | null; target_exam: string | null; target_exams: string[]; contact_guardian_name: string | null; onboarding_completed: boolean; active: boolean; archived_at: string | null; created_at: string; updated_at: string }
+        Insert: { id: string; full_name: string; email: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; grade_level?: string | null; education_program?: string | null; exams_taken?: string[]; target_country?: string | null; target_countries?: string[]; target_university?: string | null; target_exam?: string | null; target_exams?: string[]; contact_guardian_name?: string | null; onboarding_completed?: boolean; active?: boolean; archived_at?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; full_name?: string; email?: string; phone?: string | null; date_of_birth?: string | null; preferred_language?: string; school?: string | null; grade_level?: string | null; education_program?: string | null; exams_taken?: string[]; target_country?: string | null; target_countries?: string[]; target_university?: string | null; target_exam?: string | null; target_exams?: string[]; contact_guardian_name?: string | null; onboarding_completed?: boolean; active?: boolean; archived_at?: string | null; created_at?: string; updated_at?: string }
         Relationships: []
       }
       student_admin_notes: {
-        Row: { id: string; student_user_id: string; note: string; created_by: string; created_at: string; updated_at: string }
-        Insert: { id?: string; student_user_id: string; note: string; created_by: string; created_at?: string; updated_at?: string }
-        Update: { id?: string; student_user_id?: string; note?: string; created_by?: string; created_at?: string; updated_at?: string }
+        Row: { id: string; student_user_id: string; note: string; created_by: string; is_archived: boolean; archived_at: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; student_user_id: string; note: string; created_by: string; is_archived?: boolean; archived_at?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; student_user_id?: string; note?: string; created_by?: string; is_archived?: boolean; archived_at?: string | null; created_at?: string; updated_at?: string }
         Relationships: []
       }
       student_lessons: {
-        Row: { id: string; student_user_id: string; booking_id: string | null; package_purchase_id: string | null; title: string; subject: string; exam_code: string | null; lesson_date: string; duration_minutes: number; status: string; teacher_note: string | null; live_meeting_url: string | null; meeting_link_sent_at: string | null; completed_at: string | null; completion_key: string | null; completion_source: string | null; completion_previous_remaining: number | null; created_at: string; updated_at: string }
-        Insert: { id?: string; student_user_id: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; completion_key?: string | null; completion_source?: string | null; completion_previous_remaining?: number | null; created_at?: string; updated_at?: string }
-        Update: { id?: string; student_user_id?: string; booking_id?: string | null; package_purchase_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; completion_key?: string | null; completion_source?: string | null; completion_previous_remaining?: number | null; created_at?: string; updated_at?: string }
+        Row: { id: string; student_user_id: string; booking_id: string | null; package_purchase_id: string | null; topic_id: string | null; instructor_id: string | null; title: string; subject: string; exam_code: string | null; lesson_date: string; lesson_timezone: string; lesson_timezone_label: string; duration_minutes: number; status: string; teacher_note: string | null; completion_report: string | null; report_updated_at: string | null; report_author_id: string | null; report_email_sent_at: string | null; report_version: number; live_meeting_url: string | null; meeting_link_sent_at: string | null; completed_at: string | null; completion_key: string | null; completion_source: string | null; completion_previous_remaining: number | null; is_archived: boolean; archived_at: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; student_user_id: string; booking_id?: string | null; package_purchase_id?: string | null; topic_id?: string | null; instructor_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; lesson_timezone?: string; lesson_timezone_label?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; completion_report?: string | null; report_updated_at?: string | null; report_author_id?: string | null; report_email_sent_at?: string | null; report_version?: number; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; completion_key?: string | null; completion_source?: string | null; completion_previous_remaining?: number | null; is_archived?: boolean; archived_at?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; student_user_id?: string; booking_id?: string | null; package_purchase_id?: string | null; topic_id?: string | null; instructor_id?: string | null; title?: string; subject?: string; exam_code?: string | null; lesson_date?: string; lesson_timezone?: string; lesson_timezone_label?: string; duration_minutes?: number; status?: string; teacher_note?: string | null; completion_report?: string | null; report_updated_at?: string | null; report_author_id?: string | null; report_email_sent_at?: string | null; report_version?: number; live_meeting_url?: string | null; meeting_link_sent_at?: string | null; completed_at?: string | null; completion_key?: string | null; completion_source?: string | null; completion_previous_remaining?: number | null; is_archived?: boolean; archived_at?: string | null; created_at?: string; updated_at?: string }
         Relationships: []
       }
       student_homework: {
@@ -1305,6 +1350,7 @@ export type Database = {
           valid_from: string | null
           valid_until: string | null
           active: boolean
+          archived_at: string | null
           first_purchase_only: boolean
           created_at: string
           updated_at: string
@@ -1325,6 +1371,7 @@ export type Database = {
           valid_from?: string | null
           valid_until?: string | null
           active?: boolean
+          archived_at?: string | null
           first_purchase_only?: boolean
           created_at?: string
           updated_at?: string
@@ -1345,6 +1392,7 @@ export type Database = {
           valid_from?: string | null
           valid_until?: string | null
           active?: boolean
+          archived_at?: string | null
           first_purchase_only?: boolean
           created_at?: string
           updated_at?: string
@@ -1569,7 +1617,9 @@ export type Database = {
       }
       student_package_purchases: {
         Row: {
+          archived_at: string | null
           id: string
+          is_archived: boolean
           student_user_id: string | null
           package_id: string
           payment_transaction_id: string | null
@@ -1587,7 +1637,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           id?: string
+          is_archived?: boolean
           student_user_id?: string | null
           package_id: string
           payment_transaction_id?: string | null
@@ -1605,7 +1657,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           id?: string
+          is_archived?: boolean
           student_user_id?: string | null
           package_id?: string
           payment_transaction_id?: string | null
@@ -1627,6 +1681,7 @@ export type Database = {
       pricing_packages: {
         Row: {
           active: boolean
+          archived_at: string | null
           billing_basis: string
           created_at: string
           currency: string
@@ -1644,6 +1699,7 @@ export type Database = {
           name_tr: string | null
           old_total: number | null
           price_amount: number | null
+          price_eur: number | null
           purchase_mode: string
           unit_price: number | null
           updated_at: string
@@ -1651,6 +1707,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          archived_at?: string | null
           billing_basis: string
           created_at?: string
           currency?: string
@@ -1668,6 +1725,7 @@ export type Database = {
           name_tr?: string | null
           old_total?: number | null
           price_amount?: number | null
+          price_eur?: number | null
           purchase_mode?: string
           unit_price?: number | null
           updated_at?: string
@@ -1675,6 +1733,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          archived_at?: string | null
           billing_basis?: string
           created_at?: string
           currency?: string
@@ -1692,6 +1751,7 @@ export type Database = {
           name_tr?: string | null
           old_total?: number | null
           price_amount?: number | null
+          price_eur?: number | null
           purchase_mode?: string
           unit_price?: number | null
           updated_at?: string
@@ -1787,6 +1847,7 @@ export type Database = {
           published_at: string | null
           slug: string
           status: string
+          tags: string[]
           title: string
           updated_at: string
         }
@@ -1802,6 +1863,7 @@ export type Database = {
           published_at?: string | null
           slug: string
           status?: string
+          tags?: string[]
           title: string
           updated_at?: string
         }
@@ -1817,6 +1879,7 @@ export type Database = {
           published_at?: string | null
           slug?: string
           status?: string
+          tags?: string[]
           title?: string
           updated_at?: string
         }
@@ -1840,10 +1903,18 @@ export type Database = {
         Returns: Json
       }
       admin_record_completed_lesson: {
-        Args: { p_student_id: string; p_lesson_date: string; p_duration_minutes: number; p_title: string; p_subject: string; p_teacher_note?: string | null; p_package_purchase_id?: string | null; p_existing_lesson_id?: string | null; p_completion_source?: string; p_idempotency_key?: string | null }
+        Args: { p_student_id: string; p_lesson_date: string; p_duration_minutes: number; p_title: string; p_subject: string; p_teacher_note?: string | null; p_package_purchase_id?: string | null; p_existing_lesson_id?: string | null; p_completion_source?: string; p_idempotency_key?: string | null; p_lesson_timezone?: string; p_lesson_timezone_label?: string; p_topic_id?: string | null; p_instructor_id?: string | null; p_send_email?: boolean }
         Returns: Json
       }
+      admin_save_lesson_completion_report: { Args: { p_lesson_id: string; p_report: string }; Returns: Json }
+      admin_save_and_send_lesson_report: { Args: { p_lesson_id: string; p_report: string; p_resend?: boolean }; Returns: Json }
+      admin_create_or_link_student_for_guardian: { Args: { p_guardian_user_id: string; p_student_full_name: string; p_relationship_role?: string; p_existing_student_id?: string | null }; Returns: Json }
+      admin_upsert_student_lesson: { Args: { p_student_id: string; p_lesson_id?: string | null; p_package_purchase_id?: string | null; p_title?: string; p_subject?: string; p_exam_code?: string | null; p_lesson_date?: string; p_duration_minutes?: number; p_live_meeting_url?: string | null; p_teacher_note?: string | null; p_status?: string; p_lesson_timezone?: string; p_lesson_timezone_label?: string; p_topic_id?: string | null; p_instructor_id?: string | null }; Returns: Json }
+      admin_update_completed_lesson: { Args: { p_lesson_id: string; p_topic_id: string | null; p_subject: string; p_lesson_date: string; p_lesson_timezone: string; p_lesson_timezone_label: string; p_duration_minutes: number; p_instructor_id?: string | null; p_package_purchase_id?: string | null }; Returns: Json }
+      admin_manage_lesson_reference: { Args: { p_kind: string; p_action: string; p_id?: string | null; p_label?: string | null; p_sort_order?: number | null }; Returns: Json }
       admin_get_payment_refund_context: { Args: { p_transaction_id: string }; Returns: Json }
+      admin_delete_discount_coupon: { Args: { p_coupon_id: string }; Returns: string }
+      admin_delete_pricing_package: { Args: { p_package_id: string }; Returns: string }
       admin_create_payment_refund_intent: { Args: { p_transaction_id: string; p_refund_amount: number; p_lesson_rights_to_revoke: number; p_reason: string; p_idempotency_key: string }; Returns: Json }
       admin_complete_student_lesson: {
         Args: { p_lesson_id: string; p_package_purchase_id?: string | null; p_teacher_note?: string | null }
@@ -1877,9 +1948,26 @@ export type Database = {
         Returns: Json
       }
       admin_update_student_profile: {
-        Args: { p_student_id: string; p_full_name: string; p_phone?: string | null; p_school: string; p_target_exam: string; p_target_university: string; p_target_country: string; p_preferred_language: string; p_active: boolean }
+        Args: { p_student_id: string; p_full_name: string; p_phone?: string | null; p_school?: string | null; p_education_program?: string | null; p_exams_taken?: string[]; p_target_countries?: string[]; p_target_university?: string | null; p_preferred_language?: string; p_active?: boolean }
         Returns: Json
       }
+      admin_update_student_form_profile: {
+        Args: { p_student_id: string; p_changes: Json }
+        Returns: Json
+      }
+      admin_create_student_for_guardian_with_grade: {
+        Args: { p_guardian_user_id: string; p_student_full_name: string; p_relationship_role?: string; p_grade_level?: string | null }
+        Returns: Json
+      }
+      admin_manage_student_grade_option: {
+        Args: { p_action: string; p_id?: string | null; p_label?: string | null; p_sort_order?: number | null }
+        Returns: Json
+      }
+      admin_manage_student_exam_option: {
+        Args: { p_action: string; p_id?: string | null; p_label?: string | null; p_sort_order?: number | null }
+        Returns: Json
+      }
+      write_audit_event: { Args: { p_action: string; p_category?: string; p_severity?: string; p_entity_type?: string | null; p_entity_id?: string | null; p_correlation_id?: string | null; p_metadata?: Json; p_actor_user_id?: string | null }; Returns: number }
       admin_create_student_booking: {
         Args: { p_student_id: string; p_full_name: string; p_email: string; p_phone: string; p_exam: string; p_subject: string; p_starts_at: string; p_ends_at: string; p_privacy_consent: boolean; p_notes?: string; p_status?: string }
         Returns: Json

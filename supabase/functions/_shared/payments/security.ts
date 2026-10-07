@@ -40,3 +40,24 @@ export function createStatusCredential(customReference?: string) {
   const reference = customReference || generatePaytrMerchantOid();
   return { token, reference };
 }
+
+export const STATUS_TOKEN_REGEX = /^[a-f0-9]{64}$/;
+
+/**
+ * Validates public payment references against canonical supported formats:
+ * 1. Current PayTR merchant_oid format: "ORI" prefix + alphanumeric, max 64 chars.
+ *    Example: "ORI202609051733579A789DD7E625" (29 chars)
+ * 2. Legacy internal format: "OA-" + alphanumeric uppercase + 6 hex chars.
+ *    Example: "OA-SINGLE-A1B2C3"
+ *
+ * Strict protection against injection, whitespace, and malformed strings.
+ */
+export function isValidPaymentReference(ref: unknown): boolean {
+  if (typeof ref !== "string") return false;
+  const trimmed = ref.trim().toUpperCase();
+  if (!trimmed || trimmed.length > 64) return false;
+  if (/^ORI[A-Z0-9]{10,61}$/.test(trimmed)) return true;
+  if (/^OA-[A-Z0-9]+-[A-F0-9]{6}$/.test(trimmed)) return true;
+  return false;
+}
+

@@ -126,7 +126,7 @@ function calculateAuthoritativeTotal(params) {
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const admin = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+const admin = createClient(SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false },
 });
 
@@ -164,7 +164,7 @@ async function callCreateToken(accessToken, payload = {}) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
-      apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+      apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "",
     },
     body: JSON.stringify({
       packageIds: [PACKAGE_ID],
@@ -276,7 +276,7 @@ async function setup() {
     is_primary: true,
   });
 
-  const anon = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+  const anon = createClient(SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false },
   });
   const { data: session, error: signInError } = await anon.auth.signInWithPassword({

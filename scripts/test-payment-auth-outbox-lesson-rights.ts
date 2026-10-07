@@ -91,8 +91,8 @@ assert.doesNotMatch(migration, /search_autocomplete|university_search|search_uni
 
 const learningUi = readFileSync(resolve(root, "src/components/admin/StudentLearningManager.tsx"), "utf8");
 assert.match(learningUi, /Ders Hakkı Ekle/);
-assert.match(learningUi, /Ders Hakkı Azalt/);
-assert.match(learningUi, /Geçmiş Ders Ekle|lessonCopy\.pastAction/);
+assert.match(learningUi, /Ders Hakkı Azalt|Paket Hakkı Düzeltmesi/);
+assert.match(learningUi, /Ders Kaydı Ekle/); // referans: geçmiş ders eylemi "Ders Kaydı Ekle"
 assert.match(learningUi, /Ders Yapıldı/);
 assert.doesNotMatch(learningUi, /window\.confirm/);
 

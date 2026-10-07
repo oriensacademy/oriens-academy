@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { getPaymentCopy } from "@/content/payment";
-import { confirmPaymentAgreements, createPaytrToken } from "@/lib/payments/client";
+import { confirmPaymentAgreements, createPaytrToken, recordPaymentClientEvent } from "@/lib/payments/client";
 import { localizedPath, paymentSuccessPath, unifiedLoginPath } from "@/lib/routes";
 import { paymentErrorMessage, paymentErrorRequiresLogin } from "@/lib/payments/public-errors";
 import { LEGAL_VERSIONS } from "@/config/legal";
@@ -18,6 +18,8 @@ interface ErrorState {
 
 interface PreparedPayment {
   token: string;
+  reference?: string;
+  statusToken?: string;
 }
 
 interface HostedCardPanelProps {
@@ -60,17 +62,6 @@ export function HostedCardPanel({
   const [prepared, setPrepared] = useState<PreparedPayment | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
   const inFlightRef = useRef(false);
-
-  // Invalidate any prepared payment session if package selection or coupon changes
-  const prevPricingKeyRef = useRef<string>("");
-  useEffect(() => {
-    const currentKey = `${packageIds.slice().sort().join(",")}:${couponCode || ""}`;
-    if (prevPricingKeyRef.current && prevPricingKeyRef.current !== currentKey) {
-      setPrepared(null);
-      setError(null);
-    }
-    prevPricingKeyRef.current = currentKey;
-  }, [packageIds, couponCode]);
 
   const handleProceedToPayment = useCallback(async () => {
     // Belt-and-suspenders re-entrancy guard on top of the disabled button --
@@ -146,7 +137,11 @@ export function HostedCardPanel({
         return;
       }
 
-      setPrepared({ token: result.iframe_token || "" });
+      setPrepared({
+        token: result.iframe_token || "",
+        reference: result.reference || result.merchant_oid || "",
+        statusToken: result.statusToken || "",
+      });
     } catch {
       setError({ message: paymentErrorMessage("NETWORK_ERROR", locale), requiresLogin: false });
     } finally {
@@ -156,6 +151,12 @@ export function HostedCardPanel({
   }, [contextReady, couponCode, guardianUserId, isTr, learnerId, locale, packageIds, paymentPhone, router]);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Safe server-side audit logging when iframe mounts
+  useEffect(() => {
+    if (!prepared?.token || !prepared?.reference || !prepared?.statusToken) return;
+    void recordPaymentClientEvent(prepared.reference, prepared.statusToken, "paytr_iframe_opened");
+  }, [prepared?.token, prepared?.reference, prepared?.statusToken]);
 
   /**
    * PayTR'nin resmi iframeResizer betiği, ödeme formunun gerçek yüksekliğini

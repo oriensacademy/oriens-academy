@@ -1,8 +1,47 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef } from "react";
 import { Quote } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/**
+ * Şerit yalnızca ekrandayken canlı.
+ *
+ * Ölçüm (Pixel 5, CPU 6x kısıtlı): iki şerit de 6765x320 px, yani her biri
+ * 2.16 megapiksellik KALICI bir GPU katmanı (`will-change: transform` bunu
+ * zorunlu kılıyor). Sayfanın 10.000. pikselinde duruyorlar, kullanıcı en
+ * üstteyken bile animasyon dönüyor ve toplam ~4.3 MP doku her karede yeniden
+ * kompozite ediliyordu. Ana iş parçacığında JS neredeyse hiç çalışmamasına
+ * rağmen profilin %67'si "(program)" (stil/boyama/kompozit) olarak
+ * görünmesinin sebebi buydu; mobilde boşta 35 fps ölçtük.
+ */
+function useMarqueeVisibility<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    // Görünürlük React state'i değil, doğrudan DOM özniteliği: bu bir görsel
+    // açma/kapama anahtarı, componentin yeniden render edilmesi için bir sebep
+    // değil. StudyDestinationGlobe da aynı deseni kullanıyor.
+    if (typeof IntersectionObserver === "undefined") {
+      element.dataset.inView = "true";
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        element.dataset.inView = entry.isIntersecting ? "true" : "false";
+      },
+      // Ekrana girmeden biraz önce başlat ki kullanıcı donmuş bir şerit görmesin.
+      { rootMargin: "300px 0px" }
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return ref;
+}
 
 export interface MarqueeTestimonial {
   id: string;
@@ -40,11 +79,17 @@ function Row({ items, reverse = false }: { items: MarqueeTestimonial[]; reverse?
 }
 
 export function Marquee01({ testimonials, className }: { testimonials: MarqueeTestimonial[]; className?: string }) {
+  const ref = useMarqueeVisibility<HTMLDivElement>();
   if (!testimonials.length) return null;
   const first = testimonials.filter((_, index) => index % 2 === 0);
   const second = testimonials.filter((_, index) => index % 2 === 1);
   const secondRow = second.length ? second : first;
-  return <div data-testid="testimonial-marquee" className={cn("oriens-marquee space-y-3", className)}>
+  return <div
+    ref={ref}
+    data-testid="testimonial-marquee"
+    data-in-view="false"
+    className={cn("oriens-marquee space-y-3", className)}
+  >
     <Row items={first} />
     <Row items={secondRow} reverse />
   </div>;

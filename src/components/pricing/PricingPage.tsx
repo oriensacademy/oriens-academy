@@ -13,13 +13,15 @@ import { localizedPath } from "@/lib/routes";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
+import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 
 function indexOf(position: number) {
   return String(position + 1).padStart(2, "0");
 }
 
 export function PricingPage() {
+  const CONTACT = useSiteContact();
   const locale = useLocale();
   const content = usePricingContent();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
@@ -65,19 +67,25 @@ export function PricingPage() {
   const tiers: PricingTier[] = activePackages.map((item) => {
     const itemContent = getItemContent(item.id);
     const defaultBadge = item.id === "package10"
-      ? (locale === "tr" ? "En Çok Tercih Edilen" : "Most Popular")
+      ? (locale === "tr" ? "En Popüler" : "Most Popular")
       : item.id === "package30"
-      ? (locale === "tr" ? "En Avantajlı Paket" : "Best Value")
+      ? (locale === "tr" ? "En Avantajlı" : "Best Value")
       : null;
     const dynamicBadge = (locale === "tr" ? item.badge_tr : item.badge_en) || defaultBadge;
+    const displayPrice = getLocalizedPackageDisplayPrice({
+      locale,
+      tryAmount: item.current_total ?? item.price_amount,
+      eurAmount: item.price_eur,
+    });
 
     return {
       id: item.id,
       name: (locale === "tr" ? item.name_tr : item.name_en) || itemContent.title || item.id,
       icon: iconFor(item.id),
-      price: item.current_total ?? item.price_amount ?? 0,
-      oldPrice: item.old_total,
-      unitPrice: item.unit_price,
+      price: displayPrice.amount ?? 0,
+      currency: displayPrice.currency,
+      oldPrice: locale === "tr" ? item.old_total : null,
+      unitPrice: locale === "tr" ? item.unit_price : (displayPrice.amount && item.lesson_count ? displayPrice.amount / item.lesson_count : null),
       discount: item.discount_percentage,
       description: itemContent.description || (locale === "tr" ? item.description_tr : item.description_en) || "",
       features: itemContent.features || [],

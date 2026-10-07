@@ -5,16 +5,34 @@ import {
   sendTransactionalEmail,
 } from "../_shared/email/service.ts";
 import { normalizeLocale } from "../_shared/email/templates.ts";
+import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function resolvePackageName(purchase: {
+  custom_package_name?: string | null;
+  package_id?: string | null;
+  lesson_count?: number | null;
+  pricing_packages?: { name_tr?: string | null; name_en?: string | null } | null;
+}, isEn: boolean): string {
+  const localized = isEn ? purchase.pricing_packages?.name_en : purchase.pricing_packages?.name_tr;
+  const candidate = String(purchase.custom_package_name || localized || purchase.package_id || "").trim();
+  const generic = ["custom", "özel paket", "custom package"].includes(candidate.toLocaleLowerCase("tr-TR"));
+  if (/^\d+$/.test(candidate)) return isEn ? `${candidate} Lessons` : `${candidate} Ders`;
+  if (candidate && !generic) return candidate;
+  const count = Math.max(0, Number(purchase.lesson_count || 0));
+  return count > 0
+    ? (isEn ? `${count} Lessons` : `${count} Ders`)
+    : (isEn ? "Education Package" : "Eğitim Paketi");
+}
 
 Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
   if (invalid) return invalid;
 
   const url = Deno.env.get("SUPABASE_URL") || "";
-  const anon = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const anon = getSupabasePublishableKey();
+  const service = getSupabaseAdminKey();
   const authorization = req.headers.get("authorization") || "";
 
   if (!url || !anon || !service || !authorization) {
@@ -50,16 +68,12 @@ Deno.serve(async (req: Request) => {
     // 1. Fetch lesson & student profile
     const { data: lesson, error: lessonError } = await admin
       .from("student_lessons")
-      .select("id, title, subject, exam_code, lesson_date, duration_minutes, live_meeting_url, teacher_note, student_user_id, meeting_link_sent_at")
+      .select("id, title, subject, exam_code, lesson_date, lesson_timezone, lesson_timezone_label, duration_minutes, live_meeting_url, teacher_note, student_user_id, meeting_link_sent_at")
       .eq("id", lessonId)
       .single();
 
     if (lessonError || !lesson) {
       return buildJsonResponse({ error_code: "LESSON_NOT_FOUND" }, 404, req);
-    }
-
-    if (!lesson.live_meeting_url) {
-      return buildJsonResponse({ error_code: "NO_MEETING_URL" }, 400, req);
     }
 
     const { data: profile } = await admin
@@ -83,14 +97,21 @@ Deno.serve(async (req: Request) => {
       subject: lesson.subject,
       examCode: lesson.exam_code,
       lessonDate: lesson.lesson_date,
+      lessonTimezone: lesson.lesson_timezone,
+      lessonTimezoneLabel: lesson.lesson_timezone_label,
       durationMinutes: lesson.duration_minutes,
-      liveMeetingUrl: lesson.live_meeting_url,
+      liveMeetingUrl: lesson.live_meeting_url || null,
       teacherNote: lesson.teacher_note,
       isUpdate,
       locale,
     });
 
-    // Mark link sent timestamp
+    if (delivery.status === "failed") {
+      return buildJsonResponse({ success: false, error_code: delivery.errorCode || "EMAIL_DELIVERY_FAILED", delivery }, 502, req);
+    }
+
+    // Only a confirmed delivery (or an idempotently suppressed duplicate of it)
+    // may set the durable sent marker.
     await admin
       .from("student_lessons")
       .update({ meeting_link_sent_at: new Date().toISOString() })
@@ -101,14 +122,15 @@ Deno.serve(async (req: Request) => {
 
   if (action === "complete_lesson") {
     const packagePurchaseId = body.packagePurchaseId ? String(body.packagePurchaseId) : null;
-    const teacherNote = body.teacherNote ? String(body.teacherNote) : null;
 
-    // Kanonik, idempotent tamamlama. MAIL-027 burada GÖNDERİLMEZ; ayrı bir admin
-    // aksiyonudur. MAIL-040 (kalan ders hakkı) bu RPC içinde otomatik kuyruğa alınır.
+    // Kanonik, idempotent tamamlama yalnızca ders/paket/ledger/audit verisini
+    // değiştirir. Raporlu MAIL-027 daha sonra ayrı bir admin aksiyonuyla gönderilir.
     const { data: rpcResult, error: rpcError } = await caller.rpc("admin_complete_student_lesson", {
       p_lesson_id: lessonId,
       p_package_purchase_id: packagePurchaseId,
-      p_teacher_note: teacherNote,
+      // Completion does not author lesson copy; historical teacher_note values
+      // remain untouched and the completion report is managed separately.
+      p_teacher_note: null,
     });
 
     if (rpcError || !rpcResult?.success) {
@@ -152,7 +174,7 @@ Deno.serve(async (req: Request) => {
 
     const locale = normalizeLocale(profile.preferred_language);
     const isEn = locale === "en";
-    const packageName = purchase.custom_package_name || (isEn ? purchase.pricing_packages?.name_en : purchase.pricing_packages?.name_tr) || purchase.package_id || "Birebir Eğitim Paketi";
+    const packageName = resolvePackageName(purchase, isEn);
     const portalUrl = isEn ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim";
 
     const subject = isEn ? "Your Package Has Been Assigned | Oriens Academy" : "Paketiniz Tanımlandı | Oriens Academy";
@@ -238,7 +260,7 @@ ${isEn ? "View your package:" : "Paketinizi görüntüleyin:"} ${portalUrl}
 
     const locale = normalizeLocale(profile.preferred_language);
     const isEn = locale === "en";
-    const packageName = purchase.custom_package_name || (isEn ? purchase.pricing_packages?.name_en : purchase.pricing_packages?.name_tr) || purchase.package_id || "Birebir Eğitim Paketi";
+    const packageName = resolvePackageName(purchase, isEn);
     const portalUrl = isEn ? "https://oriens-academy.com/en/account" : "https://oriens-academy.com/tr/hesabim";
     const remaining = Math.max(0, purchase.lesson_count - purchase.lessons_used);
 

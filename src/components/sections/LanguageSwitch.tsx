@@ -8,6 +8,7 @@ import { locales } from "@/content/dictionaries";
 import { cn } from "@/lib/utils";
 import { pathForLocale } from "@/lib/routes";
 import { useLanguageTransition } from "@/components/brand/LanguageTransitionProvider";
+import { persistLocalePreference } from "@/lib/locale/preference";
 
 export function LanguageSwitch({ className }: { className?: string }) {
   const locale = useLocale();
@@ -40,6 +41,7 @@ export function LanguageSwitch({ className }: { className?: string }) {
                 return;
               }
               if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              persistLocalePreference(target);
               beginLanguageTransition(href);
             }}
             className={cn(

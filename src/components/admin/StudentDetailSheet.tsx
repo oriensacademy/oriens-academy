@@ -1,7 +1,9 @@
-import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { formatTrPhoneDisplay } from "@/lib/format/phone";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
+import Link from "next/link";
 import {
-  CalendarPlus,
   Mail,
   Info as InfoIcon,
   X,
@@ -15,25 +17,66 @@ import {
   ShieldCheck,
   AlertCircle,
   Edit3,
-  Lock,
   History,
   MinusCircle,
   Clock,
-  CheckCircle2,
+  Plus,
+  Users,
+  Settings,
+  School,
+  GraduationCap,
+  BadgeCheck,
+  ChevronDown,
+  Phone,
+  ArrowLeft,
 } from "lucide-react";
-import { StudentLearningManager } from "@/components/admin/StudentLearningManager";
+import type { NormalizedSessionItem } from "@/components/admin/StudentLearningManager";
+import { ADMIN_UI_FEATURES } from "@/config/admin-ui";
+import { StudentGradeManagerModal } from "@/components/admin/StudentGradeManagerModal";
+import { StudentExamManagerModal } from "@/components/admin/StudentExamManagerModal";
 import { useToast } from "@/components/ui/toast";
 import { completeStudentAppointment, recordCompletedLesson, upsertStudentLesson, adjustStudentPackageLessons } from "@/lib/admin/student-learning";
 import { updateAdminBookingStatus, updateAdminBookingEvent, sendAdminBookingNotification, type BookingWithSlot } from "@/lib/admin/bookings";
 import {
   sendStudentPasswordReset,
   adminUpdateStudentProfile,
+  adminUpdateGuardianName,
+  adminCreateStudentForGuardian,
+  listGuardianLinkedStudents,
+  listStudentGradeOptions,
+  listStudentExamOptions,
+  restoreAdminMember,
+  type StudentGradeOption,
+  type StudentExamOption,
+  type GuardianLinkedStudent,
   type StudentProfile,
 } from "@/lib/admin/students";
 import { useAccount } from "@/lib/auth/account-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { formatExamBadges, formatDestinationBadges } from "@/lib/student/preferences";
 import { lockBodyScroll } from "@/lib/dom/body-scroll-lock";
+import { invalidateStudentData } from "@/lib/data/query-store";
+import {
+  DEFAULT_LESSON_TIMEZONE_LABEL,
+  LESSON_TIMEZONES,
+  lessonTimezoneForLabel,
+  localLessonDateTimeToUtc,
+  type LessonTimezoneLabel,
+} from "@/lib/lessons/timezones";
+import { ControlledLessonDate, ControlledLessonTime } from "@/components/admin/ControlledLessonDateTime";
+import styles from "./student-detail.module.css";
+import pages from "./admin-pages.module.css";
+import { CloseIcon, GearIcon } from "@/components/admin/StudentRefDialogs";
+
+const StudentLearningManager = dynamic(
+  () => import("@/components/admin/StudentLearningManager").then((module) => module.StudentLearningManager),
+  {
+    loading: () => (
+      <div className="flex min-h-48 items-center justify-center rounded-2xl border border-border/80 bg-white text-xs text-muted-foreground shadow-2xs">
+        Sekme içeriği hazırlanıyor…
+      </div>
+    ),
+  }
+);
 
 type Tab = "overview" | "education" | "packages" | "notes";
 const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -49,12 +92,14 @@ export function StudentDetailSheet({
   onClose,
   onCreateBooking,
   onChanged,
+  pageMode = false,
 }: {
   student: StudentProfile | null;
   initialTab?: Tab;
   onClose: () => void;
   onCreateBooking: () => void;
   onChanged?: () => void;
+  pageMode?: boolean;
 }) {
   const { user: currentAdminUser } = useAccount();
   const adminEmail = currentAdminUser?.email || "admin@oriens-academy.com";
@@ -68,6 +113,7 @@ export function StudentDetailSheet({
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [recordLessonModalOpen, setRecordLessonModalOpen] = useState(false);
+  const [learningAction, setLearningAction] = useState<{ type: "add_lesson" | "add_package" | "add_note"; nonce: number } | null>(null);
   const [decreaseRightsModalOpen, setDecreaseRightsModalOpen] = useState(false);
   const [rescheduleBooking, setRescheduleBooking] = useState<BookingWithSlot | null>(null);
   const [isResetting, startResetTransition] = useTransition();
@@ -111,6 +157,11 @@ export function StudentDetailSheet({
     setVisitedTabs((prev) => (prev.has(next) ? prev : new Set(prev).add(next)));
   }
 
+  function requestLearningAction(type: "add_lesson" | "add_package" | "add_note", next: Tab) {
+    handleTabChange(next);
+    setLearningAction({ type, nonce: Date.now() });
+  }
+
   const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
 
   useEffect(() => {
@@ -119,19 +170,21 @@ export function StudentDetailSheet({
       if (event.key === "Escape") {
         if (decreaseRightsModalOpen) setDecreaseRightsModalOpen(false);
         else if (recordLessonModalOpen) setRecordLessonModalOpen(false);
-        else if (editModalOpen) setEditModalOpen(false);
+        // Bilgileri Düzenle yerel <dialog>: Esc'yi kendi "cancel" olayı yönetir
+        // (iç içe Sınıf/Sınav Yönetimi açıksa yalnız o kapanır).
+        else if (editModalOpen) return;
         else if (resetModalOpen) setResetModalOpen(false);
         else if (rescheduleBooking) setRescheduleBooking(null);
-        else onClose();
+        else if (!pageMode) onClose();
       }
     };
     document.addEventListener("keydown", onKeyDown);
-    const unlockBodyScroll = lockBodyScroll();
+    const unlockBodyScroll = pageMode ? () => undefined : lockBodyScroll();
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       unlockBodyScroll();
     };
-  }, [studentProp, onClose, resetModalOpen, editModalOpen, decreaseRightsModalOpen, recordLessonModalOpen, rescheduleBooking]);
+  }, [studentProp, pageMode, onClose, resetModalOpen, editModalOpen, decreaseRightsModalOpen, recordLessonModalOpen, rescheduleBooking]);
 
   if (!studentProp || !localStudent || !mounted || typeof document === "undefined") return null;
   // Everything below reads the optimistically-patched local copy.
@@ -150,60 +203,46 @@ export function StudentDetailSheet({
     });
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="student-detail-title">
+  const content = (
+    <div className={`${pageMode ? styles.page : "fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6"} ${styles.scope}`} role={pageMode ? undefined : "dialog"} aria-modal={pageMode ? undefined : "true"} aria-labelledby="student-detail-title">
       {/* Fixed backdrop - clicking backdrop does NOT accidentally close the modal */}
-      <div className="fixed inset-0 bg-ink/55 backdrop-blur-xs transition-opacity cursor-default" />
+      {!pageMode && <div className="fixed inset-0 cursor-default bg-[#17201b]/40 animate-[student-modal-overlay-in_160ms_ease-out_both] motion-reduce:animate-none" />}
 
-      <div className="relative z-10 flex h-[min(900px,92vh)] w-[min(1280px,94vw)] flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-        <header className="shrink-0 border-b border-border bg-surface px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-forest/10 font-heading text-lg font-bold text-primary">
-                {student.fullName?.slice(0, 2).toUpperCase() || "ÖG"}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 id="student-detail-title" className="font-heading text-xl font-bold text-ink">{student.fullName}</h2>
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                      student.active
-                        ? "border border-emerald-300 bg-emerald-50 text-emerald-800"
-                        : "border border-red-300 bg-red-50 text-red-800"
-                    }`}
-                  >
-                    {student.active ? "Aktif Öğrenci" : "Pasif"}
-                  </span>
+      <div className={`${styles.panel} ${pageMode ? styles.pagePanel : "animate-[student-modal-panel-in_190ms_cubic-bezier(0.2,0.8,0.2,1)_both] motion-reduce:animate-none motion-reduce:transform-none"}`}>
+        <div className={styles.scroll}>
+        <div className={styles.wrap}>
+        {pageMode && (
+          <Link href="/admin/ogrenciler" className={styles.backLink} aria-label="Öğrencilere Dön">
+            <ArrowLeft size={17} />
+            Öğrencilere Dön
+          </Link>
+        )}
+        {student.archived && student.userId ? <ArchiveBanner student={student} onRestored={() => { invalidateStudentData(); onChanged?.(); }} /> : null}
+        <header className={`${styles.card} ${styles.hero}`}>
+          <div className={styles.heroBody}>
+            {!pageMode && <button onClick={onClose} className={styles.close} aria-label="Kapat"><X size={18} /></button>}
+            <div className={styles.who}>
+              <div className={styles.whoText}>
+                <div className={styles.nameRow}>
+                  <h1 id="student-detail-title" className={styles.name}>{student.fullName}</h1>
+                  <span className={`${styles.status}${student.archived ? ` ${styles.arc}` : ""}`}>{student.archived ? "Arşivde" : student.active ? "Aktif Öğrenci" : "Pasif"}</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {student.email}
-                </p>
               </div>
             </div>
-
-            <button
-              onClick={onClose}
-              className="rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:bg-surface-muted hover:text-ink cursor-pointer"
-              aria-label="Kapat"
-            >
-              <X className="size-5" />
-            </button>
+            <div className={styles.actions}>
+              <button type="button" onClick={() => { setErrorMessage(""); setEditModalOpen(true); }} className={`${styles.button} ${styles.primary}${student.archived ? ` ${styles.isLocked}` : ""}`} aria-disabled={student.archived || undefined} tabIndex={student.archived ? -1 : undefined} title={student.archived ? "Arşivdeki öğrencide işlem yapılamaz" : undefined}><Edit3 size={17} />Bilgileri Düzenle</button>
+            </div>
           </div>
-
-          <nav aria-label="Öğrenci detay bölümleri" className="mt-4 flex gap-1.5 overflow-x-auto pb-1">
+          <nav role="tablist" aria-label="Öğrenci sekmeleri" className={styles.tabs}>
             {tabs.map((item) => {
-              const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   onClick={() => handleTabChange(item.id)}
-                  className={`inline-flex items-center gap-1.5 shrink-0 rounded-xl border px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                    tab === item.id
-                      ? "border-primary bg-primary text-white shadow-xs"
-                      : "border-border bg-white text-muted-foreground hover:bg-surface-muted hover:text-ink"
-                  }`}
+                  role="tab"
+                  aria-selected={tab === item.id}
+                  className={`${styles.tab} ${tab === item.id ? styles.activeTab : ""}`}
                 >
-                  <Icon className="size-3.5" />
                   <span>{item.label}</span>
                 </button>
               );
@@ -211,9 +250,10 @@ export function StudentDetailSheet({
           </nav>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-background">
+        {/* Arşivdeki öğrencinin kayıtları salt okunur (referans: is-locked). */}
+        <div className={`${styles.body}${student.archived ? ` ${styles.archivedBody}` : ""}`} inert={student.archived || undefined}>
           {errorMessage && (
-            <div role="alert" className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-800 font-medium animate-in fade-in">
+            <div role="alert" className={styles.error}>
               <AlertCircle className="size-4 shrink-0 text-red-700" />
               <span>{errorMessage}</span>
             </div>
@@ -227,70 +267,47 @@ export function StudentDetailSheet({
             <div className={tab === "overview" ? "" : "hidden"}>
               <Overview
                 student={student}
-                onCreateBooking={onCreateBooking}
-                onOpenRecordPastLesson={() => {
-                  setErrorMessage("");
-                  setRecordLessonModalOpen(true);
-                }}
-                onOpenDecreaseRights={() => {
-                  setErrorMessage("");
-                  setDecreaseRightsModalOpen(true);
-                }}
-                onOpenPasswordReset={() => {
-                  setErrorMessage("");
-                  setResetModalOpen(true);
-                }}
-                onOpenEditIdentity={() => {
-                  setErrorMessage("");
-                  setEditModalOpen(true);
-                }}
+                onAddLesson={() => requestLearningAction("add_lesson", "education")}
+                onAddPackage={() => requestLearningAction("add_package", "packages")}
               />
             </div>
           )}
 
           {visitedTabs.has("education") && (
             <div className={tab === "education" ? "" : "hidden"}>
-              <Appointments
-                student={student}
-                onCreateBooking={onCreateBooking}
-                onOpenRecordPastLesson={() => {
-                  setErrorMessage("");
-                  setRecordLessonModalOpen(true);
-                }}
-                onOpenDecreaseRights={() => {
-                  setErrorMessage("");
-                  setDecreaseRightsModalOpen(true);
-                }}
-                onPatchBooking={patchBooking}
-                onOpenReschedule={(booking) => setRescheduleBooking(booking)}
-                onDone={(text) => {
-                  toast.success(text);
-                  onChanged?.();
-                }}
-              />
-
-              {/* Canlı ders kayıtları: MAIL-026 (bağlantı) ve MAIL-027 (ders
-                  bilgilendirme) manuel gönderim aksiyonları burada yaşar. Bu
-                  panel daha önce hiçbir yerde render edilmiyordu, dolayısıyla
-                  ilgili manuel e-posta butonlarına UI'dan erişilemiyordu. */}
               {student.userId && (
-                <div className="mt-6">
-                  <StudentLearningManager
-                    userId={student.userId}
-                    studentName={student.fullName}
-                    section="lessons"
-                    onChanged={onChanged}
-                    onPlan={onCreateBooking}
-                  />
-                </div>
+                <StudentLearningManager
+                  userId={student.userId}
+                  studentName={student.fullName}
+                  section="lessons"
+                  onChanged={onChanged}
+                  onPlan={onCreateBooking}
+                  referenceMode={pageMode}
+                  actionRequest={learningAction}
+                  notifyEmail={student.email}
+                  onAddPackage={() => requestLearningAction("add_package", "packages")}
+                  renderSessionView={pageMode ? undefined : (lessonSessions) => (
+                    <Appointments
+                      student={student}
+                      lessonSessions={lessonSessions}
+                      onPatchBooking={patchBooking}
+                      onOpenReschedule={(booking) => setRescheduleBooking(booking)}
+                      onDone={(text) => {
+                        invalidateStudentData();
+                        toast.success(text);
+                        onChanged?.();
+                      }}
+                    />
+                  )}
+                />
               )}
             </div>
           )}
 
           {visitedTabs.has("packages") && student.userId && (
             <div className={tab === "packages" ? "space-y-6" : "hidden"}>
-              <StudentLearningManager userId={student.userId} section="packages" onChanged={onChanged} />
-              <StudentLearningManager userId={student.userId} section="payments" onChanged={onChanged} />
+              <StudentLearningManager userId={student.userId} section="packages" onChanged={onChanged} referenceMode={pageMode} actionRequest={learningAction} notifyEmail={student.email} />
+              <StudentLearningManager userId={student.userId} section="payments" onChanged={onChanged} referenceMode={pageMode} />
             </div>
           )}
 
@@ -301,6 +318,8 @@ export function StudentDetailSheet({
                 studentName={student.fullName}
                 section="notes"
                 onChanged={onChanged}
+                referenceMode={pageMode}
+                actionRequest={learningAction}
               />
             </div>
           )}
@@ -308,6 +327,8 @@ export function StudentDetailSheet({
           {(["education", "packages", "notes"] as Tab[]).includes(tab) && !student.userId && (
             <NoAccount />
           )}
+        </div>
+        </div>
         </div>
       </div>
 
@@ -411,203 +432,401 @@ export function StudentDetailSheet({
           }}
         />
       )}
-    </div>,
-    document.body
+    </div>
   );
+  return pageMode ? content : createPortal(content, document.body);
 }
 
 function Overview({
   student,
-  onCreateBooking,
-  onOpenRecordPastLesson,
-  onOpenDecreaseRights,
-  onOpenPasswordReset,
-  onOpenEditIdentity,
+  onAddLesson,
+  onAddPackage,
 }: {
   student: StudentProfile;
-  onCreateBooking: () => void;
-  onOpenRecordPastLesson: () => void;
-  onOpenDecreaseRights: () => void;
-  onOpenPasswordReset: () => void;
-  onOpenEditIdentity: () => void;
+  onAddLesson: () => void;
+  onAddPackage: () => void;
 }) {
-  const val = (input: string | null | undefined) => input?.trim() || "Belirtilmemiş";
-  const examBadges = formatExamBadges(
-    student.targetExams && student.targetExams.length > 0
-      ? student.targetExams
-      : student.targetExam
-      ? [student.targetExam]
-      : []
-  );
-  const countryBadges = formatDestinationBadges(
-    student.targetCountries && student.targetCountries.length > 0
-      ? student.targetCountries
-      : student.targetCountry
-      ? [student.targetCountry]
-      : []
-  );
+  const val = (input: string | null | undefined) => input?.trim() || "—";
+  const packageTotal = student.activePackage?.lessonCount ?? 0;
+  const packageUsed = student.activePackage ? Math.min(packageTotal, Math.max(0, student.activePackage.lessonsUsed)) : 0;
+  const packageRemaining = Math.max(0, packageTotal - packageUsed);
 
   return (
-    <div className="space-y-6">
-      {/* KİŞİSEL BİLGİLER (READ-ONLY WITH SECURE ADMIN EDIT) */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            Kişisel Bilgiler
-          </h3>
-          <button
-            type="button"
-            onClick={onOpenEditIdentity}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-1 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer shadow-2xs transition-colors"
-          >
-            <Edit3 className="size-3 text-primary" />
-            <span>Bilgileri Düzenle</span>
+    <div className={styles.cols}>
+      <div className={`${styles.stack} ${styles.generalLeft}`}>
+        <section className={`${styles.card} ${styles.cardPad}`}>
+          <h2 className={styles.sectionTitle}>Akademik Profil</h2>
+          <div className={styles.academic}>
+            <AcademicCell label="Okul" value={val(student.school)} icon={<School size={20} />} />
+            <AcademicCell label="Sınıf" value={val(student.gradeLevel)} icon={<GraduationCap size={20} />} />
+            <AcademicCell label="Eğitim Programı" value={val(student.educationProgram)} icon={<BookOpen size={20} />} />
+            <ExamInfo exams={student.examsTaken} />
+          </div>
+        </section>
+
+        <section className={`${styles.card} ${styles.cardPad}`}>
+          <h2 className={styles.sectionTitle}>Hesap Bilgileri</h2>
+          {student.guardianUserId ? <AccountGuardian student={student} /> : null}
+          <div className={styles.child}>
+            <span className={styles.childName}>{student.fullName}</span>
+            <span className={`${styles.label} ${styles.personTag}`}>Öğrenci</span>
+          </div>
+        </section>
+
+      </div>
+
+      <aside className={`${styles.stack} ${styles.generalRight}`}>
+        <section className={styles.package}>
+          <div className={styles.packageHead}>
+            <div className={styles.packageHeadText}><span className={styles.label}>Aktif Paket</span><span className={styles.packageTitle}>{student.activePackage?.name || "Aktif paket yok"}</span></div>
+            <Package size={22} color="#B9C6BC" />
+          </div>
+          {student.activePackage ? (
+            <>
+              <div className={styles.big}><b>{packageRemaining}</b><span>/ {packageTotal} ders kaldı</span></div>
+              <div className={styles.segments} role="img" aria-label={`${packageTotal} dersten ${packageUsed} ders tamamlandı`}>{Array.from({ length: packageTotal }, (_, index) => <i key={index} className={index < packageUsed ? styles.done : ""} />)}</div>
+              <small>{packageUsed} ders tamamlandı</small>
+            </>
+          ) : (
+            <>
+              <p className={styles.peText}>Son paket tamamlandı. Yeni ders kaydı eklemek için önce bir paket tanımlayın.</p>
+              <button type="button" onClick={onAddPackage} className={`${styles.button} ${styles.btnGold}`}><Plus size={16} />Yeni Paket Tanımla</button>
+            </>
+          )}
+          {ADMIN_UI_FEATURES.showNextAppointmentSummary && (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/45">Sonraki Randevu</span>
+              <p className="mt-1 text-xs font-semibold text-white/85">{date(student.nextAppointment)}</p>
+            </div>
+          )}
+        </section>
+
+        <section className={`${styles.card} ${styles.sideCard}`}>
+          <h2 className={styles.sectionTitle}>Hızlı İşlemler</h2>
+            <button type="button" onClick={onAddLesson} className={styles.rowButton}><History size={18} />Ders Kaydı Ekle <span className={styles.rowArrow}>›</span></button>
+            <button type="button" onClick={onAddPackage} className={styles.rowButton}><Package size={18} />Yeni Paket Tanımla <span className={styles.rowArrow}>›</span></button>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
+function AccountGuardian({ student }: { student: StudentProfile }) {
+  const [expanded, setExpanded] = useState(false);
+  const guardianName = student.guardianName || "Belirtilmemiş";
+  return (
+    <div className={styles.guardianAccount}>
+      <button type="button" className={styles.guardianToggle} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+        <span className={styles.value}>{guardianName}</span>
+        <span className={styles.guardianRight}><span className={styles.label}>Veli</span><ChevronDown size={18} className={expanded ? styles.chevronOpen : ""} /></span>
+      </button>
+      {expanded && (
+        <div className={styles.guardianDetails}>
+          <span><Users size={16} /><b>{guardianName}</b></span>
+          <span><Phone size={16} /><b>{formatTrPhoneDisplay(student.guardianPhone) || "Belirtilmemiş"}</b></span>
+          <span><Mail size={16} /><b>{student.guardianEmail || "Belirtilmemiş"}</b></span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuardianStudentsSection({
+  guardianUserId,
+  guardianName,
+  guardianEmail,
+  onChanged,
+}: {
+  guardianUserId: string;
+  guardianName: string;
+  guardianEmail: string | null;
+  onChanged?: () => void;
+}) {
+  const toast = useToast();
+  const [students, setStudents] = useState<GuardianLinkedStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState<{ mode: "create"; student: null } | { mode: "edit"; student: GuardianLinkedStudent } | null>(null);
+  const [fullName, setFullName] = useState("");
+  const [relationshipRole, setRelationshipRole] = useState<GuardianLinkedStudent["relationshipRole"]>("parent");
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    const result = await listGuardianLinkedStudents(guardianUserId);
+    setStudents(result.data);
+    setError(result.error || "");
+    setLoading(false);
+  }, [guardianUserId]);
+
+  useEffect(() => {
+    let active = true;
+    void listGuardianLinkedStudents(guardianUserId).then((result) => {
+      if (!active) return;
+      setStudents(result.data);
+      setError(result.error || "");
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [guardianUserId]);
+
+  const openCreate = () => {
+    setFullName("");
+    setRelationshipRole("parent");
+    setGradeLevel("");
+    setError("");
+    setModal({ mode: "create", student: null });
+  };
+  const openEdit = (student: GuardianLinkedStudent) => {
+    setFullName(student.fullName);
+    setRelationshipRole(student.relationshipRole);
+    setGradeLevel(student.gradeLevel || "");
+    setError("");
+    setModal({ mode: "edit", student });
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanName = fullName.trim().replace(/\s+/g, " ");
+    if (cleanName.length < 2 || cleanName.length > 100) {
+      setError("Ad Soyad 2–100 karakter arasında olmalıdır.");
+      return;
+    }
+    setBusy(true);
+    const result = modal?.mode === "edit"
+      ? await adminUpdateStudentProfile(modal.student.id, {
+          fullName: cleanName,
+          gradeLevel: gradeLevel || null,
+        })
+      : await adminCreateStudentForGuardian(guardianUserId, cleanName, relationshipRole, gradeLevel || null);
+    setBusy(false);
+    if (!result.success) {
+      setError(result.error || "İşlem tamamlanamadı.");
+      return;
+    }
+    setModal(null);
+    await load();
+    invalidateStudentData();
+    onChanged?.();
+    toast.success(modal?.mode === "edit" ? "Öğrenci adı güncellendi." : "Öğrenci veli hesabına eklendi.");
+  };
+
+  const roleLabel = (role: GuardianLinkedStudent["relationshipRole"]) => ({
+    self: "Kendisi",
+    parent: "Veli",
+    guardian: "Yasal Vasi",
+    other: "Diğer",
+  }[role]);
+
+  return (
+    <section className={`${styles.card} ${styles.cardPad}`}>
+      <div className={styles.guardianHead}>
+        <div>
+          <h2 className={styles.sectionTitle}>Veli Bilgileri</h2>
+          <span className={styles.sub}>Bu veli hesabına bağlı öğrenciler</span>
+        </div>
+        <button type="button" onClick={openCreate} className={`${styles.button} ${styles.dashed}`}>
+          <Plus className="size-3.5" /> Öğrenci Ekle
+        </button>
+      </div>
+      <div className={styles.person}>
+        <div className={styles.personPic}>{studentInitials(guardianName)}</div>
+        <div><div className={styles.value}>{guardianName}</div>{guardianEmail && <div className={styles.sub}>{guardianEmail}</div>}</div>
+        <span className={`${styles.label} ${styles.personTag}`}>Veli</span>
+      </div>
+      <div>
+        <div className="sr-only">
+          <Users />
+          <h3>Öğrenci Bilgileri</h3>
+        </div>
+        {loading ? (
+          <p className="text-xs text-muted-foreground">Öğrenciler yükleniyor…</p>
+        ) : students.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border bg-white p-3 text-xs text-muted-foreground">Bu veliye bağlı öğrenci bulunmuyor.</p>
+        ) : (
+          <div className={styles.children}>
+            {students.map((linkedStudent) => (
+              <div key={linkedStudent.id} className={styles.child}>
+                  <div className={styles.childPic}>{studentInitials(linkedStudent.fullName)}</div>
+                  <div><div className={styles.childName}>{linkedStudent.fullName}</div><div className="mt-1 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{roleLabel(linkedStudent.relationshipRole)}</span>
+                      {linkedStudent.isPrimary && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Birincil</span>}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${linkedStudent.active ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}>{linkedStudent.active ? "Aktif" : "Pasif"}</span>
+                    </div></div>
+                  <button type="button" onClick={() => openEdit(linkedStudent)} className={styles.childEdit}>Düzenle</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {modal && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="guardian-student-modal-title">
+          <form onSubmit={submit} className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 id="guardian-student-modal-title" className="font-heading text-base font-bold text-ink">{modal.mode === "create" ? "Öğrenci Ekle" : "Öğrenciyi Düzenle"}</h3>
+                <p className="text-xs text-muted-foreground">Veli: {guardianName}</p>
+              </div>
+              <button type="button" onClick={() => setModal(null)} aria-label="Kapat" className="rounded-lg border border-border p-1.5"><X className="size-4" /></button>
+            </div>
+            {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</p>}
+            <label className="block text-xs font-semibold text-ink">Ad Soyad
+              <input required minLength={2} maxLength={100} autoFocus value={fullName} onChange={(event) => setFullName(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-input px-3 text-sm outline-none focus:border-primary" />
+            </label>
+            <StudentGradeField value={gradeLevel} onChange={setGradeLevel} />
+            {modal.mode === "create" && (
+              <label className="block text-xs font-semibold text-ink">İlişki
+                <select value={relationshipRole} onChange={(event) => setRelationshipRole(event.target.value as GuardianLinkedStudent["relationshipRole"])} className="mt-1 min-h-11 w-full rounded-xl border border-input px-3 text-sm outline-none focus:border-primary">
+                  <option value="parent">Veli</option><option value="guardian">Yasal Vasi</option><option value="other">Diğer</option><option value="self">Kendisi</option>
+                </select>
+              </label>
+            )}
+            <div className="flex justify-end gap-2 border-t border-border pt-3">
+              <button type="button" disabled={busy} onClick={() => setModal(null)} className="rounded-xl border border-border px-4 py-2 text-xs font-semibold">İptal</button>
+              <button disabled={busy} className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Kaydediliyor…" : "Kaydet"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StudentGradeField({ value, onChange, reference = false }: { value: string; onChange: (value: string) => void; reference?: boolean }) {
+  const [options, setOptions] = useState<StudentGradeOption[]>([]);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  const loadOptions = useCallback(async () => {
+    const result = await listStudentGradeOptions();
+    setOptions(result.data);
+    setLoadError(result.error || "");
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void listStudentGradeOptions().then((result) => {
+      if (!active) return;
+      setOptions(result.data);
+      setLoadError(result.error || "");
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedIsListed = options.some((option) => option.label === value);
+  const optionList = (
+    <>
+      <option value="">Sınıf seçin</option>
+      {value && !selectedIsListed && <option value={value}>{value} (mevcut)</option>}
+      {options.filter((option) => option.active || option.label === value).map((option) => (
+        <option key={option.id} value={option.label}>{option.label}{option.active ? "" : " (pasif)"}</option>
+      ))}
+    </>
+  );
+  const manager = managerOpen && <StudentGradeManagerModal items={options} onClose={() => setManagerOpen(false)} onChanged={loadOptions} />;
+
+  // Referans #edit-dialog "Sınıf" alanı: .m-row içinde seçim + .m-gear.
+  if (reference) {
+    return (
+      <div className="m-field">
+        <label htmlFor="f-sinif" className="m-lab">Sınıf</label>
+        <div className="m-row">
+          <select id="f-sinif" className="m-input" value={value} onChange={(event) => onChange(event.target.value)}>{optionList}</select>
+          <button type="button" className="m-gear" title="Sınıfları yönet" aria-label="Sınıf seçeneklerini yönet" onClick={() => setManagerOpen(true)}><GearIcon /></button>
+        </div>
+        {loadError && <span role="alert" className="m-hint" style={{ color: "#9A3324" }}>{loadError}</span>}
+        {manager}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <label className="block text-xs font-semibold text-ink">Sınıf
+        <div className="mt-1 flex gap-2">
+          <select value={value} onChange={(event) => onChange(event.target.value)} className="min-h-[46px] min-w-0 flex-1 rounded-xl border border-[#D9D6CC] bg-white px-3.5 text-sm text-[#1C231E] outline-none focus-visible:ring-2 focus-visible:ring-[#C0902F]">
+            {optionList}
+          </select>
+          <button type="button" title="Sınıfları yönet" aria-label="Sınıf seçeneklerini yönet" onClick={() => setManagerOpen(true)} className="flex size-[46px] shrink-0 items-center justify-center rounded-xl border border-[#D9D6CC] bg-white hover:bg-[#F7F6F1]">
+            <Settings className="size-4" />
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Info label="Ad Soyad" value={val(student.fullName)} />
-          <Info label="E-posta" value={val(student.email)} />
-          <div className="rounded-xl border border-border bg-background-soft/50 p-3">
-            <span className="block text-[9px] uppercase text-muted-foreground font-semibold">Öğrenci Durumu</span>
-            <div className="mt-1">
-              <span
-                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                  student.active
-                    ? "border border-emerald-300 bg-emerald-50 text-emerald-800"
-                    : "border border-red-300 bg-red-50 text-red-800"
-                }`}
-              >
-                {student.active ? "Aktif Öğrenci" : "Pasif"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
+        {loadError && <span className="mt-1 block text-[11px] font-normal text-red-700">{loadError}</span>}
+      </label>
+      {manager}
+    </>
+  );
+}
 
-      {/* AKADEMİK PROFİL (READ-ONLY) */}
-      <section className="space-y-3">
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Akademik Profil
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Info label="Okul" value={val(student.school)} />
-          <Info label="Hedef Üniversite" value={val(student.targetUniversity)} />
-          <Info
-            label="Tercih Edilen Dil"
-            value={student.preferredLanguage === "en" ? "İngilizce" : "Türkçe"}
-          />
-        </div>
+// Referans #edit-dialog "Aldığı Sınavlar": seçim + Ekle + .m-gear; eklenen
+// sınavlar .m-chip etiketleri olarak listelenir.
+function StudentExamField({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) {
+  const [options, setOptions] = useState<StudentExamOption[]>([]);
+  const [selection, setSelection] = useState("");
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-border bg-background-soft/50 p-3.5 space-y-1.5">
-            <span className="block text-[9px] uppercase font-semibold text-muted-foreground">Hedef Sınavlar</span>
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {examBadges.length > 0 ? (
-                examBadges.map((b) => (
-                  <span
-                    key={b}
-                    className="inline-flex rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary"
-                  >
-                    {b}
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-muted-foreground">Belirtilmemiş</span>
-              )}
-            </div>
-          </div>
+  const loadOptions = useCallback(async () => {
+    const result = await listStudentExamOptions();
+    setOptions(result.data);
+    setLoadError(result.error || "");
+  }, []);
 
-          <div className="rounded-xl border border-border bg-background-soft/50 p-3.5 space-y-1.5">
-            <span className="block text-[9px] uppercase font-semibold text-muted-foreground">Hedef Ülkeler</span>
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {countryBadges.length > 0 ? (
-                countryBadges.map((b) => (
-                  <span
-                    key={b}
-                    className="inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800"
-                  >
-                    {b}
-                  </span>
-                ))
-              ) : (
-                <span className="text-xs text-muted-foreground">Belirtilmemiş</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+  useEffect(() => {
+    let active = true;
+    void listStudentExamOptions().then((result) => {
+      if (!active) return;
+      setOptions(result.data);
+      setLoadError(result.error || "");
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-      {/* PAKET VE RANDEVU ÖZETİ */}
-      <section className="space-y-3">
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-          Eğitim & Aktivite Özeti
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Info
-            label="Aktif Paket"
-            value={
-              student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0
-                ? student.activePackage.name
-                : "Aktif Paket Bulunmuyor"
-            }
-          />
-          <Info
-            label="Kalan Ders"
-            value={
-              student.activePackage && (student.activePackage.lessonCount - student.activePackage.lessonsUsed) > 0
-                ? `${student.activePackage.lessonCount - student.activePackage.lessonsUsed} ders`
-                : "0 ders"
-            }
-          />
-          <Info label="Sonraki Randevu" value={date(student.nextAppointment)} />
-        </div>
-      </section>
+  const selectedKeys = new Set(value.map((item) => item.trim().toLocaleLowerCase("tr-TR")));
+  const selectable = options.filter((option) => option.active && !selectedKeys.has(option.label.trim().toLocaleLowerCase("tr-TR")));
 
-      {/* QUICK ACTIONS */}
-      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
-        <button
-          type="button"
-          onClick={onOpenRecordPastLesson}
-          className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors shadow-2xs"
-        >
-          <History className="size-4 text-primary" />
-          Geçmiş Ders Gir
-        </button>
-        <button
-          type="button"
-          onClick={onOpenDecreaseRights}
-          disabled={!student.activePackage || (student.activePackage.lessonCount - student.activePackage.lessonsUsed) <= 0}
-          className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3.5 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
-        >
-          <MinusCircle className="size-4 text-rose-700" />
-          Ders Hakkı Azalt
-        </button>
-        <button
-          onClick={onCreateBooking}
-          className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-ink px-3.5 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors"
-        >
-          <CalendarPlus className="size-4" />
-          Ders Planla
-        </button>
-        <a href={`mailto:${student.email}`} className={action}>
-          <Mail className="size-4" />
-          E-posta Gönder
-        </a>
-        <button
-          onClick={onOpenPasswordReset}
-          className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 cursor-pointer transition-colors"
-        >
-          <KeyRound className="size-4 text-amber-700" />
-          Şifre Sıfırlama
-        </button>
+  const addSelection = () => {
+    if (!selection) return;
+    const option = options.find((item) => item.id === selection && item.active);
+    if (!option || selectedKeys.has(option.label.trim().toLocaleLowerCase("tr-TR"))) return;
+    onChange([...value, option.label]);
+    setSelection("");
+  };
+
+  return (
+    <div className="m-field">
+      <label htmlFor="f-sinav" className="m-lab">Aldığı Sınavlar</label>
+      <div className="m-row">
+        <select id="f-sinav" className="m-input" value={selection} onChange={(event) => setSelection(event.target.value)}>
+          <option value="">Sınav seçin</option>
+          {selectable.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+        </select>
+        <button type="button" className="m-add" data-guard-pick disabled={!selection} onClick={addSelection}>Ekle</button>
+        <button type="button" className="m-gear" title="Sınavları yönet" aria-label="Sınav listesini yönet" onClick={() => setManagerOpen(true)}><GearIcon /></button>
       </div>
-
-      <div className="rounded-2xl border border-border bg-surface-muted/40 p-4">
-        <h4 className="text-xs font-bold text-ink">Etkileşim Kayıtları</h4>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {student.contacts.length} iletişim talebi · {student.bookings.length} randevu / ders seansı · {student.deliveries.length} bildirim teslimatı
-        </p>
-      </div>
+      {loadError && <span role="alert" className="m-hint" style={{ color: "#9A3324" }}>{loadError}</span>}
+      {value.length === 0 ? (
+        <span className="m-hint">Henüz sınav eklenmedi. Eklenen sınavlar burada etiket olarak görünür.</span>
+      ) : (
+        <div data-guard-val style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {value.map((exam, index) => (
+            <span key={`${exam}-${index}`} className="m-chip">
+              {exam}
+              <button type="button" className="m-chipx" data-guard-pick aria-label={`${exam} sınavını kaldır`} onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {managerOpen && <StudentExamManagerModal items={options} onClose={() => setManagerOpen(false)} onChanged={loadOptions} />}
     </div>
   );
 }
@@ -617,17 +836,13 @@ type ManualBookingEmail = "confirm" | "update" | "remind" | "cancel";
 
 function Appointments({
   student,
-  onCreateBooking,
-  onOpenRecordPastLesson,
-  onOpenDecreaseRights,
+  lessonSessions,
   onPatchBooking,
   onOpenReschedule,
   onDone,
 }: {
   student: StudentProfile;
-  onCreateBooking: () => void;
-  onOpenRecordPastLesson: () => void;
-  onOpenDecreaseRights: () => void;
+  lessonSessions: NormalizedSessionItem[];
   onPatchBooking: (bookingId: string, patch: Partial<BookingWithSlot> | null) => void;
   onOpenReschedule: (booking: BookingWithSlot) => void;
   onDone: (text: string) => void;
@@ -636,6 +851,7 @@ function Appointments({
   const [error, setError] = useState("");
   const [sendingEmail, setSendingEmail] = useState("");
   const [sentEmails, setSentEmails] = useState<Set<string>>(new Set());
+  const [sendOnMutation, setSendOnMutation] = useState<Record<string, boolean>>({});
 
   const hasActivePackage = Boolean(student.activePackage);
   const remainingLessons = student.activePackage ? Math.max(0, student.activePackage.lessonCount - student.activePackage.lessonsUsed) : 0;
@@ -661,7 +877,7 @@ function Appointments({
           r.alreadyCompleted
             ? "Bu randevu daha önce ders olarak tamamlanmış; paket yeniden düşülmedi."
             : hasActivePackage && remainingLessons > 0
-            ? "Ders tamamlandı, 1 ders paketten düşüldü ve geçmişe işlendi."
+            ? "Ders tamamlandı, 1 ders paketten düşüldü ve geçmişe işlendi. Raporu Dersler & Takvim kartından hazırlayabilirsiniz."
             : "Ders paketsiz olarak tamamlandı ve geçmişe işlendi."
         );
       }
@@ -680,7 +896,7 @@ function Appointments({
   async function cancelAppointment(id: string) {
     setBusy(id);
     setError("");
-    const r = await updateAdminBookingStatus(id, "cancelled");
+    const r = await updateAdminBookingStatus(id, "cancelled", undefined, Boolean(sendOnMutation[id]));
     if (r.error) {
       setError(r.error);
     } else {
@@ -688,7 +904,7 @@ function Appointments({
       // moves from "Yaklaşan Seanslar" to "Geçmiş Seanslar" on this render,
       // no refresh needed. See "DERS İPTAL UI STATE BUG".
       onPatchBooking(id, { status: "cancelled" });
-      onDone("Randevu iptal edildi.");
+      onDone(`Randevu iptal edildi${r.emailSent ? " ve iptal e-postası gönderildi" : ""}.`);
     }
     setBusy("");
   }
@@ -744,47 +960,57 @@ function Appointments({
     return sentEmails.has(key) ? EMAIL_LABELS[action].again : EMAIL_LABELS[action].idle;
   }
 
-  const upcoming = student.bookings.filter((b) => !["completed", "cancelled", "no_show"].includes(b.status));
-  const past = student.bookings.filter((b) => ["completed", "cancelled", "no_show"].includes(b.status));
+  const linkedBookingIds = new Set(
+    lessonSessions
+      .filter((session) => session.type === "lesson")
+      .map((session) => session.source.booking_id)
+      .filter((bookingId): bookingId is string => Boolean(bookingId))
+  );
+  const standaloneBookings = student.bookings.filter((booking) => !linkedBookingIds.has(booking.id));
+  const upcomingBookings = standaloneBookings
+    .filter((b) => !["completed", "cancelled", "no_show"].includes(b.status))
+    .sort((a, b) => (a.availability_slots?.starts_at || a.created_at).localeCompare(b.availability_slots?.starts_at || b.created_at));
+  const pastBookings = standaloneBookings
+    .filter((b) => ["completed", "cancelled", "no_show"].includes(b.status))
+    .sort((a, b) => (b.availability_slots?.starts_at || b.created_at).localeCompare(a.availability_slots?.starts_at || a.created_at));
+
+  const normalizeBooking = (booking: BookingWithSlot, group: "upcoming" | "past"): NormalizedSessionItem => {
+    const startsAt = booking.availability_slots?.starts_at || booking.created_at;
+    const endsAt = booking.availability_slots?.ends_at;
+    const duration = endsAt ? Math.max(0, Math.round((new Date(endsAt).getTime() - new Date(startsAt).getTime()) / 60_000)) : null;
+    return {
+      type: "booking",
+      group,
+      id: booking.id,
+      title: booking.appointment_subject || booking.exam_code || booking.custom_exam || "Birebir Randevu",
+      subject: booking.exam_code || booking.custom_exam || booking.appointment_subject || "Randevu",
+      date: startsAt,
+      duration,
+      status: booking.status,
+      source: booking,
+      card: null,
+    };
+  };
+  const upcomingSessions = [
+    ...lessonSessions.filter((session) => session.group === "upcoming"),
+    ...upcomingBookings.map((booking) => normalizeBooking(booking, "upcoming")),
+  ].sort((a, b) => a.date.localeCompare(b.date));
+  const pastSessions = [
+    ...lessonSessions.filter((session) => session.group === "past"),
+    ...pastBookings.map((booking) => normalizeBooking(booking, "past")),
+  ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="space-y-5">
       {/* Top Header with Quick Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4">
         <div>
-          <h3 className="font-heading text-lg font-bold text-ink">Ders & Randevu Yönetimi</h3>
+          <h3 className="font-heading text-lg font-bold text-ink">Ders Yönetimi</h3>
           <p className="text-xs text-muted-foreground">
-            Öğrencinin yaklaşan ve geçmiş ders seanslarını yönetin ve hızlı işlem yapın.
+            Yapılan dersleri kronolojik olarak görüntüleyin ve yönetin.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenRecordPastLesson}
-            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer transition-colors shadow-2xs"
-            title="Geçmiş veya gelecek ders tanımla"
-          >
-            <History className="size-4 text-primary" />
-            Manuel Ders Ekle
-          </button>
-          <button
-            type="button"
-            onClick={onOpenDecreaseRights}
-            disabled={!hasActivePackage || remainingLessons <= 0}
-            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-rose-200 bg-rose-50/70 px-3.5 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors"
-          >
-            <MinusCircle className="size-4 text-rose-700" />
-            Ders Hakkı Azalt
-          </button>
-          <button
-            type="button"
-            onClick={onCreateBooking}
-            className="inline-flex min-h-9 items-center gap-2 rounded-xl bg-ink px-4 text-xs font-semibold text-white hover:bg-forest cursor-pointer transition-colors shadow-xs"
-          >
-            <CalendarPlus className="size-4" />
-            Ders Planla
-          </button>
-        </div>
+        <p className="rounded-xl bg-primary/5 px-3 py-2 text-[11px] font-medium text-primary">Ders ve randevu aksiyonları kayıt türüne göre korunur.</p>
       </div>
 
       {error && (
@@ -794,16 +1020,20 @@ function Appointments({
         </div>
       )}
 
-      {/* Yaklaşan Ders & Randevular */}
-      <div className="space-y-3">
+      {/* Reversible: future data stays loaded but is hidden in this workflow. */}
+      {ADMIN_UI_FEATURES.showUpcomingSessions && (
+        <div className="space-y-3">
         <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Yaklaşan Seanslar ({upcoming.length})
+          Yaklaşan Seanslar ({upcomingSessions.length})
         </h4>
-        {upcoming.length > 0 ? (
-          upcoming.map((b) => {
+        {upcomingSessions.length > 0 ? (
+          upcomingSessions.map((session) => {
+            if (session.type === "lesson") {
+              return <div key={`lesson-${session.id}`}>{session.card}</div>;
+            }
+            const b = session.source;
             const hasMeetingLink = Boolean(b.live_meeting_url);
             const isExplicitLesson = b.event_type === "lesson" || (b.appointment_subject && (b.appointment_subject.startsWith("[Ders]") || b.appointment_subject.toLowerCase().includes("ders")));
-            const isConsultation = b.event_type === "discovery" || b.event_type === "consultation" || (b.appointment_subject && (b.appointment_subject.startsWith("[Ön Görüşme]") || b.appointment_subject.startsWith("[Danışmanlık]")));
 
             return (
               <div key={b.id} className="rounded-2xl border border-border bg-surface p-4 text-xs space-y-3 shadow-xs">
@@ -813,22 +1043,18 @@ function Appointments({
                       <strong className="text-sm font-semibold text-ink">
                         {b.appointment_subject || b.exam_code || b.custom_exam || "Birebir Seans"}
                       </strong>
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                        Randevu
+                      </span>
                       <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800">
                         {b.status === "confirmed" ? "Onaylandı" : b.status === "pending" ? "Bekliyor" : b.status}
                       </span>
-                      {isExplicitLesson ? (
-                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                          Ders
-                        </span>
-                      ) : isConsultation ? (
-                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                          Görüşme / Danışmanlık
-                        </span>
-                      ) : null}
                     </div>
+                    <p className="mt-1 text-muted-foreground">{session.subject}</p>
                     <p className="mt-1 text-muted-foreground">
                       {date(b.availability_slots?.starts_at || b.created_at)}
                       {b.availability_slots?.ends_at ? ` — ${new Date(b.availability_slots.ends_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                      {session.duration ? ` · ${session.duration} dk` : ""}
                     </p>
                   </div>
 
@@ -899,6 +1125,16 @@ function Appointments({
                   </div>
                 </div>
 
+                <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-border bg-surface-muted/60 p-2.5 text-[11px] leading-relaxed text-ink">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(sendOnMutation[b.id])}
+                    onChange={(event) => setSendOnMutation((current) => ({ ...current, [b.id]: event.target.checked }))}
+                    className="mt-0.5 size-4 rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span><strong>İptal işleminde e-posta gönder</strong><br />Yalnızca ders iptal edilirse iptal bilgisi gönderilir. Ders tamamlanınca otomatik e-posta gönderilmez.</span>
+                </label>
+
                 {/* Live Meeting URL Box */}
                 {hasMeetingLink && (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/20 bg-forest/5 p-3">
@@ -931,26 +1167,39 @@ function Appointments({
           })
         ) : (
           <div className="rounded-2xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground bg-surface-muted/30">
-            Yaklaşan planlanmış ders veya randevu bulunmuyor.
+            Yaklaşan planlanmış seans bulunmuyor.
           </div>
         )}
-      </div>
+        </div>
+      )}
 
-      {/* Geçmiş Ders & Randevular */}
+      {/* Completed lesson history */}
       <div className="space-y-3 pt-2">
         <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Geçmiş Seanslar ({past.length})
+          Yapılan Dersler ({pastSessions.length})
         </h4>
-        {past.length > 0 ? (
-          past.map((b) => (
+        {pastSessions.length > 0 ? (
+          pastSessions.map((session) => {
+            if (session.type === "lesson") {
+              return <div key={`lesson-${session.id}`}>{session.card}</div>;
+            }
+            const b = session.source;
+            return (
             <div key={b.id} className="rounded-2xl border border-border bg-surface p-3.5 text-xs">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <strong className="text-ink">
-                    {b.appointment_subject || b.exam_code || b.custom_exam || "Birebir Seans"}
-                  </strong>
+                  <div className="flex items-center gap-2">
+                    <strong className="text-ink">
+                      {b.appointment_subject || b.exam_code || b.custom_exam || "Birebir Seans"}
+                    </strong>
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                      Randevu
+                    </span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{session.subject}</p>
                   <p className="mt-0.5 text-muted-foreground">
                     {date(b.availability_slots?.starts_at || b.created_at)}
+                    {session.duration ? ` · ${session.duration} dk` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -979,13 +1228,46 @@ function Appointments({
                 </div>
               </div>
             </div>
-          ))
+            );
+          })
         ) : (
           <div className="rounded-2xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground bg-surface-muted/30">
-            Geçmiş seans kaydı bulunmuyor.
+            Henüz yapılan ders kaydı bulunmuyor.
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const ARC_AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+const ARC_GUNLER = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+
+// Referans #arc-banner: arşivdeki öğrencinin detayı salt okunur; şerit arşiv
+// tarihini, nedeni ve kanonik geri alma (admin_restore_member) düğmesini taşır.
+function ArchiveBanner({ student, onRestored }: { student: StudentProfile; onRestored: () => void }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  let info = "";
+  if (student.archivedAt) {
+    const d = new Date(student.archivedAt);
+    info = `${String(d.getDate()).padStart(2, "0")} ${ARC_AYLAR[d.getMonth()]} ${d.getFullYear()} ${ARC_GUNLER[d.getDay()]} tarihinde arşive taşındı`;
+  }
+  if (student.archiveReason) info += `${info ? " · " : ""}Neden: ${student.archiveReason}${student.archiveNote ? ` (${student.archiveNote})` : ""}`;
+  const restore = async () => {
+    if (busy || !student.userId) return;
+    setBusy(true);
+    const result = await restoreAdminMember(student.userId);
+    setBusy(false);
+    if (!result.success) { toast.error(result.error || "Öğrenci arşivden çıkarılamadı."); return; }
+    toast.success(`${student.fullName} aktif öğrencilere geri alındı`);
+    onRestored();
+  };
+  return (
+    <div className={styles.arcBanner} id="arc-banner" role="status">
+      <span className={styles.abIco}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1" /><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4" /></svg></span>
+      <span className={styles.abText}><b>Bu öğrenci arşivde.</b> <span data-ab-info="">{info}</span><span className={styles.abSub}>Giriş erişimi kapalı, e-posta bildirimleri durduruldu. Kayıtlar salt okunur.</span></span>
+      <button className={styles.button} type="button" data-ab-restore="" disabled={busy} onClick={() => void restore()}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>{busy ? "Geri alınıyor…" : "Arşivden çıkar"}</button>
     </div>
   );
 }
@@ -999,17 +1281,42 @@ function NoAccount() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function DetailCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-background-soft/50 p-3">
-      <span className="block text-[9px] uppercase font-semibold text-muted-foreground">{label}</span>
-      <strong className="mt-1 block break-words text-xs text-ink">{value}</strong>
+    <div className={styles.infoCell}>
+      <span className={styles.label}>{label}</span>
+      <span className={styles.value}>{value}</span>
     </div>
   );
 }
 
-const action =
-  "inline-flex min-h-9 items-center gap-2 rounded-xl border border-border bg-white px-3.5 text-xs font-semibold text-ink hover:bg-surface-muted transition-colors cursor-pointer";
+function AcademicCell({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+  return (
+    <div className={styles.academicCell}>
+      {icon}<span className={styles.label}>{label}</span><span className={styles.value}>{value}</span>
+    </div>
+  );
+}
+
+function ExamInfo({ exams }: { exams: string[] }) {
+  const sortedExams = [...exams].sort((a, b) => a.localeCompare(b, "tr", { sensitivity: "base" }));
+
+  return (
+    <div className={styles.academicCell}>
+      <BadgeCheck size={20} />
+      <span className={styles.label}>Aldığı Sınavlar</span>
+      {sortedExams.length ? (
+        <div className="flex flex-wrap gap-1.5">
+          {sortedExams.map((exam, index) => <span key={`${exam}-${index}`} className="rounded-md bg-[#e4ece5] px-2 py-0.5 text-xs font-semibold text-[#2b4234]">{exam}</span>)}
+        </div>
+  ) : <span className={styles.value}>—</span>}
+    </div>
+  );
+}
+
+function studentInitials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toLocaleUpperCase("tr-TR") || "ÖG";
+}
 
 function date(value: string | null) {
   return value
@@ -1031,12 +1338,22 @@ function EditStudentIdentityModal({
   const [form, setForm] = useState({
     fullName: student.fullName || "",
     school: student.school || "",
-    targetUniversity: student.targetUniversity || "",
+    educationProgram: student.educationProgram || "",
+    examsTaken: student.examsTaken,
+    gradeLevel: student.gradeLevel || "",
+    guardianName: student.guardianName || "",
   });
   const [adminPassword, setAdminPassword] = useState("");
   const [step, setStep] = useState<"edit" | "reauth">("edit");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => { if (dialog?.open) dialog.close(); };
+  }, []);
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1076,13 +1393,26 @@ function EditStudentIdentityModal({
       const res = await adminUpdateStudentProfile(targetId, {
         fullName: form.fullName,
         school: form.school || null,
-        targetUniversity: form.targetUniversity || null,
+        educationProgram: form.educationProgram || null,
+        examsTaken: form.examsTaken,
+        gradeLevel: form.gradeLevel || null,
+        preferredLanguage: student.preferredLanguage,
+        active: student.active,
       });
 
-      setBusy(false);
       if (!res.success) {
+        setBusy(false);
         setError(res.error || "Öğrenci bilgileri güncellenemedi.");
       } else {
+        if (student.guardianUserId && form.guardianName.trim() !== (student.guardianName || "").trim()) {
+          const guardianResult = await adminUpdateGuardianName(student.guardianUserId, form.guardianName);
+          if (!guardianResult.success) {
+            setBusy(false);
+            setError(guardianResult.error || "Veli adı güncellenemedi.");
+            return;
+          }
+        }
+        setBusy(false);
         onSuccess("Öğrenci bilgileri başarıyla güncellendi.");
         onClose();
       }
@@ -1092,152 +1422,79 @@ function EditStudentIdentityModal({
     }
   };
 
+  const close = () => { if (!busy) onClose(); };
+  const back = () => { setStep("edit"); setAdminPassword(""); setError(""); };
+
+  // Referans #edit-dialog (oriens-admin_6.html). İkinci adım (yönetici şifre
+  // doğrulaması) aynı pencerede, referansın .m-info / .m-field yapısıyla açılır.
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
-      <div className="w-full max-w-lg rounded-3xl border border-border bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-forest/10 text-primary">
-              <Edit3 className="size-4" />
-            </div>
-            <div>
-              <h3 className="font-heading text-base font-bold text-ink">Öğrenci Bilgilerini Düzenle</h3>
-              <p className="text-xs text-muted-foreground">{student.fullName} ({student.email})</p>
-            </div>
+    <div className={pages.root} style={{ display: "contents" }}>
+      <dialog
+        ref={dialogRef}
+        className="edit"
+        id="edit-dialog"
+        onCancel={(event) => {
+          event.preventDefault();
+          // Esc iç içe Sınıf/Sınav Yönetimi penceresine aittir; ana pencere açık kalır.
+          if (event.target !== event.currentTarget || event.currentTarget.querySelector("dialog[open]")) return;
+          close();
+        }}
+        onClick={(event) => { if (event.target === event.currentTarget) close(); }}
+      >
+        <form className="m-modal" role="dialog" aria-modal="true" aria-labelledby="edit-title" onSubmit={step === "edit" ? handleNextStep : handleConfirmUpdate}>
+          <div className="m-head">
+            <div className="m-hicon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10271B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}><h2 id="edit-title" className="m-htitle">Bilgileri Düzenle</h2></div>
+            <button type="button" className="m-close" aria-label="Kapat" data-close onClick={close}><CloseIcon /></button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-surface-muted cursor-pointer"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 flex items-start gap-2">
-            <AlertCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
-            <span>{error}</span>
+          <div className="m-body">
+            {error && <p role="alert" className="m-warn" style={{ margin: "12px 0 0" }}>{error}</p>}
+            {step === "edit" ? (
+              <>
+                <section className="m-sec">
+                  <div className="m-sechead"><span className="m-secbadge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c3 2 9 2 12 0v-5" /></svg></span><h3 className="m-sectitle">Öğrenci Bilgileri</h3><span className="m-secline" /></div>
+                  <div className="m-grid">
+                    <div className="m-field"><label htmlFor="f-ad" className="m-lab">Ad Soyad <span className="m-req">*</span></label><input id="f-ad" className="m-input" required type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></div>
+                    <div className="m-field"><label htmlFor="f-okul" className="m-lab">Okul / Kurum</label><input id="f-okul" className="m-input" type="text" value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })} /></div>
+                    <StudentGradeField reference value={form.gradeLevel} onChange={(gradeLevel) => setForm({ ...form, gradeLevel })} />
+                    <div className="m-field"><label htmlFor="f-prog" className="m-lab">Eğitim Programı</label><input id="f-prog" className="m-input" type="text" value={form.educationProgram} onChange={(e) => setForm({ ...form, educationProgram: e.target.value })} /></div>
+                  </div>
+                  <StudentExamField value={form.examsTaken} onChange={(examsTaken) => setForm({ ...form, examsTaken })} />
+                </section>
+                <section className="m-sec">
+                  <div className="m-sechead"><span className="m-secbadge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M22 21v-2a4 4 0 0 0-3-3.9" /></svg></span><h3 className="m-sectitle">Veli Bilgileri</h3><span className="m-secline" /></div>
+                  <div className="m-field"><label htmlFor="f-veli" className="m-lab">Veli Ad Soyad <span className="m-req">*</span></label><input id="f-veli" className="m-input" required type="text" value={form.guardianName} onChange={(event) => setForm({ ...form, guardianName: event.target.value })} /></div>
+                  <div className="m-vcard">Hesap e-postası: <b style={{ color: "#1C231E", fontWeight: 600, overflowWrap: "anywhere" }}>{student.guardianEmail || "Belirtilmemiş"}</b></div>
+                </section>
+                <div className="m-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A57622" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg><span>Kimlik değişiklikleri denetim kaydına yazılır ve yönetici şifre doğrulaması gerektirir.</span></div>
+              </>
+            ) : (
+              <section className="m-sec">
+                <div className="m-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A57622" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                  <span><b>Yönetici Şifre Doğrulaması</b><br />Öğrenci kimlik bilgilerini güncellemek hassas bir işlemdir. Devam etmek için aktif yönetici hesabınızın ({adminEmail}) şifresini girin.</span>
+                </div>
+                <div className="m-field"><label htmlFor="f-admin-pw" className="m-lab">Yönetici Şifreniz <span className="m-req">*</span></label><input id="f-admin-pw" className="m-input" required autoFocus type="password" autoComplete="current-password" placeholder="••••••••" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} /></div>
+              </section>
+            )}
           </div>
-        )}
-
-        {step === "edit" ? (
-          <form onSubmit={handleNextStep} className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="text-xs font-semibold text-ink">
-                Ad Soyad <span className="text-red-500">*</span>
-                <input
-                  required
-                  type="text"
-                  value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </label>
-
-              <label className="text-xs font-semibold text-ink">
-                Okul / Kurum
-                <input
-                  type="text"
-                  placeholder="Örn: Robert Kolej"
-                  value={form.school}
-                  onChange={(e) => setForm({ ...form, school: e.target.value })}
-                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </label>
-
-              <label className="text-xs font-semibold text-ink">
-                Hedef Üniversite
-                <input
-                  type="text"
-                  placeholder="Örn: Oxford University"
-                  value={form.targetUniversity}
-                  onChange={(e) => setForm({ ...form, targetUniversity: e.target.value })}
-                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </label>
-            </div>
-
-            <div className="rounded-xl border border-border bg-surface-muted/60 p-3 text-[11px] text-muted-foreground flex items-center gap-2">
-              <ShieldCheck className="size-4 shrink-0 text-primary" />
-              <span>Kimlik değişiklikleri denetim kaydına yazılır ve yönetici şifre doğrulaması gerektirir.</span>
-            </div>
-
-            <div className="flex flex-col-reverse gap-2 pt-2 border-t border-border sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer sm:w-auto"
-              >
-                İptal
-              </button>
-              <button
-                type="submit"
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest cursor-pointer shadow-xs sm:w-auto"
-              >
-                Devam Et &rarr;
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleConfirmUpdate} className="space-y-4">
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-amber-900 font-semibold text-xs">
-                <Lock className="size-4 text-amber-700" />
-                <span>Yönetici Şifre Doğrulaması (Re-authentication)</span>
-              </div>
-              <p className="text-xs text-amber-800 leading-relaxed">
-                Öğrenci kimlik bilgilerini güncellemek hassas bir işlemdir. Devam etmek için aktif yönetici hesabınızın ({adminEmail}) şifresini girin.
-              </p>
-            </div>
-
-            <label className="block text-xs font-semibold text-ink">
-              Yönetici Şifreniz
-              <input
-                required
-                autoFocus
-                type="password"
-                placeholder="••••••••"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                className="mt-1 min-h-11 w-full rounded-xl border border-input bg-surface px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              />
-            </label>
-
-            <div className="flex flex-col gap-2 pt-2 border-t border-border sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => { setStep("edit"); setAdminPassword(""); setError(""); }}
-                className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer sm:w-auto"
-              >
-                &larr; Geri Dön
-              </button>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={onClose}
-                  className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-ink hover:bg-surface-muted cursor-pointer sm:w-auto"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-5 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer shadow-xs sm:w-auto"
-                >
-                  <ShieldCheck className="size-3.5" />
-                  {busy ? "Doğrulanıyor ve Kaydediliyor..." : "Doğrula ve Güncelle"}
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
-      </div>
+          <div className="m-foot" data-foot>
+            {step === "reauth" && <button type="button" className="m-cancel" disabled={busy} onClick={back} style={{ marginRight: "auto" }}>Geri Dön</button>}
+            <button type="button" className="m-cancel" data-close disabled={busy} onClick={close}>İptal</button>
+            {step === "edit" ? (
+              <button type="submit" className="m-save">Devam Et <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+            ) : (
+              <button type="submit" className="m-save" disabled={busy}>{busy ? "Doğrulanıyor ve Kaydediliyor..." : "Doğrula ve Güncelle"}</button>
+            )}
+          </div>
+        </form>
+      </dialog>
     </div>
   );
 }
+
+// Yerel gün anahtarı (YYYY-MM-DD); toISOString UTC günü verdiği için kullanılmaz.
+const localDayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 function RecordPastLessonModal({
   student,
@@ -1249,8 +1506,9 @@ function RecordPastLessonModal({
   onSuccess: (msg: string) => void;
 }) {
   const [lessonType, setLessonType] = useState<"past" | "future" | null>(null);
-  const [lessonDate, setLessonDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [lessonDate, setLessonDate] = useState(() => localDayKey(new Date()));
   const [lessonTime, setLessonTime] = useState("10:00");
+  const [timezoneLabel, setTimezoneLabel] = useState<LessonTimezoneLabel>(DEFAULT_LESSON_TIMEZONE_LABEL);
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [subject, setSubject] = useState("");
   const [meetingUrl, setMeetingUrl] = useState("");
@@ -1269,7 +1527,14 @@ function RecordPastLessonModal({
       return;
     }
 
-    const targetIso = new Date(`${lessonDate}T${lessonTime || "12:00"}:00`).toISOString();
+    const timezone = lessonTimezoneForLabel(timezoneLabel);
+    let targetIso: string;
+    try {
+      targetIso = localLessonDateTimeToUtc(`${lessonDate}T${lessonTime || "12:00"}`, timezone.timeZone);
+    } catch (conversionError) {
+      setError(conversionError instanceof Error ? conversionError.message : "Ders saati dönüştürülemedi.");
+      return;
+    }
     const targetTimestamp = new Date(targetIso).getTime();
     const nowTimestamp = Date.now();
 
@@ -1295,6 +1560,8 @@ function RecordPastLessonModal({
       const res = await recordCompletedLesson({
         studentId: student.userId || student.id,
         lessonDate: targetIso,
+        lessonTimezone: timezone.timeZone,
+        lessonTimezoneLabel: timezone.label,
         durationMinutes,
         title: subject.trim() || "Tamamlanan Ders",
         subject: subject.trim() || (student.targetExam ? `${student.targetExam} Dersi` : "Birebir Ders"),
@@ -1315,6 +1582,8 @@ function RecordPastLessonModal({
         title: subject.trim() || "Planlanan Ders",
         subject: subject.trim() || (student.targetExam ? `${student.targetExam} Dersi` : "Birebir Ders"),
         lessonDate: targetIso,
+        lessonTimezone: timezone.timeZone,
+        lessonTimezoneLabel: timezone.label,
         durationMinutes,
         liveMeetingUrl: meetingUrl.trim() || null,
         teacherNote: teacherNote.trim() || null,
@@ -1417,7 +1686,7 @@ function RecordPastLessonModal({
                   <span>○ Gelecek Ders</span>
                 </div>
                 <div className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                  Gelecekteki ders takvime planlanır. Ders hakkı bu aşamada düşülmez; ders tamamlandığında düşülecek ve 1 saat sonra kalan hak bildirimi gönderilecektir.
+                  Gelecekteki ders takvime planlanır. Ders hakkı bu aşamada düşülmez; ders tamamlandığında paketten düşülecektir.
                 </div>
               </div>
             </label>
@@ -1432,27 +1701,21 @@ function RecordPastLessonModal({
 
         {lessonType !== null && (
           <form onSubmit={handleSubmit} className="space-y-3.5 animate-in fade-in duration-150">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label className="block text-xs font-semibold text-ink">
                 Ders Tarihi {lessonType === "past" ? "(Geçmiş Tarih)" : "(Gelecek Tarih)"}
-                <input
-                  type="date"
-                  required
-                  value={lessonDate}
-                  onChange={(e) => setLessonDate(e.target.value)}
-                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
-                />
+                <ControlledLessonDate label="Ders tarihi GG.AA.YYYY" value={lessonDate} onChange={setLessonDate} />
               </label>
 
               <label className="block text-xs font-semibold text-ink">
                 Saat
-                <input
-                  type="time"
-                  required
-                  value={lessonTime}
-                  onChange={(e) => setLessonTime(e.target.value)}
-                  className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary"
-                />
+                <ControlledLessonTime label="Ders saati HH:mm" value={lessonTime} onChange={setLessonTime} />
+              </label>
+              <label className="block text-xs font-semibold text-ink">
+                Saat Dilimi
+                <select value={timezoneLabel} onChange={(event) => setTimezoneLabel(event.target.value as LessonTimezoneLabel)} className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus:border-primary cursor-pointer">
+                  {LESSON_TIMEZONES.map((zone) => <option key={zone.label} value={zone.label}>{zone.display}</option>)}
+                </select>
               </label>
             </div>
 
@@ -1610,7 +1873,7 @@ function DecreaseLessonRightsModal({
               <MinusCircle className="size-5" />
             </div>
             <div>
-              <h3 className="font-heading text-base font-bold text-ink">Ders Hakkı Azalt</h3>
+              <h3 className="font-heading text-base font-bold text-ink">Paket Hakkı Düzeltmesi</h3>
               <p className="text-xs text-muted-foreground">{student.fullName}</p>
             </div>
           </div>
@@ -1707,7 +1970,7 @@ function DecreaseLessonRightsModal({
               disabled={busy || currentRemaining <= 0}
               className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-700 px-5 py-2 text-xs font-semibold text-white hover:bg-rose-800 disabled:opacity-50 cursor-pointer shadow-xs transition-colors sm:w-auto"
             >
-              {busy ? "İşleniyor..." : "Ders Hakkını Azalt"}
+              {busy ? "İşleniyor..." : "Paketi Güncelle"}
             </button>
           </div>
         </form>
@@ -1736,7 +1999,7 @@ function RescheduleBookingModal({
     ? Math.max(15, Math.round((new Date(currentEnd).getTime() - new Date(currentStart).getTime()) / 60000))
     : 60;
 
-  const [date, setDate] = useState(() => (currentStart ? new Date(currentStart) : new Date()).toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => localDayKey(currentStart ? new Date(currentStart) : new Date()));
   const [time, setTime] = useState(() => {
     const d = currentStart ? new Date(currentStart) : new Date();
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -1744,10 +2007,6 @@ function RescheduleBookingModal({
   const [durationMinutes, setDurationMinutes] = useState(currentDurationMinutes);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [succeeded, setSucceeded] = useState(false);
-  const [emailSending, setEmailSending] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!date || !time) {
@@ -1776,74 +2035,7 @@ function RescheduleBookingModal({
     onSuccess({
       availability_slots: { id: booking.availability_slots?.id || "", starts_at: newStart.toISOString(), ends_at: newEnd.toISOString(), status: booking.availability_slots?.status || "booked" },
     });
-    // Card updates instantly; keep the modal open one extra step so the admin
-    // can optionally notify the student -- MAIL-023 is explicit/manual only,
-    // never automatic (see "RANDEVU EMAIL'LERİ DE EXPLICIT/MANUEL OLMALI").
-    setSucceeded(true);
-  }
-
-  async function handleSendUpdateEmail() {
-    setEmailSending(true);
-    setError("");
-    const res = await sendAdminBookingNotification(booking.id, "update");
-    setEmailSending(false);
-    if (!res.success) {
-      setError(res.error || "Tarih değişikliği e-postası gönderilemedi.");
-      return;
-    }
-    setEmailSent(true);
-  }
-
-  if (succeeded) {
-    return (
-      <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
-        <div className="w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-              <CheckCircle2 className="size-5" />
-            </div>
-            <div>
-              <h3 className="font-heading text-base font-bold text-ink">Ders Başarıyla Ertelendi</h3>
-              <p className="text-xs text-muted-foreground">Yeni tarih/saat kartta güncellendi.</p>
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Öğrenciye tarih değişikliği bilgilendirmesi göndermek isterseniz aşağıdaki butonu kullanabilirsiniz. Bu e-posta otomatik gönderilmez.
-          </p>
-
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full rounded-xl border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-surface-muted hover:text-ink cursor-pointer sm:w-auto"
-            >
-              Kapat
-            </button>
-            <button
-              type="button"
-              disabled={emailSending}
-              onClick={() => void handleSendUpdateEmail()}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest disabled:opacity-50 cursor-pointer sm:w-auto"
-            >
-              <Mail className="size-3.5" />
-              {emailSending
-                ? "Gönderiliyor..."
-                : emailSent
-                ? "Tarih Değişikliği E-postasını Tekrar Gönder"
-                : "Tarih Değişikliği E-postası Gönder"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    onClose();
   }
 
   return (
@@ -1875,23 +2067,11 @@ function RescheduleBookingModal({
           <div className="grid grid-cols-2 gap-3">
             <label className="text-xs font-semibold text-ink">
               Yeni Tarih
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              />
+              <ControlledLessonDate label="Yeni tarih GG.AA.YYYY" value={date} onChange={setDate} />
             </label>
             <label className="text-xs font-semibold text-ink">
               Yeni Saat
-              <input
-                type="time"
-                required
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="mt-1 min-h-10 w-full rounded-xl border border-input bg-surface px-3 text-xs text-ink outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              />
+              <ControlledLessonTime label="Yeni saat HH:mm" value={time} onChange={setTime} />
             </label>
           </div>
           <label className="block text-xs font-semibold text-ink">

@@ -22,9 +22,10 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
-const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SECRET_KEY, {
   auth: { persistSession: false },
 });
+const isLocal = /^http:\/\/(127\.0\.0\.1|localhost):54321\/?$/.test(process.env.NEXT_PUBLIC_SUPABASE_URL || "");
 
 let passed = 0;
 const failures = [];
@@ -207,11 +208,114 @@ function section5_adminUi() {
   }
 
   check("completeStudentLesson sendEmail parametresi almıyor", !/completeStudentLesson\(input: \{[^}]*sendEmail/s.test(lib));
-  check("recordCompletedLesson sendEmail parametresi almıyor", !/p_send_email/.test(lib.replace(/^ \*.*$/gm, "")));
+  check("recordCompletedLesson legacy maili kapalı, entegre MAIL-027 açık parametreli",
+    /p_send_email:\s*false/.test(lib) && /p_send_report_email/.test(lib));
+  check(
+    "planlanmış ders tamamlanırken aktif paket seçimi zorunlu",
+    manager.includes("Ders Hakkının Düşüleceği Paket") &&
+      manager.includes("packagePurchaseId: completionPackagePurchaseId") &&
+      manager.includes("disabled={busy || !completionPackagePurchaseId}")
+  );
+  check(
+    "geçmiş ders kaydında FIFO yerine aktif paket seçimi zorunlu",
+    manager.includes('if (!pastForm.packagePurchaseId)') &&
+      manager.includes('<option value="">Aktif paket seçin</option>')
+  );
 
   const liveLesson = read("supabase/functions/send-live-lesson-email/index.ts");
   const completeBlock = liveLesson.split('action === "complete_lesson"')[1]?.split('action === "package_assigned"')[0] || "";
   check("complete_lesson artık e-posta göndermiyor", !completeBlock.includes("sendEmail"));
+}
+
+async function section6_toastAndAuditCleanup() {
+  console.log("\n[6] Toast UX, feedback ayrımı ve audit temizlik değişmezleri");
+  const toastSrc = read("src/components/ui/toast.tsx");
+  const manager = read("src/components/admin/StudentLearningManager.tsx");
+  const sheet = read("src/components/admin/StudentDetailSheet.tsx");
+  const lessonsCopy = read("src/content/admin-lessons.ts");
+  const paymentsPage = read("src/app/admin/odemeler/page.tsx");
+  const contactSheet = read("src/components/admin/ContactDetailSheet.tsx");
+  const pricingModal = read("src/components/admin/PricingModal.tsx");
+  const testimonialModal = read("src/components/admin/TestimonialModal.tsx");
+  const slotModal = read("src/components/admin/CreateSlotModal.tsx");
+
+  // Global toast system
+  check("toast sistemi ekranın sağ altında (bottom-4 right-4)", toastSrc.includes("bottom-4 right-4 z-[200]"));
+  check("kanonik global toast nesnesi dışa aktarılıyor", toastSrc.includes("export const toast = {"));
+  check("toast tekilleştirme penceresi tanımlı (1000ms)", toastSrc.includes("DEDUP_WINDOW_MS = 1000"));
+  check("toast auto-dismiss (success 4s, error 7s)", toastSrc.includes("success: 4000") && toastSrc.includes("error: 7000"));
+
+  // Stale copy scan: "Öğrenciye bildirim iletildi" mutation copy absent
+  check("Öğrenciye bildirim iletildi mutation copy yok (manager)", !manager.includes("Öğrenciye bildirim iletildi"));
+  check("Öğrenciye bildirim iletildi mutation copy yok (sheet)", !sheet.includes("Öğrenciye bildirim iletildi"));
+  check("Öğrenciye bildirim iletildi mutation copy yok (copy)", !lessonsCopy.includes("Öğrenciye bildirim iletildi"));
+
+  // Rights decrease and increase dynamic copy
+  check(
+    "StudentLearningManager hak azaltma dinamik mesajı doğru",
+    manager.includes("`Ders hakkı ${adjustmentAmount} adet azaltıldı. Yeni kalan hak: ${remaining}.`")
+  );
+  check(
+    "StudentLearningManager hak artırma dinamik mesajı doğru",
+    manager.includes("`Ders hakkı ${adjustmentAmount} adet artırıldı. Yeni kalan hak: ${remaining}.`")
+  );
+  check(
+    "StudentDetailSheet hak azaltma dinamik mesajı doğru",
+    sheet.includes("`Ders hakkı ${amount} adet azaltıldı. Yeni kalan hak: ${res.newRemaining}.`")
+  );
+
+  // Package assign mutation copy
+  check("Paket tanımlama bildirimi açık admin seçimine bağlı", manager.includes("packageForm.sendNotification") && manager.includes('"package_assigned"'));
+  check("Paket tanımlama içinde otomatik e-posta vaadi yok", !manager.includes("otomatik olarak işleme alınır"));
+
+  // Separate manual email feedback
+  check("Paket bilgilendirme e-postası toast ayrımı var", manager.includes('"Paket bilgilendirme e-postası tekrar gönderildi."'));
+  check("Ders hakkı güncelleme e-postası toast ayrımı var", manager.includes('"Ders hakkı güncelleme e-postası tekrar gönderildi."'));
+
+  // Persistent action success banners eliminated
+  check("StudentDetailSheet inline succeeded ekranı kaldırıldı", !sheet.includes("if (succeeded) {"));
+  check("ContactDetailSheet inline successMsg kaldırıldı", !contactSheet.includes("setSuccessMsg"));
+  check("odemeler/page inline message kaldırıldı", !paymentsPage.includes("setMessage"));
+  check("PricingModal inline successMsg kaldırıldı", !pricingModal.includes("setSuccessMsg"));
+  check("TestimonialModal inline successMsg kaldırıldı", !testimonialModal.includes("setSuccessMsg"));
+  check("CreateSlotModal inline successMsg kaldırıldı", !slotModal.includes("setSuccessMsg"));
+
+  // Database audit cleanup invariants
+  const { data: terminalEvents, error: termErr } = await admin
+    .from("audit_logs")
+    .select("entity_id")
+    .eq("action", "account_deleted");
+
+  check("account_deleted terminal eventleri okunabiliyor", !termErr, termErr?.message);
+  check("teslim temizliği sonrası eski account_deleted logu yok", (terminalEvents || []).length === 0);
+
+  const targetIds = (terminalEvents || []).map((e) => e.entity_id);
+  const { data: allLogs, error: logErr } = await admin.from("audit_logs").select("*");
+  check("audit_logs okunabiliyor", !logErr, logErr?.message);
+
+  const staleLogs = (allLogs || []).filter((log) => {
+    if (log.action === "account_deleted") return false;
+    const isActor = targetIds.includes(log.actor_user_id);
+    const isEntity = targetIds.includes(log.entity_id);
+    const m = log.metadata || {};
+    return (
+      isActor ||
+      isEntity ||
+      targetIds.includes(m.student_id) ||
+      targetIds.includes(m.student_user_id) ||
+      targetIds.includes(m.account_holder_id)
+    );
+  });
+  check("silinen QA hesaplarına ait eski operasyonel audit log sayısı = 0", staleLogs.length === 0, `${staleLogs.length} kalan`);
+
+  // Protected auth users verification
+  const { data: { users }, error: userErr } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  check("auth.users okunabiliyor", !userErr, userErr?.message);
+
+  const emails = (users || []).map((u) => (u.email || "").toLowerCase());
+  check("mertomeroglu7@gmail.com auth.users içinde korunuyor (localde uygulanmaz)", isLocal || emails.includes("mertomeroglu7@gmail.com"));
+  check("oriensacademy@gmail.com auth.users içinde korunuyor (localde uygulanmaz)", isLocal || emails.includes("oriensacademy@gmail.com"));
+  check("admin@oriens-academy.com auth.users içinde korunuyor (localde uygulanmaz)", isLocal || emails.includes("admin@oriens-academy.com"));
 }
 
 (async () => {
@@ -221,6 +325,7 @@ function section5_adminUi() {
   section3_outbox();
   section4_paytr();
   section5_adminUi();
+  await section6_toastAndAuditCleanup();
 
   console.log("\n----------------------------------------");
   console.log(`Geçen: ${passed}  Kalan: ${failures.length}`);

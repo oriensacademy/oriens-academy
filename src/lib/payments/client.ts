@@ -171,9 +171,29 @@ export async function confirmPaymentAgreements(
   }
 }
 
-export async function getPaymentStatus(reference: string, statusToken: string): Promise<VerifiedPaymentStatus | null> {
+export async function getPaymentStatus(
+  reference: string,
+  statusToken: string,
+  clientEvent?: string
+): Promise<VerifiedPaymentStatus | null> {
   try {
-    const { data, error } = await getSupabaseClient().functions.invoke("payment-status", { body: { reference, statusToken } });
+    const body: Record<string, unknown> = { reference, statusToken };
+    if (clientEvent) body.clientEvent = clientEvent;
+    const { data, error } = await getSupabaseClient().functions.invoke("payment-status", { body });
     return !error && data?.success ? (data.payment as VerifiedPaymentStatus) : null;
   } catch { return null; }
+}
+
+export async function recordPaymentClientEvent(
+  reference: string,
+  statusToken: string,
+  clientEvent: "paytr_iframe_opened" | "payment_success_return_reached" | "payment_failure_return_reached"
+): Promise<void> {
+  try {
+    await getSupabaseClient().functions.invoke("payment-status", {
+      body: { reference, statusToken, clientEvent },
+    });
+  } catch {
+    // Non-blocking client observability
+  }
 }

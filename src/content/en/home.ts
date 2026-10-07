@@ -14,7 +14,7 @@ export const trustResults = {
   eyebrow: "Support structured around academic goals",
   items: [
     { title: "International exam preparation", description: "Targeted preparation and 1-on-1 practice for international exams." },
-    { title: "University course support", description: "Support in Calculus, Linear Algebra, Differential Equations, Statistics, and Physics I-II." },
+    { title: "University course support", description: "Course support across a range of subjects, including Calculus, Linear Algebra, Differential Equations, Physics I-II, Statistics, Chemistry and Biology." },
     { title: "Bilingual delivery", description: "Academic content and consultation available in both Turkish and English." },
     { title: "Transparent pricing", description: "Fixed package fees guaranteed until June 2027 and a free intro call." },
   ],
@@ -318,7 +318,7 @@ export const bookingFlow = {
   ],
   supportTypeOptions: [
     { value: "exam_preparation", label: "Exam Preparation", description: "Targeted support for IB, AP, SAT, or specialist admissions tests." },
-    { value: "university_support", label: "University Support", description: "Support in Calculus, Linear Algebra, Physics, and STEM courses." },
+    { value: "university_support", label: "University Support", description: "Support in Calculus, Linear Algebra, Differential Equations, Statistics, Physics I-II, and Biology." },
     { value: "general_consultation", label: "General Consultation", description: "Academic roadmap diagnostic and general strategic planning." },
   ],
   step1: {

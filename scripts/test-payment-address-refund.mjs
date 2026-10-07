@@ -11,7 +11,7 @@ const hosted = read("src/components/payment/HostedCardPanel.tsx");
 const client = read("src/lib/payments/client.ts");
 const token = read("supabase/functions/paytr-create-token/index.ts");
 const refund = read("supabase/functions/paytr-refund/index.ts");
-const migration = read("supabase/migrations/20260901100000_payment_address_refund_system.sql");
+const migration = read("supabase/migrations/20260901100000_payment_address_refund_system.sql") + read("supabase/migrations/20260906240000_refund_entitlement_and_notification_hardening.sql");
 const outbox = read("supabase/functions/process-notification-outbox/index.ts");
 const refundCopy = read("src/content/payment-refund.ts");
 const paymentCopy = read("src/content/payment.ts");
@@ -25,13 +25,13 @@ assert.match(refundCopy, /Partially Refunded|Kısmen İade Edildi/);
 assert.doesNotMatch(hosted, /payerAddress/);
 assert.doesNotMatch(client, /payerAddress: string/);
 assert.doesNotMatch(token, /payload\.payerAddress|contact_address: payerAddress|user_address: payerAddress/);
-assert.match(token, /PAYTR_COMPANY_ADDRESS = "Emaar Square, The Heights E Blok\\nÜnalan Mah\., Libadiye Cd\. No:82\\nÜsküdar \/ İstanbul"/);
-assert.match(token, /user_address: PAYTR_COMPANY_ADDRESS/);
+assert.match(token, /PAYTR_DEFAULT_ADDRESS = "İstanbul \/ Türkiye"/);
+assert.match(token, /user_address: PAYTR_DEFAULT_ADDRESS/);
 assert.match(token, /payer_name: payerName/);
 assert.match(token, /payer_email: verifiedEmail/);
 assert.match(token, /payer_phone: payerPhone/);
 assert.match(token, /package_owner_student_id: learnerId/);
-assert.match(token, /finalAmount = Math\.max\(0, Math\.round\(\(baseAmount - discountAmount\)/);
+assert.match(token, /const finalAmount = pricing\.finalTotal/);
 assert.doesNotMatch(paymentPage + hosted + client + token, /cardNumber|\bPAN\b\s*:|\bCVV\b\s*:/);
 
 // Provider contract and server-only secrets.
@@ -57,12 +57,17 @@ assert.doesNotMatch(migration.split("create or replace function public.finalize_
 assert.match(migration, /adjustment_type,'refund'|-v_refund\.lesson_rights_to_revoke/);
 assert.match(migration, /payment\.refunded:'\|\|v_refund\.id\|\|':account_holder'/);
 assert.match(outbox, /payment_refunded_account_holder/);
-assert.match(outbox, /relationship_role/);
+assert.match(migration, /relationship_role/);
 
 // Pure entitlement/refund regression model (no network, no charge, no refund).
 function finalize(state, amount, revoke) {
   if (amount <= 0 || amount > state.captured - state.refunded) throw new Error("REFUND_AMOUNT_EXCEEDS_AVAILABLE");
   if (revoke <= 0 || revoke > state.total - state.used) throw new Error("REFUND_LESSONS_EXCEED_UNUSED");
+  const refundable = state.captured - state.refunded;
+  const unused = state.total - state.used;
+  if (amount === refundable && revoke !== unused) throw new Error("FULL_REFUND_REQUIRES_ALL_UNUSED_LESSONS");
+  if (revoke === unused && amount !== refundable) throw new Error("ALL_UNUSED_LESSONS_REQUIRE_FULL_REFUND");
+  if (amount < refundable && unused - revoke < 1) throw new Error("PARTIAL_REFUND_MUST_KEEP_ONE_LESSON");
   return {
     ...state,
     refunded: state.refunded + amount,
@@ -78,5 +83,7 @@ assert.equal(full.total - full.used, 0);
 assert.equal(full.refundStatus, "full");
 assert.throws(() => finalize({ captured: 100, refunded: 0, total: 10, used: 3 }, 101, 1), /REFUND_AMOUNT/);
 assert.throws(() => finalize({ captured: 100, refunded: 0, total: 10, used: 3 }, 50, 8), /REFUND_LESSONS/);
+assert.throws(() => finalize({ captured: 100, refunded: 0, total: 10, used: 3 }, 100, 6), /FULL_REFUND_REQUIRES/);
+assert.throws(() => finalize({ captured: 100, refunded: 0, total: 10, used: 3 }, 50, 7), /ALL_UNUSED_LESSONS/);
 
 console.log("payment/address/refund regression: PASS (static request capture + pure state model; no provider call)");

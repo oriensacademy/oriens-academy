@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { mutateQuery, useQuery } from "@/lib/data/query-store";
 import { TestimonialModal } from "@/components/admin/TestimonialModal";
 import type { TestimonialRow } from "@/lib/admin/content";
 import {
@@ -33,11 +34,13 @@ import {
   Calendar,
 } from "lucide-react";
 
-export function TestimonialsManager() {
+const EMPTY_TESTIMONIALS: TestimonialRow[] = [];
+
+export function TestimonialsManager({ initialTestimonialId = null }: { initialTestimonialId?: string | null } = {}) {
   const { requestConfirmation, confirmationDialog } = useConfirmationDialog();
-  const [testimonials, setTestimonials] = useState<TestimonialRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // İşlem hataları listeleme hatasından ayrı tutulur.
+  const [actionError, setActionError] = useState<string | null>(null);
+  const setErrorMsg = setActionError;
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,38 +61,40 @@ export function TestimonialsManager() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const fetchTestimonials = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    const { data, error } = await listAdminTestimonials({
-      locale: localeFilter !== "all" ? localeFilter : undefined,
-    });
-    setLoading(false);
-    if (error) setErrorMsg(error);
-    else setTestimonials(data);
-  }, [localeFilter]);
+  // Sayfaya geri dönüldüğünde eldeki yorumlar anında görünür, tazeleme arkada
+  // olur; mutasyonlar `invalidate` ile açık ekranları anında günceller.
+  const cacheKey = `admin:testimonials:${localeFilter}`;
+  const { data, loading, refetch } = useQuery(
+    cacheKey,
+    () => listAdminTestimonials({ locale: localeFilter !== "all" ? localeFilter : undefined }),
+    { staleTime: 30_000 }
+  );
+  const testimonials = useMemo(() => data?.data ?? EMPTY_TESTIMONIALS, [data]);
+  const errorMsg = actionError ?? data?.error ?? null;
+  const fetchTestimonials = refetch;
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setErrorMsg(null);
-      listAdminTestimonials({
-        locale: localeFilter !== "all" ? localeFilter : undefined,
-      }).then(({ data, error }) => {
-        if (mounted) {
-          setLoading(false);
-          if (error) setErrorMsg(error);
-          else setTestimonials(data);
-        }
-      });
-    }, 0);
+  // Genel aramadan gelen ?id= bağlantısı: kayıt yüklenince düzenleme penceresi bir kez açılır.
+  const [openedFromLink, setOpenedFromLink] = useState<string | null>(null);
+  if (initialTestimonialId && openedFromLink !== initialTestimonialId) {
+    const target = testimonials.find((t) => t.id === initialTestimonialId);
+    if (target) {
+      setOpenedFromLink(initialTestimonialId);
+      setEditingTestimonial(target);
+      setIsModalOpen(true);
+    }
+  }
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [localeFilter]);
+  // İyimser güncelleme: sunucu cevabı beklenmeden önbellekteki liste yerinde
+  // düzeltilir, ekran anında tepki verir. Normal tazeleme döngüsü sonradan
+  // sunucuyla doğrular.
+  const setTestimonials = useCallback(
+    (updater: (prev: TestimonialRow[]) => TestimonialRow[]) => {
+      mutateQuery<{ data: TestimonialRow[]; error: string | null }>(cacheKey, (current) =>
+        current ? { ...current, data: updater(current.data) } : current
+      );
+    },
+    [cacheKey]
+  );
 
   // Fast Toggle Active Status (Hide without delete)
   const handleToggleActive = async (item: TestimonialRow) => {

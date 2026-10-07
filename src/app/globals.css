@@ -1,4 +1,24 @@
 @import "tailwindcss";
+
+.admin-shell {
+  --admin-topbar-height: 72px;
+}
+
+@keyframes student-modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes student-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "katex/dist/katex.min.css";
@@ -491,6 +511,25 @@ html[data-theme="theme-5"] {
 .oriens-marquee-track {
   animation: oriens-marquee-forward 42s linear infinite;
   will-change: transform;
+}
+
+/* Şerit ekran dışındayken tamamen sussun.
+   `animation-play-state: paused` boyamayı durdurur; `will-change: auto` ise
+   kritik olan kısım: onsuz tarayıcı 6765x320 px'lik kompozit katmanı bellekte
+   tutmaya devam eder. İkisi birlikte, görünmeyen içerik için harcanan GPU
+   işini sıfıra indirir. Görünürlük IntersectionObserver ile
+   `data-in-view` özniteliğinden geliyor (bkz. marquee-01.tsx). */
+.oriens-marquee[data-in-view="false"] .oriens-marquee-track {
+  animation-play-state: paused;
+  will-change: auto;
+}
+
+/* Ekran dışındayken 6765 px genişliğindeki alt ağacın düzen/boyama işini de
+   tamamen atla. `auto` biçimi tarayıcının son ölçülen boyutu hatırlamasını
+   sağlar, böylece kaydırma çubuğu zıplamaz. */
+.oriens-marquee [data-marquee-row] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 336px;
 }
 
 .oriens-marquee-track-reverse { animation-name: oriens-marquee-reverse; }

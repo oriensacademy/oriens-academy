@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { SocialLinks as OwnerSocialLinks, type SocialLink } from "@/components/social-links";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
 import { useLocale } from "@/content/locale-context";
 
 // The fixed mobile contact dock (bottom-6 right-6) is a viewport-corner
@@ -15,6 +15,7 @@ import { useLocale } from "@/content/locale-context";
 const MOBILE_DOCK_HIDDEN_SEGMENTS = ["giris", "login", "sepet", "cart", "odeme", "payment", "hesabim", "account"];
 
 export function SocialLinks() {
+  const CONTACT = useSiteContact();
   const pathname = usePathname();
   const locale = useLocale();
   if (pathname?.startsWith("/admin")) return null;

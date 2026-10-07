@@ -424,6 +424,12 @@ export function UnifiedLoginPage() {
           ) : (
             /* Minimal Initial Registration Form */
             <form onSubmit={handleRegister} className="space-y-3.5" noValidate>
+              <div className="flex items-center justify-center rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3 text-xs leading-5 text-ink">
+                <span className="block w-full text-center" style={{ width: "100%", textAlign: "center" }}>
+                  Lütfen üyelik işleminizi veliye ait ad-soyad ve e-posta bilgileri ile gerçekleştiriniz.
+                </span>
+              </div>
+
               <label className="block text-xs font-semibold text-ink" htmlFor="register-name">
                 {isTr ? "Ad Soyad" : "Full Name"}
                 <span className="relative mt-1 block">

@@ -230,15 +230,24 @@ export function TextReveal({
           variants={computedVariants.container}
         >
           {per !== "line" ? <span className="sr-only">{children}</span> : null}
-          {segments.map((segment, index) => (
-            <SegmentItem
-              key={`${per}-${index}-${segment}`}
-              per={per}
-              segment={segment}
-              variants={computedVariants.item}
-              wrapperClassName={segmentWrapperClassName}
-            />
-          ))}
+          {segments.map((segment, index) =>
+            /* Kelime araları normal metin boşluğu olarak kalmalı: inline-block
+               bir span içinde render edildiğinde satır sonunda daralmıyor ve
+               alt satırın başına düşerek soldan girinti yaratıyordu. */
+            per !== "line" && /^\s+$/.test(segment) ? (
+              <span aria-hidden="true" key={`${per}-${index}-space`}>
+                {" "}
+              </span>
+            ) : (
+              <SegmentItem
+                key={`${per}-${index}-${segment}`}
+                per={per}
+                segment={segment}
+                variants={computedVariants.item}
+                wrapperClassName={segmentWrapperClassName}
+              />
+            ),
+          )}
         </MotionTag>
       )}
     </AnimatePresence>

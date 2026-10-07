@@ -202,7 +202,7 @@ async function runLegalComplianceQA() {
       throw new Error('Contact config missing canonical numbers');
     }
 
-    if (!legalSource.includes('info@oriens-academy.com') || !legalSource.includes('payments@oriens-academy.com')) {
+    if (!legalSource.includes('info@oriens-academy.com')) {
       throw new Error('Legal config missing canonical emails');
     }
 

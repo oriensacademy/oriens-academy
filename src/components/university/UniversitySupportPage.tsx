@@ -8,12 +8,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ButtonLink } from "@/components/ui/button";
 import { useLocale, useUniversitySupportContent } from "@/content/locale-context";
 import { localizedPath } from "@/lib/routes";
-import { CONTACT } from "@/config/contact";
+import { useSiteContact } from "@/lib/contact-settings";
 import { OriensLottie } from "@/components/ui/OriensLottie";
 
 const number = (index: number) => String(index + 1).padStart(2, "0");
 
 export function UniversitySupportPage() {
+  const CONTACT = useSiteContact();
   const locale = useLocale();
   const content = useUniversitySupportContent();
   const sortedAreas = [...content.areas.items].sort((a, b) => a.order - b.order);

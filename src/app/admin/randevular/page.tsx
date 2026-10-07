@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
+import { invalidate, queryKeys, useQuery } from "@/lib/data/query-store";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { BookingDetailSheet } from "@/components/admin/BookingDetailSheet";
 import { CreateBookingModal } from "@/components/admin/CreateBookingModal";
 import AdminAvailabilityPage from "../musaitlik/page";
@@ -58,67 +60,43 @@ const STATUS_OPTIONS: Array<{ value: BookingStatus | "all"; label: string }> = [
   { value: "no_show", label: "Gelmedi" },
 ];
 
-function BookingsContent() {
-  const [bookings, setBookings] = useState<BookingWithSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+const EMPTY_BOOKINGS: BookingWithSlot[] = [];
 
+function BookingsContent() {
   // Filters State
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // Arama artık her tuş vuruşunda sorgu atmıyor.
+  const search = useDebouncedValue(searchTerm, 350);
 
   // Selected Booking for Detail View
-  const [selectedBooking, setSelectedBooking] = useState<BookingWithSlot | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
-  const fetchBookings = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    const { data, error } = await listAdminBookings({
-      status: statusFilter,
-      search: searchTerm,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    });
-    setLoading(false);
-    if (error) setErrorMsg(error);
-    else setBookings(data);
-  }, [statusFilter, searchTerm, startDate, endDate]);
+  const params = { status: statusFilter, search, startDate: startDate || undefined, endDate: endDate || undefined };
+  const { data, loading, refetch } = useQuery(
+    `${queryKeys.adminBookings}:${statusFilter}|${search}|${startDate}|${endDate}`,
+    () => listAdminBookings(params),
+    { staleTime: 30_000 }
+  );
 
-  useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setErrorMsg(null);
+  const bookings = useMemo(() => data?.data ?? EMPTY_BOOKINGS, [data]);
+  const errorMsg = data?.error ?? null;
 
-      listAdminBookings({
-        status: statusFilter,
-        search: searchTerm,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      }).then(({ data, error }) => {
-        if (mounted) {
-          setLoading(false);
-          if (error) {
-            setErrorMsg(error);
-          } else {
-            setBookings(data);
-          }
-        }
-      });
-    }, 0);
+  // Seçili randevu ID üzerinden türetiliyor: liste tazelendiğinde açık detay
+  // paneli de otomatik güncel kalır.
+  const selectedBooking = useMemo(
+    () => bookings.find((b) => b.id === selectedBookingId) ?? null,
+    [bookings, selectedBookingId]
+  );
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [statusFilter, searchTerm, startDate, endDate]);
+  const fetchBookings = refetch;
 
   const handleStatusUpdated = () => {
-    fetchBookings();
-    setSelectedBooking(null);
+    invalidate(queryKeys.adminBookings, queryKeys.adminDashboard, queryKeys.adminStudents);
+    setSelectedBookingId(null);
   };
 
   return (
@@ -273,7 +251,7 @@ function BookingsContent() {
                   return (
                     <tr
                       key={booking.id}
-                      onClick={() => setSelectedBooking(booking)}
+                      onClick={() => setSelectedBookingId(booking.id)}
                       className="cursor-pointer transition-colors hover:bg-background-soft/80"
                     >
                       <td className="px-4 py-3.5">
@@ -333,7 +311,7 @@ function BookingsContent() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedBooking(booking);
+                            setSelectedBookingId(booking.id);
                           }}
                           className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted"
                         >
@@ -360,7 +338,7 @@ function BookingsContent() {
               <button
                 key={booking.id}
                 type="button"
-                onClick={() => setSelectedBooking(booking)}
+                onClick={() => setSelectedBookingId(booking.id)}
                 className="rounded-xl border border-border bg-white p-4 text-left shadow-xs"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -380,7 +358,7 @@ function BookingsContent() {
       {/* Booking Detail Sheet */}
       <BookingDetailSheet
         booking={selectedBooking}
-        onClose={() => setSelectedBooking(null)}
+        onClose={() => setSelectedBookingId(null)}
         onStatusUpdated={handleStatusUpdated}
       />
       <CreateBookingModal

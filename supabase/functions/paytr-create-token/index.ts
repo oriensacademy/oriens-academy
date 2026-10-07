@@ -3,6 +3,8 @@ import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { calculatePaytrToken, encodePaytrUserBasket, mapCurrencyToPaytr } from "../_shared/payments/paytr.ts";
 import { createStatusCredential, generatePaytrMerchantOid, sha256 } from "../_shared/payments/security.ts";
 import { calculateAuthoritativeTotal } from "../_shared/payments/pricing.ts";
+import { recordPaymentAuditEvent } from "../_shared/payments/audit.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 const PHONE_RE = /^\+[1-9][0-9]{6,14}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -16,7 +18,7 @@ Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
   if (invalid) return invalid;
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const serviceKey = getSupabaseAdminKey();
   const merchantId = Deno.env.get("PAYTR_MERCHANT_ID") ?? "";
   const merchantKey = Deno.env.get("PAYTR_MERCHANT_KEY") ?? "";
   const merchantSalt = Deno.env.get("PAYTR_MERCHANT_SALT") ?? "";
@@ -287,6 +289,23 @@ Deno.serve(async (req: Request) => {
       // "ödeme sayfası geçersiz" ekranına düşer.
       if (racedTx && isReusableToken(racedTx.metadata as Record<string, unknown>)) {
         const meta = racedTx.metadata as Record<string, unknown>;
+        await recordPaymentAuditEvent(admin, {
+          action: "paytr_token_created",
+          publicReference: racedTx.public_reference,
+          transactionId: racedTx.id,
+          actorUserId: actor.id,
+          severity: "INFO",
+          metadata: {
+            transaction_id: racedTx.id,
+            public_reference: racedTx.public_reference,
+            amount_kurus: Math.round(Number(racedTx.amount) * 100),
+            reused_existing: true,
+            merchant_oid: racedTx.public_reference,
+            test_mode: testMode,
+            token_created: true,
+            created_at: new Date().toISOString(),
+          },
+        });
         return buildJsonResponse(
           {
             success: true,
@@ -305,6 +324,18 @@ Deno.serve(async (req: Request) => {
       }
       if (racedTx) {
         // Bayat oturum arşivlenir; kullanıcı tekrar denediğinde taze token alır.
+        await recordPaymentAuditEvent(admin, {
+          action: "payment_session_superseded",
+          publicReference: racedTx.public_reference,
+          transactionId: racedTx.id,
+          actorUserId: actor.id,
+          severity: "WARNING",
+          metadata: {
+            old_transaction_id: racedTx.id,
+            public_reference: racedTx.public_reference,
+            reason: "paytr_token_single_use",
+          },
+        });
         await admin
           .from("payment_transactions")
           .update({ is_archived: true, metadata: { ...((racedTx.metadata ?? {}) as Record<string, unknown>), superseded_at: new Date().toISOString(), superseded_reason: "paytr_token_single_use" } })
@@ -320,6 +351,25 @@ Deno.serve(async (req: Request) => {
     }
     if (!transaction) return buildJsonResponse({ error_code: "TRANSACTION_CREATE_FAILED", message: "Payment record could not be created." }, 500, req);
 
+    await recordPaymentAuditEvent(admin, {
+      action: "payment_session_requested",
+      publicReference: merchantOid,
+      transactionId: transaction.id,
+      actorUserId: actor.id,
+      severity: "INFO",
+      metadata: {
+        transaction_id: transaction.id,
+        public_reference: merchantOid,
+        package_id: packageIds[0],
+        package_ids: packageIds,
+        amount_kurus: finalTotalKurus,
+        currency,
+        coupon_applied: Boolean(couponId),
+        coupon_code: couponCode || null,
+        locale,
+      },
+    });
+
     if (couponId) {
       const { error: redemptionError } = await admin.from("discount_coupon_redemptions").insert({ coupon_id: couponId, student_user_id: learnerId, payment_transaction_id: transaction.id, discount_amount: discountAmount });
       if (redemptionError) { await admin.from("payment_transactions").update({ status: "failed" }).eq("id", transaction.id); return buildJsonResponse({ error_code: "COUPON_RESERVATION_FAILED", message: locale === "tr" ? "Kupon bu sipariş için ayrılamadı." : "The coupon could not be reserved for this order." }, 409, req); }
@@ -329,13 +379,31 @@ Deno.serve(async (req: Request) => {
         const { error: activationError } = await admin.rpc("finalize_zero_payment_order", { p_payment_id: transaction.id });
         if (activationError) return buildJsonResponse({ error_code: "FREE_ORDER_ACTIVATION_FAILED", message: locale === "tr" ? "Ücretsiz sipariş tamamlanamadı." : "The free order could not be completed." }, 500, req);
       }
+      await recordPaymentAuditEvent(admin, {
+        action: "paytr_token_created",
+        publicReference: merchantOid,
+        transactionId: transaction.id,
+        actorUserId: actor.id,
+        severity: "INFO",
+        metadata: {
+          transaction_id: transaction.id,
+          public_reference: merchantOid,
+          amount_kurus: 0,
+          zero_payment: true,
+          token_created: true,
+          created_at: new Date().toISOString(),
+        },
+      });
       return buildJsonResponse({ success: true, zero_payment: true, prepared: !legalAccepted, legal_accepted: legalAccepted, merchant_oid: merchantOid, reference: merchantOid, statusToken, final_amount: 0, currency }, 200, req);
     }
 
     const userBasket = encodePaytrUserBasket(checkoutItems.map((item) => [item.package_name, item.final_amount.toFixed(2), 1]));
     const publicSiteUrl = (Deno.env.get("PUBLIC_SITE_URL") ?? "https://oriens-academy.com").replace(/\/$/, "");
-    const merchantOkUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/success" : "tr/odeme/basarili"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
-    const merchantFailUrl = `${publicSiteUrl}/${locale === "en" ? "en/payment/failed" : "tr/odeme/basarisiz"}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
+    const successPath = locale === "en" ? "en/payment/success/" : "tr/odeme/basarili/";
+    const failPath = locale === "en" ? "en/payment/failed/" : "tr/odeme/basarisiz/";
+    const merchantOkUrl = `${publicSiteUrl}/${successPath}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
+    const merchantFailUrl = `${publicSiteUrl}/${failPath}?reference=${encodeURIComponent(merchantOid)}&token=${encodeURIComponent(statusToken)}`;
+
     const paymentAmount = finalTotalKurus.toString();
     const paytrToken = await calculatePaytrToken({ merchantId, userIp, merchantOid, email: verifiedEmail, paymentAmount, userBasket, noInstallment: "0", maxInstallment: "12", currency: paytrCurrency, testMode, merchantSalt, merchantKey });
     const formData = new URLSearchParams({ merchant_id: merchantId, user_ip: userIp, merchant_oid: merchantOid, email: verifiedEmail, payment_amount: paymentAmount, paytr_token: paytrToken, user_basket: userBasket, debug_on: debugOn, no_installment: "0", max_installment: "12", user_name: payerName, user_address: PAYTR_DEFAULT_ADDRESS, user_phone: payerPhone, merchant_ok_url: merchantOkUrl, merchant_fail_url: merchantFailUrl, timeout_limit: "30", currency: paytrCurrency, test_mode: testMode, lang: locale === "en" ? "en" : "tr" });
@@ -349,6 +417,20 @@ Deno.serve(async (req: Request) => {
       console.error(
         `[paytr-create-token] PAYTR_SESSION_FAILED httpStatus=${paytrRes.status} merchantOid=${merchantOid} transactionId=${transaction.id} reason=${safeReason ?? "(none)"}`
       );
+      await recordPaymentAuditEvent(admin, {
+        action: "paytr_token_creation_failed",
+        publicReference: merchantOid,
+        transactionId: transaction.id,
+        actorUserId: actor.id,
+        severity: "ERROR",
+        metadata: {
+          transaction_id: transaction.id,
+          public_reference: merchantOid,
+          safe_error_code: "PAYTR_SESSION_FAILED",
+          safe_error_message: safeReason,
+          http_status: paytrRes.status,
+        },
+      });
       await admin.from("payment_transactions").update({
         status: "failed",
         metadata: { ...initialMetadata, failure_reason: safeReason, failure_http_status: paytrRes.status },
@@ -367,6 +449,24 @@ Deno.serve(async (req: Request) => {
         status_token: statusToken,
       },
     }).eq("id", transaction.id);
+
+    await recordPaymentAuditEvent(admin, {
+      action: "paytr_token_created",
+      publicReference: merchantOid,
+      transactionId: transaction.id,
+      actorUserId: actor.id,
+      severity: "INFO",
+      metadata: {
+        transaction_id: transaction.id,
+        public_reference: merchantOid,
+        amount_kurus: finalTotalKurus,
+        reused_existing: false,
+        merchant_oid: merchantOid,
+        test_mode: testMode,
+        token_created: true,
+        created_at: new Date().toISOString(),
+      },
+    });
 
     return buildJsonResponse({ success: true, iframe_token: paytrData.token, merchant_oid: merchantOid, reference: merchantOid, statusToken, final_amount: finalAmount, currency, legal_accepted: legalAccepted }, 200, req);
   } catch (error) {

@@ -1,463 +1,256 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { NotificationDetailSheet } from "@/components/admin/NotificationDetailSheet";
-import type { NotificationDeliveryRow, DeliveryStatus } from "@/lib/admin/notifications";
-import { listAdminNotifications, humanizeNotificationSubject, humanizeEventType } from "@/lib/admin/notifications";
-import { AdminWaveStatus } from "@/components/admin/AdminWaveStatus";
-import { Wave } from "@/components/ui/wave";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useQuery } from "@/lib/data/query-store";
 import {
-  Bell,
-  Search,
-  Filter,
-  RefreshCw,
-  Calendar,
-  Mail,
-  ChevronRight,
-  AlertCircle,
-  Inbox,
-  CheckCircle2,
-  Clock,
-  ChevronLeft,
-} from "lucide-react";
+  EMAIL_HISTORY_KIND_LABEL,
+  emailHistoryBody,
+  listAdminEmailHistory,
+  retryAdminNotification,
+  type EmailHistoryKind,
+  type EmailHistoryRow,
+  type EmailHistoryStatus,
+} from "@/lib/admin/notifications";
+import { foldTurkish, formatTrListDate, formatTrShortListDate } from "@/lib/format/turkish";
+import { toast } from "@/components/ui/toast";
+import pages from "@/components/admin/admin-pages.module.css";
 
-export default function AdminNotificationsPage() {
-  return <NotificationsContent />;
+// Referans "E-posta Geçmişi" (#view-bildirim). Yalnız okuma; "Tekrar gönder"
+// yalnız başarısız teslimatlarda görünür ve mevcut admin_retry_email_notification
+// akışını kullanır.
+
+const EMPTY_ROWS: EmailHistoryRow[] = [];
+const KIND_ORDER: EmailHistoryKind[] = ["rapor", "odeme", "paket", "hosgeldin", "otp"];
+const KIND_COLOR: Record<EmailHistoryKind, string> = { rapor: "g", odeme: "y", paket: "b", hosgeldin: "p", otp: "n", diger: "n" };
+const SENDER = "Oriens Academy <info@oriens-academy.com>";
+
+const STATUS_TAG: Record<EmailHistoryStatus, { label: string; className: string }> = {
+  ok: { label: "Gönderildi", className: "fx-tag ok" },
+  fail: { label: "Başarısız", className: "fx-tag warn" },
+  wait: { label: "Bekliyor", className: "fx-tag star" },
+};
+
+function inPeriod(iso: string, period: string, now: Date) {
+  if (!period) return true;
+  const date = new Date(iso);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  if (period === "bugun") return date >= today;
+  if (period === "ay") return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  const from = new Date(today);
+  from.setDate(from.getDate() - (Number(period) - 1));
+  return date >= from;
 }
 
-function NotificationsContent() {
-  const [deliveries, setDeliveries] = useState<NotificationDeliveryRow[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+function StatusIcon({ status }: { status: EmailHistoryStatus }) {
+  if (status === "ok") {
+    return <span className="bn-ic ok" title="Gönderildi" aria-label="Gönderildi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg></span>;
+  }
+  if (status === "fail") {
+    return <span className="bn-ic fail" title="Başarısız" aria-label="Başarısız"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></span>;
+  }
+  return <span className="bn-ic wait" title="Bekliyor" aria-label="Bekliyor"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2 2" /></svg></span>;
+}
 
-  // Filters & Pagination State
-  const [statusFilter, setStatusFilter] = useState<DeliveryStatus | "all">("all");
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
-  const [channelFilter, setChannelFilter] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+function studentHref(studentId: string) {
+  return `/admin/ogrenciler/detay?student=${encodeURIComponent(studentId)}`;
+}
 
-  // Selected Notification for Detail Sheet
-  const [selectedDelivery, setSelectedDelivery] = useState<NotificationDeliveryRow | null>(null);
-
-  const fetchDeliveries = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    const { data, totalCount: count, error } = await listAdminNotifications({
-      status: statusFilter,
-      eventType: eventTypeFilter !== "all" ? eventTypeFilter : undefined,
-      channel: channelFilter !== "all" ? channelFilter : undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      search: searchTerm,
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
-    });
-    setLoading(false);
-    if (error) {
-      setErrorMsg(error);
-    } else {
-      setDeliveries(data);
-      setTotalCount(count);
-    }
-  }, [statusFilter, eventTypeFilter, channelFilter, dateFrom, dateTo, searchTerm, page, pageSize]);
+function EmailDialog({ row, onClose, onRetried }: { row: EmailHistoryRow; onClose: () => void; onRetried: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-    const timer = setTimeout(() => {
-      setLoading(true);
-      setErrorMsg(null);
-      listAdminNotifications({
-        status: statusFilter,
-        eventType: eventTypeFilter !== "all" ? eventTypeFilter : undefined,
-        channel: channelFilter !== "all" ? channelFilter : undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        search: searchTerm,
-        limit: pageSize,
-        offset: (page - 1) * pageSize,
-      }).then(({ data, totalCount: count, error }) => {
-        if (mounted) {
-          setLoading(false);
-          if (error) {
-            setErrorMsg(error);
-          } else {
-            setDeliveries(data);
-            setTotalCount(count);
-          }
-        }
-      });
-    }, 150);
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => { if (dialog?.open) dialog.close(); };
+  }, []);
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [statusFilter, eventTypeFilter, channelFilter, dateFrom, dateTo, searchTerm, page, pageSize]);
+  async function resend() {
+    setSending(true);
+    const result = await retryAdminNotification(row.id);
+    setSending(false);
+    if (!result.success) {
+      toast.error(`E-posta tekrar gönderilemedi: ${result.error || "bilinmeyen hata"}`);
+      return;
+    }
+    toast.success(`E-posta tekrar gönderilmek üzere sıraya alındı: ${row.recipient}`);
+    onRetried();
+    onClose();
+  }
 
-  const totalPages = Math.ceil(totalCount / pageSize) || 1;
-
+  const when = formatTrListDate(row.at);
+  const tag = STATUS_TAG[row.status];
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <Bell className="size-6 text-[#819586]" />
-            <h1 className="text-xl font-bold tracking-tight text-[#10271B]">
-              Bildirim ve E-Posta Teslimatları
-            </h1>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Sistem tarafından gönderilen tüm e-posta bildirimlerinin canlı teslimat durumlarını ve şablon konularını inceleyin.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={fetchDeliveries}
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-3.5 py-2 text-xs font-semibold text-muted-foreground shadow-xs hover:bg-muted"
-        >
-          {loading ? <Wave className="h-3.5 w-7 text-[#819586]" aria-label="Yenileniyor" /> : <RefreshCw className="size-3.5" />}
-          <span>Yenile</span>
-        </button>
-      </div>
-
-      {/* Filter Bar */}
-      <div className="rounded-xl border border-border bg-white p-4 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <Filter className="size-4 text-[#10271B]" />
-            <span>Filtreleme & Arama</span>
-          </div>
-          {(statusFilter !== "all" || eventTypeFilter !== "all" || channelFilter !== "all" || dateFrom || dateTo || searchTerm) && (
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter("all");
-                setEventTypeFilter("all");
-                setChannelFilter("all");
-                setDateFrom("");
-                setDateTo("");
-                setSearchTerm("");
-                setPage(1);
-              }}
-              className="text-[11px] font-semibold text-primary hover:underline"
-            >
-              Filtreleri Temizle
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Search Input */}
-          <div className="relative lg:col-span-2">
-            <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Alıcı, konu, referans veya mesaj ID…"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPage(1);
-              }}
-              className="w-full rounded-lg border border-input bg-white pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-[#10271B] focus:outline-hidden"
-            />
-          </div>
-
-          {/* Status Dropdown */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value as DeliveryStatus | "all");
-                setPage(1);
-              }}
-              className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
-            >
-              <option value="all">Tüm Durumlar</option>
-              <option value="sent">Gönderildi</option>
-              <option value="failed">Başarısız</option>
-              <option value="pending">Bekliyor</option>
-              <option value="processing">İşleniyor</option>
-            </select>
-          </div>
-
-          {/* Channel Dropdown */}
-          <div>
-            <select
-              value={channelFilter}
-              onChange={(e) => {
-                setChannelFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
-            >
-              <option value="all">Tüm Kanallar</option>
-              <option value="email">E-posta</option>
-              <option value="sms">SMS</option>
-              <option value="push">Push</option>
-            </select>
-          </div>
-
-          {/* Event Type Dropdown */}
-          <div>
-            <select
-              value={eventTypeFilter}
-              onChange={(e) => {
-                setEventTypeFilter(e.target.value);
-                setPage(1);
-              }}
-              className="w-full rounded-lg border border-input bg-white px-3 py-2 text-xs text-foreground focus:border-[#10271B] focus:outline-hidden"
-            >
-              <option value="all">Tüm Olay Türleri</option>
-              <option value="welcome">Hoş Geldiniz</option>
-              <option value="booking">Randevu / Onay</option>
-              <option value="appointment">Ders / Seans</option>
-              <option value="payment">Ödeme & Paket</option>
-              <option value="contact">İletişim Formu</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Date Range Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 border-t border-border/60">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Başlangıç:</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                setPage(1);
-              }}
-              className="w-full rounded-lg border border-input bg-white px-2.5 py-1.5 text-xs text-foreground"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Bitiş:</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                setPage(1);
-              }}
-              className="w-full rounded-lg border border-input bg-white px-2.5 py-1.5 text-xs text-foreground"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Error Alert */}
-      {errorMsg && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-800">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="size-4 text-red-600" />
-            <span>{errorMsg}</span>
-          </div>
-          <button
-            type="button"
-            onClick={fetchDeliveries}
-            className="font-semibold underline hover:text-red-950"
-          >
-            Tekrar Deneyin
-          </button>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-white p-12 text-center">
-          <AdminWaveStatus label="Bildirim teslimatları yükleniyor…" className="text-xs text-muted-foreground" />
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !errorMsg && deliveries.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-input bg-white p-12 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <Inbox className="size-6" />
-          </div>
-          <h3 className="mt-3 text-sm font-bold text-foreground">
-            Bildirim Kaydı Bulunamadı
-          </h3>
-          <p className="mt-1 text-xs text-muted-foreground max-w-sm">
-            Filtreleme kriterlerinize uygun bildirim teslimat kaydı bulunmuyor.
-          </p>
-        </div>
-      )}
-
-      {/* Table (Desktop) */}
-      {!loading && !errorMsg && deliveries.length > 0 && (
-        <div className="rounded-xl border border-border bg-white shadow-xs overflow-hidden space-y-3 p-1">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-border bg-background-soft text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3">Konu & Bildirim Türü</th>
-                  <th className="px-4 py-3">Alıcı</th>
-                  <th className="px-4 py-3">Durum</th>
-                  <th className="px-4 py-3">Tarih</th>
-                  <th className="px-4 py-3 text-right">İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {deliveries.map((del) => {
-                  const subject = humanizeNotificationSubject(del, "tr");
-                  const humanType = humanizeEventType(del.event_type, "tr");
-                  return (
-                    <tr
-                      key={del.id}
-                      onClick={() => setSelectedDelivery(del)}
-                      className="cursor-pointer transition-colors hover:bg-background-soft/80"
-                    >
-                      <td className="px-4 py-3.5 max-w-sm">
-                        <div className="text-xs font-semibold text-[#10271B] truncate">
-                          {subject}
-                        </div>
-                        <div className="text-[11px] text-[#819586] font-medium truncate">
-                          {humanType}
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1.5 font-semibold text-foreground font-mono">
-                          <Mail className="size-3.5 text-muted-foreground shrink-0" />
-                          <span>{del.recipient}</span>
-                        </div>
-                        {del.provider_message_id && (
-                          <div className="text-[10px] font-mono text-muted-foreground truncate max-w-xs">
-                            ID: {del.provider_message_id}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <DeliveryStatusBadge status={del.status as DeliveryStatus} />
-                      </td>
-
-                      <td className="px-4 py-3.5 text-muted-foreground text-[11px]">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="size-3 text-muted-foreground" />
-                          <span>{new Date(del.created_at).toLocaleString("tr-TR")}</span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedDelivery(del);
-                          }}
-                          className="inline-flex items-center gap-1 rounded-md border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted"
-                        >
-                          <span>İncele</span>
-                          <ChevronRight className="size-3 text-muted-foreground" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-3">
-              <span>
-                Toplam <strong className="text-foreground">{totalCount}</strong> bildirim
-              </span>
-              <div className="flex items-center gap-1 text-[11px]">
-                <span>Sayfa Başına:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="rounded border border-input bg-white px-2 py-0.5 text-xs text-foreground font-medium"
-                >
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
+    <div className={pages.root} style={{ display: "contents" }}>
+      <dialog
+        ref={dialogRef}
+        className="fx-dlg"
+        id="bn-dialog"
+        onCancel={(event) => { event.preventDefault(); onClose(); }}
+        onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      >
+        <div className="m-modal" role="dialog" aria-modal="true" aria-labelledby="bnd-title">
+          <div className="m-head">
+            <div className="m-hicon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></svg></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+              <h2 id="bnd-title" className="m-htitle">{row.subject}</h2>
+              <span className="m-hsub">{EMAIL_HISTORY_KIND_LABEL[row.kind]}</span>
             </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="inline-flex items-center gap-1 rounded border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
-              >
-                <ChevronLeft className="size-3.5" />
-                <span>Önceki</span>
-              </button>
-              <span className="font-semibold text-foreground px-1">
-                {page} / {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="inline-flex items-center gap-1 rounded border border-border bg-white px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
-              >
-                <span>Sonraki</span>
-                <ChevronRight className="size-3.5" />
-              </button>
+            <button type="button" className="m-close" aria-label="Kapat" onClick={onClose}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+          </div>
+          <div className="m-body fx-body">
+            <dl className="fx-dl">
+              {row.person ? (
+                <>
+                  <dt>Kişi</dt>
+                  <dd>
+                    {row.person.studentId ? <Link className="fx-ogr" href={studentHref(row.person.studentId)}>{row.person.name}</Link> : row.person.name}
+                    {row.person.studentName ? <small className="il-dd2">Öğrenci: {row.person.studentName}</small> : null}
+                  </dd>
+                </>
+              ) : null}
+              <dt>Durum</dt><dd><span className={tag.className}>{tag.label}</span></dd>
+              <dt>Gönderim</dt><dd>{when.primary}<small className="il-dd2">{when.secondary}</small></dd>
+              <dt>Mesaj ID</dt><dd className="fx-mono">{row.messageId || "—"}</dd>
+            </dl>
+            <div className="fx-mail">
+              <div className="fx-mail-h"><span>Kimden: {SENDER}</span><span>Kime: {row.recipient}</span></div>
+              <div className="fx-mail-b">{emailHistoryBody(row.raw)}</div>
             </div>
           </div>
+          <div className="m-foot">
+            <button type="button" className="m-cancel" onClick={onClose}>Kapat</button>
+            {row.status === "fail" ? (
+              <button
+                type="button"
+                className="m-save"
+                disabled={sending || !row.canRetry}
+                title={row.canRetry ? undefined : "Bu teslimatın şablon kaydı olmadığı için tekrar gönderilemez."}
+                onClick={() => void resend()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" /></svg>
+                {sending ? "Gönderiliyor…" : "Tekrar gönder"}
+              </button>
+            ) : null}
+          </div>
         </div>
-      )}
-
-      {/* Detail Sheet */}
-      <NotificationDetailSheet
-        delivery={selectedDelivery}
-        onClose={() => setSelectedDelivery(null)}
-      />
+      </dialog>
     </div>
   );
 }
 
-function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
-  switch (status) {
-    case "sent":
-    case "delivered":
-      return (
-        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-          <CheckCircle2 className="size-3" />
-          <span>Gönderildi</span>
-        </span>
-      );
-    case "failed":
-      return (
-        <span className="inline-flex items-center gap-1 rounded-md bg-red-50 border border-red-200 px-2 py-0.5 text-[11px] font-bold text-red-800">
-          <AlertCircle className="size-3" />
-          <span>Başarısız</span>
-        </span>
-      );
-    case "pending":
-      return (
-        <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-          <Clock className="size-3" />
-          <span>Bekliyor</span>
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {status}
-        </span>
-      );
-  }
+export default function AdminEmailHistoryPage() {
+  const [refresh, setRefresh] = useState(0);
+  const { data: result, loading } = useQuery(`admin:email-history|${refresh}`, listAdminEmailHistory, { staleTime: 30_000 });
+  const rows = result?.rows ?? EMPTY_ROWS;
+  const loadError = result?.error || "";
+
+  const [q, setQ] = useState("");
+  const [durum, setDurum] = useState("");
+  const [zaman, setZaman] = useState("");
+  const [tur, setTur] = useState<EmailHistoryKind | "">("");
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const base = useMemo(() => {
+    const query = foldTurkish(q.trim());
+    const now = new Date();
+    return rows.filter((row) => {
+      if (durum && row.status !== durum) return false;
+      if (!inPeriod(row.at, zaman, now)) return false;
+      if (!query) return true;
+      return foldTurkish([row.subject, row.recipient, row.messageId || "", row.person?.name || "", row.person?.studentName || ""].join(" ")).includes(query);
+    });
+  }, [rows, q, durum, zaman]);
+
+  const counts = useMemo(() => {
+    const map: Partial<Record<EmailHistoryKind, number>> = {};
+    base.forEach((row) => { map[row.kind] = (map[row.kind] || 0) + 1; });
+    return map;
+  }, [base]);
+
+  const visible = useMemo(() => base.filter((row) => !tur || row.kind === tur), [base, tur]);
+
+  const weekReports = useMemo(() => {
+    const monday = new Date();
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    return rows.filter((row) => row.kind === "rapor" && new Date(row.at) >= monday).length;
+  }, [rows]);
+
+  const kinds: EmailHistoryKind[] = counts.diger ? [...KIND_ORDER, "diger"] : KIND_ORDER;
+  const failCount = result?.failCount ?? 0;
+  const openRow = openId ? rows.find((row) => row.id === openId) ?? null : null;
+  const showTable = visible.length > 0;
+  const emptyTitle = loadError ? "E-posta geçmişi yüklenemedi" : rows.length ? "Sonuç bulunamadı" : "Henüz e-posta gönderilmedi";
+  const emptyText = loadError ? loadError : rows.length ? "Aramayı veya filtreleri değiştirmeyi deneyin." : "Sistem e-posta gönderdiğinde burada görünür.";
+
+  return (
+    <div id="view-bildirim" className={`pgv ${pages.root}`}>
+      {openRow ? <EmailDialog row={openRow} onClose={() => setOpenId(null)} onRetried={() => setRefresh((n) => n + 1)} /> : null}
+      <div className="page"><div className="wrap">
+        <div className="head"><div><h1>E-posta Geçmişi</h1><p>Sistemin gönderdiği tüm e-postaların teslim durumu ve içerikleri.</p></div></div>
+        <div className="stats fx-stats3">
+          <div className="stat bn-k g"><span className="l">Gönderildi</span><b data-n="ok">{result?.okCount ?? 0}</b><span className="s">başarıyla teslim edildi</span></div>
+          <div className={`stat bn-k ${failCount ? "r" : "g"}`} data-bn-failk=""><span className="l">Başarısız</span><b data-n="fail">{failCount}</b><span className="s" data-n="fail-s">{failCount ? "tekrar gönderilmesi gerekiyor" : "sorun yok"}</span></div>
+          <div className="stat bn-k"><span className="l">Bu hafta ders raporu</span><b data-n="hafta">{weekReports}</b><span className="s">pazartesiden bu yana</span></div>
+        </div>
+        <section className="card">
+          <div className="tools">
+            <label className="search">
+              <span className="sr">Ara</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+              <input type="search" id="bn-q" placeholder="Alıcı, konu veya mesaj ID ara…" value={q} onChange={(event) => setQ(event.target.value)} />
+            </label>
+            <label><span className="sr">Durum</span><select className="sel" id="bn-durum" value={durum} onChange={(event) => setDurum(event.target.value)}><option value="">Tüm durumlar</option><option value="ok">Gönderildi</option><option value="fail">Başarısız</option><option value="wait">Bekliyor</option></select></label>
+            <label><span className="sr">Zaman</span><select className="sel" id="bn-zaman" value={zaman} onChange={(event) => setZaman(event.target.value)}><option value="">Tüm zamanlar</option><option value="bugun">Bugün</option><option value="7">Son 7 gün</option><option value="ay">Bu ay</option><option value="30">Son 30 gün</option></select></label>
+          </div>
+          <div className="bn-chips" id="bn-chips" role="group" aria-label="E-posta türü">
+            <button type="button" aria-pressed={!tur} onClick={() => setTur("")}>Tümü<small>{base.length}</small></button>
+            {kinds.map((kind) => (
+              <button key={kind} type="button" className={`c-${KIND_COLOR[kind]}`} aria-pressed={tur === kind} disabled={!counts[kind]} onClick={() => setTur(kind)}>
+                <i />{EMAIL_HISTORY_KIND_LABEL[kind]}<small>{counts[kind] || 0}</small>
+              </button>
+            ))}
+          </div>
+          <table className="fx-table" id="bn-table" aria-label="E-posta bildirimleri" hidden={!showTable}>
+            <colgroup><col style={{ width: "24%" }} /><col style={{ width: "20%" }} /><col /><col style={{ width: 84 }} /><col style={{ width: "17%" }} /><col style={{ width: 44 }} /></colgroup>
+            <thead><tr><th>Alıcı</th><th>Tür</th><th>Konu</th><th>Durum</th><th>Tarih</th><th><span className="sr">Aç</span></th></tr></thead>
+            <tbody id="bn-rows">
+              {visible.map((row) => {
+                const when = formatTrShortListDate(row.at);
+                return (
+                  <tr
+                    key={row.id}
+                    data-bn={row.id}
+                    tabIndex={0}
+                    onClick={(event) => { if ((event.target as HTMLElement).closest("a")) return; setOpenId(row.id); }}
+                    onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpenId(row.id); } }}
+                  >
+                    <td className="bn-kisi">{row.person ? <b>{row.person.name}</b> : <b className="bn-yalniz">Kayıtlı olmayan alıcı</b>}</td>
+                    <td><span className={`bn-tag ${KIND_COLOR[row.kind]}`}>{EMAIL_HISTORY_KIND_LABEL[row.kind]}</span></td>
+                    <td className="bn-konu" title={row.subject}>{row.subject}</td>
+                    <td><StatusIcon status={row.status} /></td>
+                    <td className="fx-date">{when.primary}<small>{when.secondary}</small></td>
+                    <td className="il-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {loading && !rows.length ? (
+            <div className="fx-empty" id="bn-empty"><b>E-postalar yükleniyor…</b></div>
+          ) : (
+            <div className="fx-empty" id="bn-empty" hidden={showTable}>
+              <span className="fx-empty-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg></span>
+              <b>{emptyTitle}</b>
+              <span>{emptyText}</span>
+            </div>
+          )}
+          <div className="foot"><span id="bn-shown">{visible.length} / {result?.total ?? rows.length} e-posta gösteriliyor</span><span>Satıra tıklayarak e-posta ayrıntılarını açın</span></div>
+        </section>
+      </div></div>
+    </div>
+  );
 }

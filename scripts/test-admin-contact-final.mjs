@@ -28,8 +28,10 @@ for (const unwanted of [
   assert(!settings.includes(unwanted), `settings still exposes: ${unwanted}`);
 }
 
-assert(!sidebar.includes('href: "/admin/denetim"'), "Audit Logs remains in primary sidebar");
-assert(settings.includes('href="/admin/denetim"'), "Audit Logs is not reachable from Settings");
+// Referans yönetim paneli (oriens-admin) "Denetim Kayıtları"nı ana menüde,
+// Ayarlar'ın hemen üstünde gösterir; Ayarlar içi kısayol kaldırıldı.
+assert(sidebar.includes('label: "Denetim Kayıtları", href: "/admin/denetim"'), "Audit Logs is missing from primary sidebar (reference parity)");
+assert(sidebar.indexOf('href: "/admin/denetim"') < sidebar.indexOf('href: "/admin/ayarlar"'), "Audit Logs must sit above Settings");
 assert(!sidebar.includes('href: "/admin/icerik"'), "content management remains in primary sidebar");
 assert(!sidebar.includes('href: "/admin/odevler"'), "homework remains in primary sidebar");
 assert(!dashboard.includes('href="/admin/icerik"'), "dashboard links to content management");
@@ -39,9 +41,12 @@ assert(!dashboardData.includes("pendingHomework"), "dashboard still queries home
 
 assert.equal((sidebar.match(/href: "\/admin\/degerlendirmeler"/g) || []).length, 1, "Evaluations must have exactly one primary sidebar item");
 assert(!sidebar.includes("labelEn"), "sidebar still exposes duplicate English labels");
-assert(evaluations.includes("TestimonialsManager"), "Değerlendirmeler does not use the testimonials CRM");
+// Değerlendirmeler referans #view-degerlendirme düzenine taşındı; veri yine
+// testimonials deposundan (listAdminTestimonials) gelir.
+assert(evaluations.includes("listAdminTestimonials"), "Değerlendirmeler does not use the testimonials store");
 assert(!evaluations.includes("filterSubmissionsOnly"), "Değerlendirmeler still renders homework review");
-assert(dashboard.includes('href="/admin/degerlendirmeler"'), "dashboard does not link to Evaluations");
+// Referans #view-panel'de Değerlendirmeler bağlantısı yok; modül ana menüden açılır.
+assert(sidebar.includes('href: "/admin/degerlendirmeler"'), "Evaluations is not reachable from the sidebar");
 
 const originalIndex = detail.indexOf("contact.message");
 const replyIndex = detail.indexOf("replies.map");

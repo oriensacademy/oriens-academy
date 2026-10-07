@@ -22,11 +22,13 @@ assert.match(client, /packageIds: string\[\]/);
 assert.match(token, /\.in\("id", packageIds\)/);
 assert.match(token, /packageRows\.length !== packageIds\.length/);
 assert.match(token, /checkoutItems\.map\(\(item\) => \[item\.package_name, item\.final_amount\.toFixed\(2\), 1\]\)/);
-assert.match(token, /const finalAmount = Math\.max\(0/);
+// Toplam artık ortak fiyat hesaplayıcısından (kuruş hassasiyetli) geliyor.
+assert.match(token, /const finalAmount = pricing\.finalTotal;/);
 assert.match(token, /if \(finalAmount === 0\)/);
 assert.match(token, /finalize_zero_payment_order/);
-assert.match(token, /user_address: PAYTR_COMPANY_ADDRESS/);
-assert.match(token, /Emaar Square, The Heights E Blok\\nÜnalan Mah\., Libadiye Cd\. No:82\\nÜsküdar \/ İstanbul/);
+// 7e2d2e4: PayTR user_address sabit ve kişisel adres içermiyor.
+assert.match(token, /user_address: PAYTR_DEFAULT_ADDRESS/);
+assert.match(token, /const PAYTR_DEFAULT_ADDRESS = "İstanbul \/ Türkiye";/);
 assert.doesNotMatch(payment, /payerAddress|paymentAddress|checkout-billing-address|billingAddress/);
 assert.doesNotMatch(hosted, /paytr-logo|next\/image|subtitle:/);
 assert.match(hosted, /role="alert"/);
@@ -35,9 +37,11 @@ assert.match(migration, /unique index[\s\S]*payment_transaction_id, package_id/)
 assert.match(migration, /on conflict \(payment_transaction_id, package_id\)/);
 assert.doesNotMatch(portal, /Öğrenci bilgileri hesap sahibinden ve geçmiş ödeme kayıtlarından ayrı tutulur\./);
 assert.doesNotMatch(portal, /RefreshCw/);
-assert.match(portal, /window\.addEventListener\("focus", refreshSilently\)/);
+// Sekme dönüşü tazelemesi query-store'da merkezi (tek sorgu turu).
+assert.match(read("src/lib/data/query-store.ts"), /window\.addEventListener\("focus", onVisible\)/);
+assert.doesNotMatch(portal, /addEventListener\("focus"/);
 assert.match(navbar, /"Giriş Yap" : "Sign In"/);
-assert.match(language, /target === "tr" \? "TR" : "ENG"/);
+assert.match(language, /target === "tr" \? "TR" : "EN"/);
 assert.doesNotMatch(language, /target\.toUpperCase/);
 
 const canonical = new Map([["package10", 1000], ["package5", 600]]);

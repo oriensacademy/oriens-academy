@@ -12,10 +12,11 @@ import type { PublicAvailabilitySlot, SupportType, BookingResult } from "@/lib/b
 import { BookingStepper } from "./BookingStepper";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import { useAccount } from "@/lib/auth/account-context";
-import { getStudentPortalData } from "@/lib/student/data";
-import { CONTACT } from "@/config/contact";
+import { getStudentPrefillProfile } from "@/lib/student/data";
+import { useSiteContact } from "@/lib/contact-settings";
 
 export function BookingFlow() {
+  const CONTACT = useSiteContact();
   const { bookingFlow } = useHomeContent();
   const locale = useLocale();
   const { user, accountType } = useAccount();
@@ -42,17 +43,19 @@ export function BookingFlow() {
   // Prefill for authenticated student
   useEffect(() => {
     if (user && accountType === "student") {
-      getStudentPortalData(user.id).then((res) => {
-        if (res.data?.profile) {
-          if (res.data.profile.full_name) setFullName(res.data.profile.full_name);
-          if (res.data.profile.email) setEmail(res.data.profile.email);
-          if (res.data.profile.target_exam) {
-            setExam({ type: "exam", code: res.data.profile.target_exam.toLowerCase() });
-          }
+      getStudentPrefillProfile(user.id).then((profile) => {
+        if (!profile) return;
+        if (profile.full_name) setFullName(profile.full_name);
+        if (profile.email) setEmail(profile.email);
+        if (profile.target_exam) {
+          setExam({ type: "exam", code: profile.target_exam.toLowerCase() });
         }
       });
     }
-  }, [user, accountType]);
+    // Bağımlılık `user` nesnesi değil `user?.id`: Supabase sekme dönüşlerinde
+    // yeni bir session/user nesnesi yayıyor ve bu efekt her seferinde
+    // gereksizce yeniden çalışıyordu.
+  }, [user?.id, accountType]);
 
   // Availability & loading states
   const [slots, setSlots] = useState<PublicAvailabilitySlot[]>([]);
@@ -245,7 +248,7 @@ export function BookingFlow() {
     const whatsappMessage = isTr
       ? "Merhaba Oriens Academy, tanışma görüşmesi hakkında bilgi almak istiyorum."
       : "Hello Oriens Academy, I would like to get information about an introductory consultation.";
-    const whatsappHref = `https://wa.me/905442939040?text=${encodeURIComponent(whatsappMessage)}`;
+    const whatsappHref = `${CONTACT.whatsappHref}?text=${encodeURIComponent(whatsappMessage)}`;
 
     return (
       <section className="mx-auto max-w-3xl px-6 py-16 md:py-24">

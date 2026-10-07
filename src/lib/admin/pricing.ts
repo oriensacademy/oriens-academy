@@ -6,6 +6,7 @@ export type PublicPricingPackage = Pick<
   PricingPackageRow,
   | "id"
   | "price_amount"
+  | "price_eur"
   | "currency"
   | "active"
   | "featured"
@@ -26,7 +27,13 @@ export type PublicPricingPackage = Pick<
 export type BillingBasis = "session" | "month" | "custom";
 export type PurchaseMode = "consultation_only" | "purchasable";
 
+function isValidManualEurPrice(value: number | null | undefined) {
+  if (value == null) return true;
+  return Number.isFinite(value) && value > 0 && value <= 1_000_000 && Math.abs(Math.round(value * 100) - value * 100) < 1e-8;
+}
+
 export interface PricingDetailsInput {
+  price_eur?: number | null;
   name_tr?: string | null;
   name_en?: string | null;
   description_tr?: string | null;
@@ -69,6 +76,7 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
     description_en: "Flexible support based on your needs.",
     lesson_count: 1,
     price_amount: 3200,
+    price_eur: 59.99,
     current_total: 3200,
     old_total: null,
     unit_price: 3200,
@@ -89,6 +97,7 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
     description_en: "A flexible package for starting structured study and tracking short-term topic goals.",
     lesson_count: 5,
     price_amount: 15000,
+    price_eur: 269.99,
     current_total: 15000,
     old_total: 16000,
     unit_price: 3000,
@@ -109,6 +118,7 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
     description_en: "A balanced package combining exam prep and regular progress review.",
     lesson_count: 10,
     price_amount: 27000,
+    price_eur: 499.99,
     current_total: 27000,
     old_total: 32000,
     unit_price: 2700,
@@ -129,6 +139,7 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
     description_en: "In-depth subject mastery, lesson-right tracking, and academic progress analysis.",
     lesson_count: 20,
     price_amount: 51000,
+    price_eur: 899.99,
     current_total: 51000,
     old_total: 64000,
     unit_price: 2550,
@@ -149,6 +160,7 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
     description_en: "Complete academic year guidance and maximum value.",
     lesson_count: 30,
     price_amount: 72000,
+    price_eur: 1299.99,
     current_total: 72000,
     old_total: 96000,
     unit_price: 2400,
@@ -170,15 +182,12 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
 export async function getPublicPricingPackages(): Promise<PublicPricingPackage[]> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-    const publishableKey =
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-      "";
+    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
     if (!supabaseUrl || !publishableKey) return CANONICAL_DEFAULT_PACKAGES;
 
     const query = new URLSearchParams({
       select:
-        "id,price_amount,currency,active,featured,display_order,name_tr,name_en,description_tr,description_en,lesson_count,discount_percentage,unit_price,old_total,current_total,badge_tr,badge_en,purchase_mode",
+        "id,price_amount,price_eur,currency,active,featured,display_order,name_tr,name_en,description_tr,description_en,lesson_count,discount_percentage,unit_price,old_total,current_total,badge_tr,badge_en,purchase_mode",
       active: "eq.true",
       order: "display_order.asc",
     });
@@ -223,6 +232,7 @@ export async function listAdminPricingPackages(): Promise<{
     const { data, error } = await supabase
       .from("pricing_packages")
       .select("*")
+      .is("archived_at", null)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true });
 
@@ -255,6 +265,12 @@ export async function createAdminPricingPackage(
   if (isNaN(effectivePrice) || effectivePrice < 0) {
     return { data: null, error: "Fiyat tutarı negatif olamaz." };
   }
+  if (!isValidManualEurPrice(input.price_eur)) {
+    return { data: null, error: "Euro fiyatı pozitif olmalı ve en fazla 2 ondalık basamak içermelidir." };
+  }
+  if (input.price_eur === null && input.purchase_mode !== "consultation_only") {
+    return { data: null, error: "Satın alınabilir paketler için Euro fiyatı gereklidir." };
+  }
 
   const validBasis: BillingBasis[] = ["session", "month", "custom"];
   if (!validBasis.includes(input.billing_basis)) {
@@ -268,6 +284,7 @@ export async function createAdminPricingPackage(
       id: input.id.trim().toLowerCase().replace(/\s+/g, "_"),
       price_amount: effectivePrice,
       current_total: effectivePrice,
+      price_eur: input.price_eur ?? null,
       currency: input.currency || "TRY",
       billing_basis: input.billing_basis,
       active: true,
@@ -307,7 +324,7 @@ export async function createAdminPricingPackage(
       action: "admin.pricing.package_created",
       entity_type: "pricing_package",
       entity_id: data.id,
-      metadata: { price_amount: data.price_amount, currency: data.currency, billing_basis: data.billing_basis },
+      metadata: { price_amount: data.price_amount, price_eur: data.price_eur, currency: data.currency, billing_basis: data.billing_basis },
     });
 
     return { data, error: null };
@@ -335,9 +352,18 @@ export async function updateAdminPricingPackage(
   if (effectivePrice !== undefined && (isNaN(effectivePrice) || effectivePrice < 0)) {
     return { success: false, error: "Fiyat tutarı geçerli ve pozitif bir sayı olmalıdır." };
   }
+  if (!isValidManualEurPrice(input.price_eur)) {
+    return { success: false, error: "Euro fiyatı pozitif olmalı ve en fazla 2 ondalık basamak içermelidir." };
+  }
+  if (input.price_eur === null && input.purchase_mode !== "consultation_only") {
+    return { success: false, error: "Satın alınabilir paketler için Euro fiyatı gereklidir." };
+  }
 
   try {
-    const { data: userData } = await supabase.auth.getUser();
+    const [{ data: userData }, { data: previous }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from("pricing_packages").select("price_eur").eq("id", id).maybeSingle(),
+    ]);
 
     const updatePayload: TablesUpdate<"pricing_packages"> = {
       ...input,
@@ -363,7 +389,11 @@ export async function updateAdminPricingPackage(
       action: "admin.pricing.package_updated",
       entity_type: "pricing_package",
       entity_id: id,
-      metadata: { updates: input } as unknown as Json,
+      metadata: {
+        updates: input,
+        old_price_eur: previous?.price_eur ?? null,
+        new_price_eur: input.price_eur === undefined ? previous?.price_eur ?? null : input.price_eur,
+      } as unknown as Json,
     });
 
     return { success: true, error: null };
@@ -382,14 +412,15 @@ export async function deleteAdminPricingPackage(
   const supabase = getSupabaseClient();
 
   try {
-    const { error } = await supabase
-      .from("pricing_packages")
-      .delete()
-      .eq("id", id);
+    const { data, error } = await supabase
+      .rpc("admin_delete_pricing_package", { p_package_id: id });
 
     if (error) {
       console.error("[Admin Pricing] Error deleting package:", error);
       return { success: false, error: error.message };
+    }
+    if (data === "not_found") {
+      return { success: false, error: "Paket bulunamadı veya daha önce silindi." };
     }
 
     const { data: userData } = await supabase.auth.getUser();
@@ -398,7 +429,7 @@ export async function deleteAdminPricingPackage(
       action: "admin.pricing.package_deleted",
       entity_type: "pricing_package",
       entity_id: id,
-      metadata: null,
+      metadata: { deletion_mode: data } as Json,
     });
 
     return { success: true, error: null };

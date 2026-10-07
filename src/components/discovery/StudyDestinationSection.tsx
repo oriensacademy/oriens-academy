@@ -86,7 +86,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
       id="study-destinations"
       data-study-destination-section
       data-selected-destination={selectedRegion?.id ?? "none"}
-      className={`overflow-hidden border-y border-border bg-background ${compact ? "py-16 md:py-20" : "py-20 md:py-28"}`}
+      className={`border-y border-border bg-background ${compact ? "py-16 md:py-20" : "py-20 md:py-28"}`}
     >
       <div className="mx-auto max-w-[1280px] px-6 md:px-12">
         <Reveal className="max-w-3xl" y={10}>
@@ -103,7 +103,7 @@ export function StudyDestinationSection({ compact = false }: { compact?: boolean
           </p>
         </Reveal>
 
-        <div className="mt-8 max-w-full overflow-hidden">
+        <div className="mt-8 w-full min-w-0">
           <DestinationSelector
             locale={locale}
             regions={studyDestinations}

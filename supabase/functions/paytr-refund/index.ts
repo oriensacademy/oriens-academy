@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { calculatePaytrRefundToken, calculatePaytrStatusToken } from "../_shared/payments/paytr.ts";
+import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 
 type RpcResult = Record<string, unknown> | null;
 
@@ -13,8 +14,8 @@ Deno.serve(async (req: Request) => {
   if (invalid) return invalid;
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const serviceKey = getSupabaseAdminKey();
+  const anonKey = getSupabasePublishableKey();
   const merchantId = Deno.env.get("PAYTR_MERCHANT_ID") ?? "";
   const merchantKey = Deno.env.get("PAYTR_MERCHANT_KEY") ?? "";
   const merchantSalt = Deno.env.get("PAYTR_MERCHANT_SALT") ?? "";
@@ -35,6 +36,7 @@ Deno.serve(async (req: Request) => {
     const lessons = Number(payload.lessonsToRevoke ?? 0);
     const reason = String(payload.reason ?? "").trim().replace(/\s+/g, " ");
     const idempotencyKey = String(payload.idempotencyKey ?? "").trim();
+    const sendNotification = payload.sendNotification === true;
 
     const { data: actorData, error: authError } = accessToken ? await admin.auth.getUser(accessToken) : { data: { user: null }, error: new Error("missing token") };
     if (authError || !actorData.user) return localized(req, locale, "INVALID_SESSION", "Geçersiz oturum.", "Invalid session.", 401);
@@ -52,10 +54,17 @@ Deno.serve(async (req: Request) => {
       p_lesson_rights_to_revoke: lessons,
       p_reason: reason,
       p_idempotency_key: idempotencyKey,
+      p_send_notification: sendNotification,
     });
     const intent = intentData as RpcResult;
     if (intentError || !intent?.success) {
-      return localized(req, locale, String(intent?.error_code || "REFUND_INTENT_FAILED"), "İade talebi doğrulanamadı.", "The refund request could not be validated.");
+      const code = String(intent?.error_code || "REFUND_INTENT_FAILED");
+      const trMessages: Record<string, string> = {
+        FULL_REFUND_REQUIRES_ALL_UNUSED_LESSONS: "Tam para iadesi için kullanılmamış tüm ders hakları iptal edilmelidir.",
+        ALL_UNUSED_LESSONS_REQUIRE_FULL_REFUND: "Tüm kullanılmamış ders hakları iptal ediliyorsa kalan tutarın tamamı iade edilmelidir.",
+        PARTIAL_REFUND_MUST_KEEP_ONE_LESSON: "Kısmi iade sonrasında en az bir kullanılabilir ders hakkı kalmalıdır.",
+      };
+      return localized(req, locale, code, trMessages[code] || "İade talebi doğrulanamadı.", "The refund request could not be validated.");
     }
     const refundId = String(intent.refund_id);
 

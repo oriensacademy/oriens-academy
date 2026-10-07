@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { handlePreflight, buildJsonResponse, isAllowedOrigin } from "../_shared/cors.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 Deno.serve(async (req: Request) => {
   const preflight = handlePreflight(req);
@@ -25,10 +26,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceKey =
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      Deno.env.get("SUPABASE_ANON_KEY") ??
-      "";
+    const serviceKey = getSupabaseAdminKey();
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 

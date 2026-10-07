@@ -14,9 +14,21 @@ const jsBody = match[1]
   .replace(/:\s*string/g, "")
   .replace(/:\s*number/g, "");
 
-const encodeHeaderWord = new Function("value", jsBody);
+// f454507: kodlama Q yerine RFC 2047 "B" (base64) kelimeleri; yardımcı utf8Binary
+// service.ts'den aynen alınır.
+const helper = serviceSource.match(/function utf8Binary\(value: string\): string \{([\s\S]*?)\n\}/);
+assert.ok(helper, "could not extract utf8Binary from service.ts");
+const utf8Binary = new Function("value", helper[1].replace(/:\s*string/g, ""));
+const encodeHeaderWord = new Function("utf8Binary", "value", jsBody).bind(null, utf8Binary);
 
 function decodeRfc2047(header) {
+  if (/=\?UTF-8\?B\?/i.test(header)) {
+    const bytes = [];
+    for (const [, payload] of header.matchAll(/=\?UTF-8\?B\?([A-Za-z0-9+/=]*)\?=/gi)) {
+      for (const ch of atob(payload)) bytes.push(ch.charCodeAt(0));
+    }
+    return new TextDecoder("utf-8").decode(new Uint8Array(bytes));
+  }
   const normalized = header.replace(/\?=\s+=\?UTF-8\?Q\?/gi, "");
   return normalized.replace(/=\?UTF-8\?Q\?(.*?)\?=/gi, (_, raw) => {
     const bytes = [];
@@ -41,10 +53,10 @@ const targetSubject = "Oriens Academy hesabınız hazır";
 const encTarget = encodeHeaderWord(targetSubject);
 console.log("Target Subject:", targetSubject);
 console.log("Encoded Target:", encTarget);
-assert.equal(encTarget, "=?UTF-8?Q?Oriens_Academy_hesab=C4=B1n=C4=B1z_haz=C4=B1r?=");
+assert.equal(encTarget, `=?UTF-8?B?${Buffer.from(targetSubject, "utf8").toString("base64")}?=`);
 assert.equal(decodeRfc2047(encTarget), targetSubject);
 assert.ok(/^[\x20-\x7E]+$/.test(encTarget), "Encoded subject must contain only printable 7-bit ASCII");
-console.log("✓ Test 1 Passed: Target subject correctly Q-encoded and decodes losslessly.");
+console.log("✓ Test 1 Passed: Target subject correctly B-encoded and decodes losslessly.");
 
 // Test 2: Full Turkish alphabet with special letters
 const turkishLetters = "ı İ ş Ş ğ Ğ ü Ü ö Ö ç Ç";
@@ -60,7 +72,7 @@ const fromName = "Oriens Academy Öğrenci Destek";
 const encFrom = encodeHeaderWord(fromName);
 console.log("From Name:", fromName);
 console.log("Encoded From:", encFrom);
-assert.equal(encFrom, "=?UTF-8?Q?Oriens_Academy_=C3=96=C4=9Frenci_Destek?=");
+assert.equal(encFrom, `=?UTF-8?B?${Buffer.from(fromName, "utf8").toString("base64")}?=`);
 assert.equal(decodeRfc2047(encFrom), fromName);
 assert.ok(/^[\x20-\x7E]+$/.test(encFrom), "From display name must contain only printable 7-bit ASCII");
 console.log("✓ Test 3 Passed: Mailbox From display name correctly encoded.");
@@ -70,7 +82,8 @@ const longSubject = "Sayın Veli, öğrencimiz için hazırlanan çok uzun ders 
 const encLong = encodeHeaderWord(longSubject);
 console.log("Long Subject Encoded:", encLong);
 assert.equal(decodeRfc2047(encLong), longSubject);
-assert.ok(/^[\x20-\x7E]+$/.test(encLong), "Long encoded subject must contain only printable 7-bit ASCII");
+assert.ok(/^(?:[\x20-\x7E]|\r\n )+$/.test(encLong), "Long encoded subject must contain only printable 7-bit ASCII plus RFC 5322 folding (CRLF + space)");
+assert.ok(encLong.split(/\s+/).length > 1 && encLong.split(/\s+/).every((word) => word.length <= 75), "each encoded-word stays within 75 chars");
 console.log("✓ Test 4 Passed: Long subject folds safely across encoded-words without multi-byte corruption.");
 
 // Test 5: Plain ASCII unchanged

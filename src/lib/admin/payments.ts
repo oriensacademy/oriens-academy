@@ -13,6 +13,9 @@ export interface AdminPaymentRow {
   payer_name: string | null;
   payer_email: string | null;
   payer_phone?: string | null;
+  /** Paketin sahibi öğrenci (veli ödemesinde öğrenci). */
+  package_owner_student_id?: string | null;
+  student_user_id?: string | null;
   amount: number;
   currency: string;
   payment_method: string;
@@ -160,7 +163,7 @@ export async function listAdminPaymentsPaginated(
     let query = client
       .from("payment_transactions")
       .select(
-        "id,public_reference,package_id,payer_name,payer_email,payer_phone,amount,currency,payment_method,provider,provider_transaction_id,status,created_at,paid_at,metadata,refunded_amount,refund_status,last_refunded_at,last_refund_reason,paytr_refund_reference",
+        "id,public_reference,package_id,package_owner_student_id,student_user_id,payer_name,payer_email,payer_phone,amount,currency,payment_method,provider,provider_transaction_id,status,created_at,paid_at,metadata,refunded_amount,refund_status,last_refunded_at,last_refund_reason,paytr_refund_reference",
         { count: "exact" }
       )
       .eq("is_archived", false)
@@ -441,6 +444,7 @@ export async function processPaytrRefund(input: {
   lessonsToRevoke: number;
   reason: string;
   idempotencyKey: string;
+  sendNotification: boolean;
   locale?: "tr" | "en";
 }) {
   const client = getSupabaseClient();
@@ -466,4 +470,195 @@ export async function processPaytrRefund(input: {
   return data?.success
     ? { success: true, data: data as Record<string, unknown>, error: null }
     : { success: false, errorCode: data?.error_code || "REFUND_FAILED", error: data?.message || "İade işlemi tamamlanamadı." };
+}
+
+// --- Ödemeler sayfası (referans tasarım) ------------------------------------
+// Ödemeler listesi istemcide filtrelenir (referans davranışı: anında arama,
+// "N / M ödeme gösteriliyor"). Kaynaklar:
+//  * payment_transactions: görünür ödemeler + PayTR'den başarısız dönüşü gelmiş
+//    kart ödemeleri (yalnız callback kaydı olanlar; terk edilmiş ön yüklemeler hariç).
+//  * student_package_purchases: panelden "Yeni Paket Tanımla" ile elle tanımlanan
+//    ve ödeme kaydına bağlı olmayan paketler (referans: "Elle tanımlandı").
+// Yalnız okuma; ödeme, defter veya ders hakkı mantığına dokunmaz.
+
+export const ADMIN_PAYMENT_LIST_FILTER =
+  `${ADMIN_PAYMENT_VISIBILITY_FILTER},and(status.eq.failed,metadata->paytr_callback.not.is.null)`;
+
+export type AdminLedgerStatus = "odendi" | "iade" | "bekliyor" | "basarisiz";
+export type AdminLedgerSource = "paytr" | "banka" | "ucretsiz";
+
+export interface AdminPaymentLedgerRow {
+  key: string;
+  transaction: AdminPaymentRow | null;
+  payerName: string;
+  studentId: string | null;
+  studentName: string | null;
+  email: string | null;
+  phone: string | null;
+  packageId: string;
+  packageLabel: string;
+  baseAmount: number;
+  netAmount: number;
+  refundedAmount: number;
+  couponCode: string | null;
+  currency: string;
+  status: AdminLedgerStatus;
+  source: AdminLedgerSource;
+  reference: string | null;
+  adminNote: string | null;
+  at: string;
+}
+
+export function adminLedgerStatus(row: Pick<AdminPaymentRow, "status" | "refund_status">): AdminLedgerStatus {
+  if (row.status === "refunded" || row.refund_status === "full") return "iade";
+  if (row.status === "paid") return "odendi";
+  if (row.status === "failed") return "basarisiz";
+  return "bekliyor";
+}
+
+/** Referans: iade yalnız kredi kartı + ödendi + iade edilebilir tutar > 0 iken. */
+export function canRefundLedgerRow(row: AdminPaymentLedgerRow): boolean {
+  const tx = row.transaction;
+  if (!tx || row.source !== "paytr" || row.status !== "odendi") return false;
+  if (tx.provider !== "paytr" || tx.payment_method !== "card" || tx.refund_status === "full") return false;
+  return row.netAmount - row.refundedAmount > 0;
+}
+
+export type LedgerPackageLabel = (source: { package_id: string; custom_package_name?: string | null; metadata?: unknown }) => string;
+
+export function toLedgerRowFromTransaction(row: AdminPaymentRow, names: Map<string, string>, label: LedgerPackageLabel): AdminPaymentLedgerRow {
+  const meta = row.metadata ?? {};
+  const amount = Number(row.amount) || 0;
+  const base = Number(meta.base_amount) || 0;
+  const studentId = row.package_owner_student_id || row.student_user_id || null;
+  return {
+    key: `tx:${row.id}`,
+    transaction: row,
+    payerName: row.payer_name?.trim() || "—",
+    studentId,
+    studentName: studentId ? names.get(studentId) || null : null,
+    email: row.payer_email,
+    phone: row.payer_phone ?? null,
+    packageId: row.package_id,
+    packageLabel: label({ package_id: row.package_id, metadata: row.metadata }),
+    baseAmount: base > amount ? base : amount,
+    netAmount: amount,
+    refundedAmount: Number(row.refunded_amount) || 0,
+    couponCode: meta.coupon_code?.trim() || null,
+    currency: row.currency || "TRY",
+    status: adminLedgerStatus(row),
+    source: row.payment_method === "bank_transfer" ? "banka" : "paytr",
+    reference: row.public_reference || null,
+    adminNote: null,
+    at: row.created_at,
+  };
+}
+
+export interface ManualPurchaseLedgerSource {
+  id: string;
+  student_user_id: string | null;
+  package_id: string;
+  custom_package_name: string | null;
+  lesson_count: number;
+  price_amount: number | null;
+  currency: string;
+  payment_status: string;
+  admin_notes: string | null;
+  created_at: string;
+}
+
+export function toLedgerRowFromManualPurchase(
+  row: ManualPurchaseLedgerSource,
+  names: Map<string, string>,
+  guardians: Map<string, { name: string; email: string | null; phone: string | null }>,
+  label: LedgerPackageLabel,
+): AdminPaymentLedgerRow {
+  const free = row.payment_status === "waived";
+  const amount = free ? 0 : Number(row.price_amount) || 0;
+  const studentName = row.student_user_id ? names.get(row.student_user_id) || null : null;
+  const guardian = row.student_user_id ? guardians.get(row.student_user_id) : undefined;
+  return {
+    key: `pk:${row.id}`,
+    transaction: null,
+    payerName: guardian?.name || studentName || "—",
+    studentId: row.student_user_id,
+    studentName: guardian ? studentName : null,
+    email: guardian?.email ?? null,
+    phone: guardian?.phone ?? null,
+    packageId: row.package_id,
+    packageLabel: label({ package_id: row.package_id, custom_package_name: row.custom_package_name, metadata: { lesson_count: row.lesson_count } }),
+    baseAmount: amount,
+    netAmount: amount,
+    refundedAmount: 0,
+    couponCode: null,
+    currency: row.currency || "TRY",
+    status: row.payment_status === "pending" ? "bekliyor" : row.payment_status === "refunded" ? "iade" : "odendi",
+    source: free ? "ucretsiz" : "banka",
+    reference: null,
+    adminNote: row.admin_notes?.trim() || null,
+    at: row.created_at,
+  };
+}
+
+export async function listAdminPaymentLedger(label: LedgerPackageLabel): Promise<{ data: AdminPaymentLedgerRow[]; error: string | null }> {
+  const supabase = getSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const untyped = supabase as any;
+  const [tx, manual] = await Promise.all([
+    supabase
+      .from("payment_transactions")
+      .select("id,public_reference,package_id,package_owner_student_id,student_user_id,payer_name,payer_email,payer_phone,amount,currency,payment_method,provider,provider_transaction_id,status,created_at,paid_at,metadata,refunded_amount,refund_status,last_refunded_at,last_refund_reason,paytr_refund_reference")
+      .eq("is_archived", false)
+      .or(ADMIN_PAYMENT_LIST_FILTER)
+      .order("created_at", { ascending: false })
+      .limit(2000),
+    untyped
+      .from("student_package_purchases")
+      .select("id,student_user_id,package_id,custom_package_name,lesson_count,price_amount,currency,payment_status,admin_notes,created_at")
+      .eq("assignment_source", "admin_manual")
+      .is("payment_transaction_id", null)
+      .eq("is_archived", false)
+      .order("created_at", { ascending: false })
+      .limit(2000) as Promise<{ data: ManualPurchaseLedgerSource[] | null; error: unknown }>,
+  ]);
+  if (tx.error) return { data: [], error: "Ödeme kayıtları yüklenemedi." };
+  const transactions = (tx.data ?? []) as unknown as AdminPaymentRow[];
+  const purchases = manual.error ? [] : manual.data ?? [];
+
+  const studentIds = Array.from(new Set([
+    ...transactions.map((row) => row.package_owner_student_id || row.student_user_id),
+    ...purchases.map((row) => row.student_user_id),
+  ].filter((id): id is string => Boolean(id))));
+  const manualStudentIds = Array.from(new Set(purchases.map((row) => row.student_user_id).filter((id): id is string => Boolean(id))));
+
+  const names = new Map<string, string>();
+  const guardians = new Map<string, { name: string; email: string | null; phone: string | null }>();
+  if (studentIds.length) {
+    const [profiles, links] = await Promise.all([
+      supabase.from("student_profiles").select("id,full_name").in("id", studentIds),
+      manualStudentIds.length
+        ? (untyped
+            .from("guardian_students")
+            .select("student_id,is_primary,guardian_accounts(full_name,email,phone)")
+            .in("student_id", manualStudentIds)
+            .eq("active", true) as Promise<{ data: unknown[] | null }>)
+        : Promise.resolve({ data: [] as unknown[] }),
+    ]);
+    for (const p of (profiles.data ?? []) as { id: string; full_name: string | null }[]) {
+      if (p.full_name?.trim()) names.set(p.id, p.full_name.trim());
+    }
+    const linkRows = ((links.data ?? []) as { student_id: string; is_primary: boolean; guardian_accounts: { full_name: string; email: string; phone: string | null } | null }[])
+      .slice()
+      .sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
+    for (const link of linkRows) {
+      if (!link.guardian_accounts || guardians.has(link.student_id)) continue;
+      guardians.set(link.student_id, { name: link.guardian_accounts.full_name, email: link.guardian_accounts.email, phone: link.guardian_accounts.phone });
+    }
+  }
+
+  const rows = [
+    ...transactions.map((row) => toLedgerRowFromTransaction(row, names, label)),
+    ...purchases.map((row) => toLedgerRowFromManualPurchase(row, names, guardians, label)),
+  ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  return { data: rows, error: null };
 }

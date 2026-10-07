@@ -19,6 +19,7 @@ import {
   type WelcomeEmailData,
   type LiveLessonLinkEmailData,
 } from "./templates.ts";
+import { sanitizeAuditError, writeEdgeAuditEvent } from "../audit.ts";
 
 export type EmailChannel =
   | "general"
@@ -39,8 +40,7 @@ export interface MailIdentity {
 // never be used as an outbound sender/From address (business rule).
 export const ADMIN_EMAIL = "admin@oriens-academy.com";
 export const INFO_EMAIL = "info@oriens-academy.com";
-export const PAYMENTS_EMAIL = "payments@oriens-academy.com";
-export const MAIL_ADDRESSES = { admin: ADMIN_EMAIL, info: INFO_EMAIL, payments: PAYMENTS_EMAIL } as const;
+export const MAIL_ADDRESSES = { admin: ADMIN_EMAIL, info: INFO_EMAIL, payments: INFO_EMAIL } as const;
 
 export const DEFAULT_FALLBACK_NAME = "Oriens Academy";
 export const DEFAULT_FALLBACK_EMAIL = INFO_EMAIL;
@@ -100,7 +100,7 @@ export function extractEmails(input?: string | string[] | null): string[] {
  */
 export function resolveMailIdentity(
   channel: EmailChannel = "general",
-  locale: "tr" | "en" = "tr"
+  _locale: "tr" | "en" = "tr"
 ): MailIdentity {
   switch (channel) {
     case "contact":
@@ -112,7 +112,7 @@ export function resolveMailIdentity(
         internalRecipient: INFO_EMAIL,
       };
     case "support": {
-      const supportName = locale === "en" ? "Oriens Academy Student Support" : "Oriens Academy Öğrenci Destek";
+      const supportName = "Oriens Academy";
       return {
         fromName: supportName,
         fromEmail: INFO_EMAIL,
@@ -122,13 +122,12 @@ export function resolveMailIdentity(
       };
     }
     case "payments": {
-      const paymentsName = locale === "en" ? "Oriens Academy Payments" : "Oriens Academy Ödemeler";
       return {
-        fromName: paymentsName,
-        fromEmail: PAYMENTS_EMAIL,
-        fromAddress: `${paymentsName} <${PAYMENTS_EMAIL}>`,
-        replyTo: PAYMENTS_EMAIL,
-        internalRecipient: PAYMENTS_EMAIL,
+        fromName: "Oriens Academy",
+        fromEmail: INFO_EMAIL,
+        fromAddress: `Oriens Academy <${INFO_EMAIL}>`,
+        replyTo: INFO_EMAIL,
+        internalRecipient: INFO_EMAIL,
       };
     }
     case "admin":
@@ -356,13 +355,14 @@ async function getGoogleAccessToken(): Promise<{ token?: string; error?: string 
 
     const data = await res.json();
     if (!res.ok || !data.access_token) {
-      console.error("[email/service] Google OAuth token exchange failed:", data);
-      return { error: data.error_description || data.error || "OAUTH_TOKEN_ERROR" };
+      const safe = sanitizeAuditError(data, { operation: "google_oauth_token_exchange", http_status: res.status });
+      console.error("[email/service] Google OAuth token exchange failed", safe);
+      return { error: typeof data?.error === "string" ? data.error.slice(0, 80) : "OAUTH_TOKEN_ERROR" };
     }
 
     return { token: data.access_token };
   } catch (err) {
-    console.error("[email/service] Network error obtaining Google access token:", err);
+    console.error("[email/service] Network error obtaining Google access token", sanitizeAuditError(err, { operation: "google_oauth_token_exchange" }));
     return { error: "NETWORK_ERROR" };
   }
 }
@@ -409,7 +409,7 @@ export async function logNotificationDelivery(params: {
       sent_at: params.status === "sent" ? new Date().toISOString() : null,
     });
   } catch (err) {
-    console.error(`[email/service] Failed to log notification delivery:`, err);
+    console.error("[email/service] Failed to log notification delivery", sanitizeAuditError(err, { operation: "notification_delivery_log" }));
   }
 }
 
@@ -632,9 +632,7 @@ export async function sendTransactionalEmail(params: {
     // normal error path instead of masking the real cause.
     const isAliasRejection = !res.ok && res.status !== 401 && res.status !== 429 && res.status < 500;
     if (isAliasRejection && targetFromEmail !== DEFAULT_FALLBACK_EMAIL) {
-      console.warn(
-        `[email/service] Alias From "${initialFromAddress}" rejected by Gmail API (${json.error?.message || res.status}). Retrying with safe fallback From: "${DEFAULT_FALLBACK_FROM}" and Reply-To: "${targetReplyTo}"`
-      );
+      console.warn(`[email/service] Gmail alias rejected; retrying with canonical fallback`, { http_status: res.status, event_type: eventType });
       const fallbackResult = await attemptSend(DEFAULT_FALLBACK_FROM, targetReplyTo);
       res = fallbackResult.res;
       json = fallbackResult.json;
@@ -661,8 +659,10 @@ export async function sendTransactionalEmail(params: {
         archiveRecipient: archiveBccApplied ? archiveAddress : undefined,
       };
     } else {
-      const errorCode = json.error?.message || json.message || `HTTP_${res.status}`;
-      console.error(`[email/service] Google Gmail API error:`, json);
+      const errorCode = typeof json?.error?.status === "string" ? json.error.status.slice(0,80) : `HTTP_${res.status}`;
+      const safeProviderError = sanitizeAuditError(json, { operation: "gmail_send", http_status: res.status, event_type: eventType });
+      console.error("[email/service] Google Gmail API error", safeProviderError);
+      await writeEdgeAuditEvent(supabaseAdmin, { action: "edge.upstream_failed", category: "edge", severity: "error", entityType, entityId, correlationId: deliveryId, metadata: safeProviderError });
       await logNotificationDelivery({
         supabaseAdmin,
         eventType,
@@ -683,7 +683,9 @@ export async function sendTransactionalEmail(params: {
       };
     }
   } catch (err) {
-    console.error(`[email/service] Unexpected network error sending email:`, err);
+    const safeNetworkError = sanitizeAuditError(err, { operation: "gmail_send", event_type: eventType });
+    console.error("[email/service] Unexpected network error sending email", safeNetworkError);
+    await writeEdgeAuditEvent(supabaseAdmin, { action: "edge.function_failed", category: "edge", severity: "error", entityType, entityId, correlationId: deliveryId, metadata: safeNetworkError });
     await logNotificationDelivery({
       supabaseAdmin,
       eventType,
@@ -1030,7 +1032,7 @@ export async function dispatchLiveLessonLinkEmail(
   supabaseAdmin: SupabaseClient,
   data: LiveLessonLinkEmailData
 ) {
-  const eventType = data.isUpdate ? "lesson.link_updated.student" : "lesson.link_ready.student";
+  const eventType = data.isUpdate ? "lesson.details_updated.student" : "lesson.scheduled.student";
   const template = renderStudentLiveLessonLinkEmail(data);
   return sendTransactionalEmail({
     supabaseAdmin,
@@ -1043,7 +1045,6 @@ export async function dispatchLiveLessonLinkEmail(
     eventType,
     entityType: "student_lesson",
     entityId: data.lessonId,
-    idempotencyKey: `lesson-link-${eventType}-${data.lessonId}`,
+    idempotencyKey: `lesson-details-${eventType}-${data.lessonId}`,
   });
 }
-

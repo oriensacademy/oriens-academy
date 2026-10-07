@@ -84,7 +84,7 @@ export function PhoneCarousel({
     >
       <div className="relative flex w-full items-center justify-center px-4">
         <motion.div
-          className="relative h-[520px] w-[280px] touch-pan-y rounded-[48px] border-4 border-[#0D2A1C] bg-[#10271B] p-3 shadow-[0_24px_60px_rgba(16,39,27,0.16)] ring-1 ring-[#819586]/30 transition-all duration-300 sm:h-[577px] sm:w-[310px] lg:h-[650px] lg:w-[340px]"
+          className="relative h-[min(520px,calc((100vw-5.5rem)*1.857))] w-[min(280px,calc(100vw-5.5rem))] touch-pan-y rounded-[48px] border-4 border-[#0D2A1C] bg-[#10271B] p-3 shadow-[0_24px_60px_rgba(16,39,27,0.16)] ring-1 ring-[#819586]/30 transition-all duration-300 sm:h-[577px] sm:w-[310px] lg:h-[650px] lg:w-[340px]"
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.12}

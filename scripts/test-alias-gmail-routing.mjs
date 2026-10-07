@@ -37,8 +37,8 @@ async function runAliasRoutingTest() {
     {
       channel: "payments",
       name: "Payments / Packages / Finance",
-      from: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      from: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       subject: "Ödemeniz Başarıyla Alındı | Oriens Academy",
     },
     {

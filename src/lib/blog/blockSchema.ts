@@ -115,6 +115,18 @@ export interface BlogContentJson {
 const SAFE_URL_PATTERN = /^(https?:\/\/|\/|#)/i;
 /** Image/file URLs only ever come from our own upload flow -- https only, no data:/javascript:. */
 const SAFE_MEDIA_URL_PATTERN = /^https:\/\//i;
+/**
+ * Local Supabase Storage serves media over plain http on loopback, so an
+ * https-only rule silently discarded every image authored against a local
+ * stack -- the block stayed visible in the editor and vanished on save.
+ * Loopback origins are unreachable for real visitors and cannot carry a
+ * script URL, so accepting them costs nothing in production data.
+ */
+const LOOPBACK_MEDIA_URL_PATTERN = /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\//i;
+
+function isSafeMediaUrl(value: string): boolean {
+  return SAFE_MEDIA_URL_PATTERN.test(value) || LOOPBACK_MEDIA_URL_PATTERN.test(value);
+}
 
 export function newBlockId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -127,6 +139,13 @@ function sanitizeUrl(value: unknown, pattern: RegExp): string | null {
   const trimmed = value.trim();
   if (!trimmed || !pattern.test(trimmed)) return null;
   return trimmed;
+}
+
+/** Uploaded media: https in production, loopback http on a local stack. */
+function sanitizeMediaUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed && isSafeMediaUrl(trimmed) ? trimmed : null;
 }
 
 function sanitizeInlineNodes(raw: unknown): InlineNode[] {
@@ -209,7 +228,7 @@ function sanitizePaneTextNodes(raw: unknown): PaneTextNode[] {
 function sanitizePaneImage(raw: unknown): ({ kind: "image" } & PaneImage) | null {
   if (!raw || typeof raw !== "object") return null;
   const pane = raw as Record<string, unknown>;
-  const url = sanitizeUrl(pane.url, SAFE_MEDIA_URL_PATTERN);
+  const url = sanitizeMediaUrl(pane.url);
   if (!url) return null;
   return {
     kind: "image",
@@ -274,7 +293,7 @@ function sanitizeBlock(raw: unknown): BlogBlock | null {
       return { id, type: "spacer", size };
     }
     case "image": {
-      const url = sanitizeUrl(block.url, SAFE_MEDIA_URL_PATTERN);
+      const url = sanitizeMediaUrl(block.url);
       if (!url) return null;
       return {
         id,
@@ -290,7 +309,7 @@ function sanitizeBlock(raw: unknown): BlogBlock | null {
       };
     }
     case "file": {
-      const url = sanitizeUrl(block.url, SAFE_MEDIA_URL_PATTERN);
+      const url = sanitizeMediaUrl(block.url);
       if (!url) return null;
       const name = typeof block.name === "string" && block.name.trim() ? block.name.trim().slice(0, 200) : "Dosya";
       const size = typeof block.size === "number" && Number.isFinite(block.size) && block.size >= 0 ? block.size : 0;
@@ -338,7 +357,7 @@ function sanitizeBlock(raw: unknown): BlogBlock | null {
       for (const entry of rawItems) {
         if (!entry || typeof entry !== "object") continue;
         const item = entry as Record<string, unknown>;
-        const url = sanitizeUrl(item.url, SAFE_MEDIA_URL_PATTERN);
+        const url = sanitizeMediaUrl(item.url);
         if (!url) continue;
         items.push({
           id: typeof item.id === "string" && item.id ? item.id : newBlockId(),
@@ -429,8 +448,17 @@ export function deriveLegacyContentFallback(content: BlogContentJson): string {
           else if (pane.caption) lines.push(pane.caption);
         }
         break;
+      case "image":
+        // An image-only post still has authored text in its alt/caption; without
+        // this the derived fallback is blank and the post cannot be published.
+        if (block.alt) lines.push(block.alt);
+        if (block.caption) lines.push(block.caption);
+        break;
       case "gallery":
-        for (const item of block.items) if (item.caption) lines.push(item.caption);
+        for (const item of block.items) {
+          if (item.alt) lines.push(item.alt);
+          if (item.caption) lines.push(item.caption);
+        }
         break;
       case "cta":
         if (block.title) lines.push(block.title);

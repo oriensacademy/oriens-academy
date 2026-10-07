@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { validateMutationRequest, buildJsonResponse } from "../_shared/cors.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
 import { dispatchBookingEmails } from "../_shared/email/service.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
 const ALLOWED_EXAM_CODES = new Set([
   "ib",
@@ -147,7 +148,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const serviceRoleKey = getSupabaseAdminKey();
 
     if (!supabaseUrl || !serviceRoleKey) {
       console.error("[create-booking] Missing server credentials in environment.");

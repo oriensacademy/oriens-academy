@@ -10,10 +10,10 @@ import {
   X,
   MessageSquareQuote,
   AlertCircle,
-  CheckCircle2,
 } from "lucide-react";
 import { Wave } from "@/components/ui/wave";
 import { examRecords } from "@/content/exams";
+import { toast } from "@/components/ui/toast";
 
 interface TestimonialModalProps {
   isOpen: boolean;
@@ -30,7 +30,6 @@ export function TestimonialModal({
 }: TestimonialModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState("");
@@ -70,7 +69,6 @@ export function TestimonialModal({
         setProfileImageUrl("");
       }
       setErrorMsg(null);
-      setSuccessMsg(null);
     }, 0);
 
     return () => clearTimeout(timer);
@@ -82,7 +80,6 @@ export function TestimonialModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-    setSuccessMsg(null);
     setSubmitting(true);
 
     if (!name.trim()) {
@@ -118,11 +115,9 @@ export function TestimonialModal({
       if (error) {
         setErrorMsg(error);
       } else if (success) {
-        setSuccessMsg("Öğrenci yorumu başarıyla güncellendi.");
-        setTimeout(() => {
-          onSaved();
-          onClose();
-        }, 800);
+        toast.success("Öğrenci yorumu başarıyla güncellendi.");
+        onSaved();
+        onClose();
       }
     } else {
       const { error } = await createAdminTestimonial({
@@ -143,11 +138,9 @@ export function TestimonialModal({
       if (error) {
         setErrorMsg(error);
       } else {
-        setSuccessMsg("Yeni öğrenci yorumu başarıyla eklendi.");
-        setTimeout(() => {
-          onSaved();
-          onClose();
-        }, 800);
+        toast.success("Yeni öğrenci yorumu başarıyla eklendi.");
+        onSaved();
+        onClose();
       }
     }
   };
@@ -161,7 +154,7 @@ export function TestimonialModal({
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-white p-6 shadow-2xl z-10 space-y-5">
+      <div role="dialog" aria-modal="true" className="relative w-full max-w-lg rounded-2xl border border-border bg-white p-6 shadow-2xl z-10 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex items-center gap-2">
@@ -172,6 +165,7 @@ export function TestimonialModal({
           </div>
           <button
             type="button"
+            aria-label="Kapat"
             onClick={onClose}
             className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
           >
@@ -184,13 +178,6 @@ export function TestimonialModal({
           <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
             <AlertCircle className="size-4 shrink-0 text-red-600" />
             <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {successMsg && (
-          <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-            <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
-            <span>{successMsg}</span>
           </div>
         )}
 

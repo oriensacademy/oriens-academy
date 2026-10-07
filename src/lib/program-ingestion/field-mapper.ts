@@ -18,7 +18,7 @@ export async function mapProgramToFieldOfStudy(
   if (!cachedFields) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
     const supabaseKey =
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SECRET_KEY ||
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
       "";
     if (!supabaseKey) throw new Error("A Supabase key is required to map fields of study.");

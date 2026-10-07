@@ -1,10 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AuthError, Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { clearQueryCache } from "@/lib/data/query-store";
 import type { Tables } from "@/types/database.types";
 import type { AdminProfile } from "@/lib/admin/types";
+import { recordLoginFailure, recordLoginSuccess } from "@/lib/auth/login-events";
 
 export type AccountType = "admin" | "student" | "unknown" | "unauthenticated";
 export type StudentAccountProfile = Tables<"student_profiles">;
@@ -88,6 +90,10 @@ function createMockDevSession(accountType: "admin" | "student", email: string): 
           phone: "+90 555 000 0000",
           date_of_birth: null,
           school: "Oriens Academy",
+          contact_guardian_name: null,
+          grade_level: null,
+          education_program: null,
+          exams_taken: [],
           target_exam: "SAT / IB",
           target_exams: ["SAT", "IB"],
           target_university: "Oxford / MIT",
@@ -96,6 +102,7 @@ function createMockDevSession(accountType: "admin" | "student", email: string): 
           onboarding_completed: true,
           preferred_language: "tr",
           active: true,
+          archived_at: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
@@ -105,48 +112,21 @@ function createMockDevSession(accountType: "admin" | "student", email: string): 
 }
 
 async function resolveAccount(session: Session): Promise<AccountResolution> {
-  // If it's a dev session
-  if (session.access_token === "mock-dev-access-token") {
-    if (session.user.app_metadata?.role === "admin") {
-      return {
-        accountType: "admin",
-        adminProfile: {
-          user_id: session.user.id,
-          display_name: "Oriens Academy Administrator",
-          role: "admin",
-          active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        studentProfile: null,
-      };
-    }
-    return {
-      accountType: "student",
-      adminProfile: null,
-      studentProfile: {
-        id: session.user.id,
-        full_name: (session.user.user_metadata?.full_name as string) || "QA Student",
-        email: session.user.email || "qa.student@oriens-academy.com",
-        phone: "+90 555 000 0000",
-        date_of_birth: null,
-        school: "Oriens Academy",
-        target_exam: "SAT / IB",
-        target_exams: ["SAT", "IB"],
-        target_university: "Oxford / MIT",
-        target_country: "UK / USA",
-        target_countries: ["UK", "USA"],
-        onboarding_completed: true,
-        preferred_language: "tr",
-        active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    };
-  }
-
+  // Tarayıcıda saklanan oturum (localStorage) imzası doğrulanmamış bir
+  // nesnedir: içine "role: admin" yazılmış sahte bir token paneli açmamalı.
+  // Kimlik ve rol yalnızca Supabase Auth'un sunucuda doğruladığı kullanıcıdan
+  // okunur; yerel geliştirme mock oturumu bu fonksiyona hiç uğramaz.
   const supabase = getSupabaseClient();
-  const user = session.user;
+  let user: Session["user"];
+  try {
+    const { data: verified, error: verifyError } = await supabase.auth.getUser(session.access_token);
+    if (verifyError || !verified?.user || verified.user.id !== session.user?.id) {
+      return { accountType: "unknown", adminProfile: null, studentProfile: null };
+    }
+    user = verified.user;
+  } catch {
+    return { accountType: "unknown", adminProfile: null, studentProfile: null };
+  }
 
   try {
     if (user.app_metadata?.role === "admin") {
@@ -207,6 +187,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     accountTypeRef.current = "unauthenticated";
     setAdminProfile(null);
     setStudentProfile(null);
+    // Oturum bittiğinde önbelleği de düşür: aksi halde aynı tarayıcıda başka
+    // bir hesapla giriş yapan kullanıcı bir önceki hesabın verisini görebilir.
+    clearQueryCache();
     if (typeof window !== "undefined") {
       try {
         localStorage.removeItem(DEV_AUTH_STORAGE_KEY);
@@ -234,13 +217,25 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       accountTypeRef.current !== "unauthenticated" &&
       accountTypeRef.current !== "unknown"
     ) {
-      setSession(nextSession);
+      // Token gerçekten değişmediyse state'e hiç dokunma. Supabase sekmeye her
+      // dönüşte localStorage'dan yeniden parse edilmiş YENİ bir session nesnesi
+      // yayıyor; bunu doğrudan state'e yazmak `user` kimliğini değiştirip
+      // `[user]` bağımlı tüm efektleri gereksiz yere yeniden çalıştırıyordu.
+      const sameToken = sessionRef.current?.access_token === nextSession.access_token;
       sessionRef.current = nextSession;
+      if (!sameToken) setSession(nextSession);
       return;
     }
 
     const resolution = await resolveAccount(nextSession);
-    if (request !== requestRef.current) return;
+    if (request !== requestRef.current) {
+      // Bu çağrı eskidi (araya yeni bir applySession girdi). Sonucu yazmıyoruz
+      // ama loading bayrağını da açık bırakamayız: araya giren çağrı "arka
+      // plan" kısa devresinden dönmüşse isInitializing'i kapatan kimse kalmaz
+      // ve panel kalıcı olarak loader'da kilitlenir.
+      if (!isBackground) setIsInitializing(false);
+      return;
+    }
     if (resolution.accountType === "unknown") {
       authOperationRef.current = true;
       try { await getSupabaseClient().auth.signOut(); } catch { /* ignore */ } finally { authOperationRef.current = false; }
@@ -318,11 +313,23 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       // 1. Try real Supabase auth
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+        if (error && error.code === "invalid_credentials") recordLoginFailure(cleanEmail);
         if (!error && data.session && data.user) {
           const resolution = await resolveAccount(data.session);
           if (resolution.accountType !== "unknown") {
+            recordLoginSuccess();
             setSession(data.session);
+            // sessionRef/accountTypeRef, `applySession`'ın "arka plan" kısa
+            // devresinin okuduğu tek kaynak. Burada set edilmezlerse, giriş
+            // yapmış bir kullanıcı sekmeye her geri döndüğünde Supabase'in
+            // yaydığı SIGNED_IN olayı `isBackground === false` hesaplanır,
+            // isInitializing true olur ve AdminGuard TÜM paneli unmount edip
+            // yeniden kurar (audit: "TAZE LOGIN sonrası sekme dönüşünde admin
+            // ağacı unmount"). F5 sonrası sorunun kaybolmasının sebebi de
+            // buydu: init yolu ref'leri dolduruyordu.
+            sessionRef.current = data.session;
             setAccountType(resolution.accountType);
+            accountTypeRef.current = resolution.accountType;
             setAdminProfile(resolution.adminProfile);
             setStudentProfile(resolution.studentProfile);
             setIsInitializing(false);
@@ -334,14 +341,17 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
 
       // 2. In Local Development Mode: Seamless Fallback for Admin and QA credentials
-      if (isDev) {
+      if (isDev && process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true") {
         const isAdminEmail = cleanEmail === "oriensacademy@gmail.com" || cleanEmail === "admin@oriens-academy.com";
-        const isValidAdminPass = password === "v9@L2pR7!" || password === "Password123!" || password.length >= 6;
+        const configuredDevPassword = process.env.NEXT_PUBLIC_DEV_AUTH_PASSWORD;
+        const isValidAdminPass = Boolean(configuredDevPassword) && password === configuredDevPassword;
 
         if (isAdminEmail && isValidAdminPass) {
           const mock = createMockDevSession("admin", cleanEmail);
           setSession(mock.session);
+          sessionRef.current = mock.session;
           setAccountType("admin");
+          accountTypeRef.current = "admin";
           setAdminProfile(mock.adminProfile);
           setStudentProfile(null);
           setIsInitializing(false);
@@ -354,10 +364,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         }
 
         const isStudentEmail = cleanEmail.includes("student") || cleanEmail.includes("ogrenci") || cleanEmail === "qa.student@oriens-academy.com";
-        if (isStudentEmail && password.length >= 6) {
+        if (isStudentEmail && isValidAdminPass) {
           const mock = createMockDevSession("student", cleanEmail);
           setSession(mock.session);
+          sessionRef.current = mock.session;
           setAccountType("student");
+          accountTypeRef.current = "student";
           setAdminProfile(null);
           setStudentProfile(mock.studentProfile);
           setIsInitializing(false);
@@ -398,7 +410,18 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     await applySession(data.session);
   }, [applySession]);
 
-  return <AccountContext.Provider value={{ session, user: session?.user ?? null, accountType, adminProfile, studentProfile, isInitializing, signIn, signOut, refreshAccount }}>{children}</AccountContext.Provider>;
+  // Bu değer memoize edilmezse her provider render'ında yeni bir nesne (ve
+  // yeni bir `user` kimliği) yayılır. Supabase, sekmeye her dönüşte SIGNED_IN
+  // yayıp `setSession` tetiklediği için, `[user]` bağımlı efektler (ör.
+  // BookingFlow, ContactForm) sekme dönüşlerinde gereksiz yere yeniden fetch
+  // ediyordu. Kimliği gerçekten değişen alanlara bağlıyoruz.
+  const user = session?.user ?? null;
+  const value = useMemo(
+    () => ({ session, user, accountType, adminProfile, studentProfile, isInitializing, signIn, signOut, refreshAccount }),
+    [session, user, accountType, adminProfile, studentProfile, isInitializing, signIn, signOut, refreshAccount]
+  );
+
+  return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
 
 export function useAccount() {

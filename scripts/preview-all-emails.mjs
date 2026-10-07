@@ -248,8 +248,8 @@ async function main() {
       id: "lesson.link_ready.student",
       category: "Randevu & Dersler",
       channel: "zoom",
-      sender: "Oriens Academy Ders <zoom@oriens-academy.com>",
-      replyTo: "zoom@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentLiveLessonLinkEmail({
           lessonId: "lsn-101",
@@ -403,13 +403,13 @@ async function main() {
         }),
     },
 
-    // 5. Packages & Payment Management (payments@)
+    // 5. Packages & Payment Management (info@)
     {
       id: "package.purchased.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentPackagePurchasedEmail({
           orderReference: "ORD-2026-98214",
@@ -429,8 +429,8 @@ async function main() {
       id: "payment.success.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentPaymentSuccessEmail({
           paymentReference: "PAY-2026-98214",
@@ -448,8 +448,8 @@ async function main() {
       id: "payment.bank_transfer_pending.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentBankTransferPendingEmail({
           paymentReference: "TX-98214",
@@ -468,8 +468,8 @@ async function main() {
       id: "payment.bank_transfer_approved.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentBankTransferApprovedEmail({
           paymentReference: "TX-98214",
@@ -486,8 +486,8 @@ async function main() {
       id: "payment.reminder.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentPaymentReminderEmail({
           paymentReference: "TX-98214",
@@ -507,8 +507,8 @@ async function main() {
       id: "payment.notification.admin",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderAdminPaymentNotificationEmail({
           paymentReference: "PAY-2026-98214",
@@ -528,8 +528,8 @@ async function main() {
       id: "package.activated.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentPackageActivatedEmail({
           studentName: "Deniz Arda",
@@ -543,8 +543,8 @@ async function main() {
       id: "package.low_balance.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentPackageLowBalanceEmail({
           studentName: "Deniz Arda",
@@ -560,8 +560,8 @@ async function main() {
       id: "package.completed.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentPackageCompletedEmail({
           studentName: "Deniz Arda",
@@ -577,8 +577,8 @@ async function main() {
       id: "package.renewal.student",
       category: "Paket & Ödemeler",
       channel: "payments",
-      sender: "Oriens Academy Ödemeler <payments@oriens-academy.com>",
-      replyTo: "payments@oriens-academy.com",
+      sender: "Oriens Academy <info@oriens-academy.com>",
+      replyTo: "info@oriens-academy.com",
       render: () =>
         renderStudentPackageRenewalEmail({
           studentName: "Deniz Arda",

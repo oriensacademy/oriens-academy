@@ -2,14 +2,14 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronUp, Copy, GripVertical, Trash2 } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
- * Per-block gutter: drag handle plus the explicit move up / move down /
- * duplicate / delete controls. Drag-and-drop alone is not enough -- it is
- * unreliable on touch and invisible to keyboard users -- so every reorder is
- * also reachable through a plain button.
+ * Referans be-blk kabuğu: başlıkta blok türü (sürükleme tutamacı da buradadır)
+ * ve yukarı / aşağı / çoğalt / sil düğmeleri. Drag-and-drop alone is not enough
+ * -- it is unreliable on touch and invisible to keyboard users -- so every
+ * reorder is also reachable through a plain button.
  */
 export function BlockShell({
   id,
@@ -35,44 +35,29 @@ export function BlockShell({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
-  const iconButton =
-    "rounded p-1 text-muted-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-30";
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group relative flex gap-1.5 rounded-xl border border-transparent p-2 transition hover:border-border sm:gap-2"
-    >
-      <div className="flex shrink-0 flex-col items-center gap-0.5 pt-1 opacity-40 transition group-hover:opacity-100 group-focus-within:opacity-100 sm:opacity-0">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label={`${label} bloğunu sürükle`}
-          className="touch-none rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
-        >
-          <GripVertical className="size-4" />
-        </button>
-        <button type="button" onClick={onMoveUp} disabled={!canMoveUp} aria-label={`${label} bloğunu yukarı taşı`} className={iconButton}>
-          <ChevronUp className="size-3.5" />
-        </button>
-        <button type="button" onClick={onMoveDown} disabled={!canMoveDown} aria-label={`${label} bloğunu aşağı taşı`} className={iconButton}>
-          <ChevronDown className="size-3.5" />
-        </button>
-        <button type="button" onClick={onDuplicate} aria-label={`${label} bloğunu çoğalt`} className={iconButton}>
-          <Copy className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label={`${label} bloğunu sil`}
-          className="rounded p-1 text-muted-foreground transition hover:bg-red-50 hover:text-red-600"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
+    <div ref={setNodeRef} style={style} className="be-blk">
+      <div className="be-blk-h">
+        <span className="be-blk-t">
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            aria-label={`${label} bloğunu sürükle`}
+            style={{ display: "inline-flex", border: 0, background: "none", padding: 0, color: "inherit", cursor: "grab", touchAction: "none" }}
+          >
+            <GripVertical width={16} height={16} aria-hidden="true" />
+          </button>
+          {label}
+        </span>
+        <span className="be-blk-a">
+          <button type="button" title="Yukarı taşı" aria-label={`${label} bloğunu yukarı taşı`} onClick={onMoveUp} disabled={!canMoveUp}>↑</button>
+          <button type="button" title="Aşağı taşı" aria-label={`${label} bloğunu aşağı taşı`} onClick={onMoveDown} disabled={!canMoveDown}>↓</button>
+          <button type="button" title="Bloğu çoğalt" aria-label={`${label} bloğunu çoğalt`} onClick={onDuplicate}>⧉</button>
+          <button type="button" title="Bloğu sil" aria-label={`${label} bloğunu sil`} onClick={onDelete} data-rm="">✕</button>
+        </span>
       </div>
-      <div className="min-w-0 flex-1">{children}</div>
+      <div style={{ minWidth: 0 }}>{children}</div>
     </div>
   );
 }

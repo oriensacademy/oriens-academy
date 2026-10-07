@@ -1,6 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { validateMutationRequest, buildJsonResponse } from "../_shared/cors.ts";
 import { dispatchContactEmails } from "../_shared/email/service.ts";
+import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
+import { sanitizeAuditError, writeEdgeAuditEvent } from "../_shared/audit.ts";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -114,7 +116,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const serviceRoleKey = getSupabaseAdminKey();
 
     if (!supabaseUrl || !serviceRoleKey) {
       console.error("[create-contact] Missing server credentials in environment.");
@@ -160,7 +162,7 @@ Deno.serve(async (req: Request) => {
     if (packageId) {
       const { data: packageRow, error: packageError } = await supabaseAdmin
         .from("pricing_packages")
-        .select("id,name_tr,name_en,lesson_count,currency,current_total,price_amount,active")
+        .select("id,name_tr,name_en,lesson_count,currency,current_total,price_amount,price_eur,active")
         .eq("id", packageId)
         .eq("active", true)
         .maybeSingle();
@@ -176,8 +178,10 @@ Deno.serve(async (req: Request) => {
       selectedPackage = {
         id: packageRow.id,
         name: (locale === "tr" ? packageRow.name_tr : packageRow.name_en) || packageRow.name_tr || packageRow.name_en || packageRow.id,
-        price: packageRow.current_total ?? packageRow.price_amount ?? null,
-        currency: packageRow.currency || "TRY",
+        price: locale === "en" && Number(packageRow.price_eur) > 0
+          ? Number(packageRow.price_eur)
+          : packageRow.current_total ?? packageRow.price_amount ?? null,
+        currency: locale === "en" && Number(packageRow.price_eur) > 0 ? "EUR" : packageRow.currency || "TRY",
         lessons: packageRow.lesson_count ?? null,
       };
     }
@@ -207,7 +211,8 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (insertError || !contactRow) {
-      console.error("[create-contact] Database insert error:", insertError);
+      await writeEdgeAuditEvent(supabaseAdmin, { action: "contact.operation_failed", category: "contact", severity: "error", entityType: "contact_request", metadata: sanitizeAuditError(insertError || { message: "Contact row missing" }, { operation: "create_contact_request" }) });
+      console.error(`[create-contact] Database insert error code=${insertError?.code || "unknown"}`);
       return buildJsonResponse(
         { error_code: "STORAGE_FAILED", message: "Failed to store contact request." },
         500,
@@ -228,7 +233,8 @@ Deno.serve(async (req: Request) => {
       createdAt: contactRow.created_at || nowIso,
       package: selectedPackage,
     }).catch((err) => {
-      console.error("[create-contact] Email dispatch background error:", err);
+      void writeEdgeAuditEvent(supabaseAdmin, { action: "contact.operation_failed", category: "contact", severity: "error", entityType: "contact_request", entityId: contactRow.id, correlationId: contactRow.id, metadata: sanitizeAuditError(err, { operation: "dispatch_contact_emails" }) });
+      console.error(`[create-contact] Email dispatch background error type=${err instanceof Error ? err.name : "unknown"}`);
       return { status: "partial" as const };
     });
 
@@ -243,7 +249,7 @@ Deno.serve(async (req: Request) => {
       req
     );
   } catch (err) {
-    console.error("[create-contact] Unexpected error:", err);
+    console.error(`[create-contact] Unexpected error type=${err instanceof Error ? err.name : "unknown"}`);
     return buildJsonResponse(
       { error_code: "INTERNAL_ERROR", message: "An unexpected error occurred." },
       500,
