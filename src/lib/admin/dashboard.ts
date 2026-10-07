@@ -17,6 +17,8 @@ export interface DashboardMetrics {
 
 export type RecentAuditRow = Tables<"audit_logs">;
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Fetches real operational counts for the Admin Dashboard.
  */
@@ -152,46 +154,55 @@ export async function enrichRecentActivity(
     const value = metadata[key];
     return typeof value === "string" && value.trim() ? value.trim() : null;
   };
-  const lessonIds = entityIds("student_lesson");
-  const purchaseIds = entityIds("student_package_purchase");
-  const paymentIds = [
+  // uuid kolonlarına uuid olmayan değer giderse PostgREST tüm sorguyu reddeder
+  // (22P02) ve partideki her satırın bağlamı kaybolur. Ödeme kayıtlarının
+  // entity_id'si çoğunlukla public_reference ("ORI…"), uuid değil.
+  const uuidsOnly = (ids: string[]) => ids.filter((id) => UUID_PATTERN.test(id));
+  const lessonIds = uuidsOnly(entityIds("student_lesson"));
+  const purchaseIds = uuidsOnly(entityIds("student_package_purchase"));
+  const paymentKeys = [
     ...new Set([
       ...entityIds("payment_transaction"),
       ...rows.map((row) => metadataText(row, "transaction_id")).filter((id): id is string => Boolean(id)),
     ]),
   ];
-  const actorIds = [...new Set(rows.map((row) => row.actor_user_id).filter((id): id is string => Boolean(id)))];
+  const paymentIds = uuidsOnly(paymentKeys);
+  const paymentReferences = paymentKeys.filter((key) => !UUID_PATTERN.test(key)).slice(0, 200);
+  const actorIds = uuidsOnly([...new Set(rows.map((row) => row.actor_user_id).filter((id): id is string => Boolean(id)))]);
 
   const lessonToStudent = new Map<string, string>();
   const purchaseContext = new Map<string, { studentId: string | null; packageId: string; lessonCount: number }>();
   const paymentToStudent = new Map<string, string>();
+  const empty = Promise.resolve({ data: null });
 
-  if (lessonIds.length > 0) {
-    const { data } = await supabase.from("student_lessons").select("id,student_user_id").in("id", lessonIds);
-    for (const lesson of data || []) lessonToStudent.set(lesson.id, lesson.student_user_id);
+  // Bağımsız toplu okumalar paralel; satır sayısından bağımsız sabit sorgu sayısı.
+  const [lessonsRes, purchasesRes, paymentsByIdRes, paymentsByRefRes, actorsRes] = await Promise.all([
+    lessonIds.length > 0 ? supabase.from("student_lessons").select("id,student_user_id").in("id", lessonIds) : empty,
+    purchaseIds.length > 0
+      ? supabase.from("student_package_purchases").select("id,student_user_id,package_id,lesson_count").in("id", purchaseIds)
+      : empty,
+    paymentIds.length > 0
+      ? supabase.from("payment_transactions").select("id,public_reference,student_user_id,package_owner_student_id").in("id", paymentIds)
+      : empty,
+    paymentReferences.length > 0
+      ? supabase.from("payment_transactions").select("id,public_reference,student_user_id,package_owner_student_id").in("public_reference", paymentReferences)
+      : empty,
+    actorIds.length > 0 ? supabase.from("admin_profiles").select("user_id,display_name").in("user_id", actorIds) : empty,
+  ]);
+
+  for (const lesson of lessonsRes.data || []) lessonToStudent.set(lesson.id, lesson.student_user_id);
+  for (const purchase of purchasesRes.data || []) {
+    purchaseContext.set(purchase.id, {
+      studentId: purchase.student_user_id,
+      packageId: purchase.package_id,
+      lessonCount: purchase.lesson_count,
+    });
   }
-  if (purchaseIds.length > 0) {
-    const { data } = await supabase
-      .from("student_package_purchases")
-      .select("id,student_user_id,package_id,lesson_count")
-      .in("id", purchaseIds);
-    for (const purchase of data || []) {
-      purchaseContext.set(purchase.id, {
-        studentId: purchase.student_user_id,
-        packageId: purchase.package_id,
-        lessonCount: purchase.lesson_count,
-      });
-    }
-  }
-  if (paymentIds.length > 0) {
-    const { data } = await supabase
-      .from("payment_transactions")
-      .select("id,student_user_id,package_owner_student_id")
-      .in("id", paymentIds);
-    for (const payment of data || []) {
-      const studentId = payment.package_owner_student_id || payment.student_user_id;
-      if (studentId) paymentToStudent.set(payment.id, studentId);
-    }
+  for (const payment of [...(paymentsByIdRes.data || []), ...(paymentsByRefRes.data || [])]) {
+    const studentId = payment.package_owner_student_id || payment.student_user_id;
+    if (!studentId) continue;
+    paymentToStudent.set(payment.id, studentId);
+    if (payment.public_reference) paymentToStudent.set(payment.public_reference, studentId);
   }
 
   const studentIds = new Set<string>();
@@ -207,26 +218,23 @@ export async function enrichRecentActivity(
     if (studentId) studentIds.add(studentId);
   }
 
-  const studentNames = new Map<string, string>();
-  if (studentIds.size > 0) {
-    const { data } = await supabase.from("student_profiles").select("id,full_name").in("id", [...studentIds]);
-    for (const student of data || []) studentNames.set(student.id, student.full_name);
-  }
-
   const actorNames = new Map<string, string>();
-  if (actorIds.length > 0) {
-    const { data } = await supabase.from("admin_profiles").select("user_id,display_name").in("user_id", actorIds);
-    for (const actor of data || []) actorNames.set(actor.user_id, actor.display_name);
-  }
+  for (const actor of actorsRes.data || []) actorNames.set(actor.user_id, actor.display_name);
 
-  const packageIds = [...new Set([...purchaseContext.values()].map((purchase) => purchase.packageId))];
+  const studentLookupIds = uuidsOnly([...studentIds]);
+  const packageIds = [...new Set([...purchaseContext.values()].map((purchase) => purchase.packageId).filter(Boolean))];
+  const [studentsRes, packagesRes] = await Promise.all([
+    studentLookupIds.length > 0 ? supabase.from("student_profiles").select("id,full_name").in("id", studentLookupIds) : empty,
+    packageIds.length > 0 ? supabase.from("pricing_packages").select("id,name_tr,name_en").in("id", packageIds) : empty,
+  ]);
+
+  const studentNames = new Map<string, string>();
+  for (const student of studentsRes.data || []) studentNames.set(student.id, student.full_name);
+
   const packageNames = new Map<string, string>();
-  if (packageIds.length > 0) {
-    const { data } = await supabase.from("pricing_packages").select("id,name_tr,name_en").in("id", packageIds);
-    for (const item of data || []) {
-      const name = item.name_tr || item.name_en;
-      if (name) packageNames.set(item.id, name);
-    }
+  for (const item of packagesRes.data || []) {
+    const name = item.name_tr || item.name_en;
+    if (name) packageNames.set(item.id, name);
   }
 
   return rows.map((row) => {

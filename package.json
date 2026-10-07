@@ -51,7 +51,8 @@
     "test:mail:no-send": "npx --yes deno@2 run --no-lock --allow-env --allow-read=supabase/config.toml supabase/tests/mail-flow-no-send.ts",
     "test:audit:sql": "node supabase/tests/audit-center-sql.mjs",
     "test:audit:logic": "npx tsx scripts/test-audit-center.ts",
-    "test:audit:browser": "node scripts/test-audit-center-browser.mjs"
+    "test:audit:browser": "node scripts/test-audit-center-browser.mjs",
+    "test:dashboard:activity": "npx tsx scripts/test-dashboard-activity.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
