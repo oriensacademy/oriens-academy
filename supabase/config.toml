@@ -432,6 +432,73 @@ verify_jwt = false
 [functions.process-notification-outbox]
 verify_jwt = false
 
+# The entries below mirror the live gateway setting so a plain `functions deploy`
+# never flips them to the default (verify_jwt = true). Each one is called from the
+# browser with the publishable key, from an email link, or server-to-server, and
+# enforces its own checks in code (service key, auth.getUser + is_admin,
+# Turnstile, origin/input validation), or is a decommissioned stub that does nothing.
+
+[functions.booking-availability]
+# Public slot lookup; origin-validated, read-only.
+verify_jwt = false
+
+[functions.create-booking]
+# Public booking form; Turnstile + origin validation, optional session via getUser.
+verify_jwt = false
+
+[functions.create-contact]
+# Public contact form; origin validation, honeypot and strict input validation.
+verify_jwt = false
+
+[functions.email-preview-delivery]
+# Requires the service key in code; recipients restricted to internal addresses.
+verify_jwt = false
+
+[functions.request-email-change]
+# Caller identity verified in code via auth.getUser.
+verify_jwt = false
+
+[functions.request-password-recovery]
+# Public "forgot password"; Turnstile (or verified admin/service caller) + DB rate limit.
+verify_jwt = false
+
+[functions.request-purchase-email-verification]
+# Caller identity verified in code via auth.getUser.
+verify_jwt = false
+
+[functions.send-exam-result-email]
+# Decommissioned stub: returns { disabled: true } and sends nothing.
+verify_jwt = false
+
+[functions.send-homework-email]
+# Decommissioned stub: returns { disabled: true } and sends nothing.
+verify_jwt = false
+
+[functions.send-live-lesson-email]
+# Admin-only; auth.getUser + is_admin checked in code.
+verify_jwt = false
+
+[functions.send-student-appointment]
+# Admin-only; auth.getUser + is_admin checked in code.
+verify_jwt = false
+
+[functions.send-support-email]
+# Decommissioned stub: returns { disabled: true } and sends nothing.
+verify_jwt = false
+
+[functions.send-welcome-email]
+# Called right after signup; identity via auth.getUser when present, one welcome
+# email per student enforced by the delivery idempotency check.
+verify_jwt = false
+
+[functions.verify-email-change]
+# Caller identity verified in code via auth.getUser; OTP hash check.
+verify_jwt = false
+
+[functions.verify-purchase-email-link]
+# Decommissioned stub for old email links; verifies nothing.
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

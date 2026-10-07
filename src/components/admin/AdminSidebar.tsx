@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminNotifications } from "@/lib/admin/admin-notifications-context";
@@ -130,9 +131,7 @@ export function AdminSidebar({ mini, onToggleMini }: AdminSidebarProps) {
     <aside className="sb" id="sb" aria-label="Ana menü">
       <div className="sb-top">
         <Link className="logo" href={ensureTrailingSlash("/admin")} title="Genel Bakış" aria-label="Oriens Academy">
-          <span className="logo-w">oriens</span>
-          <span className="logo-s">ACADEMY</span>
-          <span className="logo-m" aria-hidden="true">o</span>
+          <Image className="logo-img" src="/brand/oriens-logo-v2.png" alt="" width={217} height={80} priority />
         </Link>
         <button
           type="button"

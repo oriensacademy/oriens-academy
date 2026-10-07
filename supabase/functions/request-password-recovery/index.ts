@@ -1,9 +1,9 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { sendTransactionalEmail } from "../_shared/email/service.ts";
 import { renderPasswordResetActionEmail, normalizeLocale } from "../_shared/email/templates.ts";
 import { verifyTurnstile } from "../_shared/turnstile.ts";
-import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
+import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 import { sanitizeAuditError, writeEdgeAuditEvent } from "../_shared/audit.ts";
 
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -68,7 +68,9 @@ Deno.serve(async (req: Request) => {
         // Never trust unverified JWT claims. The caller's token must be accepted by
         // Supabase and the database must confirm the authenticated user is an admin.
         try {
-          const callerClient = createClient(supabaseUrl, token, {
+          // The project API key goes in `apikey`; the caller's session JWT only in Authorization.
+          const callerClient = createClient(supabaseUrl, getSupabasePublishableKey(), {
+            global: { headers: { Authorization: `Bearer ${token}` } },
             auth: { autoRefreshToken: false, persistSession: false },
           });
           const { data: isAdmin } = await callerClient.rpc("is_admin");
@@ -159,16 +161,18 @@ Deno.serve(async (req: Request) => {
     };
 
     // 5. User Account Lookup
-    const { data: userList, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
-    if (listErr) {
-      await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.password_recovery_failed", category: "auth", severity: "error", entityType: "auth_user", metadata: sanitizeAuditError(listErr, { operation: "list_users" }) });
-      console.error("[request-password-recovery] listUsers failed:", listErr.message);
-      return buildJsonResponse({ error: "Internal server error" }, 500, req);
+    // listUsers is paginated (50 per page by default); walk every page.
+    let matchingUser: User | undefined;
+    for (let page = 1; page <= 20 && !matchingUser; page += 1) {
+      const { data: userList, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 500 });
+      if (listErr) {
+        await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.password_recovery_failed", category: "auth", severity: "error", entityType: "auth_user", metadata: sanitizeAuditError(listErr, { operation: "list_users" }) });
+        console.error("[request-password-recovery] listUsers failed:", listErr.message);
+        return buildJsonResponse({ error: "Internal server error" }, 500, req);
+      }
+      matchingUser = userList.users.find((u) => u.email?.toLowerCase() === rawEmail);
+      if (userList.users.length < 500) break;
     }
-
-    const matchingUser = userList.users.find(
-      (u) => u.email?.toLowerCase() === rawEmail
-    );
 
     // Account Enumeration Prevention: return identical neutral success if user does not exist
     if (!matchingUser) {

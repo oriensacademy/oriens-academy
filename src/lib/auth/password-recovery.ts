@@ -62,7 +62,15 @@ export async function requestPasswordRecovery(
     }
 
     if (fnError) {
-      const errMsg = fnError.message?.toLowerCase() || "";
+      // FunctionsHttpError carries the Response in `context`; its JSON body holds the error_code.
+      let bodyCode = "";
+      try {
+        const body = await fnError.context?.clone?.().json?.();
+        bodyCode = typeof body?.error_code === "string" ? body.error_code.toLowerCase() : "";
+      } catch {
+        bodyCode = "";
+      }
+      const errMsg = `${fnError.message?.toLowerCase() || ""} ${bodyCode}`;
       const status = fnError.context?.status || fnError.status;
 
       // Rate limit detection (HTTP 429)

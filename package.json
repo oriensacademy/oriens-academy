@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/check-turnstile-prod-key.mjs --env",
     "build": "next build",
-    "postbuild": "node scripts/normalize-next-static-rsc.mjs",
+    "postbuild": "node scripts/check-turnstile-prod-key.mjs --out && node scripts/normalize-next-static-rsc.mjs",
     "start": "next start",
     "lint": "eslint",
     "test:search:api": "node scripts/search-api-regression.mjs",
@@ -45,7 +46,9 @@
     "test:payment:operations": "npx tsx scripts/test-payment-auth-outbox-lesson-rights.ts",
     "test:portal-admin:final": "node scripts/test-portal-admin-final.mjs",
     "test:portal-public:browser-final": "node scripts/test-portal-public-browser-final.mjs",
-    "universities:verify-urls": "node scripts/verify-university-urls.mjs"
+    "universities:verify-urls": "node scripts/verify-university-urls.mjs",
+    "test:turnstile:guard": "node scripts/test-turnstile-prod-guard.mjs",
+    "test:mail:no-send": "npx --yes deno@2 run --no-lock --allow-env --allow-read=supabase/config.toml supabase/tests/mail-flow-no-send.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

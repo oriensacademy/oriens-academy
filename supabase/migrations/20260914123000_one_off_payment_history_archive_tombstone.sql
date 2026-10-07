@@ -1,0 +1,12 @@
+-- Tombstone for remote migration version 20260914123000.
+--
+-- This version was applied to production on 2026-09-14 as a one-off, record-specific
+-- data correction (archiving a single customer's duplicate payment history behind an
+-- admin-only RPC). Its original SQL embeds customer-identifying values, so it is kept
+-- out of this public repository and archived privately by the operators.
+--
+-- The file exists only so the local migration chain matches the remote history:
+-- `supabase db push` / `migration list` on a fresh clone see the same versions.
+-- It intentionally changes nothing. Nothing in the app references the original
+-- function, so a fresh local database does not need it.
+select 1;

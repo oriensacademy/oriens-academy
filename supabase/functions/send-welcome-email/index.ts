@@ -4,6 +4,9 @@ import { dispatchWelcomeEmail } from "../_shared/email/service.ts";
 import { normalizeLocale } from "../_shared/email/templates.ts";
 import { getSupabaseAdminKey, getSupabasePublishableKey } from "../_shared/supabase-admin.ts";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_REGEX = /^[^@\s,()]+@[^@\s,()]+\.[^@\s,()]+$/;
+
 Deno.serve(async (req: Request) => {
   const invalid = validateMutationRequest(req, ["POST"]);
   if (invalid) return invalid;
@@ -22,81 +25,74 @@ Deno.serve(async (req: Request) => {
   });
 
   const body = await req.json().catch(() => ({}));
+  const bearer = authorization.replace(/^Bearer\s+/i, "").trim();
+  const isServiceRequest = Boolean(bearer) && bearer === service;
   let studentUserId: string | null = null;
-  let studentEmail: string = "";
-  let studentName: string = "";
   let preferredLanguage: "tr" | "en" = "tr";
 
-  // 1. Verify caller identity via Authorization Header or direct payload
-  if (authorization) {
+  // 1. Resolve the account. The recipient is never taken from the request body:
+  // a signed-in user can only trigger their own welcome mail, and a service caller
+  // names an account id whose address is read from the database.
+  if (isServiceRequest) {
+    const candidate = typeof body.studentUserId === "string" ? body.studentUserId.trim() : "";
+    if (UUID_REGEX.test(candidate)) studentUserId = candidate;
+  } else if (bearer) {
     const caller = createClient(url, anon, {
       global: { headers: { Authorization: authorization } },
     });
     const { data: userData, error: userError } = await caller.auth.getUser();
-
-    if (!userError && userData.user) {
-      // Exclude Admin accounts from receiving student welcome email
-      if (userData.user.app_metadata?.role === "admin") {
-        return buildJsonResponse({ success: true, skipped: true, reason: "ADMIN_EXCLUDED" }, 200, req);
-      }
-      studentUserId = userData.user.id;
-      studentEmail = userData.user.email || "";
-      studentName = (userData.user.user_metadata?.full_name as string) || "";
-      preferredLanguage = normalizeLocale(userData.user.user_metadata?.preferred_language as string | undefined);
-    }
+    if (!userError && userData.user) studentUserId = userData.user.id;
   }
 
-  // Fallback / direct payload if provided during signup flow
-  if (!studentUserId && body.studentUserId) {
-    studentUserId = String(body.studentUserId);
+  if (!studentUserId) {
+    return buildJsonResponse({ error_code: "UNAUTHORIZED_OR_MISSING_IDENTIFIER" }, 401, req);
   }
-  if (!studentEmail && body.email) {
-    studentEmail = String(body.email).trim().toLowerCase();
+
+  const { data: authUser } = await admin.auth.admin.getUserById(studentUserId);
+  const account = authUser?.user;
+  if (!account) {
+    return buildJsonResponse({ error_code: "UNAUTHORIZED_OR_MISSING_IDENTIFIER" }, 401, req);
   }
-  if (!studentName && body.fullName) {
-    studentName = String(body.fullName).trim();
+
+  // Exclude Admin accounts from receiving student welcome email
+  if (account.app_metadata?.role === "admin") {
+    return buildJsonResponse({ success: true, skipped: true, reason: "ADMIN_EXCLUDED" }, 200, req);
   }
+
+  let studentEmail = (account.email || "").trim().toLowerCase();
+  let studentName = (account.user_metadata?.full_name as string) || "";
+  preferredLanguage = normalizeLocale(account.user_metadata?.preferred_language as string | undefined);
   if (typeof body.locale === "string" && normalizeLocale(body.locale) === "en") {
     preferredLanguage = "en";
   }
 
-  if (!studentUserId && !studentEmail) {
-    return buildJsonResponse({ error_code: "UNAUTHORIZED_OR_MISSING_IDENTIFIER" }, 401, req);
+  const { data: profile } = await admin
+    .from("student_profiles")
+    .select("id, full_name, email, preferred_language, active")
+    .eq("id", studentUserId)
+    .maybeSingle();
+
+  if (profile) {
+    studentName = profile.full_name || studentName;
+    studentEmail = (profile.email || studentEmail).trim().toLowerCase();
+    preferredLanguage = normalizeLocale(profile.preferred_language) === "en" ? "en" : preferredLanguage;
   }
 
-  // Fetch verified profile from database if user ID is available
-  if (studentUserId) {
-    const { data: profile } = await admin
-      .from("student_profiles")
-      .select("id, full_name, email, preferred_language, active")
-      .eq("id", studentUserId)
-      .maybeSingle();
-
-    if (profile) {
-      studentName = profile.full_name || studentName;
-      studentEmail = profile.email || studentEmail;
-      preferredLanguage = normalizeLocale(profile.preferred_language) === "en" ? "en" : preferredLanguage;
-    }
-  }
-
-  if (!studentEmail || !studentEmail.includes("@")) {
+  if (!studentEmail || !EMAIL_REGEX.test(studentEmail)) {
     return buildJsonResponse({ error_code: "INVALID_EMAIL" }, 400, req);
   }
 
-  const uniqueEntityId = studentUserId || studentEmail;
+  const uniqueEntityId = studentUserId;
 
   // 2. EMAIL VERIFICATION GATE
   // Account welcome emails must only be sent AFTER email address verification
-  if (studentUserId) {
-    const { data: authUser } = await admin.auth.admin.getUserById(studentUserId);
-    if (!authUser?.user?.email_confirmed_at) {
-      return buildJsonResponse({
-        success: true,
-        skipped: true,
-        reason: "EMAIL_NOT_VERIFIED",
-        message: "Welcome email is deferred until the account email address is confirmed.",
-      }, 200, req);
-    }
+  if (!account.email_confirmed_at) {
+    return buildJsonResponse({
+      success: true,
+      skipped: true,
+      reason: "EMAIL_NOT_VERIFIED",
+      message: "Welcome email is deferred until the account email address is confirmed.",
+    }, 200, req);
   }
 
   // 3. SERVER-SIDE IDEMPOTENCY & DEDUPLICATION CHECK
@@ -132,7 +128,7 @@ Deno.serve(async (req: Request) => {
     return buildJsonResponse({
       success: true,
       delivered: delivery.status === "sent",
-      providerMessageId: delivery.providerMessageId,
+      providerMessageId: "providerMessageId" in delivery ? delivery.providerMessageId : undefined,
     }, 200, req);
   } catch (err: unknown) {
     console.error("[send-welcome-email] Failed to send welcome email:", err);

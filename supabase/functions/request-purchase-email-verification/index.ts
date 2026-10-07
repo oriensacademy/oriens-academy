@@ -63,7 +63,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const candidateEmail = normalizeOtpEmail(payload.candidateEmail || user.email || "");
-  const locale = normalizeLocale(payload.locale);
+  const locale = normalizeLocale(typeof payload.locale === "string" ? payload.locale : null);
 
   if (!candidateEmail || !EMAIL_REGEX.test(candidateEmail)) {
     return buildJsonResponse(

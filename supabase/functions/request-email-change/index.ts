@@ -12,6 +12,13 @@ const OTP_EXPIRATION_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return email;
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(1, local.length - visible.length))}@${domain}`;
+}
+
 Deno.serve(async (req: Request) => {
   const invalidRequest = validateMutationRequest(req, ["POST"]);
   if (invalidRequest) return invalidRequest;
@@ -68,7 +75,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const newEmail = String(payload.newEmail || "").trim().toLowerCase();
-  const locale = normalizeLocale(payload.locale);
+  const locale = normalizeLocale(typeof payload.locale === "string" ? payload.locale : null);
   const isTr = locale === "tr";
 
   if (!newEmail || !EMAIL_REGEX.test(newEmail)) {
@@ -197,7 +204,7 @@ Deno.serve(async (req: Request) => {
       expiresInMinutes: 10,
     });
 
-    await sendTransactionalEmail({
+    const delivery = await sendTransactionalEmail({
       supabaseAdmin,
       to: newEmail,
       subject: otpEmail.subject,
@@ -209,8 +216,17 @@ Deno.serve(async (req: Request) => {
       channel: "support",
       idempotencyKey: `email-change-otp-${user.id}-${now}`,
     });
+    // The sender reports provider failures as a result, not an exception.
+    if (delivery.status === "failed") throw new Error(`OTP delivery failed: ${delivery.errorCode || "unknown"}`);
   } catch (otpErr) {
     console.error("[request-email-change] New email OTP send failed:", otpErr);
+    // Retire the undelivered challenge so the user can retry without waiting for the cooldown.
+    await supabaseAdmin
+      .from("email_change_challenges")
+      .update({ superseded_at: new Date().toISOString(), expires_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .is("verified_at", null)
+      .is("superseded_at", null);
     return buildJsonResponse(
       {
         success: false,
