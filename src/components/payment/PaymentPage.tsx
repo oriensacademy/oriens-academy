@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LockKeyhole, Tag } from "lucide-react";
+import { CreditCard, LockKeyhole, Tag } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getPaymentCopy } from "@/content/payment";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
@@ -21,6 +21,7 @@ import type { Tables } from "@/types/database.types";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { ButtonLink } from "@/components/ui/button";
 import { HostedCardPanel, type PaymentSessionResult } from "./HostedCardPanel";
+import { PaytrInstallmentTable, paytrInstallmentTableEnabled } from "./PaytrInstallmentTable";
 import { newCartId, recordCartEvent } from "@/lib/cart/cart-audit";
 import { LegalModal, type LegalOrderSnapshot } from "@/components/legal/LegalModal";
 import type { LegalDocKey } from "@/config/legal";
@@ -443,6 +444,34 @@ export function PaymentPage() {
             ) : null}
           </div>
         )}
+
+        {currency === "TRY" && finalPrice > 0 ? (
+          <div className="mt-6 rounded-2xl border bg-surface-muted p-4">
+            <p className="flex items-center gap-2 text-xs font-semibold text-ink">
+              <CreditCard aria-hidden className="size-4 shrink-0 text-primary" />
+              {isTr ? "Taksitli Ödeme" : "Instalment Payment"}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+              {paytrInstallmentTableEnabled
+                ? isTr
+                  ? "Kartınızın bankasına göre taksit seçenekleri aşağıdaki PayTR tablosunda listelenir. Taksit seçimini kart numaranızı girdikten sonra güvenli PayTR ödeme formunda yaparsınız."
+                  : "Instalment options by card bank are listed in the PayTR table below. You choose the instalment in the secure PayTR form after entering your card number."
+                : isTr
+                  ? "Kredi kartınıza uygun taksit seçenekleri (varsa), kart numaranızı girdikten sonra aşağıdaki güvenli PayTR ödeme formunda bankanıza göre listelenir."
+                  : "Instalment options available for your credit card (if any) are listed by your bank in the secure PayTR form below after you enter your card number."}
+            </p>
+            <p className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-ink">
+              <span>{isTr ? "Tek çekim" : "Single payment"}</span>
+              <strong data-single-payment>{money(finalPrice, currency)}</strong>
+            </p>
+            {paytrInstallmentTableEnabled ? (
+              <details open className="mt-2 text-xs">
+                <summary className="cursor-pointer font-semibold text-primary">{isTr ? "Taksit tablosu" : "Instalment table"}</summary>
+                <PaytrInstallmentTable amount={finalPrice} />
+              </details>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-6">
           <HostedCardPanel

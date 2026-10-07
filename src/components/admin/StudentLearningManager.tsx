@@ -69,6 +69,7 @@ import { adminLessonCopy } from "@/content/admin-lessons";
 import { ADMIN_UI_FEATURES } from "@/config/admin-ui";
 import { previewLessonAdjustment } from "@/lib/admin/lesson-adjustments";
 import { useToast } from "@/components/ui/toast";
+import { TrNumberInput } from "@/components/admin/TrNumberInput";
 import { packageDisplayName } from "@/lib/packages/display";
 import type { BookingWithSlot } from "@/lib/admin/bookings";
 import {
@@ -2103,12 +2104,10 @@ function PackagePanel({
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-muted-foreground mb-1">Ücret (TL)</label>
-                      <input
+                      <TrNumberInput
                         required
-                        type="number"
-                        min="0"
                         value={packageForm.price}
-                        onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })}
+                        onValueChange={(value) => setPackageForm({ ...packageForm, price: value })}
                         className={field}
                       />
                     </div>

@@ -830,7 +830,7 @@
 .root :global(.od-dl) > div{min-width:0}
 .root :global(.od-dl) dt{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px}
 .root :global(.od-dl) dd{margin:0;font-size:14px;word-break:break-word}
-.root :global(.od-dl) :global(.fx-ref) code{white-space:nowrap !important;overflow:visible;font-size:13px}
+.root :global(.od-dl) :global(.fx-ref) code{white-space:nowrap !important;overflow:visible;font-family:inherit;font-size:14px;color:inherit}
 .root :global(.od-box) :global(.fx-refund){margin-top:0;flex-shrink:0}
 .root:global(#view-odeme) :global(.tools) :global(.search), .root:global(#view-mali) :global(.tools) :global(.search){flex:1.6 1 300px}
 .root:global(#view-odeme) :global(.tools) label:not(:global(.search)), .root:global(#view-mali) :global(.tools) label:not(:global(.search)){flex:1 1 150px}

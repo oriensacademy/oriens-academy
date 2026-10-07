@@ -4,7 +4,6 @@ import { MessageSquare, Phone, Mail, MapPin } from "lucide-react";
 import { FaInstagram } from "react-icons/fa6";
 import Link from "next/link";
 import Image from "next/image";
-import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { useLocale } from "@/content/locale-context";
 import {
@@ -150,7 +149,7 @@ export function Footer() {
         </div>
       }
       info={
-        <div className="space-y-4">
+        <div>
           <div>
             <span className="block text-xs font-bold tracking-[0.16em] text-foreground uppercase">
               {isTr ? "Konum" : "Location"}
@@ -165,12 +164,6 @@ export function Footer() {
                 ))}
               </address>
             </div>
-          </div>
-          <div>
-            <span className="block text-[10px] font-bold tracking-[0.16em] text-foreground uppercase mb-1.5">
-              {isTr ? "Dil / Language" : "Language"}
-            </span>
-            <LanguageSwitch />
           </div>
         </div>
       }

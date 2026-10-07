@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getAdminRefundContext, type AdminRefundContext, type AdminPaymentRow } from "@/lib/admin/payments";
 import { formatTrLira, formatTrListDate } from "@/lib/format/turkish";
+import { TrNumberInput } from "@/components/admin/TrNumberInput";
 import pages from "./admin-pages.module.css";
 
 export interface RefundReviewRequest {
@@ -139,7 +140,7 @@ export function PaymentRefundDialog({ row, subtitle, busy, onClose, onSubmit }: 
                 <div className={`m-field${showErrors && !amountValid ? " fx-err" : ""}`} hidden={mode !== "partial"}>
                   <label htmlFor="odi-tutar" className="m-lab">İade tutarı</label>
                   <div className="m-suffix">
-                    <input id="odi-tutar" type="number" min="1" step="0.01" max={context.refundable_amount} className="m-input" value={amount} onChange={(event) => { setAmount(event.target.value); setShowErrors(false); setSubmitError(""); }} />
+                    <TrNumberInput id="odi-tutar" decimals className="m-input" value={amount} onValueChange={(value) => { setAmount(value); setShowErrors(false); setSubmitError(""); }} />
                     <span className="m-unit">₺</span>
                   </div>
                 </div>

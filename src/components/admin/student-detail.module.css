@@ -16,6 +16,15 @@
 .wrap { width: 100%; min-height: 100%; display: flex; flex-direction: column; }
 .backLink { align-self: flex-start; min-height: 44px; margin-bottom: 12px; padding: 0 12px; border-radius: 12px; color: var(--detail-green); display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; text-decoration: none; transition: background-color 160ms ease, transform 160ms ease; }
 .backLink:hover { background: var(--detail-surface); transform: translateX(-2px); }
+/* Sayfa üst barı: sol "← Öğrenciler", sağ WhatsApp + Bilgileri Düzenle */
+.topBar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.topBar .backLink { margin-bottom: 0; margin-left: -12px; }
+.topBar .primary { background: var(--detail-green); border-color: var(--detail-green); color: #fff; }
+.topBar .primary:hover { background: var(--detail-green-dark); }
+.waButton { border-color: #bfe0cb; background: #eaf7ef; color: #157a3e; font-weight: 700; white-space: nowrap; }
+.waButton:hover { background: #dcf2e4; border-color: #9fd3b3; }
+.waButton svg { color: #25d366; }
+.waButton[aria-disabled="true"] { opacity: .5; pointer-events: none; }
 .card { background: var(--detail-surface); border: 1px solid var(--detail-line); border-radius: 20px; }
 .hero { overflow: hidden; flex: none; box-shadow: none; }
 .body { padding: 24px 0 0; }
@@ -52,8 +61,10 @@
 .label { font-size: 13px; font-weight: 600; color: var(--detail-muted); }
 .value { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .cardPad { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
-.academic { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-.academicCell { border-radius: 14px; background: var(--detail-soft); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.academic { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.academicCell { min-width: 0; border-radius: 14px; background: var(--detail-soft); padding: 14px 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+.academicCell .value { font-size: 15px; line-height: 1.4; }
+.overviewCols { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); }
 .academicCell svg { color: #a57622; }
 .guardianHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .sub { font-size: 14px; color: var(--detail-muted); }
@@ -83,9 +94,8 @@
 .big { display: flex; align-items: baseline; gap: 8px; }
 .big b { color: var(--detail-gold-light); font-family: var(--font-newsreader), Newsreader, Georgia, serif; font-size: 56px; font-weight: 600; line-height: 1; }
 .big span { font-size: 15px; color: #d5ddd6; }
-.segments { display: flex; gap: 6px; }
-.segments i { flex: 1; height: 8px; border-radius: 4px; background: rgb(255 255 255 / 16%); }
-.segments i.done { background: var(--detail-gold-light); }
+.progress { height: 8px; border-radius: 999px; background: rgb(255 255 255 / 16%); overflow: hidden; }
+.progress i { display: block; height: 100%; border-radius: inherit; background: var(--detail-gold-light); transition: width 240ms ease; }
 .package small { font-size: 13px; color: #b9c6bc; }
 .sideCard { padding: 24px; display: flex; flex-direction: column; gap: 14px; }
 .rowButton { min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--detail-line); background: #fff; color: var(--detail-text); font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; width: 100%; text-decoration: none; cursor: pointer; }
@@ -97,6 +107,7 @@
 
 @media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); } .generalLeft > :nth-child(n), .generalRight > :nth-child(n) { grid-column: 1; grid-row: auto; } .generalRight > .package { order: -1; } .academic { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .heroBody { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 560px) { .topBar .actions { width: 100%; } .topBar .actions > * { flex: 1 1 auto; justify-content: center; white-space: nowrap; } }
 @media (max-width: 560px) { .page { padding: 32px 16px 56px; } .panel:not(.pagePanel) { width: calc(100vw - 12px); height: calc(100dvh - 12px); } .heroBody { padding: 20px; } .tabs { padding: 0 6px; gap: 0; overflow-x: visible; } .tab { flex: 1; padding: 0 6px; font-size: 12px; } .infoGrid { grid-template-columns: minmax(0, 1fr); } .who { flex-direction: column; align-items: flex-start; } .name { font-size: 26px; } .academic { grid-template-columns: repeat(2, minmax(0, 1fr)); } .guardianDetails { grid-template-columns: 1fr; } }
 /* Arşivdeki öğrencinin detayı: şerit + salt okunur (referans .arc-banner) */
 .arcBanner { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding: 14px 18px; border-radius: 16px; background: #F1EFE8; border: 1px solid #DCD9CE; }

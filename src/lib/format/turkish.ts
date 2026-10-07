@@ -84,3 +84,24 @@ export function formatTrLira(amount: number | null | undefined): string {
   const value = Number(amount) || 0;
   return `₺${value.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
 }
+
+/**
+ * Fiyat girişleri: iç değer ("3200", "3200.5") → ekran ("3.200", "3.200,5").
+ * Binlik ayırıcı nokta, ondalık ayırıcı virgül (Türkçe biçim).
+ */
+export function formatTrNumberInput(value: string | number | null | undefined, decimals = false): string {
+  const raw = value == null ? "" : String(value);
+  if (!raw) return "";
+  const [intPart, fracPart] = raw.split(".");
+  const grouped = intPart.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return decimals && fracPart !== undefined ? `${grouped},${fracPart.replace(/\D/g, "").slice(0, 2)}` : grouped;
+}
+
+/** Ekrandaki metni ("27.000", "1.250,5", "₺3 200") iç değere ("27000", "1250.5") çevirir. */
+export function parseTrNumberInput(text: string, decimals = false): string {
+  const cleaned = text.replace(/[^\d,]/g, "");
+  const [intPart, ...rest] = cleaned.split(",");
+  const digits = intPart.replace(/^0+(?=\d)/, "");
+  if (!decimals || !rest.length) return digits;
+  return `${digits || "0"}.${rest.join("").slice(0, 2)}`;
+}

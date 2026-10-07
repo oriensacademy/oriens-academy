@@ -478,7 +478,7 @@ export async function processPaytrRefund(input: {
 //  * payment_transactions: görünür ödemeler + PayTR'den başarısız dönüşü gelmiş
 //    kart ödemeleri (yalnız callback kaydı olanlar; terk edilmiş ön yüklemeler hariç).
 //  * student_package_purchases: panelden "Yeni Paket Tanımla" ile elle tanımlanan
-//    ve ödeme kaydına bağlı olmayan paketler (referans: "Elle tanımlandı").
+//    ve ödeme kaydına bağlı olmayan paketler (referans: "Yönetici tarafından eklendi").
 // Yalnız okuma; ödeme, defter veya ders hakkı mantığına dokunmaz.
 
 export const ADMIN_PAYMENT_LIST_FILTER =

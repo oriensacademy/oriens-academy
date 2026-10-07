@@ -12,7 +12,7 @@ import styles from "./admin-frame.module.css";
 // dolgusu bunlara ikinci kez eklenmemeli. Diğer (eski) sayfalar dolguyu korur.
 const REFERENCE_PAGE_ROUTES = new Set([
   "/admin", "/admin/ogrenciler", "/admin/odemeler", "/admin/mali-akis", "/admin/fiyatlandirma",
-  "/admin/indirim-kuponlari", "/admin/iletisim", "/admin/degerlendirmeler", "/admin/blog",
+  "/admin/indirim-kuponlari", "/admin/iletisim", "/admin/iletisim-destek", "/admin/degerlendirmeler", "/admin/blog",
   "/admin/bildirimler", "/admin/denetim", "/admin/ayarlar",
 ]);
 

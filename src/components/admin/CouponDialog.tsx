@@ -6,6 +6,7 @@ import { createAdminCoupon, updateAdminCoupon } from "@/lib/coupons/client";
 import type { PricingPackageRow } from "@/lib/admin/pricing";
 import { RefDatePicker } from "@/components/admin/RefDatePicker";
 import { toast } from "@/components/ui/toast";
+import { TrNumberInput } from "@/components/admin/TrNumberInput";
 import pages from "./admin-pages.module.css";
 
 // Referans "Yeni İndirim Kuponu" (#kp-dialog). Tarihler veritabanında UTC ISO
@@ -236,16 +237,16 @@ export function CouponDialog({ coupon, coupons, packages, onClose, onSaved }: {
                 </div>
                 <div className={field("value")}>
                   <label htmlFor="kp-deger" className="m-lab">{isPct ? "İndirim oranı" : "İndirim tutarı"} <span className="m-req">*</span></label>
-                  <div className="m-suffix"><input id="kp-deger" type="number" min="0" className="m-input" value={form.value} onChange={(event) => set("value", event.target.value)} /><span className="m-unit">{isPct ? "%" : "₺"}</span></div>
+                  <div className="m-suffix"><TrNumberInput id="kp-deger" className="m-input" value={form.value} onValueChange={(value) => set("value", value)} /><span className="m-unit">{isPct ? "%" : "₺"}</span></div>
                   {err("value")}
                 </div>
                 <div className="m-field" style={isPct ? undefined : { visibility: "hidden" }} aria-hidden={!isPct}>
                   <label htmlFor="kp-max" className="m-lab">En fazla indirim <span className="m-opt">(isteğe bağlı)</span></label>
-                  <div className="m-suffix"><input id="kp-max" type="number" min="0" className="m-input" placeholder="Sınırsız" tabIndex={isPct ? undefined : -1} value={form.max} onChange={(event) => set("max", event.target.value)} /><span className="m-unit">₺</span></div>
+                  <div className="m-suffix"><TrNumberInput id="kp-max" className="m-input" placeholder="Sınırsız" tabIndex={isPct ? undefined : -1} value={form.max} onValueChange={(value) => set("max", value)} /><span className="m-unit">₺</span></div>
                 </div>
                 <div className="m-field">
                   <label htmlFor="kp-min" className="m-lab">En az sepet tutarı <span className="m-opt">(isteğe bağlı)</span></label>
-                  <div className="m-suffix"><input id="kp-min" type="number" min="0" className="m-input" placeholder="Sınırsız" value={form.min} onChange={(event) => set("min", event.target.value)} /><span className="m-unit">₺</span></div>
+                  <div className="m-suffix"><TrNumberInput id="kp-min" className="m-input" placeholder="Sınırsız" value={form.min} onValueChange={(value) => set("min", value)} /><span className="m-unit">₺</span></div>
                 </div>
               </div>
               <div className="fx-preview" data-kp-preview="">

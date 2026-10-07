@@ -6,6 +6,7 @@ import { createAdminPricingPackage, updateAdminPricingPackage } from "@/lib/admi
 import { getAdminTcmbEurRate } from "@/lib/admin/tcmb";
 import { getTcmbEurRecommendation, type TcmbEurRate } from "@/lib/pricing/tcmb";
 import { toast } from "@/components/ui/toast";
+import { TrNumberInput } from "@/components/admin/TrNumberInput";
 import pages from "./admin-pages.module.css";
 
 // Referans "Yeni Paket Ekle / Paketi Düzenle" (#fp-dialog). İş kuralları önceki
@@ -197,12 +198,12 @@ export function PricingPackageDialog({ pkg, nextOrder, onClose, onSaved }: {
               </div>
               <div className={field("tl")}>
                 <label htmlFor="fp-tl" className="m-lab">₺ fiyatı <span className="m-req">*</span></label>
-                <div className="m-suffix"><input id="fp-tl" type="number" min="0" className="m-input" placeholder="0 = ücretsiz" value={form.tl} onChange={(event) => set("tl", event.target.value)} /><span className="m-unit">₺</span></div>
+                <div className="m-suffix"><TrNumberInput id="fp-tl" className="m-input" placeholder="0 = ücretsiz" value={form.tl} onValueChange={(value) => set("tl", value)} /><span className="m-unit">₺</span></div>
                 {err("tl")}
               </div>
               <div className={field("eur")}>
                 <label htmlFor="fp-eur" className="m-lab">€ fiyatı <span className="m-req">*</span></label>
-                <div className="m-suffix"><input id="fp-eur" type="number" min="0" step="0.01" inputMode="decimal" className="m-input" placeholder="0,00" value={form.eur} onChange={(event) => set("eur", event.target.value)} /><span className="m-unit">€</span></div>
+                <div className="m-suffix"><TrNumberInput id="fp-eur" decimals className="m-input" placeholder="0,00" value={form.eur} onValueChange={(value) => set("eur", value)} /><span className="m-unit">€</span></div>
                 {err("eur") ?? (
                   <span className="m-hint" aria-live="polite">
                     {rate
@@ -222,7 +223,7 @@ export function PricingPackageDialog({ pkg, nextOrder, onClose, onSaved }: {
               <summary>Site metinleri <small>İngilizce ad, açıklama, rozet ve eski fiyat</small></summary>
               <div className="fx-grid">
                 <div className="m-field"><label htmlFor="fp-ad-en" className="m-lab">Paket adı (EN)</label><input id="fp-ad-en" className="m-input" placeholder="Örn. 10 Lesson Package" value={form.nameEn} onChange={(event) => set("nameEn", event.target.value)} /></div>
-                <div className="m-field"><label htmlFor="fp-eski" className="m-lab">Eski fiyat</label><div className="m-suffix"><input id="fp-eski" type="number" min="0" className="m-input" placeholder="İndirimsiz liste fiyatı" value={form.oldTotal} onChange={(event) => set("oldTotal", event.target.value)} /><span className="m-unit">₺</span></div></div>
+                <div className="m-field"><label htmlFor="fp-eski" className="m-lab">Eski fiyat</label><div className="m-suffix"><TrNumberInput id="fp-eski" className="m-input" placeholder="İndirimsiz liste fiyatı" value={form.oldTotal} onValueChange={(value) => set("oldTotal", value)} /><span className="m-unit">₺</span></div></div>
                 <div className="m-field"><label htmlFor="fp-acik" className="m-lab">Açıklama (TR)</label><input id="fp-acik" className="m-input" value={form.descTr} onChange={(event) => set("descTr", event.target.value)} /></div>
                 <div className="m-field"><label htmlFor="fp-acik-en" className="m-lab">Açıklama (EN)</label><input id="fp-acik-en" className="m-input" value={form.descEn} onChange={(event) => set("descEn", event.target.value)} /></div>
                 <div className="m-field"><label htmlFor="fp-rozet" className="m-lab">Rozet (TR)</label><input id="fp-rozet" className="m-input" placeholder="Örn. En çok tercih edilen" value={form.badgeTr} onChange={(event) => set("badgeTr", event.target.value)} /></div>
