@@ -127,6 +127,22 @@ function insertRow(name: string, input: Row): Row {
   return row;
 }
 
+// Mirrors enqueue_email_notification: a pending outbox row, ON CONFLICT (dedupe_key) DO NOTHING.
+function enqueueEmailNotification(eventType: string, entityType: string, entityId: string, recipient: string, template: string, payload: Row, dedupeKey: string) {
+  if (table("notification_deliveries").some((row) => row.dedupe_key === dedupeKey)) return;
+  const now = new Date().toISOString();
+  insertRow("notification_deliveries", {
+    channel: "email", event_type: eventType, entity_type: entityType, entity_id: entityId, recipient, template, payload,
+    provider: "google_workspace", status: "pending", attempt_count: 0, next_attempt_at: now, dedupe_key: dedupeKey,
+  });
+}
+
+// Mirrors queue_guardian_email_verified_welcome (20260903120000_signup_otp_gate_paytr_repair.sql).
+function queueGuardianEmailVerifiedWelcome(guardian: Row) {
+  enqueueEmailNotification("guardian.welcome", "guardian_account", String(guardian.user_id), String(guardian.email), "guardian_welcome",
+    { guardian_name: guardian.full_name, locale: guardian.preferred_language }, `guardian.welcome:${guardian.user_id}:guardian`);
+}
+
 const rpcs: Record<string, (args: Row, headers: Headers) => unknown> = {
   is_admin: (_args, headers) => userFromBearer(headers)?.app_metadata?.role === "admin",
   check_and_claim_recovery_rate_limit: () => ({ allowed: state.rateLimitAllowed, reason: state.rateLimitAllowed ? null : "email" }),
@@ -156,6 +172,37 @@ const rpcs: Record<string, (args: Row, headers: Headers) => unknown> = {
       .slice(0, Math.max(1, Math.min(Number(args.p_limit ?? 10), 50)));
     for (const row of claimed) Object.assign(row, { status: "processing", attempt_count: Number(row.attempt_count) + 1, updated_at: now });
     return claimed.map((row) => ({ ...row }));
+  },
+  // Mirrors 20260906100000_otp_atomic_verification.sql, including the guardian_accounts
+  // update that fires on_guardian_email_verified_welcome.
+  verify_purchase_email_otp: (args) => {
+    const now = new Date().toISOString();
+    const email = String(args.p_candidate_email || "").trim().toLowerCase();
+    const mine = table("purchase_email_verification_challenges")
+      .filter((row) => row.user_id === args.p_user_id && String(row.candidate_email).trim().toLowerCase() === email);
+    const active = mine
+      .filter((row) => row.verified_at == null && row.superseded_at == null && String(row.expires_at) > now)
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    if (!active.length) {
+      if (mine.some((row) => row.verified_at != null)) return { success: false, error_code: "ALREADY_VERIFIED" };
+      if (mine.some((row) => row.superseded_at != null)) return { success: false, error_code: "SUPERSEDED" };
+      return { success: false, error_code: "EXPIRED" };
+    }
+    const newest = active[0];
+    if (Number(newest.attempt_count ?? 0) >= 5) return { success: false, error_code: "TOO_MANY_ATTEMPTS" };
+    const match = active.find((row) => row.code_hash === args.p_code_hash);
+    if (!match) {
+      newest.attempt_count = Number(newest.attempt_count ?? 0) + 1;
+      return { success: false, error_code: "INVALID_CODE", remaining_attempts: Math.max(0, 5 - Number(newest.attempt_count)) };
+    }
+    match.verified_at = now;
+    for (const row of active) if (row !== match) row.superseded_at = now;
+    const guardian = table("guardian_accounts").find((row) => row.user_id === args.p_user_id);
+    if (!guardian) throw new Error("GUARDIAN_ACCOUNT_NOT_FOUND");
+    const wasVerified = guardian.email_verified_at != null;
+    Object.assign(guardian, { email, email_verified_at: guardian.email_verified_at ?? now, updated_at: now });
+    if (!wasVerified) queueGuardianEmailVerifiedWelcome(guardian);
+    return { success: true, challenge_id: match.id, candidate_email: match.candidate_email, verified_at: now };
   },
   // Mirrors 20260906110000_email_change_otp_candidate_hashes.sql.
   verify_email_change_otp: (args) => {

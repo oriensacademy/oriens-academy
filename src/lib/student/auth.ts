@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { recordAccountEvent } from "@/lib/auth/login-events";
 import type { Locale } from "@/content/dictionaries";
 import { trPhoneInputDigits } from "@/lib/format/phone";
 
@@ -251,7 +252,9 @@ export async function updateStudentEmail(email: string, locale: Locale) {
 }
 
 export async function updateStudentPassword(password: string) {
-  return getSupabaseClient().auth.updateUser({ password });
+  const result = await getSupabaseClient().auth.updateUser({ password });
+  if (!result.error) await recordAccountEvent("password_changed");
+  return result;
 }
 
 export async function updateGuardianProfile(input: { fullName: string; contactAddress?: string; preferredLanguage: Locale; phone?: string | null }) {

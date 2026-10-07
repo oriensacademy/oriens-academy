@@ -12,6 +12,8 @@ import "../functions/request-password-recovery/index.ts";
 import "../functions/request-email-change/index.ts";
 import "../functions/verify-email-change/index.ts";
 import "../functions/send-welcome-email/index.ts";
+import "../functions/request-purchase-email-verification/index.ts";
+import "../functions/verify-purchase-email-verification/index.ts";
 import "../functions/process-notification-outbox/index.ts";
 import { sendTransactionalEmail } from "../functions/_shared/email/service.ts";
 import { computeOtpHash } from "../functions/_shared/otp/hash.ts";
@@ -216,6 +218,77 @@ const admin = createClient("http://fake-supabase.test", SECRET_KEY, { auth: { pe
   check("welcome: service caller with malformed id -> 401", res.status === 401);
   check("welcome: no mail ever sent to an address taken from the body", !state.mailbox.some((mail) => mail.to.includes("victim")));
   section("WELCOME RECIPIENT SECURITY", () => failures === before);
+}
+
+// ---------------------------------------------------------------------------
+// REGISTRATION: signup OTP -> verification -> welcome via trigger + outbox
+// ---------------------------------------------------------------------------
+// signUp returns a session immediately (Confirm Email is off), so every
+// registration mail step runs with the new account's own session. The welcome
+// mail is never requested by the client: the OTP verifier marks
+// guardian_accounts.email_verified_at and the trigger enqueues it.
+{
+  const before = failures;
+  resetState();
+  const signup = user("new-signup@example.test");
+  table("guardian_accounts").push({ user_id: signup.id, email: signup.email, full_name: "Yeni Kayıt", preferred_language: "tr", email_verified_at: null });
+  const findCode = async (body: string) => {
+    const challenge = table("purchase_email_verification_challenges").find((row) => row.verified_at == null && row.superseded_at == null);
+    for (const candidate of new Set(body.match(/\b\d{6}\b/g) ?? [])) {
+      const hash = await computeOtpHash({ purpose: "purchase_email_verification", userId: signup.id, email: signup.email, code: candidate, secret: "fixture-hmac-secret" });
+      if (challenge && hash === challenge.code_hash) return candidate;
+    }
+    return "";
+  };
+  const welcomeRows = () => table("notification_deliveries").filter((row) => row.event_type === "guardian.welcome");
+
+  let res = await invoke("request-purchase-email-verification", { candidateEmail: signup.email, locale: "tr" });
+  check("registration: OTP request without a session -> 401, no mail", res.status === 401 && state.mailbox.length === 0);
+
+  res = await invoke("request-purchase-email-verification", { candidateEmail: signup.email, locale: "tr" }, bearer(signup));
+  const otpMail = state.mailbox[0];
+  check("registration: OTP producer -> 200 and exactly one mail to the account address", res.status === 200 && state.mailbox.length === 1 && otpMail?.to === signup.email);
+  const code = otpMail ? await findCode(otpMail.body) : "";
+  check("registration: OTP mail carries the 6-digit code; only its hash is stored", /^\d{6}$/.test(code) && table("purchase_email_verification_challenges").every((row) => row.code_hash !== code));
+  check("registration: OTP mail has no magic link", !!otpMail && !/token_hash=|type=magiclink|\/auth\/v1\/verify/i.test(otpMail.body));
+
+  res = await invoke("request-purchase-email-verification", { candidateEmail: signup.email, locale: "tr" }, bearer(signup));
+  check("registration: immediate resend -> 429 RESEND_COOLDOWN, no extra mail", res.status === 429 && res.body.error_code === "RESEND_COOLDOWN" && state.mailbox.length === 1);
+
+  const wrong = code === "000000" ? "111111" : "000000";
+  res = await invoke("verify-purchase-email-verification", { code: wrong, locale: "tr" }, bearer(signup));
+  check("registration: wrong code -> 400 INVALID_CODE, no welcome enqueued", res.status === 400 && res.body.error_code === "INVALID_CODE" && welcomeRows().length === 0);
+  res = await invoke("verify-purchase-email-verification", { code }, {});
+  check("registration: verify without a session -> 401", res.status === 401 && welcomeRows().length === 0);
+
+  res = await invoke("verify-purchase-email-verification", { code, locale: "tr" }, bearer(signup));
+  const guardian = table("guardian_accounts")[0];
+  check("registration: correct code -> 200, guardian marked verified", res.status === 200 && res.body.success === true && guardian.email_verified_at != null);
+  check("registration: verification enqueues exactly one welcome for the canonical account address",
+    welcomeRows().length === 1 && welcomeRows()[0].recipient === signup.email && welcomeRows()[0].status === "pending");
+  console.log(`REGISTRATION OTP PRODUCER=${failures === before ? "PASS" : "FAIL"}`);
+  console.log(`PRE-AUTH LEGITIMATE REGISTRATION=${failures === before ? "PASS" : "FAIL"} (signup session drives OTP + verify; no client welcome call)`);
+
+  const mailsBeforeWelcome = state.mailbox.length;
+  res = await invoke("process-notification-outbox", {}, { authorization: `Bearer ${SECRET_KEY}`, apikey: SECRET_KEY });
+  const welcomeMail = state.mailbox[mailsBeforeWelcome];
+  check("welcome: outbox worker delivers the welcome once to the account address",
+    res.status === 200 && state.mailbox.length === mailsBeforeWelcome + 1 && welcomeMail?.to === signup.email && welcomeRows()[0].status === "sent");
+  check("welcome: archive BCC is kept on the welcome mail", /admin@oriens-academy\.com/i.test(welcomeMail?.bcc ?? ""));
+  console.log(`WELCOME AFTER REGISTRATION=${failures === before ? "PASS" : "FAIL"}`);
+
+  res = await invoke("verify-purchase-email-verification", { code, locale: "tr" }, bearer(signup));
+  check("duplicate: re-submitting the used code -> ALREADY_VERIFIED, no second welcome row", res.body.error_code === "ALREADY_VERIFIED" && welcomeRows().length === 1);
+  res = await invoke("process-notification-outbox", {}, { authorization: `Bearer ${SECRET_KEY}`, apikey: SECRET_KEY });
+  check("duplicate: outbox rerun claims nothing, still one welcome mail", res.body.claimed === 0 && state.mailbox.filter((mail) => mail.to === signup.email).length === 2);
+
+  const relayBefore = state.mailbox.length;
+  res = await invoke("send-welcome-email", { email: "someone-else@example.test", fullName: "x" });
+  check("relay: anonymous send-welcome-email with an arbitrary recipient -> 401, no mail", res.status === 401 && state.mailbox.length === relayBefore);
+  res = await invoke("send-welcome-email", { email: "someone-else@example.test" }, bearer(signup));
+  check("relay: signed-in caller cannot redirect the welcome to another address", state.mailbox.slice(relayBefore).every((mail) => mail.to === signup.email));
+  console.log(`ARBITRARY ANONYMOUS RECIPIENT=${failures === before ? "DENIED" : "FAIL"}`);
+  section("REGISTRATION FLOW", () => failures === before);
 }
 
 // ---------------------------------------------------------------------------

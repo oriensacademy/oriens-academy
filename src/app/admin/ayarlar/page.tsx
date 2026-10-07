@@ -5,6 +5,7 @@ import { useAdminAuth } from "@/lib/admin/auth-context";
 import { DEFAULT_CONTACT_SETTINGS, fetchContactSettings, saveContactSettings, validateContactSettings, type ContactSettings } from "@/lib/contact-settings";
 import { usePageLeaveGuard } from "@/components/admin/UnsavedChangesGuard";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { localizeErrorMessage } from "@/lib/utils/error-messages";
 import { ADMIN_MENU_STYLES, setAdminMenuStyle, useAdminMenuStyle } from "@/lib/admin/menu-style";
 import { toast } from "@/components/ui/toast";
 import pages from "@/components/admin/admin-pages.module.css";
@@ -89,7 +90,7 @@ function AccountSecuritySection() {
       }
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
-        toast.error(error.message || "Şifre güncellenemedi.");
+        toast.error(localizeErrorMessage(error, "tr", "Şifre güncellenemedi."));
         return;
       }
       await supabase.from("audit_logs").insert({ actor_user_id: user.id, action: "admin.password_change_completed", entity_type: "admin_auth", entity_id: user.id, metadata: { trigger: "voluntary_settings_change" } });

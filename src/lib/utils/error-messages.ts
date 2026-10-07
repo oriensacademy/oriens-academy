@@ -28,9 +28,29 @@ const ERROR_PATTERNS: ErrorMapping[] = [
     en: "Too many requests. Please wait a moment and try again.",
   },
   {
+    test: (msg) => /should be different from the old password|same_password/i.test(msg),
+    tr: "Yeni şifre mevcut şifrenizden farklı olmalıdır.",
+    en: "Your new password must be different from your current password.",
+  },
+  {
+    test: (msg) => /weak_password|password is known to be weak|pwned|leaked password/i.test(msg),
+    tr: "Bu şifre güvenli değil. Lütfen daha önce kullanılmamış, güçlü bir şifre seçin.",
+    en: "This password is not secure. Please choose a stronger password you have not used before.",
+  },
+  {
+    test: (msg) => /password should contain|password must contain/i.test(msg),
+    tr: "Şifreniz büyük harf, küçük harf, rakam ve özel sembol içermelidir.",
+    en: "Your password must include an uppercase letter, a lowercase letter, a number and a symbol.",
+  },
+  {
     test: (msg) => /password should be at least|password too short/i.test(msg),
-    tr: "Şifreniz en az 6 karakter uzunluğunda olmalıdır.",
-    en: "Password must be at least 6 characters long.",
+    tr: "Şifreniz en az 8 karakter uzunluğunda olmalıdır.",
+    en: "Password must be at least 8 characters long.",
+  },
+  {
+    test: (msg) => /auth session missing|session_not_found|session not found|reauthentication/i.test(msg),
+    tr: "Oturumunuz sona ermiş. Lütfen tekrar giriş yapın veya yeni bir şifre sıfırlama bağlantısı isteyin.",
+    en: "Your session has ended. Please sign in again or request a new password reset link.",
   },
   {
     test: (msg) => /network error|failed to fetch|networkrequestfailed|fetch failed/i.test(msg),

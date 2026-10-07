@@ -20,7 +20,8 @@ import { validateStudentPhone } from "@/lib/student/auth";
 import type { Tables } from "@/types/database.types";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { ButtonLink } from "@/components/ui/button";
-import { HostedCardPanel } from "./HostedCardPanel";
+import { HostedCardPanel, type PaymentSessionResult } from "./HostedCardPanel";
+import { newCartId, recordCartEvent } from "@/lib/cart/cart-audit";
 import { LegalModal, type LegalOrderSnapshot } from "@/components/legal/LegalModal";
 import type { LegalDocKey } from "@/config/legal";
 
@@ -35,7 +36,7 @@ export function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { accountType, user, isInitializing } = useAccount();
-  const { items: cartItems, isHydrated: cartHydrated, appliedCoupon } = useCart();
+  const { items: cartItems, isHydrated: cartHydrated, appliedCoupon, getCartAuditId } = useCart();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
   const [directPackageId, setDirectPackageId] = useState("");
@@ -148,6 +149,32 @@ export function PaymentPage() {
     : packages.filter((pkg) => pkg.id === directPackageId), [cartItems, directPackageId, isCartCheckout, packages]);
   const packageIds = useMemo(() => checkoutPackages.map((pkg) => pkg.id), [checkoutPackages]);
   const cartMismatch = isCartCheckout && checkoutPackages.length !== cartItems.length;
+
+  // Denetim: ödeme ekranı açılışı ve ödeme başlatma sonucu (yalnız veli hesabı;
+  // yönetici destekli ödemeler sunucuda ayrıca kaydedilir). Sepet kimliği
+  // sepet → ödeme akışını bağlar; doğrudan paket alımında sayfaya özel kimlik.
+  const checkoutCartIdRef = useRef<string | null>(null);
+  const checkoutOpenedRef = useRef(false);
+  const auditCheckout = accountType === "student";
+  useEffect(() => {
+    if (!auditCheckout || dataLoading || cartMismatch || !packageIds.length || checkoutOpenedRef.current) return;
+    checkoutOpenedRef.current = true;
+    checkoutCartIdRef.current = (isCartCheckout ? getCartAuditId() : null) ?? newCartId();
+    recordCartEvent("checkout_opened", checkoutCartIdRef.current, packageIds, { studentId: learnerId || null, source: "payment" });
+  }, [auditCheckout, cartMismatch, dataLoading, getCartAuditId, isCartCheckout, learnerId, packageIds]);
+
+  const handleSessionResult = useCallback((result: PaymentSessionResult) => {
+    if (!auditCheckout) return;
+    const cartId = checkoutCartIdRef.current ?? (isCartCheckout ? getCartAuditId() : null) ?? newCartId();
+    checkoutCartIdRef.current = cartId;
+    recordCartEvent("checkout_started", cartId, packageIds, {
+      studentId: learnerId || null,
+      reference: result.reference ?? null,
+      result: result.errorCode ? "session_failed" : result.zero ? "zero_payment" : "session_created",
+      errorCode: result.errorCode ?? null,
+      source: "payment",
+    });
+  }, [auditCheckout, getCartAuditId, isCartCheckout, learnerId, packageIds]);
   const pricingPackages = checkoutPackages.map((pkg) => ({
     id: pkg.id,
     price: Number(pkg.current_total ?? pkg.price_amount ?? 0),
@@ -428,6 +455,7 @@ export function PaymentPage() {
             contextReady={contextReady}
             emailVerified={emailVerified}
             onOpenLegalDoc={setActiveModal}
+            onSessionResult={handleSessionResult}
           />
         </div>
       </div>

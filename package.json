@@ -48,7 +48,10 @@
     "test:portal-public:browser-final": "node scripts/test-portal-public-browser-final.mjs",
     "universities:verify-urls": "node scripts/verify-university-urls.mjs",
     "test:turnstile:guard": "node scripts/test-turnstile-prod-guard.mjs",
-    "test:mail:no-send": "npx --yes deno@2 run --no-lock --allow-env --allow-read=supabase/config.toml supabase/tests/mail-flow-no-send.ts"
+    "test:mail:no-send": "npx --yes deno@2 run --no-lock --allow-env --allow-read=supabase/config.toml supabase/tests/mail-flow-no-send.ts",
+    "test:audit:sql": "node supabase/tests/audit-center-sql.mjs",
+    "test:audit:logic": "npx tsx scripts/test-audit-center.ts",
+    "test:audit:browser": "node scripts/test-audit-center-browser.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -86,6 +89,7 @@
     "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.16",
     "@tailwindcss/postcss": "^4",
     "@types/d3": "^7.4.3",
     "@types/katex": "^0.16.8",

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { useAccount } from "@/lib/auth/account-context";
 import type { CouponValidationSuccess } from "@/lib/coupons/types";
 import { validateCartCoupon } from "@/lib/coupons/client";
+import { newCartId, recordCartEvent } from "@/lib/cart/cart-audit";
 
 export interface CartItem {
   packageId: string;
@@ -28,12 +29,15 @@ interface CartContextType {
   removeItemsFromCart: (packageIds: string[]) => void;
   clearCart: () => void;
   isInCart: (packageId: string) => boolean;
+  /** Denetim kaydı için sepet kimliği (sepet → ödeme akışını bağlar); yoksa oluşturur. */
+  getCartAuditId: () => string | null;
 }
 
 const GUEST_SESSION_KEY = "oriens_guest_session_id";
 const USER_CART_PREFIX = "oriens_cart_user_";
 const GUEST_CART_PREFIX = "oriens_cart_guest_";
 const COUPON_KEY_SUFFIX = "_coupon";
+const CART_ID_SUFFIX = "_cart_id";
 
 function getOrCreateGuestSessionId(): string {
   if (typeof window === "undefined") return "guest_ssr";
@@ -109,11 +113,35 @@ function writeCartToStorage(key: string, items: CartItem[]): void {
   }
 }
 
+// Sepet kimliği yalnız denetim kaydı içindir; sepet içeriğini etkilemez.
+function readCartId(key: string, create: boolean): string | null {
+  if (typeof window === "undefined" || !key) return null;
+  try {
+    const existing = localStorage.getItem(`${key}${CART_ID_SUFFIX}`);
+    if (existing || !create) return existing;
+    const id = newCartId();
+    localStorage.setItem(`${key}${CART_ID_SUFFIX}`, id);
+    return id;
+  } catch {
+    return null;
+  }
+}
+
+function dropCartId(key: string): void {
+  if (typeof window === "undefined" || !key) return;
+  try {
+    localStorage.removeItem(`${key}${CART_ID_SUFFIX}`);
+  } catch {
+    // ignore
+  }
+}
+
 function clearCartFromStorage(key: string): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(key);
     localStorage.removeItem(`${key}${COUPON_KEY_SUFFIX}`);
+    localStorage.removeItem(`${key}${CART_ID_SUFFIX}`);
     window.dispatchEvent(new CustomEvent("oriens:cart_updated", { detail: { key } }));
   } catch {
     // ignore
@@ -199,6 +227,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             }
           }
           writeCartToStorage(userKey, merged);
+          const mergedIds = guestItems.filter((gItem) => !userItems.some((uItem) => uItem.packageId === gItem.packageId)).map((gItem) => gItem.packageId);
+          if (mergedIds.length) {
+            const cartId = readCartId(userKey, true);
+            for (const id of mergedIds.slice(0, 20)) recordCartEvent("cart_item_added", cartId, [id], { source: "guest_cart" });
+          }
           clearCartFromStorage(guestKey);
           resetGuestSessionId();
           setItems(merged);
@@ -313,6 +346,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = useCallback((packageId: string) => {
     const cleanId = packageId.trim();
     if (!cleanId) return;
+    const auditKey = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+    const alreadyInCart = readCartFromStorage(auditKey).some((item) => item.packageId === cleanId);
     setItems((prev) => {
       if (prev.some((item) => item.packageId === cleanId)) return prev;
       const updated = [...prev, { packageId: cleanId, quantity: 1 }];
@@ -320,10 +355,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       writeCartToStorage(key, updated);
       return updated;
     });
+    if (user?.id && !alreadyInCart) {
+      recordCartEvent("cart_item_added", readCartId(auditKey, true), [cleanId], { source: "pricing" });
+    }
   }, [user?.id]);
 
   const removeFromCart = useCallback((packageId: string) => {
     const cleanId = packageId.trim();
+    const auditKey = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+    const before = readCartFromStorage(auditKey);
+    const wasInCart = before.some((item) => item.packageId === cleanId);
     setItems((prev) => {
       const updated = prev.filter((item) => item.packageId !== cleanId);
       const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
@@ -336,12 +377,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return updated;
     });
+    if (user?.id && wasInCart) {
+      recordCartEvent("cart_item_removed", readCartId(auditKey, true), [cleanId], { source: "cart" });
+    }
+    if (wasInCart && before.length === 1) dropCartId(auditKey);
   }, [user?.id]);
 
   const removeItemsFromCart = useCallback((packageIds: string[]) => {
     if (!packageIds || !packageIds.length) return;
     const toRemove = new Set(packageIds.map((id) => id.trim()).filter(Boolean));
     if (!toRemove.size) return;
+    // Satın alma sonrası temizlik: denetim kaydı yazılmaz; sepet boşalırsa yeni sepet yeni kimlik alır.
+    const auditKey = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+    if (!readCartFromStorage(auditKey).some((item) => !toRemove.has(item.packageId))) dropCartId(auditKey);
     setItems((prev) => {
       const updated = prev.filter((item) => !toRemove.has(item.packageId));
       const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
@@ -362,7 +410,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedCoupon(null);
     setCouponError(null);
     const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+    const clearedIds = readCartFromStorage(key).map((item) => item.packageId);
+    if (user?.id && clearedIds.length) {
+      recordCartEvent("cart_cleared", readCartId(key, true), clearedIds, { source: "cart" });
+    }
     clearCartFromStorage(key);
+  }, [user?.id]);
+
+  const getCartAuditId = useCallback(() => {
+    const key = activeKeyRef.current || getStorageKey(user?.id, getOrCreateGuestSessionId());
+    return readCartId(key, true);
   }, [user?.id]);
 
   const isInCart = useCallback((packageId: string) => {
@@ -388,6 +445,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeItemsFromCart,
         clearCart,
         isInCart,
+        getCartAuditId,
       }}
     >
       {children}

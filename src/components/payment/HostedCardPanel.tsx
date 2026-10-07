@@ -32,6 +32,14 @@ interface HostedCardPanelProps {
   emailVerified?: boolean;
   locale: Locale;
   onOpenLegalDoc: (key: LegalDocKey) => void;
+  /** Denetim kaydı için ödeme oturumu sonucu (yalnız bilgi; akışı etkilemez). */
+  onSessionResult?: (result: PaymentSessionResult) => void;
+}
+
+export interface PaymentSessionResult {
+  reference?: string;
+  errorCode?: string;
+  zero?: boolean;
 }
 
 /**
@@ -53,6 +61,7 @@ export function HostedCardPanel({
   emailVerified = true,
   locale,
   onOpenLegalDoc,
+  onSessionResult,
 }: HostedCardPanelProps) {
   const copy = getPaymentCopy(locale);
   const router = useRouter();
@@ -68,6 +77,13 @@ export function HostedCardPanel({
     // covers a rapid double-click landing between React's disabled-state
     // paint and the actual click handler running.
     if (inFlightRef.current || !contextReady) return;
+    const notifySession = (sessionResult: PaymentSessionResult) => {
+      try {
+        onSessionResult?.(sessionResult);
+      } catch {
+        // Denetim bildirimi ödeme akışını asla etkilemez.
+      }
+    };
     inFlightRef.current = true;
     setStarting(true);
     setError(null);
@@ -110,6 +126,10 @@ export function HostedCardPanel({
         });
       }
 
+      notifySession(!result.success || (!result.iframe_token && !result.zero_payment)
+        ? { errorCode: result.errorCode || "PAYMENT_SESSION_FAILED" }
+        : { reference: result.reference || result.merchant_oid, zero: Boolean(result.zero_payment) });
+
       if (!result.success || (!result.iframe_token && !result.zero_payment)) {
         setError({
           message: result.message || (isTr ? "Ödeme ekranı şu anda hazırlanamadı." : "Payment screen could not be prepared."),
@@ -143,12 +163,13 @@ export function HostedCardPanel({
         statusToken: result.statusToken || "",
       });
     } catch {
+      notifySession({ errorCode: "NETWORK_ERROR" });
       setError({ message: paymentErrorMessage("NETWORK_ERROR", locale), requiresLogin: false });
     } finally {
       inFlightRef.current = false;
       setStarting(false);
     }
-  }, [contextReady, couponCode, guardianUserId, isTr, learnerId, locale, packageIds, paymentPhone, router]);
+  }, [contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onSessionResult, packageIds, paymentPhone, router]);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 

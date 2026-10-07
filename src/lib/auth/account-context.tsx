@@ -6,7 +6,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { clearQueryCache } from "@/lib/data/query-store";
 import type { Tables } from "@/types/database.types";
 import type { AdminProfile } from "@/lib/admin/types";
-import { recordLoginFailure, recordLoginSuccess } from "@/lib/auth/login-events";
+import { loginFailureReason, recordAccountEvent, recordLoginFailure, recordLoginSuccess } from "@/lib/auth/login-events";
 
 export type AccountType = "admin" | "student" | "unknown" | "unauthenticated";
 export type StudentAccountProfile = Tables<"student_profiles">;
@@ -313,7 +313,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       // 1. Try real Supabase auth
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-        if (error && error.code === "invalid_credentials") recordLoginFailure(cleanEmail);
+        if (error) {
+          const reason = loginFailureReason(error.code);
+          if (reason) recordLoginFailure(cleanEmail, reason);
+        }
         if (!error && data.session && data.user) {
           const resolution = await resolveAccount(data.session);
           if (resolution.accountType !== "unknown") {
@@ -397,6 +400,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     authOperationRef.current = true;
     try {
+      if (sessionRef.current) await recordAccountEvent("logout");
       try { await getSupabaseClient().auth.signOut(); } catch { /* ignore */ }
       clearAccount();
       setIsInitializing(false);
