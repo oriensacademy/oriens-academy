@@ -51,6 +51,8 @@
     "universities:verify-urls": "node scripts/verify-university-urls.mjs",
     "test:turnstile:guard": "node scripts/test-turnstile-prod-guard.mjs",
     "test:mail:no-send": "npx --yes deno@2 run --no-lock --allow-env --allow-read=supabase/config.toml supabase/tests/mail-flow-no-send.ts",
+    "test:email-verification": "npx tsx scripts/test-email-verification-hardening.ts",
+    "test:email-verification:live": "node scripts/test-email-verification-live-readonly.mjs",
     "test:audit:sql": "node supabase/tests/audit-center-sql.mjs",
     "test:audit:logic": "npx tsx scripts/test-audit-center.ts",
     "test:audit:browser": "node scripts/test-audit-center-browser.mjs",

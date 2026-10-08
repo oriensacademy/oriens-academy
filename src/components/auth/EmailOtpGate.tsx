@@ -61,11 +61,13 @@ export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onCha
         : await requestPurchaseEmailVerification(email, locale);
 
       if (!res.success) {
+        clearAutoSendMarker();
+        setInfo("");
         if (res.error_code === "RESEND_COOLDOWN" && res.resend_available_at) {
           const seconds = Math.max(0, Math.round((new Date(res.resend_available_at).getTime() - Date.now()) / 1000));
           setResendCooldown(seconds);
-        } else if (!silent) {
-          setError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama kodu gönderilemedi." : "The verification code could not be sent."));
+        } else {
+          setError(localizeErrorMessage(res.message, locale, isTr ? "Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin." : "The verification code could not be sent. Please try again."));
         }
         return;
       }
@@ -77,7 +79,9 @@ export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onCha
       }
       if (!silent) setInfo(isTr ? "Yeni bir kod gönderildi." : "A new code has been sent.");
     } catch {
-      if (!silent) setError(isTr ? "Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin." : "The verification code could not be sent. Please try again.");
+      clearAutoSendMarker();
+      setInfo("");
+      setError(isTr ? "Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin." : "The verification code could not be sent. Please try again.");
     } finally {
       setSending(false);
     }
@@ -99,11 +103,6 @@ export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onCha
           : "A verification code was sent to your email address. Please check your inbox."
       );
       return;
-    }
-    try {
-      window.sessionStorage.setItem(autoSendKey, "1");
-    } catch {
-      // Non-fatal.
     }
     void sendCode(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps

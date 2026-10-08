@@ -230,6 +230,38 @@ const admin = createClient("http://fake-supabase.test", SECRET_KEY, { auth: { pe
 {
   const before = failures;
   resetState();
+  const signup = user("failed-signup@example.test");
+  const guardian = { user_id: signup.id, email: signup.email, email_verified_at: null };
+  table("guardian_accounts").push(guardian);
+
+  state.gmailFailures = 1;
+  let res = await invoke("request-purchase-email-verification", { candidateEmail: signup.email, locale: "tr" }, bearer(signup));
+  check("registration failure: provider rejection -> safe 502 false response",
+    res.status === 502 && res.body.success === false && res.body.error_code === "VERIFICATION_EMAIL_SEND_FAILED");
+  check("registration failure: public response uses localized safe message and hides provider details",
+    res.body.message === "Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin." && !JSON.stringify(res.body).includes("fixture provider"));
+  check("registration failure: undelivered challenge is expired and superseded",
+    table("purchase_email_verification_challenges").every((row) => row.superseded_at != null && String(row.expires_at) <= new Date().toISOString()));
+  check("registration failure: account remains unverified and welcome is not queued",
+    guardian.email_verified_at == null && !table("notification_deliveries").some((row) => row.event_type === "guardian.welcome"));
+  check("registration failure: failed request does not consume the hourly successful-send quota",
+    !table("audit_logs").some((row) => row.action === "purchase.email_verification_requested"));
+
+  res = await invoke("request-purchase-email-verification", { candidateEmail: signup.email, locale: "tr" }, bearer(signup));
+  const active = table("purchase_email_verification_challenges").filter((row) =>
+    row.user_id === signup.id && row.verified_at == null && row.superseded_at == null && String(row.expires_at) > new Date().toISOString()
+  );
+  check("registration failure: immediate retry succeeds without aging cooldown/idempotency state",
+    res.status === 200 && res.body.success === true && state.mailbox.length === 1);
+  check("registration failure: retry activates exactly one fresh challenge", active.length === 1);
+  check("registration failure: retry still does not verify account or queue welcome",
+    guardian.email_verified_at == null && !table("notification_deliveries").some((row) => row.event_type === "guardian.welcome"));
+  section("REGISTRATION DELIVERY FAILURE + RETRY", () => failures === before);
+}
+
+{
+  const before = failures;
+  resetState();
   const signup = user("new-signup@example.test");
   table("guardian_accounts").push({ user_id: signup.id, email: signup.email, full_name: "Yeni Kayıt", preferred_language: "tr", email_verified_at: null });
   const findCode = async (body: string) => {

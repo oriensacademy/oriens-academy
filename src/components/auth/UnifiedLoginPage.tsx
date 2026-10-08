@@ -237,8 +237,7 @@ export function UnifiedLoginPage() {
   async function handleOtpVerified() {
     await tryClaimPendingResult();
     navigatedRef.current = true;
-    const targetPath = `${localizedPath("studentAccount", locale)}?onboarding=personalization`;
-    router.replace(requested ? destinationForAccount("student", locale, requested) : targetPath);
+    router.replace(destinationForAccount("student", locale, requested));
   }
 
   async function handleChangeEmail() {

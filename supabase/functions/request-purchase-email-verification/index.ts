@@ -78,9 +78,10 @@ Deno.serve(async (req: Request) => {
 
   // Rate limit: Max requests per hour
   const { count: hourlyCount, error: countError } = await supabaseAdmin
-    .from("purchase_email_verification_challenges")
+    .from("audit_logs")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
+    .eq("actor_user_id", user.id)
+    .eq("action", "purchase.email_verification_requested")
     .gte("created_at", oneHourAgo);
 
   if (!countError && typeof hourlyCount === "number" && hourlyCount >= MAX_REQUESTS_PER_HOUR) {
@@ -121,16 +122,6 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Retire previous challenges explicitly. `superseded_at` keeps "you asked for
-  // a newer code" distinguishable from "your code timed out", so the verifier
-  // can tell the user which one actually happened.
-  await supabaseAdmin
-    .from("purchase_email_verification_challenges")
-    .update({ superseded_at: now.toISOString(), expires_at: now.toISOString(), updated_at: now.toISOString() })
-    .eq("user_id", user.id)
-    .is("verified_at", null)
-    .is("superseded_at", null);
-
   const otp = generateOtpCode();
   const codeHash = await computeOtpHash({
     purpose: "purchase_email_verification",
@@ -143,22 +134,26 @@ Deno.serve(async (req: Request) => {
   const expiresAt = new Date(now.getTime() + OTP_EXPIRATION_MS).toISOString();
   const resendAvailableAt = new Date(now.getTime() + RESEND_COOLDOWN_MS).toISOString();
 
-  const { error: insertError } = await supabaseAdmin
+  // Keep the code unusable until the provider accepts its email.
+  const { data: provisionalChallenge, error: insertError } = await supabaseAdmin
     .from("purchase_email_verification_challenges")
     .insert({
       user_id: user.id,
       candidate_email: candidateEmail,
       code_hash: codeHash,
-      expires_at: expiresAt,
-      resend_available_at: resendAvailableAt,
+      expires_at: now.toISOString(),
+      resend_available_at: now.toISOString(),
+      superseded_at: now.toISOString(),
       attempt_count: 0,
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
-    });
+    })
+    .select("id")
+    .single();
 
-  if (insertError) {
+  if (insertError || !provisionalChallenge?.id) {
     await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.otp_verification_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: sanitizeAuditError(insertError, { operation: "create_otp_challenge" }) });
-    console.error(`[request-purchase-email-verification] Failed to save challenge code=${insertError.code || "unknown"}`);
+    console.error(`[request-purchase-email-verification] Failed to save challenge code=${insertError?.code || "unknown"}`);
     return buildJsonResponse(
       { error_code: "DB_ERROR", message: "Doğrulama isteği kaydedilemedi." },
       500,
@@ -188,21 +183,47 @@ Deno.serve(async (req: Request) => {
     idempotencyKey: `otp-verify-${user.id}-${Date.now()}`,
   });
 
-  if (delivery.status === "failed") {
+  if (delivery.status !== "sent") {
     await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.otp_verification_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: { operation: "dispatch_otp_email", safe_error_code: delivery.errorCode } });
     console.error("[request-purchase-email-verification] Email delivery failed:", delivery.errorCode);
+    return buildJsonResponse(
+      {
+        success: false,
+        error_code: "VERIFICATION_EMAIL_SEND_FAILED",
+        message: locale === "tr"
+          ? "Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin."
+          : "The verification code could not be sent. Please try again.",
+      },
+      502,
+      req
+    );
   }
 
-  await supabaseAdmin.from("audit_logs").insert({
-    actor_user_id: user.id,
-    action: "purchase.email_verification_requested",
-    entity_type: "user",
-    entity_id: user.id,
-    metadata: {
-      candidate_email_masked: `${candidateEmail.slice(0, 2)}***@${candidateEmail.split("@")[1]}`,
-      delivery_status: delivery.status,
-    },
-  });
+  const { data: activated, error: activationError } = await supabaseAdmin.rpc(
+    "activate_purchase_email_verification_challenge",
+    {
+      p_challenge_id: provisionalChallenge.id,
+      p_user_id: user.id,
+      p_expires_at: expiresAt,
+      p_resend_available_at: resendAvailableAt,
+    }
+  );
+
+  if (activationError || activated !== true) {
+    await writeEdgeAuditEvent(supabaseAdmin, { action: "auth.otp_verification_failed", category: "auth", severity: "error", entityType: "auth_user", entityId: user.id, correlationId: user.id, metadata: sanitizeAuditError(activationError, { operation: "activate_otp_challenge" }) });
+    console.error(`[request-purchase-email-verification] Failed to activate challenge code=${activationError?.code || "unknown"}`);
+    return buildJsonResponse(
+      {
+        success: false,
+        error_code: "VERIFICATION_CHALLENGE_ACTIVATION_FAILED",
+        message: locale === "tr"
+          ? "Doğrulama kodu etkinleştirilemedi. Lütfen yeni bir kod isteyin."
+          : "The verification code could not be activated. Please request a new code.",
+      },
+      500,
+      req
+    );
+  }
 
   return buildJsonResponse(
     {

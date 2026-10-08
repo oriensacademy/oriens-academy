@@ -155,7 +155,7 @@ const rpcs: Record<string, (args: Row, headers: Headers) => unknown> = {
     const existing = table("notification_deliveries").find((row) => row.dedupe_key === key);
     const now = new Date().toISOString();
     if (existing) {
-      if (Date.parse(String(existing.updated_at)) >= Date.now() - windowMs) return null;
+      if (existing.status !== "failed" && Date.parse(String(existing.updated_at)) >= Date.now() - windowMs) return null;
       Object.assign(existing, { status: "processing", attempt_count: Number(existing.attempt_count) + 1, updated_at: now });
       return existing.id;
     }
@@ -163,6 +163,33 @@ const rpcs: Record<string, (args: Row, headers: Headers) => unknown> = {
       channel: "email", event_type: args.p_event_type, entity_type: args.p_entity_type, entity_id: args.p_entity_id,
       recipient, provider: "google_workspace", status: "processing", attempt_count: 1, next_attempt_at: now, dedupe_key: key,
     }).id;
+  },
+  activate_purchase_email_verification_challenge: (args) => {
+    const now = new Date().toISOString();
+    const challenge = table("purchase_email_verification_challenges").find((row) =>
+      row.id === args.p_challenge_id && row.user_id === args.p_user_id && row.verified_at == null && row.superseded_at != null
+    );
+    if (!challenge || String(args.p_expires_at) <= now || String(args.p_resend_available_at) <= now) return false;
+    for (const row of table("purchase_email_verification_challenges")) {
+      if (row.user_id === args.p_user_id && row.id !== challenge.id && row.verified_at == null && row.superseded_at == null) {
+        Object.assign(row, { superseded_at: now, expires_at: now, updated_at: now });
+      }
+    }
+    Object.assign(challenge, {
+      superseded_at: null,
+      expires_at: args.p_expires_at,
+      resend_available_at: args.p_resend_available_at,
+      updated_at: now,
+    });
+    const email = String(challenge.candidate_email);
+    insertRow("audit_logs", {
+      actor_user_id: args.p_user_id,
+      action: "purchase.email_verification_requested",
+      entity_type: "user",
+      entity_id: args.p_user_id,
+      metadata: { candidate_email_masked: `${email.slice(0, 2)}***@${email.split("@")[1]}`, delivery_status: "sent" },
+    });
+    return true;
   },
   // Mirrors 20260831150000_guardian_identity_payment_outbox.sql.
   claim_email_notifications: (args) => {
