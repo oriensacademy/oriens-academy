@@ -35,11 +35,11 @@ export function formatTrPhoneInput(digits: string): string {
   return `(${d.slice(0, 3)}${d.length > 3 ? `) ${d.slice(3, 6)}` : ""}${d.length > 6 ? ` ${d.slice(6, 8)}` : ""}${d.length > 8 ? ` ${d.slice(8, 10)}` : ""}`;
 }
 
-/** Panel gösterimi: +90 XXX XXX XX XX. Biçimlenemeyen değer olduğu gibi gösterilir. */
+/** Panel gösterimi: +90 (XXX) XXX XX XX. Biçimlenemeyen değer olduğu gibi gösterilir. */
 export function formatTrPhoneDisplay(value: string | null | undefined): string {
   const digits = normalizeTrPhone(value);
   if (!digits) return "";
-  if (digits.length === 10) return `+90 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
+  if (digits.length === 10) return `+90 (${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`;
   return String(value).trim();
 }
 

@@ -32,7 +32,7 @@ assert.equal(waHref("905321234567", "5339998877"), "https://wa.me/905321234567",
 assert.equal(waHref(null, "5339998877"), "https://wa.me/905339998877", "veli yedeği (10 hane)");
 assert.equal(waHref(null, "+905339998877"), "https://wa.me/905339998877", "veli yedeği (+90)");
 assert.equal(waHref(null, null), null, "numara yoksa bağlantı yok");
-assert.equal(formatTrPhoneDisplay("905321234567"), "+90 532 123 45 67");
+assert.equal(formatTrPhoneDisplay("905321234567"), "+90 (532) 123 45 67");
 assert.equal(normalizeStudentPhone(formatTrPhoneDisplay("905321234567")), "905321234567", "düzenleme alanı değişmeden kaydedilirse aynı değer");
 
 console.log(`STUDENT PHONE: ${cases.length + 7} assertions PASS`);

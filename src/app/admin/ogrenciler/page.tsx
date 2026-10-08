@@ -182,9 +182,13 @@ function AdminStudentsContent() {
 
   const resetPage = () => setSayfa(1);
   const pickQuick = (key: "az" | "yok") => {
-    const on = quick !== key;
-    setQuick(on ? key : "");
-    setDurum(on ? key : "");
+    setQuick(key);
+    setDurum(key);
+    resetPage();
+  };
+  const clearQuick = () => {
+    setQuick("");
+    setDurum("");
     resetPage();
   };
   const sortBy = (key: SortKey) => {
@@ -280,7 +284,7 @@ function AdminStudentsContent() {
         </div>
 
         <div className="stats" data-for="aktif" hidden={mod !== "aktif"}>
-          <div className="stat good"><span className="st-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg></span><span className="l">Aktif öğrenci</span><b data-s="toplam">{ozet.toplam}</b><span className="s" data-s="hafta">{ozet.hafta} öğrenci son 7 günde derste</span></div>
+          <button type="button" className="stat btn good" aria-pressed={quick === "" && durum === ""} onClick={clearQuick}><span className="st-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg></span><span className="l">Aktif öğrenci</span><b data-s="toplam">{ozet.toplam}</b><span className="s" data-s="hafta">{ozet.hafta} öğrenci son 7 günde derste · tümünü göster</span></button>
           <div className="stat info"><span className="st-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H2z" /><path d="M22 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8z" /></svg></span><span className="l">Toplam kalan ders</span><b data-s="kalan">{ozet.kalan}</b><span className="s">aktif paketlerde</span></div>
           <button type="button" className="stat btn warn" data-quick="az" aria-pressed={quick === "az"} onClick={() => pickQuick("az")}><span className="st-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></span><span className="l">Az ders kalan</span><b data-s="az">{ozet.az}</b><span className="s">3 ders veya daha az · filtrele</span></button>
           <button type="button" className="stat btn bad" data-quick="yok" aria-pressed={quick === "yok"} onClick={() => pickQuick("yok")}><span className="st-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg></span><span className="l">Paketi olmayan</span><b data-s="yok">{ozet.yok}</b><span className="s">yeni paket tanımlanmalı · filtrele</span></button>

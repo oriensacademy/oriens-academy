@@ -52,7 +52,6 @@ export function PricingPage() {
       ...fallback,
       title: locale === "tr" ? row.name_tr : row.name_en || fallback.title,
       description: fallback.description || (locale === "tr" ? row.description_tr : row.description_en),
-      badge: locale === "tr" ? row.badge_tr || fallback.badge : row.badge_en || fallback.badge,
     };
   }
 
@@ -66,12 +65,7 @@ export function PricingPage() {
 
   const tiers: PricingTier[] = activePackages.map((item) => {
     const itemContent = getItemContent(item.id);
-    const defaultBadge = item.id === "package10"
-      ? (locale === "tr" ? "En Popüler" : "Most Popular")
-      : item.id === "package30"
-      ? (locale === "tr" ? "En Avantajlı" : "Best Value")
-      : null;
-    const dynamicBadge = (locale === "tr" ? item.badge_tr : item.badge_en) || defaultBadge;
+    const dynamicBadge = (locale === "tr" ? item.badge_tr : item.badge_en)?.trim() || null;
     const displayPrice = getLocalizedPackageDisplayPrice({
       locale,
       tryAmount: item.current_total ?? item.price_amount,
@@ -89,7 +83,7 @@ export function PricingPage() {
       discount: item.discount_percentage,
       description: itemContent.description || (locale === "tr" ? item.description_tr : item.description_en) || "",
       features: itemContent.features || [],
-      popular: item.id === "package10" || item.featured,
+      popular: Boolean(item.featured),
       badge: dynamicBadge,
       color: item.id === "package10" ? "gold" : item.id === "package30" ? "forest" : item.id === "package20" ? "ivory" : "sage",
       ctaLabel: locale === "tr" ? "Görüşme Planla" : "Book a Consultation",

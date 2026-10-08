@@ -1,122 +1,149 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Mail } from "lucide-react";
-import { CompassMark } from "@/components/brand/CompassMark";
+import type { LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  Award,
+  BarChart3,
+  BookOpen,
+  Camera,
+  Clock3,
+  GraduationCap,
+  Mail,
+  MessageCircle,
+  Phone,
+  Target,
+  Users,
+} from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
-import { ButtonLink } from "@/components/ui/button";
-import { examRecords } from "@/content/exams";
 import { useAboutContent, useLocale } from "@/content/locale-context";
-import { localizedPath } from "@/lib/routes";
 import { useSiteContact } from "@/lib/contact-settings";
-import About from "@/components/about";
-import { OriensLottie } from "@/components/ui/OriensLottie";
+import { localizedPath } from "@/lib/routes";
+import styles from "./about-page.module.css";
 
-const number = (index: number) => String(index + 1).padStart(2, "0");
+const PRINCIPLE_ICONS: LucideIcon[] = [Target, Users, BarChart3, Clock3, Award, GraduationCap];
+
+function LessonIllustration({ label }: { label: string }) {
+  return (
+    <div className={styles.illustration} role="img" aria-label={label}>
+      <div className={styles.board}>
+        <span>SAT · IB</span>
+        <strong>f(x) = ax² + bx + c</strong>
+        <i aria-hidden="true" />
+      </div>
+      <div className={styles.tutor} aria-hidden="true">
+        <span className={styles.head} />
+        <span className={styles.body} />
+        <span className={styles.arm} />
+      </div>
+      <span className={styles.live}><i /> LIVE</span>
+      <span className={styles.lessonTag}>Calculus</span>
+    </div>
+  );
+}
 
 export function AboutPage() {
-  const CONTACT = useSiteContact();
   const locale = useLocale();
   const content = useAboutContent();
+  const contact = useSiteContact();
+  const isTr = locale === "tr";
   const bookingHref = `${localizedPath("home", locale)}#consultation-form`;
-  const metrics = content.outcomes.metrics.filter((metric) => metric.active).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const principles = [
+    ...content.principles.items,
+    { id: "faculty", title: content.team.eyebrow, description: content.team.intro },
+  ];
+  const contacts = [
+    { icon: MessageCircle, title: "WhatsApp", value: contact.whatsappDisplay, href: contact.whatsappHref, external: true },
+    { icon: Phone, title: isTr ? "Telefon" : "Phone", value: contact.landlineDisplay, href: contact.landlineHref },
+    { icon: Mail, title: isTr ? "E-posta" : "Email", value: contact.email, href: contact.emailHref },
+    { icon: Camera, title: "Instagram", value: "@oriens.academy", href: contact.instagramHref, external: true },
+  ];
+
   return (
-    <div className="overflow-x-clip">
-      <section className="relative overflow-hidden border-b border-border pt-24 pb-16 md:pt-30 md:pb-24">
-        <div className="absolute inset-y-0 right-[10%] hidden border-l border-dashed border-border lg:block" aria-hidden="true" />
-        <div className="relative mx-auto max-w-[1280px] px-6 md:px-12">
-          <nav aria-label={content.breadcrumb.ariaLabel}>
-            <ol className="flex min-h-11 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <li><Link href={localizedPath("home", locale)} className="inline-flex min-h-11 items-center rounded-sm outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-4">{content.breadcrumb.home}</Link></li>
-              <li aria-hidden="true">/</li>
-              <li aria-current="page" className="font-medium text-ink">{content.breadcrumb.current}</li>
-            </ol>
+    <main className={styles.root}>
+      <section className={styles.hero}>
+        <div className={styles.container}>
+          <nav className={styles.breadcrumb} aria-label={content.breadcrumb.ariaLabel}>
+            <Link href={localizedPath("home", locale)}>{content.breadcrumb.home}</Link>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{content.breadcrumb.current}</span>
           </nav>
-
-          <div className="mt-9 grid min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-12 lg:grid-cols-12 lg:gap-14">
-            <Reveal className="min-w-0 lg:col-span-7" y={10}>
-              <h1 className="max-w-[13ch] text-[clamp(2.8rem,6.2vw,5.8rem)] leading-[0.98] font-medium tracking-[-0.035em] text-ink">{content.hero.title}</h1>
-              <p className="mt-7 max-w-[62ch] text-lg leading-[1.75] text-ink/72">{content.hero.description}</p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <ButtonLink href={bookingHref} directional size="lg" className="h-12 px-5">{content.hero.primaryCta}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink>
-                <ButtonLink href="#approach" variant="outline" size="lg" className="h-12 px-5">{content.hero.secondaryCta}<ArrowDown className="size-4" aria-hidden="true" /></ButtonLink>
+          <div className={styles.heroGrid}>
+            <Reveal className={styles.heroCopy} y={10}>
+              <p className={styles.eyebrow}>{content.hero.eyebrow}</p>
+              <h1>{content.hero.title}</h1>
+              <p className={styles.lead}>{content.hero.description}</p>
+              <div className={styles.actions}>
+                <Link href={bookingHref} className={styles.primary}>{content.hero.primaryCta}<ArrowRight size={17} /></Link>
+                <Link href={localizedPath("exams", locale)} className={styles.secondary}>{content.hero.secondaryCta}</Link>
               </div>
             </Reveal>
-            <Reveal className="min-w-0 lg:col-span-5" delay={0.12}>
-              <div className="mx-auto max-w-[440px] rounded-[2rem] border border-border bg-white/70 p-5 shadow-[0_20px_60px_rgba(16,39,27,.08)]">
-                <OriensLottie src="/animations/learning.lottie" aspectRatio="learning" speed={0.9} ariaLabel={content.hero.visualLabel} />
-              </div>
-            </Reveal>
+            <Reveal delay={0.1} className={styles.visual}><LessonIllustration label={content.hero.visualLabel} /></Reveal>
           </div>
         </div>
       </section>
 
-      <About
-        eyebrow={content.story.eyebrow}
-        title={content.story.title}
-        description={content.story.paragraphs[0]}
-        items={[
-          ...content.principles.items.map((item) => ({ title: item.title, description: item.description })),
-          { title: content.team.eyebrow, description: content.team.intro },
-        ]}
-      />
+      <section className={styles.principles}>
+        <div className={styles.container}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>{content.principles.eyebrow}</p>
+            <h2>{content.principles.title}</h2>
+            <p>{content.principles.intro}</p>
+          </div>
+          <div className={styles.principleGrid}>
+            {principles.map((item, index) => {
+              const Icon = PRINCIPLE_ICONS[index] || BookOpen;
+              return (
+                <article className={styles.principleCard} key={item.id}>
+                  <span className={styles.cardIcon}><Icon size={21} /></span>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-      <section className="border-y border-border bg-surface-muted py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal className="grid gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-6"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.principles.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.principles.title}</h2></div>
-            <p className="max-w-[58ch] self-end text-base leading-[1.75] text-ink/70 lg:col-span-6">{content.principles.intro}</p>
-          </Reveal>
-          <ol className="mt-12 border-t border-ink">
-            {content.principles.items.map((item, index) => (
-              <Reveal key={item.id} delay={index * 0.04} y={8}>
-                <li className="grid gap-3 border-b border-border py-6 sm:grid-cols-[3rem_minmax(10rem,0.75fr)_1.5fr] sm:items-start sm:gap-6">
-                  <span className="text-xs tabular-nums text-brand-accent">{number(index)}</span>
-                  <h3 className="font-heading text-2xl text-ink">{item.title}</h3>
-                  <p className="max-w-[60ch] text-sm leading-[1.75] text-ink/70">{item.description}</p>
-                </li>
-              </Reveal>
+      <section className={styles.schools}>
+        <div className={styles.container}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>{content.outcomes.eyebrow}</p>
+            <h2>{content.outcomes.title}</h2>
+            <p>{content.outcomes.intro}</p>
+          </div>
+          <div className={styles.schoolGrid}>
+            {content.outcomes.items.map((school, index) => (
+              <article className={styles.schoolCard} key={school.title}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div><h3>{school.title}</h3><p>{school.description}</p></div>
+              </article>
             ))}
-          </ol>
+          </div>
+          <p className={styles.disclaimer}>{content.outcomes.disclaimer}</p>
         </div>
       </section>
 
-      <section className="overflow-hidden border-y border-border bg-surface py-20 md:py-28">
-        <div className="mx-auto grid min-w-0 max-w-[1280px] items-center gap-12 px-6 md:px-12 lg:grid-cols-12 lg:gap-16">
-          <Reveal className="lg:col-span-5"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.brandMoment.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.brandMoment.title}</h2><p className="mt-6 max-w-[60ch] text-base leading-[1.8] text-ink/70">{content.brandMoment.body}</p></Reveal>
-          <Reveal className="min-w-0 lg:col-span-7" delay={0.1}><div className="mx-auto max-w-[520px] rounded-[2rem] border border-border bg-[#F6F8F3] p-5"><OriensLottie src="/animations/exams-preparation.lottie" aspectRatio="learning" speed={0.85} ariaLabel={content.hero.visualLabel} /></div></Reveal>
-        </div>
-      </section>
-
-      <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal className="grid gap-6 lg:grid-cols-12"><div className="lg:col-span-6"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.outcomes.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.outcomes.title}</h2></div><p className="max-w-[60ch] self-end text-base leading-[1.75] text-ink/70 lg:col-span-6">{content.outcomes.intro}</p></Reveal>
-          {metrics.length > 0 && <dl className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{metrics.map((metric) => <div key={metric.id} className="border-t border-ink pt-5"><dt className="text-sm text-ink/70">{metric.label}</dt><dd className="mt-4 font-heading text-4xl text-ink">{metric.value}</dd></div>)}</dl>}
-          <ol className="mt-12 grid border-t border-l border-border sm:grid-cols-2 lg:grid-cols-3">
-            {content.outcomes.items.map((item, index) => <Reveal key={item.title} className="border-r border-b border-border p-6" delay={index * 0.04} y={8}><li><span className="text-xs tabular-nums text-muted-foreground">{number(index)}</span><h3 className="mt-8 font-heading text-xl text-ink">{item.title}</h3><p className="mt-3 text-sm leading-[1.7] text-ink/70">{item.description}</p></li></Reveal>)}
-          </ol>
-          <p className="mt-7 max-w-[78ch] border-l-2 border-brand-accent pl-4 text-sm leading-relaxed text-muted-foreground">{content.outcomes.disclaimer}</p>
-        </div>
-      </section>
-
-      <section className="border-y border-border bg-surface-muted py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal className="max-w-3xl"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.trust.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.25rem)] leading-[1.08] font-medium text-ink">{content.trust.title}</h2><p className="mt-5 text-base leading-[1.75] text-ink/70">{content.trust.intro}</p></Reveal>
-          <div className="mt-12 grid gap-10 lg:grid-cols-12">
-            <Reveal className="border-t border-ink lg:col-span-4"><p className="py-4 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">{content.trust.examLabel}</p><p className="border-y border-border py-6 font-heading text-[clamp(1.6rem,3vw,2.4rem)] leading-[1.4] text-ink">{examRecords.map((exam) => exam.code).join(" · ")}</p></Reveal>
-            <div className="lg:col-span-8">{content.trust.links.map((item, index) => <Reveal key={`${item.route}-${item.title}`} delay={index * 0.05} y={8}><article className="grid gap-3 border-t border-border py-6 sm:grid-cols-[2.25rem_1fr_auto] sm:items-center sm:gap-5"><span className="text-xs tabular-nums text-brand-accent">{number(index)}</span><div><h3 className="font-heading text-xl text-ink">{item.title}</h3><p className="mt-2 max-w-[55ch] text-sm leading-[1.7] text-ink/70">{item.description}</p></div><Link href={localizedPath(item.route, locale)} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-secondary underline decoration-border underline-offset-4 hover:decoration-brand-accent">{item.linkLabel}<ArrowRight className="size-4" aria-hidden="true" /></Link></article></Reveal>)}</div>
+      <section className={styles.contact}>
+        <div className={styles.container}>
+          <div className={styles.sectionHead}>
+            <p className={styles.eyebrow}>{content.trust.eyebrow}</p>
+            <h2>{content.trust.title}</h2>
+            <p>{content.trust.intro}</p>
+          </div>
+          <div className={styles.contactGrid}>
+            {contacts.map(({ icon: Icon, title, value, href, external }) => (
+              <a key={title} href={href} className={styles.contactCard} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined}>
+                <span className={styles.contactIcon}><Icon size={21} /></span>
+                <strong>{title}</strong>
+                <small>{value}</small>
+                <ArrowRight size={16} />
+              </a>
+            ))}
           </div>
         </div>
       </section>
-
-      <section className="relative overflow-hidden py-20 md:py-28">
-        <div className="absolute top-0 right-[14%] h-full border-l border-dashed border-border" aria-hidden="true" />
-        <div className="relative mx-auto grid max-w-[1280px] gap-10 px-6 md:px-12 lg:grid-cols-12 lg:items-center">
-          <Reveal className="lg:col-span-2"><CompassMark size={64} rotation={24} interactive /></Reveal>
-          <Reveal className="lg:col-span-7"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.cta.eyebrow}</p><h2 className="mt-4 text-[clamp(2.2rem,4vw,3.7rem)] leading-[1.06] font-medium text-ink">{content.cta.title}</h2><p className="mt-5 max-w-[58ch] text-lg leading-relaxed text-ink/70">{content.cta.body}</p></Reveal>
-          <Reveal className="flex flex-col gap-3 sm:flex-row lg:col-span-3 lg:flex-col" delay={0.1}><ButtonLink href={bookingHref} directional size="lg" className="h-12 px-5">{content.cta.primary}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink><ButtonLink href={CONTACT.emailHref} variant="outline" size="lg" className="h-12 px-5">{content.cta.secondary}<Mail className="size-4" aria-hidden="true" /></ButtonLink></Reveal>
-        </div>
-      </section>
-    </div>
+    </main>
   );
 }

@@ -111,6 +111,12 @@ const P = {
   check: <path d="M20 6 9 17l-5-5" />,
   sort: <path d="M3 6h13M3 12h9M3 18h5M18 20V8M15 11l3-3 3 3" />,
 };
+const SEKME_IKON: Record<TabKey, ReactNode> = {
+  genel: P.stack,
+  dersler: P.book,
+  paket: P.card,
+  profil: P.user,
+};
 
 function Svg({ p, w = 18, sw = 1.8, className }: { p: ReactNode; w?: number; sw?: number; className?: string }) {
   return (
@@ -389,6 +395,7 @@ export function HesabimView({ locale, data, guardian, learners, selectedLearnerI
                   }
                 }}
               >
+                <Svg p={SEKME_IKON[key]} w={16} sw={1.8} />
                 {t(...SEKME_AD[key])}
               </button>
             ))}

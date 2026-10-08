@@ -34,6 +34,11 @@ function positiveLessonCount(source: PackageDisplaySource | number | null | unde
   return match ? Number(match[1]) : technicalId.toLowerCase() === "single" ? 1 : null;
 }
 
+function isLegacyPackageNote(value: string) {
+  const normalized = value.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim();
+  return normalized.includes("eski paketten kalan");
+}
+
 /** Prefer canonical DB labels; known IDs provide a safe, human-readable fallback. */
 export function packageDisplayName(
   source: PackageDisplaySource | number | null | undefined,
@@ -44,7 +49,9 @@ export function packageDisplayName(
       ? source.name_tr ?? source.nameTr
       : source.name_en ?? source.nameEn;
     const customName = source.custom_package_name?.trim();
-    if (customName) return customName;
+    // Eski operasyon notları paket adı değildir; veriyi değiştirmeden yalnızca
+    // sunumda ders sayısından türetilen kanonik etiketi kullanırız.
+    if (customName && !isLegacyPackageNote(customName)) return customName;
     if (dbName?.trim()) return dbName.trim();
     const technicalId = String(source.package_id ?? source.packageId ?? "").toLowerCase();
     if (CANONICAL_PACKAGE_LABELS[technicalId]) return CANONICAL_PACKAGE_LABELS[technicalId][locale];

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, User as UserIcon } from "lucide-react";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { AuthExperience, AuthSecureNote } from "@/components/auth/AuthExperience";
 import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
 import { AuthSwitch } from "@/components/ui/auth-switch";
 import { useLocale } from "@/content/locale-context";
@@ -44,6 +45,8 @@ export function UnifiedLoginPage() {
   });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [capsLock, setCapsLock] = useState(false);
 
   // Register fields
   const [fullName, setFullName] = useState("");
@@ -273,15 +276,9 @@ export function UnifiedLoginPage() {
   const isFromCheckout = searchParams.get("source") === "checkout" || (requested && (requested.includes("payment") || requested.includes("cart") || requested.includes("odeme") || requested.includes("sepet")));
 
   return (
-    // Extra bottom padding below `lg` clears the fixed mobile contact dock
-    // (SocialLinks, bottom-6 right-6, ~88px tall) so it never sits on top of
-    // the last form field when the page is scrolled to the bottom.
-    <section className="min-h-screen bg-background px-3 pt-28 pb-32 sm:px-4 sm:pt-36 lg:pb-16">
-      <div className="mx-auto w-full max-w-md">
-        {/* Single clean card without redundant secondary logo */}
-        <div className="rounded-3xl border border-border bg-surface p-5 shadow-editorial sm:p-8">
+    <AuthExperience locale={locale}>
           {isFromCheckout && (
-            <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
+            <div className="mb-5 rounded-2xl border border-primary/20 bg-primary/5 p-3 text-center">
               <p className="text-xs font-semibold text-primary sm:text-sm">
                 {isTr
                   ? "Satın alma işlemine devam etmek için oturum açın veya hesap oluşturun."
@@ -298,27 +295,27 @@ export function UnifiedLoginPage() {
             }}
             loginLabel={isTr ? "Giriş Yap" : "Sign In"}
             registerLabel={isTr ? "Kayıt Ol" : "Create Account"}
-            className="mb-6"
+            className="mb-7"
           />
 
-          <header className="mb-6 text-center">
+          <header className="mb-7">
             <h1 className="font-heading text-2xl text-ink sm:text-3xl">
               {mode === "login"
                 ? isTr
                   ? "Hesabınıza Giriş Yapın"
                   : "Sign In to Your Account"
                 : isTr
-                ? "Hesap Oluştur"
-                : "Create Account"}
+                ? "Veli hesabı oluşturun"
+                : "Create a guardian account"}
             </h1>
-            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {mode === "login"
                 ? isTr
                   ? "Oriens Academy hesabınıza güvenle erişin."
                   : "Securely access your Oriens Academy account."
                 : isTr
-                ? "Eğitim sürecinizi, derslerinizi, ders haklarınızı ve ödemelerinizi tek panelden yönetin."
-                : "Manage your education process, lessons, lesson rights, packages, and payments in one portal."}
+                ? "Paket satın almak ve dersleri takip etmek için hesabınızı oluşturun. Öğrenci bilgilerini sizin için biz ekliyoruz."
+                : "Create your account to purchase packages and follow lessons. We add the student details for you."}
             </p>
           </header>
 
@@ -370,6 +367,9 @@ export function UnifiedLoginPage() {
                     autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(event) => setCapsLock(event.getModifierState("CapsLock"))}
+                    onKeyUp={(event) => setCapsLock(event.getModifierState("CapsLock"))}
+                    onBlur={() => setCapsLock(false)}
                     className="min-h-12 w-full rounded-xl border border-input bg-background pr-11 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                   />
                   <button
@@ -389,6 +389,17 @@ export function UnifiedLoginPage() {
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </span>
+              </label>
+
+              {capsLock ? (
+                <p role="status" className="-mt-2 flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
+                  <AlertCircle className="size-3.5" />{isTr ? "Caps Lock açık" : "Caps Lock is on"}
+                </p>
+              ) : null}
+
+              <label className="flex min-h-8 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} className="size-4 rounded border-input accent-[#10271B]" />
+                {isTr ? "Beni hatırla" : "Remember me"}
               </label>
 
               <button
@@ -423,14 +434,14 @@ export function UnifiedLoginPage() {
           ) : (
             /* Minimal Initial Registration Form */
             <form onSubmit={handleRegister} className="space-y-3.5" noValidate>
-              <div className="flex items-center justify-center rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3 text-xs leading-5 text-ink">
+              <div className="flex items-center rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3 text-xs leading-5 text-ink">
                 <span className="block w-full text-center" style={{ width: "100%", textAlign: "center" }}>
-                  Lütfen üyelik işleminizi veliye ait ad-soyad ve e-posta bilgileri ile gerçekleştiriniz.
+                  {isTr ? "Lütfen üyelik işleminizi veliye ait ad-soyad ve e-posta bilgileri ile gerçekleştiriniz." : "Please register with the guardian's name and email address."}
                 </span>
               </div>
 
               <label className="block text-xs font-semibold text-ink" htmlFor="register-name">
-                {isTr ? "Ad Soyad" : "Full Name"}
+                {isTr ? "Ad Soyad — Veli" : "Full Name — Guardian"}
                 <span className="relative mt-1 block">
                   <UserIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -470,13 +481,16 @@ export function UnifiedLoginPage() {
                     <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                       id="register-password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       required
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      className="min-h-11 w-full rounded-xl border border-input bg-background pr-11 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                     />
+                    <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-ink" aria-label={showPassword ? (isTr ? "Şifreyi gizle" : "Hide password") : (isTr ? "Şifreyi göster" : "Show password")}>
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
                   </span>
                 </label>
 
@@ -486,7 +500,7 @@ export function UnifiedLoginPage() {
                     <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                       id="register-confirm"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       required
                       autoComplete="new-password"
                       value={confirmPassword}
@@ -496,6 +510,11 @@ export function UnifiedLoginPage() {
                   </span>
                 </label>
               </div>
+
+              <ul className="flex flex-wrap gap-2 text-[10px] font-semibold text-muted-foreground" aria-label={isTr ? "Şifre gereksinimleri" : "Password requirements"}>
+                <li className={`rounded-full px-2.5 py-1 ${password.length >= 6 ? "bg-emerald-50 text-emerald-800" : "bg-muted"}`}>{isTr ? "En az 6 karakter" : "At least 6 characters"}</li>
+                <li className={`rounded-full px-2.5 py-1 ${password && password === confirmPassword ? "bg-emerald-50 text-emerald-800" : "bg-muted"}`}>{isTr ? "Şifreler eşleşmeli" : "Passwords must match"}</li>
+              </ul>
 
               {/* Terms & Privacy */}
               <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-[11px] leading-4 text-muted-foreground">
@@ -536,7 +555,7 @@ export function UnifiedLoginPage() {
                   <span>{isTr ? "Hesap oluşturuluyor..." : "Creating account..."}</span>
                 ) : (
                   <>
-                    <span>{isTr ? "Kayıt Ol ve Devam Et" : "Create Account & Continue"}</span>
+                    <span>{isTr ? "Hesap Oluştur" : "Create Account"}</span>
                     <ArrowRight className="size-4" />
                   </>
                 )}
@@ -557,8 +576,7 @@ export function UnifiedLoginPage() {
               </p>
             </form>
           )}
-        </div>
-      </div>
-    </section>
+          <AuthSecureNote locale={locale} />
+    </AuthExperience>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState, type FormEvent } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { AuthExperience, AuthSecureNote } from "@/components/auth/AuthExperience";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import { useLocale } from "@/content/locale-context";
 import { requestPasswordRecovery } from "@/lib/auth/password-recovery";
@@ -73,20 +73,7 @@ export function ForgotPasswordPage() {
   if (pending) return <AccountWaveLoader />;
 
   return (
-    <section className="min-h-screen bg-background px-4 pt-28 pb-16 sm:pt-32">
-      <div className="mx-auto w-full max-w-md">
-        <Link href={unifiedLoginPath(locale)} className="mb-6 flex justify-center">
-          <Image
-            src="/brand/oriens-logo-v2.png"
-            alt="Oriens Academy"
-            width={217}
-            height={80}
-            className="h-14 w-auto"
-            priority
-          />
-        </Link>
-
-        <div className="rounded-3xl border border-border bg-surface p-5 shadow-editorial sm:p-8">
+    <AuthExperience locale={locale}>
           {success ? (
             <div role="status" className="py-4 text-center">
               <CheckCircle2 className="mx-auto size-12 text-primary" />
@@ -110,7 +97,7 @@ export function ForgotPasswordPage() {
             <>
               <header className="mb-6 text-center">
                 <h1 className="font-heading text-3xl font-bold text-ink">
-                  {locale === "tr" ? "Şifremi Unuttum" : "Forgot Password"}
+                  {locale === "tr" ? "Şifrenizi sıfırlayın" : "Reset your password"}
                 </h1>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   {locale === "tr"
@@ -130,7 +117,7 @@ export function ForgotPasswordPage() {
 
               <form onSubmit={submit} className="space-y-4">
                 <label htmlFor="recovery-email" className="block text-xs font-semibold text-ink">
-                  {locale === "tr" ? "E-posta Adresi" : "Email Address"}
+                  {locale === "tr" ? "E-posta" : "Email"}
                   <span className="relative mt-1.5 block">
                     <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
                     <input
@@ -177,8 +164,7 @@ export function ForgotPasswordPage() {
               </div>
             </>
           )}
-        </div>
-      </div>
-    </section>
+          <AuthSecureNote locale={locale} />
+    </AuthExperience>
   );
 }

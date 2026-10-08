@@ -66,6 +66,12 @@ const AUDIT_TITLE: Record<string, { title: string; kind: "ders" | "pk" }> = {
   "package.adjusted": { title: "Ders hakları güncellendi", kind: "pk" },
 };
 
+const AUTH_AUDIT_TITLE: Record<string, string> = {
+  "purchase.email_verification_requested": "E-posta doğrulama kodu istendi",
+  "purchase.email_verified": "E-posta adresi doğrulandı",
+  "auth.otp_verification_failed": "Doğrulama kodu reddedildi",
+};
+
 function startOfWeekIso(now: Date) {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
@@ -88,8 +94,8 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     supabase.from("contact_requests").select("id", { count: "exact", head: true }).eq("is_archived", false).eq("status", "new"),
     supabase.from("notification_deliveries").select("*").eq("is_archived", false).eq("status", "failed").order("created_at", { ascending: false }).limit(10),
     supabase.from("notification_deliveries").select("id", { count: "exact", head: true }).eq("is_archived", false).eq("status", "failed"),
-    supabase.from("audit_logs").select("id,action,actor_user_id,category,correlation_id,created_at,entity_id,entity_type,metadata,severity").in("category", ["lesson", "package"]).order("created_at", { ascending: false }).limit(15),
-    untyped.from("auth_login_events").select("id,email,user_id,device,created_at").eq("result", "fail").order("created_at", { ascending: false }).limit(10) as Promise<{ data: { id: number; email: string; user_id: string | null; device: string | null; created_at: string }[] | null; error: unknown }>,
+    supabase.from("audit_logs").select("id,action,actor_user_id,category,correlation_id,created_at,entity_id,entity_type,metadata,severity").in("action", [...Object.keys(AUDIT_TITLE), ...Object.keys(AUTH_AUDIT_TITLE)]).order("created_at", { ascending: false }).limit(30),
+    untyped.from("auth_login_events").select("id,email,user_id,result,device,created_at").order("created_at", { ascending: false }).limit(15) as Promise<{ data: { id: number; email: string; user_id: string | null; result: "ok" | "fail"; device: string | null; created_at: string }[] | null; error: unknown }>,
   ]);
 
   const errors = [students.error, standings.error, ledger.error].filter((e): e is string => Boolean(e));
@@ -140,11 +146,23 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       detail: `${row.subject?.trim() || "Konu belirtilmedi"} · ${CONTACT_FORM_LABEL[row.source] ?? "İletişim formu"}`, amount: null,
     });
   });
-  const enrichedAudits = await enrichRecentActivity(supabase, ((audits.data ?? []) as RecentAuditRow[]).filter((row) => AUDIT_TITLE[String(row.action)]));
+  const enrichedAudits = await enrichRecentActivity(supabase, ((audits.data ?? []) as RecentAuditRow[]).filter((row) => AUDIT_TITLE[String(row.action)] || AUTH_AUDIT_TITLE[String(row.action)]));
   enrichedAudits.forEach((row) => {
     const mapped = AUDIT_TITLE[String(row.action)];
-    if (!mapped) return;
     const meta = asAuditMetadata(row.metadata);
+    const authTitle = AUTH_AUDIT_TITLE[String(row.action)];
+    if (authTitle) {
+      const email = toAuditText(meta.email) ?? "Hesap";
+      feed.push({
+        key: `au:${row.id}`, at: row.created_at,
+        kind: row.action === "auth.otp_verification_failed" ? "lock" : "mail",
+        tone: row.action === "auth.otp_verification_failed" ? "r" : "b",
+        title: authTitle, who: email, studentId: null, href: "/admin/denetim",
+        detail: "Kimlik doğrulama", amount: null,
+      });
+      return;
+    }
+    if (!mapped) return;
     const studentId = toAuditText(meta.resolved_student_id);
     feed.push({
       key: `au:${row.id}`, at: row.created_at, kind: mapped.kind, tone: mapped.kind === "ders" ? "g" : "y", title: mapped.title,
@@ -155,8 +173,8 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   });
   (failedLogins.data ?? []).forEach((row) => {
     feed.push({
-      key: `lg:${row.id}`, at: row.created_at, kind: "lock", tone: "r", title: "Hatalı giriş denemesi",
-      who: row.email, studentId: null, href: "/admin/denetim", detail: row.device ?? "", amount: null,
+      key: `lg:${row.id}`, at: row.created_at, kind: "lock", tone: row.result === "fail" ? "r" : "g", title: row.result === "fail" ? "Hatalı giriş denemesi" : "Başarılı giriş",
+      who: row.email, studentId: null, href: "/admin/denetim", detail: row.device ?? "Giriş olayı", amount: null,
     });
   });
   ((failed.data ?? []) as NotificationDeliveryRow[]).forEach((row) => {
@@ -166,6 +184,11 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     });
   });
   feed.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  const recent = feed.slice(0, 7);
+  if (!recent.some((item) => item.kind === "lock" || item.kind === "mail")) {
+    const security = feed.find((item) => item.kind === "lock" || item.kind === "mail");
+    if (security) recent.splice(Math.max(0, recent.length - 1), 1, security);
+  }
 
   return {
     students: list,
@@ -174,7 +197,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     newContacts: newContacts.count ?? 0,
     failedEmails: failedCount.count ?? 0,
     guardiansNotSignedIn,
-    feed: feed.slice(0, 7),
+    feed: recent,
     errors,
   };
 }

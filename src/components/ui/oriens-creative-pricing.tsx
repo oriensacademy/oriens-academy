@@ -148,11 +148,7 @@ export function CreativePricing({
             const currency = tier.currency ?? "TRY";
             const currencyText = currencyLabel(currency, locale);
             const packageLabel = packageLabelFor(tier, locale);
-            const ribbon = tier.id === "package10"
-              ? (locale === "tr" ? "EN POPÜLER" : "MOST POPULAR")
-              : tier.id === "package30"
-                ? (locale === "tr" ? "EN AVANTAJLI" : "BEST VALUE")
-                : null;
+            const ribbon = tier.badge?.trim() || null;
 
             return (
               <article

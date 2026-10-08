@@ -50,8 +50,9 @@
 .root :global(.sb-sub):global(.active) :global(.sb-badge){background:var(--soft)}
 .root.mini :global(.sb){width:84px}
 .root.mini :global(.sb-nav){overflow:visible}
-.root.mini :global(.sb-top){flex-direction:column;justify-content:center;height:auto;padding:14px 0;gap:10px}
-.root.mini :global(.logo-img){width:54px}
+.root.mini :global(.sb-top){height:var(--admin-topbar-height);padding:0 7px;gap:5px}
+.root.mini :global(.logo-img){width:36px}
+.root.mini :global(.sb-collapse){width:30px;height:30px}
 .root.mini :global(.sb-collapse) svg{transform:scaleX(-1)}
 .root.mini :global(.sb-lab), .root.mini :global(.sb-chev){display:none}
 .root.mini :global(.sb-subs), .root.mini :global(.sb-group):global(.open) :global(.sb-subs){display:none}
