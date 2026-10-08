@@ -33,7 +33,7 @@ try {
   await guest.goto(`${base}/tr/giris`, { waitUntil: "networkidle" });
   if (!(await guest.getByRole("heading", { name: "Hesabınıza Giriş Yapın", exact: true }).isVisible())) throw new Error("TR login heading missing");
   await guest.getByRole("tab", { name: "Kayıt Ol" }).click();
-  if (!(await guest.getByRole("heading", { name: "Hesap Oluştur", exact: true }).isVisible())) throw new Error("TR registration heading missing");
+  if (!(await guest.getByRole("heading", { name: "Veli hesabı oluşturun", exact: true }).isVisible())) throw new Error("TR registration heading missing");
   if (/18 yaş altı|veli mi|öğrenci mi/i.test(await guest.locator("body").innerText())) throw new Error("Forbidden registration choice/note rendered");
   await guest.goto(`${base}/tr/ucretler`, { waitUntil: "networkidle" });
   if ((await guest.getByText("Şeffaf Fiyatlandırma", { exact: true }).count()) !== 1) throw new Error("Pricing transparency block is duplicated");
@@ -58,20 +58,14 @@ try {
   await page.goto(`${base}/tr/hesabim`, { waitUntil: "networkidle" });
   await page.getByText("10 Derslik Paket", { exact: true }).first().waitFor();
   const body = await page.locator("body").innerText();
-  if (!body.includes("Toplam Kullanılan: 1 / 10") || !body.includes("Toplam Kalan: 9 Ders")) throw new Error("10/1/9 entitlement summary missing");
+  if (!/9\s*\/\s*10/.test(body) || !body.includes("1 ders hakkı kullanıldı")) throw new Error("10/1/9 entitlement summary missing");
   if (body.includes("Öğrencilerim") || body.includes("Paketim")) throw new Error("Forbidden portal navigation rendered");
 
-  const menuButton = page.getByRole("button", { name: /menü/i }).first();
-  await menuButton.click();
-  await page.getByRole("button", { name: "Çıkış Yap", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: /çıkış yapmak/i });
-  await dialog.waitFor();
-  const bounds = await dialog.locator("xpath=..").boundingBox();
-  if (!bounds || bounds.width < 374 || bounds.height < 899) throw new Error("Logout backdrop is not full viewport");
-  await page.keyboard.press("Escape");
-  await dialog.waitFor({ state: "detached" });
-  if (!(await menuButton.evaluate((node) => node === document.activeElement))) throw new Error("Mobile logout did not return focus to menu trigger");
-  results.push({ mobileLogoutPortal: true, focusReturn: true, entitlement: "10/1/9" });
+  const logout = page.getByRole("link", { name: "Çıkış yap", exact: true });
+  await logout.waitFor();
+  await logout.click();
+  await page.waitForURL((url) => /\/tr\/?$/.test(url.pathname));
+  results.push({ directLogout: true, entitlement: "10/1/9" });
   await context.close();
 } finally {
   await browser.close();

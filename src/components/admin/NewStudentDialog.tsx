@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { adminCreateStudent, listStudentGradeOptions, type StudentGradeOption } from "@/lib/admin/students";
 import { normalizeStudentPhone } from "@/lib/format/phone";
+import { AdminTrPhoneInput } from "@/components/admin/AdminTrPhoneInput";
 import pages from "./admin-pages.module.css";
 
 // Referans "Yeni Öğrenci" (#yo-dialog). Kayıt tek RPC ile açılır
@@ -109,7 +110,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
                   </select>
                 </div>
                 <div className="m-field"><label htmlFor="yo-prog" className="m-lab">Eğitim programı</label><input id="yo-prog" className="m-input" list="yo-prog-l" placeholder="Örn. IB Diploma" maxLength={160} value={form.program} onChange={(event) => set("program", event.target.value)} /><datalist id="yo-prog-l">{programs.map((p) => <option key={p} value={p} />)}</datalist></div>
-                <div className={`m-field${errors.tel ? " fx-err" : ""}`} style={{ gridColumn: "1/-1" }}><label htmlFor="yo-tel" className="m-lab">Telefon Numarası</label><input id="yo-tel" className="m-input" type="tel" inputMode="tel" autoComplete="off" placeholder="0532 123 45 67" maxLength={30} value={form.tel} aria-invalid={errors.tel || undefined} aria-describedby={errors.tel ? "yo-tel-err" : undefined} onChange={(event) => set("tel", event.target.value)} />{errors.tel ? <small id="yo-tel-err" className="yo-hint" style={{ color: "#9A3324" }}>Geçerli bir telefon numarası girin.</small> : null}</div>
+                <div className={`m-field${errors.tel ? " fx-err" : ""}`} style={{ gridColumn: "1/-1" }}><label htmlFor="yo-tel" className="m-lab">Telefon Numarası</label><AdminTrPhoneInput id="yo-tel" value={form.tel} invalid={errors.tel} describedBy={errors.tel ? "yo-tel-err" : undefined} onChange={(value) => set("tel", value)} />{errors.tel ? <small id="yo-tel-err" className="yo-hint" style={{ color: "#9A3324" }}>Geçerli bir telefon numarası girin.</small> : null}</div>
               </div>
             </section>
             <section className="fx-sec"><h3 className="fx-sh">Veli</h3>

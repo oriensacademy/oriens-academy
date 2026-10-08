@@ -5,6 +5,7 @@ import type { BookingWithSlot } from "./bookings";
 import { packageDisplayName } from "@/lib/packages/display";
 import { reportAdminFailure, writeAdminAuditLog } from "@/lib/admin/audit";
 import { normalizeStudentPhone } from "@/lib/format/phone";
+import { listGuardianLastSignIns } from "@/lib/admin/logins";
 
 export type StudentContact = Tables<"contact_requests">;
 export type StudentDelivery = Tables<"notification_deliveries">;
@@ -51,6 +52,7 @@ export interface StudentProfile {
   guardianName: string | null;
   guardianEmail: string | null;
   guardianPhone: string | null;
+  guardianLastSignIn: string | null;
 }
 
 export type GuardianLinkedStudent = {
@@ -175,7 +177,7 @@ export const normalizePhone = (value: string | null | undefined) => {
 export async function listAdminStudents(params: { archived?: boolean } = {}): Promise<{ data: StudentProfile[]; error: string | null }> {
   const supabase = getSupabaseClient();
   const showArchived = Boolean(params.archived);
-  const [profilesResult, contactsResult, bookingsResult, deliveriesResult, purchasesResult, homeworkResult, guardianLinksResult, lessonsResult] = await Promise.all([
+  const [profilesResult, contactsResult, bookingsResult, deliveriesResult, purchasesResult, homeworkResult, guardianLinksResult, lessonsResult, guardianSignInsResult] = await Promise.all([
     supabase.from("student_profiles").select("*").order("updated_at", { ascending: false }).limit(1000),
     supabase.from("contact_requests").select("*").eq("is_archived", showArchived).order("created_at", { ascending: false }).limit(1000),
     supabase.from("bookings").select("*, availability_slots(id, starts_at, ends_at, status)").order("created_at", { ascending: false }).limit(1000),
@@ -196,6 +198,7 @@ export async function listAdminStudents(params: { archived?: boolean } = {}): Pr
       .lte("lesson_date", new Date().toISOString())
       .order("lesson_date", { ascending: false })
       .limit(10000),
+    listGuardianLastSignIns(),
   ]);
 
   const firstError = profilesResult.error || contactsResult.error || bookingsResult.error || deliveriesResult.error || purchasesResult.error || homeworkResult.error || guardianLinksResult.error || lessonsResult.error;
@@ -293,6 +296,7 @@ export async function listAdminStudents(params: { archived?: boolean } = {}): Pr
       guardianName: (link?.guardian_accounts as { full_name?: string })?.full_name || (typeof accountRecord.contact_guardian_name === "string" ? accountRecord.contact_guardian_name : null),
       guardianEmail: (link?.guardian_accounts as { email?: string })?.email || null,
       guardianPhone: (link?.guardian_accounts as { phone?: string })?.phone || null,
+      guardianLastSignIn: link?.guardian_user_id ? guardianSignInsResult.data.get(link.guardian_user_id) ?? null : null,
     };
     profiles.push(profile);
     if (email) emailMap.set(email, profile);
@@ -347,6 +351,7 @@ export async function listAdminStudents(params: { archived?: boolean } = {}): Pr
         guardianName: null,
         guardianEmail: null,
         guardianPhone: null,
+        guardianLastSignIn: null,
       };
       profiles.push(profile);
     }

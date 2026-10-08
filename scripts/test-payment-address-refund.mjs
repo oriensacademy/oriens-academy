@@ -18,7 +18,8 @@ const paymentCopy = read("src/content/payment.ts");
 
 // Registration and public checkout do not collect an address; PayTR receives the canonical company address.
 assert.doesNotMatch(registration, /register-address|İletişim Adresi|Contact Address|contactAddress/);
-assert.doesNotMatch(auth.split("export async function registerStudent")[1].split("export async function resendGuardianConfirmation")[0], /contact_address|contactAddress/);
+const registerStudentSource = auth.split("export async function registerStudent")[1].split("export interface RequestEmailChangeResult")[0];
+assert.doesNotMatch(registerStudentSource, /contact_address|contactAddress/);
 assert.doesNotMatch(paymentPage, /Fatura \/ Ödeme Adresi|billingAddress|payerAddress/);
 assert.doesNotMatch(paymentCopy, /Billing Address|Fatura \/ Ödeme Adresi/);
 assert.match(refundCopy, /Partially Refunded|Kısmen İade Edildi/);

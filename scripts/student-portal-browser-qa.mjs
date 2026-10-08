@@ -80,7 +80,7 @@ await page.route("**/rest/v1/**", (route) => {
   const url = route.request().url();
   const method = route.request().method();
   const wantsSingle = route.request().headers().accept?.includes("application/vnd.pgrst.object+json");
-  if (url.includes("guardian_accounts")) return json(route, { user_id: userId, full_name: "QA Account Holder", email: user.email, active: true }, true);
+  if (url.includes("guardian_accounts")) return json(route, { user_id: userId, full_name: "QA Account Holder", email: user.email, phone: "5550000000", preferred_language: "tr", email_verified_at: new Date().toISOString(), active: true }, true);
   if (url.includes("guardian_students")) return json(route, [{ guardian_user_id: userId, student_id: userId, is_primary: true, active: true }]);
   if (url.includes("student_profiles")) return json(route, wantsSingle ? profile : [profile], wantsSingle);
   if (url.includes("bookings"))
@@ -244,7 +244,7 @@ for (const [route, welcome] of [
   }
   const body = await page.locator("body").innerText();
   check(
-    body.includes("14 / 20") && body.includes("6"),
+    /6\s*\/\s*20/.test(body) && body.includes(route.startsWith("/tr") ? "14 ders hakkı kullanıldı" : "14 lessons used"),
     `${route} package progress is incorrect`,
   );
   const lessonsTab = page
@@ -255,15 +255,15 @@ for (const [route, welcome] of [
   await lessonsTab.click();
   const lessonsBody = await page.locator("body").innerText();
   check(
-    lessonsBody.includes(route.startsWith("/tr") ? "Dersler" : "Lessons") &&
+    lessonsBody.includes(route.startsWith("/tr") ? "Yapılan Dersler" : "Completed Lessons") &&
+      lessonsBody.includes("SAT Mathematics") &&
       !lessonsBody.includes("Yaklaşan Ders ve Görüşmeler") &&
       !lessonsBody.includes("Geçmiş Ders ve Görüşmeler"),
     `${route} unified lesson timeline is missing`,
   );
   if (route.startsWith("/tr")) {
-    check(lessonsBody.includes("Tanışma Görüşmesi"), `${route} introduction badge is missing`);
-    check(lessonsBody.includes("Yaklaşan"), `${route} upcoming badge is missing`);
-    check(lessonsBody.includes("Tamamlandı"), `${route} completed badge is missing`);
+    check(!lessonsBody.includes("Tanışma Görüşmesi"), `${route} upcoming introduction booking leaked into completed lessons`);
+    check(!lessonsBody.includes("Yaklaşan"), `${route} upcoming content leaked into completed lessons`);
   }
 }
 

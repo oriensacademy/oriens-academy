@@ -87,6 +87,9 @@ async function fakeSupabase(route) {
       row.updated_at = new Date().toISOString();
       return route.fulfill({ json: { success: true, student_id: row.id, changed_fields: changed } });
     }
+    if (name === "admin_guardian_last_sign_ins") {
+      return route.fulfill({ json: [{ user_id: GUARDIAN, last_sign_in_at: "2026-10-08T18:30:00Z" }] });
+    }
     return route.fulfill({ json: [] });
   }
   if (path.startsWith("/rest/v1/")) {
@@ -155,6 +158,16 @@ try {
     await page.getByText("Geçerli bir telefon numarası girin.").waitFor();
     assert.equal(calls.create.length, 0, "geçersiz numara sunucuya gitmez");
     await tel.fill("0532 123 45 67");
+    assert.equal(await tel.inputValue(), "(532) 123 45 67", "create: 0 ile paste canlı maskelenir");
+    assert.equal(await tel.locator("xpath=..").locator("span").textContent(), "+90", "create: sabit +90 prefix");
+    for (const value of ["5321234567", "+90 532 123 45 67", "+90 (532) 123 45 67"]) {
+      await tel.fill(value);
+      assert.equal(await tel.inputValue(), "(532) 123 45 67", `create mask: ${value}`);
+    }
+    await tel.press("Backspace");
+    assert.equal(await tel.inputValue(), "(532) 123 45 6", "create: backspace maskeyi korur");
+    await tel.pressSequentially("7");
+    assert.equal(await tel.inputValue(), "(532) 123 45 67", "create: backspace sonrası yazma");
     await shot(page, "create-dialog");
     const created = page.waitForRequest((request) => request.url().includes("/rest/v1/rpc/admin_create_student"));
     await page.getByRole("button", { name: "Öğrenciyi Ekle" }).click();
@@ -171,7 +184,7 @@ try {
 
     // ---- 2) Düzenle: alan dolu gelir, değişir, WhatsApp yeni numarayı kullanır
     const edit = await editPhone(page, "+90 (533) 444 55 66");
-    assert.equal(edit.before, "+90 532 123 45 67", "mevcut numara düzenleme alanında");
+    assert.equal(edit.before, "(532) 123 45 67", "mevcut numara düzenleme alanında maskeli");
     assert.equal(edit.label, "Telefon Numarası");
     assert.equal(edit.section, "Öğrenci Bilgileri");
     assert.equal(edit.body.p_changes.phone, "905334445566", "update payload normalize");
@@ -210,7 +223,7 @@ try {
 
   // ---- 4) Veli yedeği, pasif durum, düzen ölçüleri (1440 / 1280 / 390) ------
   results.layout = {};
-  for (const width of [1440, 1280, 390]) {
+  for (const width of [1440, 1280, 820, 390]) {
     const context = await newContext(browser, width);
     const page = await context.newPage();
     await openDetail(page, NO_PHONE);
@@ -232,6 +245,10 @@ try {
       const back = document.querySelector('a[aria-label="Öğrencilere Dön"]');
       const wa = document.querySelector("[data-wa]");
       const edit = [...document.querySelectorAll("button")].find((el) => /Bilgileri Düzenle/.test(el.textContent));
+      const tabs = document.querySelector('[role="tablist"][aria-label="Öğrenci sekmeleri"]');
+      const hero = tabs.closest("header");
+      const tabItems = [...tabs.querySelectorAll('[role="tab"]')];
+      const metadata = hero.querySelector('[aria-label="Öğrenci bilgileri"]');
       const cs = getComputedStyle(card);
       return {
         docW: document.documentElement.scrollWidth, vw: innerWidth,
@@ -240,12 +257,24 @@ try {
         cellPad: getComputedStyle(grid.firstElementChild).padding, gap: getComputedStyle(grid).gap, titleSize: getComputedStyle(h2).fontSize,
         bar: { children: bar.children.length, now: bar.getAttribute("aria-valuenow"), max: bar.getAttribute("aria-valuemax"), ratio: bar.firstElementChild.getBoundingClientRect().width / bar.getBoundingClientRect().width },
         back: box(back), wa: box(wa), edit: box(edit),
+        actionsInHero: hero.contains(wa) && hero.contains(edit),
+        metadata: metadata.textContent.replace(/\s+/g, " ").trim(),
+        accent: getComputedStyle(hero, "::before").backgroundImage,
+        tabIcons: tabItems.filter((item) => item.querySelector("svg")).length,
+        tabBackground: getComputedStyle(tabs).backgroundColor,
+        tabClipped: tabItems.some((item) => item.scrollWidth > item.clientWidth + 1),
+        tabsScrollable: tabs.scrollWidth >= tabs.clientWidth,
       };
     });
     assert.ok(m.docW <= m.vw, `${width}: yatay taşma yok (${m.docW} > ${m.vw})`);
     for (const key of ["back", "wa", "edit"]) assert.ok(m[key].x >= 0 && m[key].r <= m.vw, `${width}: ${key} ekranda`);
     assert.ok(m.wa.r <= m.edit.x + 1 && Math.abs(m.wa.y - m.edit.y) < 2, `${width}: WhatsApp, Bilgileri Düzenle'nin solunda`);
-    assert.ok(m.back.x < m.wa.x, `${width}: geri bağlantısı solda`);
+    assert.equal(m.actionsInHero, true, `${width}: aksiyonlar header kartında`);
+    assert.match(m.metadata, /IELEV Lisesi.*Mezun.*IB Diploma.*Veli son giriş/, `${width}: gerçek header metadata`);
+    assert.match(m.accent, /linear-gradient/, `${width}: green-gold accent`);
+    assert.equal(m.tabIcons, 4, `${width}: dört tab ikonu`);
+    assert.notEqual(m.tabBackground, "rgba(0, 0, 0, 0)", `${width}: tab background`);
+    assert.equal(m.tabClipped, false, `${width}: tab label kırpılmıyor`);
     assert.ok(Math.abs(m.grid.b - (m.card.b - m.padB)) <= 1.5, `${width}: Akademik Profil ızgarası kartı dolduruyor`);
     assert.equal(m.cellPad, "14px 12px 14px 14px");
     assert.equal(m.gap, "10px");
@@ -254,10 +283,11 @@ try {
       assert.equal(m.cols, 4);
       assert.ok(Math.abs(m.card.h - m.pkg.h) <= 1, `${width}: Akademik Profil ve paket kartı aynı yükseklik`);
       assert.ok(Math.abs(m.card.y - m.pkg.y) <= 1, `${width}: aynı satır`);
-    } else {
+    } else if (width === 390) {
       assert.equal(m.cols, 2);
       assert.ok(m.wa.w <= 46, "390: WhatsApp yalnız ikon");
       assert.ok(m.edit.r <= m.vw, "390: düzenle butonu taşmıyor");
+      assert.equal(m.tabsScrollable, true, "390: sekmeler kendi container'ında kaydırılabilir");
     }
     assert.equal(m.bar.children, 1, "Genel: tek parça çizgi");
     assert.equal(m.bar.now, "6");

@@ -21,15 +21,16 @@ const files = {
 assert.match(files.navbar, /Giriş Yap/);
 assert.match(files.navbar, /Hesabım/);
 assert.match(files.login, /Hesabınıza Giriş Yapın/);
-assert.match(files.login, /Hesap Oluştur/);
-assert.doesNotMatch(`${files.navbar}\n${files.login}\n${files.portal}`, /Veli Hesabı|Parent Account|18 yaş altı/i);
+assert.match(files.login, /Veli hesabı oluşturun/);
+assert.doesNotMatch(`${files.navbar}\n${files.login}\n${files.portal}`, /18 yaş altı|veli mi|öğrenci mi/i);
 assert.doesNotMatch(files.login, /ödevlerinizi|homework/i);
 assert.doesNotMatch(files.phone, /ödev|homework|assignment/i);
 assert.match(files.phone, /1 Tamamlandı \/ 9 Kaldı/);
 
 assert.match(files.portalCopy, /Ders Hakları \/ Paketler/);
 assert.doesNotMatch(files.portalCopy, /Paketim|Öğrencilerim|My Package/);
-assert.match(files.portal, /Öğrenci Bilgileri/);
+assert.match(files.portal, /<HesabimView/);
+assert.doesNotMatch(files.portal, /Akademik Hedefler|Academic Goals|Preferences/);
 assert.match(files.migration, /setup_account_learner/);
 assert.match(files.migration, /relationship_role, is_primary, active, source[\s\S]*'other'/);
 

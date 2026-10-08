@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { formatTrPhoneDisplay, normalizeStudentPhone, trPhoneWaDigits } from "@/lib/format/phone";
+import { formatTrPhoneDisplay, normalizeStudentPhone, trPhoneInputDigits, trPhoneWaDigits } from "@/lib/format/phone";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -66,6 +66,7 @@ import { ControlledLessonDate, ControlledLessonTime } from "@/components/admin/C
 import styles from "./student-detail.module.css";
 import pages from "./admin-pages.module.css";
 import { CloseIcon, GearIcon } from "@/components/admin/StudentRefDialogs";
+import { AdminTrPhoneInput } from "@/components/admin/AdminTrPhoneInput";
 
 const StudentLearningManager = dynamic(
   () => import("@/components/admin/StudentLearningManager").then((module) => module.StudentLearningManager),
@@ -250,7 +251,6 @@ export function StudentDetailSheet({
               <ArrowLeft size={17} />
               Öğrenciler
             </Link>
-            {headerActions}
           </div>
         )}
         {student.archived && student.userId ? <ArchiveBanner student={student} onRestored={() => { invalidateStudentData(); onChanged?.(); }} /> : null}
@@ -263,12 +263,20 @@ export function StudentDetailSheet({
                   <h1 id="student-detail-title" className={styles.name}>{student.fullName}</h1>
                   <span className={`${styles.status}${student.archived ? ` ${styles.arc}` : ""}`}>{student.archived ? "Arşivde" : student.active ? "Aktif Öğrenci" : "Pasif"}</span>
                 </div>
+                <div className={styles.metadata} aria-label="Öğrenci bilgileri">
+                  {student.school ? <span><School size={15} />{student.school}</span> : null}
+                  {student.gradeLevel ? <span><GraduationCap size={15} />{student.gradeLevel}</span> : null}
+                  {student.educationProgram ? <span><BookOpen size={15} />{student.educationProgram}</span> : null}
+                  {student.guardianLastSignIn ? <span><Clock size={15} />Veli son giriş: {new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.guardianLastSignIn))}</span> : null}
+                  {!student.school && !student.gradeLevel && !student.educationProgram && !student.guardianLastSignIn ? <span className={styles.metadataEmpty}>Akademik bilgiler henüz eklenmemiş.</span> : null}
+                </div>
               </div>
             </div>
-            {!pageMode && headerActions}
+            {headerActions}
           </div>
           <nav role="tablist" aria-label="Öğrenci sekmeleri" className={styles.tabs}>
             {tabs.map((item) => {
+              const Icon = item.icon;
               return (
                 <button
                   key={item.id}
@@ -277,6 +285,7 @@ export function StudentDetailSheet({
                   aria-selected={tab === item.id}
                   className={`${styles.tab} ${tab === item.id ? styles.activeTab : ""}`}
                 >
+                  <Icon size={17} aria-hidden="true" />
                   <span>{item.label}</span>
                 </button>
               );
@@ -1377,7 +1386,7 @@ function EditStudentIdentityModal({
     examsTaken: student.examsTaken,
     gradeLevel: student.gradeLevel || "",
     guardianName: student.guardianName || "",
-    phone: formatTrPhoneDisplay(student.phone),
+    phone: trPhoneInputDigits(student.phone),
   });
   const [adminPassword, setAdminPassword] = useState("");
   const [step, setStep] = useState<"edit" | "reauth">("edit");
@@ -1502,7 +1511,7 @@ function EditStudentIdentityModal({
                     <div className="m-field"><label htmlFor="f-okul" className="m-lab">Okul / Kurum</label><input id="f-okul" className="m-input" type="text" value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })} /></div>
                     <StudentGradeField reference value={form.gradeLevel} onChange={(gradeLevel) => setForm({ ...form, gradeLevel })} />
                     <div className="m-field"><label htmlFor="f-prog" className="m-lab">Eğitim Programı</label><input id="f-prog" className="m-input" type="text" value={form.educationProgram} onChange={(e) => setForm({ ...form, educationProgram: e.target.value })} /></div>
-                    <div className="m-field" style={{ gridColumn: "1/-1" }}><label htmlFor="f-tel" className="m-lab">Telefon Numarası</label><input id="f-tel" className="m-input" type="tel" inputMode="tel" autoComplete="off" placeholder="0532 123 45 67" maxLength={30} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div>
+                    <div className="m-field" style={{ gridColumn: "1/-1" }}><label htmlFor="f-tel" className="m-lab">Telefon Numarası</label><AdminTrPhoneInput id="f-tel" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} /></div>
                   </div>
                   <StudentExamField value={form.examsTaken} onChange={(examsTaken) => setForm({ ...form, examsTaken })} />
                 </section>

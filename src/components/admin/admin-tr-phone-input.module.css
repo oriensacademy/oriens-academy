@@ -1,0 +1,22 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.prefix {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 14px;
+  color: #1c231e;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.input {
+  padding-left: 54px !important;
+  font-variant-numeric: tabular-nums;
+}

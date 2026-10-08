@@ -107,14 +107,6 @@ export async function registerStudent(input: StudentRegistrationInput) {
   return result;
 }
 
-export async function resendGuardianConfirmation(email: string, locale: Locale) {
-  return getSupabaseClient().auth.resend({
-    type: "signup",
-    email: email.trim().toLowerCase(),
-    options: { emailRedirectTo: `${window.location.origin}/${locale}/${locale === "tr" ? "hesabim" : "account"}` },
-  });
-}
-
 export interface RequestEmailChangeResult {
   success: boolean;
   new_email?: string;

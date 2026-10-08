@@ -1,7 +1,7 @@
 // Öğrenci telefonu normalizasyonu ve WhatsApp bağlantısı (ağ yok).
 // SQL karşılığı public.normalize_student_phone ile aynı tablo kullanılır.
 import assert from "node:assert/strict";
-import { formatTrPhoneDisplay, normalizeStudentPhone, trPhoneWaDigits } from "../src/lib/format/phone";
+import { formatTrPhoneDisplay, formatTrPhoneInput, normalizeStudentPhone, trPhoneInputDigits, trPhoneWaDigits } from "../src/lib/format/phone";
 
 const cases: Array<[string | null, string | null | undefined]> = [
   ["0532 123 45 67", "905321234567"],
@@ -35,4 +35,13 @@ assert.equal(waHref(null, null), null, "numara yoksa bağlantı yok");
 assert.equal(formatTrPhoneDisplay("905321234567"), "+90 (532) 123 45 67");
 assert.equal(normalizeStudentPhone(formatTrPhoneDisplay("905321234567")), "905321234567", "düzenleme alanı değişmeden kaydedilirse aynı değer");
 
-console.log(`STUDENT PHONE: ${cases.length + 7} assertions PASS`);
+for (const input of ["5321234567", "0532 123 45 67", "+90 532 123 45 67", "+90 (532) 123 45 67"]) {
+  const digits = trPhoneInputDigits(input);
+  assert.equal(digits, "5321234567", `input digits: ${input}`);
+  assert.equal(`+90 ${formatTrPhoneInput(digits)}`, "+90 (532) 123 45 67", `live mask: ${input}`);
+  assert.equal(normalizeStudentPhone(digits), "905321234567", `canonical payload: ${input}`);
+}
+assert.equal(formatTrPhoneInput(trPhoneInputDigits("")), "", "telefon temizlenebilir");
+assert.equal(formatTrPhoneInput(trPhoneInputDigits("5321234567").slice(0, -1)), "(532) 123 45 6", "backspace maskeyi korur");
+
+console.log(`STUDENT PHONE: ${cases.length + 21} assertions PASS`);
