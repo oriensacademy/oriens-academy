@@ -16,6 +16,7 @@
     "test:exam:browser": "node scripts/test-all-exam-scenarios.mjs",
     "test:exam:conversion": "node scripts/test-exam-history-conversion.mjs",
     "test:payment:amounts": "npx tsx scripts/test-payment-amount-consistency.ts",
+    "test:payment:installment-browser": "node scripts/test-paytr-installment-table-browser.mjs",
     "local:supabase:start": "npx supabase start",
     "local:supabase:status": "npx supabase status",
     "local:admin:setup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-local-admin.ps1",

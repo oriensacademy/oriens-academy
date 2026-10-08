@@ -1,50 +1,130 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { kurusToDecimalString } from "@/lib/payments/pricing";
+import { buildPaytrInstallmentTableUrl, paytrInstallmentTableEnv } from "@/lib/payments/paytr-installment-table";
 
-// PayTR taksit tablosu (panel > Taksit Tablosu entegrasyonu). Panelin verdiği
-// tablo anahtarı ve mağaza no herkese açık gömme değerleridir; tanımlı değilse
-// tablo hiç yüklenmez. Ödeme / token akışına dokunmaz. Banka / taksit oranları
-// yalnız PayTR'nin betiğinden gelir; burada hesaplanmaz.
-const TABLE_TOKEN = process.env.NEXT_PUBLIC_PAYTR_INSTALLMENT_TOKEN?.trim() || "";
-const MERCHANT_ID = process.env.NEXT_PUBLIC_PAYTR_MERCHANT_ID?.trim() || "";
+// PayTR taksit tablosu (panel > Taksit Tablosu entegrasyonu). Banka / taksit /
+// vade farkı tutarları yalnız PayTR'nin betiğinden gelir; burada hesaplanmaz ve
+// betiğin yazdığı içerik değiştirilmez. Tablo bilgilendirme amaçlıdır: yüklenemezse
+// ödeme formu ve token akışı aynen çalışır.
+export const paytrInstallmentTableEnabled = Boolean(paytrInstallmentTableEnv.merchantId && paytrInstallmentTableEnv.installmentToken);
 
-export const paytrInstallmentTableEnabled = Boolean(TABLE_TOKEN && MERCHANT_ID);
+const TABLE_ID = "paytr_taksit_tablosu";
+const LOAD_TIMEOUT_MS = 15_000;
 
-// PayTR panelindeki resmi tablo stili (renk / yazı / hücre düzeni); kartlar
-// kapsayıcı genişliğine göre ızgaraya dizilir, böylece dar ekranda taşmaz.
+// PayTR panelindeki resmi tablo stili (renk / yazı / hücre düzeni). Kartlar
+// kapsayıcı genişliğine göre en fazla 2 sütuna dizilir; dar ekranda tek sütun.
 const TABLE_CSS = `
-#paytr_taksit_tablosu{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;font-size:12px;text-align:center;font-family:Arial,sans-serif;}
-#paytr_taksit_tablosu .taksit-tablosu-wrapper{min-width:0;padding:12px;cursor:default;border:1px solid #e1e1e1;background:#fff;}
-#paytr_taksit_tablosu .taksit-logo img{max-height:28px;padding-bottom:10px;margin:0 auto;}
-#paytr_taksit_tablosu .taksit-baslik,#paytr_taksit_tablosu .taksit-tutar-wrapper{display:flow-root;}
-#paytr_taksit_tablosu .taksit-tutari-text{float:left;width:50%;color:#a2a2a2;margin-bottom:5px;}
-#paytr_taksit_tablosu .taksit-tutar-wrapper{background-color:#f7f7f7;}
-#paytr_taksit_tablosu .taksit-tutar-wrapper:hover{background-color:#e8e8e8;}
-#paytr_taksit_tablosu .taksit-tutari{float:left;width:50%;box-sizing:border-box;padding:6px 0;color:#474747;border:2px solid #fff;}
-#paytr_taksit_tablosu .taksit-tutari-bold{font-weight:bold;}
+#${TABLE_ID}{display:grid;grid-template-columns:repeat(auto-fill,minmax(max(240px,calc((100% - 8px) / 2)),1fr));gap:8px;font-size:12px;text-align:center;font-family:Arial,sans-serif;}
+#${TABLE_ID} .taksit-tablosu-wrapper{min-width:0;padding:12px;cursor:default;border:1px solid #e1e1e1;background:#fff;}
+#${TABLE_ID} .taksit-logo img{max-height:28px;max-width:100%;padding-bottom:10px;margin:0 auto;}
+#${TABLE_ID} .taksit-baslik,#${TABLE_ID} .taksit-tutar-wrapper{display:flow-root;}
+#${TABLE_ID} .taksit-tutari-text{float:left;width:50%;color:#a2a2a2;margin-bottom:5px;}
+#${TABLE_ID} .taksit-tutar-wrapper{background-color:#f7f7f7;}
+#${TABLE_ID} .taksit-tutar-wrapper:hover{background-color:#e8e8e8;}
+#${TABLE_ID} .taksit-tutari{float:left;width:50%;box-sizing:border-box;padding:6px 0;color:#474747;border:2px solid #fff;}
+#${TABLE_ID} .taksit-tutari-bold{font-weight:bold;}
 `;
 
-export function PaytrInstallmentTable({ amount }: { amount: number }) {
+// PayTR betiği `document.getElementById('paytr_taksit_tablosu').innerHTML = …`
+// çalıştırır. Aynı anda tek betik yüklenir: tutar değişince (ör. kupon teklifi
+// geldiğinde) eski tutarın geç yanıtı yeni tabloyu ezemez, sayfada iki tablo
+// oluşmaz. Sıradaki yükleme, öncekinin load / error / zaman aşımını bekler.
+let loadQueue: Promise<void> = Promise.resolve();
+
+type Status = "loading" | "ready" | "failed";
+
+export interface PaytrInstallmentTableProps {
+  /** Ödenecek son tutar, tam sayı kuruş (calculateAuthoritativeTotal().finalTotalKurus). */
+  amountKurus: number;
+  merchantId?: string;
+  installmentToken?: string;
+  /** 0 = PayTR varsayılanı (panelin verdiği değer). */
+  taksit?: number;
+  /** 0 = avantajlı seçenekler (panel varsayılanı), 1 = tüm seçenekler. */
+  tumu?: 0 | 1;
+  /** Tablo yüklenemezse gösterilecek kısa, teknik olmayan not. */
+  fallback?: ReactNode;
+}
+
+export function PaytrInstallmentTable({
+  amountKurus,
+  merchantId = paytrInstallmentTableEnv.merchantId,
+  installmentToken = paytrInstallmentTableEnv.installmentToken,
+  taksit = 0,
+  tumu = 0,
+  fallback = null,
+}: PaytrInstallmentTableProps) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const amountText = Number.isFinite(amount) && amount > 0 ? amount.toFixed(2) : "";
+  const src = buildPaytrInstallmentTableUrl({ merchantId, installmentToken, amountKurus, taksit, tumu });
+  const [result, setResult] = useState<{ src: string; status: Status } | null>(null);
+  const status: Status = result?.src === src ? result.status : "loading";
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || !paytrInstallmentTableEnabled || !amountText) return;
-    host.replaceChildren();
-    const style = document.createElement("style");
-    style.textContent = TABLE_CSS;
-    const target = document.createElement("div");
-    target.id = "paytr_taksit_tablosu";
-    const script = document.createElement("script");
-    const params = new URLSearchParams({ token: TABLE_TOKEN, merchant_id: MERCHANT_ID, amount: amountText, taksit: "0", tumu: "0" });
-    script.src = `https://www.paytr.com/odeme/taksit-tablosu/v2?${params.toString()}`;
-    script.async = true;
-    host.append(style, target, script);
-    return () => host.replaceChildren();
-  }, [amountText]);
+    if (!host || !src) return;
+    let active = true;
+    let inFlight: { target: HTMLElement; release: () => void } | null = null;
 
-  if (!paytrInstallmentTableEnabled || !amountText) return null;
-  return <div ref={hostRef} className="mt-3 max-h-[26rem] max-w-full overflow-y-auto overscroll-contain" data-paytr-amount={amountText} />;
+    loadQueue = loadQueue.then(
+      () =>
+        new Promise<void>((done) => {
+          if (!active) return done();
+          const target = document.createElement("div");
+          target.id = TABLE_ID;
+          host.replaceChildren(target);
+          const script = document.createElement("script");
+          script.src = src;
+          script.async = true;
+          let sink: HTMLElement | null = null;
+          const finish = (loaded: boolean) => {
+            if (!inFlight) return;
+            inFlight = null;
+            window.clearTimeout(timer);
+            script.onload = script.onerror = null;
+            script.remove();
+            sink?.remove();
+            if (active) setResult({ src, status: loaded && target.childElementCount > 0 ? "ready" : "failed" });
+            done();
+          };
+          // Bileşen betik yüklenirken kalkarsa hedef gizli bir kaba taşınır;
+          // betik çalıştığında hedefi bulur (konsol hatası olmaz), sonra kap silinir.
+          inFlight = {
+            target,
+            release: () => {
+              sink = document.createElement("div");
+              sink.hidden = true;
+              sink.append(target);
+              document.body.append(sink);
+            },
+          };
+          const timer = window.setTimeout(() => finish(false), LOAD_TIMEOUT_MS);
+          script.onload = () => finish(true);
+          script.onerror = () => finish(false);
+          document.body.append(script);
+        })
+    );
+
+    return () => {
+      active = false;
+      if (inFlight) inFlight.release();
+      else host.replaceChildren();
+    };
+  }, [src]);
+
+  if (!src) return null;
+  if (status === "failed") return fallback ? <div className="mt-3">{fallback}</div> : null;
+  return (
+    <>
+      <style>{TABLE_CSS}</style>
+      <div
+        ref={hostRef}
+        aria-busy={status === "loading"}
+        data-paytr-installment-table={status}
+        data-paytr-amount={kurusToDecimalString(amountKurus)}
+        className="mt-3 max-h-[26rem] min-h-8 max-w-full overflow-y-auto overflow-x-hidden overscroll-contain"
+      />
+    </>
+  );
 }

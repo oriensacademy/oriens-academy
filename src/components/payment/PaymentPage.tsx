@@ -459,11 +459,11 @@ export function PaymentPage() {
             <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
               {paytrInstallmentTableEnabled
                 ? isTr
-                  ? "Kartınızın bankasına göre taksit seçenekleri aşağıdaki PayTR tablosunda listelenir. Taksit seçimini kart numaranızı girdikten sonra güvenli PayTR ödeme formunda yaparsınız."
-                  : "Instalment options by card bank are listed in the PayTR table below. You choose the instalment in the secure PayTR form after entering your card number."
+                  ? "Banka bazlı taksit seçenekleri ve taksit tutarları aşağıdaki tabloda PayTR tarafından listelenir. Taksitli ödemelerde bankanın vade farkı uygulanabilir; tablodaki tutarlar vade farkı dahildir. Taksit seçimini kart numaranızı girdikten sonra güvenli PayTR ödeme formunda yaparsınız."
+                  : "Instalment options and amounts by bank are listed by PayTR in the table below. Instalment payments may include the bank's financing cost; amounts in the table include it. You choose the instalment in the secure PayTR form after entering your card number."
                 : isTr
-                  ? "Kredi kartınıza uygun taksit seçenekleri (varsa), kart numaranızı girdikten sonra aşağıdaki güvenli PayTR ödeme formunda bankanıza göre listelenir."
-                  : "Instalment options available for your credit card (if any) are listed by your bank in the secure PayTR form below after you enter your card number."}
+                  ? "Kredi kartınıza uygun taksit seçenekleri (varsa), kart numaranızı girdikten sonra aşağıdaki güvenli PayTR ödeme formunda bankanıza göre listelenir. Taksitli ödemelerde bankanın vade farkı uygulanabilir."
+                  : "Instalment options available for your credit card (if any) are listed by your bank in the secure PayTR form below after you enter your card number. Instalment payments may include the bank's financing cost."}
             </p>
             <p className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-ink">
               <span>{isTr ? "Tek çekim" : "Single payment"}</span>
@@ -472,7 +472,18 @@ export function PaymentPage() {
             {paytrInstallmentTableEnabled ? (
               <details open className="mt-2 text-xs">
                 <summary className="cursor-pointer font-semibold text-primary">{isTr ? "Taksit tablosu" : "Instalment table"}</summary>
-                <PaytrInstallmentTable amount={finalPrice} />
+                {couponState.status === "loading" ? null : (
+                  <PaytrInstallmentTable
+                    amountKurus={pricingBreakdown.finalTotalKurus}
+                    fallback={
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                        {isTr
+                          ? "Taksit tablosu şu anda görüntülenemiyor. Taksit seçenekleri kart numaranızı girdikten sonra güvenli PayTR ödeme formunda listelenir."
+                          : "The instalment table is not available right now. Instalment options are listed in the secure PayTR form after you enter your card number."}
+                      </p>
+                    }
+                  />
+                )}
               </details>
             ) : null}
           </div>

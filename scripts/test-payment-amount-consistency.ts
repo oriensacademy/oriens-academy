@@ -19,6 +19,7 @@ import Module, { register } from "node:module";
 import { pathToFileURL } from "node:url";
 import * as shared from "../supabase/functions/_shared/payments/pricing";
 import * as frontend from "../src/lib/payments/pricing";
+import { buildPaytrInstallmentTableUrl, PAYTR_INSTALLMENT_TABLE_ENDPOINT } from "../src/lib/payments/paytr-installment-table";
 
 type Row = Record<string, unknown>;
 type Handler = (req: Request) => Promise<Response>;
@@ -184,6 +185,10 @@ function quoteFor(coupon: CouponDef, packageIds: string[]): Row {
 
 // --- Frontend path (CartPage / PaymentPage) -----------------------------------
 
+// Table embed values (public, not merchant_key / merchant_salt). Dummy token: the real one lives in .env.local.
+const TABLE_MERCHANT_ID = "741293";
+const TABLE_TOKEN = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
 function frontendTotals(packageIds: string[], quote: Row | null) {
   // client.ts quoteCheckoutCoupon normalization → useCheckoutCoupon → page pricing
   const normalized = quote?.valid
@@ -204,8 +209,9 @@ function frontendTotals(packageIds: string[], quote: Row | null) {
     coupon: rule,
   });
   const finalPrice = breakdown.finalTotal;
-  // PaytrInstallmentTable: amount.toFixed(2)
-  const installmentAmount = Number.isFinite(finalPrice) && finalPrice > 0 ? finalPrice.toFixed(2) : "";
+  // PaymentPage → <PaytrInstallmentTable amountKurus={finalTotalKurus} /> → official script URL
+  const tableUrl = buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: breakdown.finalTotalKurus });
+  const installmentAmount = tableUrl ? new URL(tableUrl).searchParams.get("amount") ?? "" : "";
   return { breakdown, finalPrice, discount: breakdown.discount, installmentAmount, couponCode: rule?.code };
 }
 
@@ -309,6 +315,31 @@ async function main() {
   await test("FRONTEND USES SHARED PRICING MODULE", () => {
     assert.equal(frontend.calculateAuthoritativeTotal, shared.calculateAuthoritativeTotal);
     assert.equal(frontend.couponRuleFromQuote, shared.couponRuleFromQuote);
+  });
+
+  await test("KURUS → TABLE AMOUNT FORMAT (integer only)", () => {
+    const cases: Array<[number, string]> = [[2_700_000, "27000.00"], [4_200_000, "42000.00"], [188_138, "1881.38"], [16_210, "162.10"], [264_050, "2640.50"], [1, "0.01"], [32_333, "323.33"]];
+    for (const [kurus, text] of cases) assert.equal(shared.kurusToDecimalString(kurus), text);
+    for (const bad of [0, -100, 12.5, Number.NaN, Number.POSITIVE_INFINITY]) assert.equal(shared.kurusToDecimalString(bad), "");
+    // 0.1 + 0.2 → 30 kuruş → "0.30" (no float formatting involved)
+    const drift = shared.calculateAuthoritativeTotal({ packages: [{ id: "a", price: 0.1 }, { id: "b", price: 0.2 }] });
+    assert.equal(shared.kurusToDecimalString(drift.finalTotalKurus), "0.30");
+    return cases.map(([, text]) => text).join(" ");
+  });
+  await test("INSTALLMENT TABLE URL (panel format, taksit=0, tumu=0)", () => {
+    const url = buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 2_700_000 });
+    assert.equal(url, `${PAYTR_INSTALLMENT_TABLE_ENDPOINT}?token=${TABLE_TOKEN}&merchant_id=741293&amount=27000.00&taksit=0&tumu=0`);
+    const all = new URL(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 2_700_000, taksit: 12, tumu: 1 })!);
+    assert.equal(all.searchParams.get("taksit"), "12");
+    assert.equal(all.searchParams.get("tumu"), "1");
+    // out-of-range taksit falls back to the panel default
+    const clamped = new URL(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 100, taksit: 99 })!);
+    assert.equal(clamped.searchParams.get("taksit"), "0");
+    // missing env / zero amount → no table (payment UI unaffected)
+    assert.equal(buildPaytrInstallmentTableUrl({ merchantId: "", installmentToken: TABLE_TOKEN, amountKurus: 2_700_000 }), null);
+    assert.equal(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: "", amountKurus: 2_700_000 }), null);
+    assert.equal(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 0 }), null);
+    return url ?? "";
   });
 
   await test("SINGLE PACKAGE NO COUPON", () => consistent(["package5"], null, 1_500_000, 0));

@@ -77,6 +77,16 @@ export function toTL(kurusAmount: number): number {
   return Math.round(kurusAmount) / 100;
 }
 
+/**
+ * Integer kuruş → "27000.00" (2 decimal TL, dot separator). Used for the PayTR
+ * installment table `amount`; integer arithmetic only, so no float drift.
+ * Returns "" for zero / negative / non-integer input.
+ */
+export function kurusToDecimalString(kurusAmount: number): string {
+  if (!Number.isSafeInteger(kurusAmount) || kurusAmount <= 0) return "";
+  return `${Math.floor(kurusAmount / 100)}.${String(kurusAmount % 100).padStart(2, "0")}`;
+}
+
 const optionalAmount = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") return null;
   const amount = Number(value);
