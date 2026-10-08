@@ -15,6 +15,7 @@ export const PAYMENT_ACTION_LABELS: Record<string, string> = {
   paytr_callback_hash_invalid: "PayTR imza doğrulaması başarısız",
   paytr_callback_transaction_not_found: "PayTR bildirimi: İşlem bulunamadı",
   paytr_callback_amount_mismatch: "Ödeme tutarı doğrulaması başarısız",
+  paytr_callback_late_failure_ignored: "Ödenmiş işleme gelen geç başarısız bildirim yok sayıldı",
   payment_completed: "Ödeme tamamlandı",
   payment_failed: "Ödeme başarısız",
   payment_session_superseded: "Ödeme oturumu yenilendi",

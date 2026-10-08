@@ -41,6 +41,23 @@ export interface CouponValidationFailure {
 
 export type CouponValidationResult = CouponValidationSuccess | CouponValidationFailure;
 
+// quote_checkout_coupon: siparişin tüm paketleri için sunucunun verdiği kural.
+// Tutar burada yok; tutarı ortak hesap (lib/payments/pricing) üretir.
+export interface CouponQuoteSuccess {
+  valid: true;
+  coupon_id: string;
+  code: string;
+  name: string | null;
+  discount_type: "percentage" | "fixed";
+  discount_value: number;
+  maximum_discount_amount: number | null;
+  minimum_order_amount: number | null;
+  eligible_package_ids: string[];
+  currency: string;
+}
+
+export type CouponQuoteResult = CouponQuoteSuccess | CouponValidationFailure;
+
 export interface CreateCouponInput {
   code: string;
   name?: string;

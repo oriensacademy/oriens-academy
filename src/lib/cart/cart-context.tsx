@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import { useAccount } from "@/lib/auth/account-context";
-import type { CouponValidationSuccess } from "@/lib/coupons/types";
-import { validateCartCoupon } from "@/lib/coupons/client";
+import type { CouponQuoteSuccess } from "@/lib/coupons/types";
+import { quoteCheckoutCoupon } from "@/lib/coupons/client";
 import { newCartId, recordCartEvent } from "@/lib/cart/cart-audit";
 
 export interface CartItem {
@@ -16,7 +16,7 @@ interface CartContextType {
   cartCount: number;
   isHydrated: boolean;
   couponCode: string | null;
-  appliedCoupon: CouponValidationSuccess | null;
+  appliedCoupon: CouponQuoteSuccess | null;
   couponError: string | null;
   applyCartCoupon: (
     code: string,
@@ -148,7 +148,7 @@ function clearCartFromStorage(key: string): void {
   }
 }
 
-function readCouponFromStorage(key: string): { code: string | null; coupon: CouponValidationSuccess | null } {
+function readCouponFromStorage(key: string): { code: string | null; coupon: CouponQuoteSuccess | null } {
   if (typeof window === "undefined") return { code: null, coupon: null };
   try {
     const raw = localStorage.getItem(`${key}${COUPON_KEY_SUFFIX}`);
@@ -163,7 +163,7 @@ function readCouponFromStorage(key: string): { code: string | null; coupon: Coup
   }
 }
 
-function writeCouponToStorage(key: string, code: string | null, coupon: CouponValidationSuccess | null): void {
+function writeCouponToStorage(key: string, code: string | null, coupon: CouponQuoteSuccess | null): void {
   if (typeof window === "undefined") return;
   try {
     const couponKey = `${key}${COUPON_KEY_SUFFIX}`;
@@ -184,7 +184,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, isInitializing } = useAccount();
   const [items, setItems] = useState<CartItem[]>([]);
   const [couponCode, setCouponCode] = useState<string | null>(null);
-  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationSuccess | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponQuoteSuccess | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -318,7 +318,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
 
       setCouponError(null);
-      const result = await validateCartCoupon(cleanCode, packageIds, user?.id, locale);
+      const result = await quoteCheckoutCoupon(cleanCode, packageIds, user?.id, locale);
 
       if (result.valid) {
         setCouponCode(cleanCode);

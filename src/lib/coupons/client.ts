@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type {
+  CouponQuoteResult,
   CouponValidationResult,
   CreateCouponInput,
   DiscountCoupon,
@@ -85,15 +86,17 @@ export async function validateCoupon(
 }
 
 /**
- * Validates a coupon against all packages currently in the cart.
- * If any package is eligible, returns that validation result.
+ * Asks the server which packages of this order the coupon applies to, together
+ * with its cap / minimum (quote_checkout_coupon). paytr-create-token makes the
+ * same call with the same packages, so the displayed total and the charged
+ * total come from the same rule and the same pricing code.
  */
-export async function validateCartCoupon(
+export async function quoteCheckoutCoupon(
   code: string,
   packageIds: string[],
   studentUserId?: string,
   locale: "tr" | "en" = "tr"
-): Promise<CouponValidationResult> {
+): Promise<CouponQuoteResult> {
   const cleanCode = code.trim().toUpperCase();
   if (!cleanCode) {
     return {
@@ -111,21 +114,41 @@ export async function validateCartCoupon(
     };
   }
 
-  let lastFailure: CouponValidationResult = {
-    valid: false,
-    error_code: "COUPON_NOT_FOUND",
-    message: mapCouponErrorMessage("COUPON_NOT_FOUND", locale),
-  };
+  try {
+    const { data, error } = await getSupabaseClient().rpc("quote_checkout_coupon", {
+      p_code: cleanCode,
+      p_package_ids: packageIds,
+      p_student_user_id: studentUserId || null,
+    });
 
-  for (const pkgId of packageIds) {
-    const result = await validateCoupon(cleanCode, pkgId, studentUserId, locale);
-    if (result.valid) {
-      return result;
+    if (error) {
+      return {
+        valid: false,
+        error_code: "RPC_ERROR",
+        message: mapCouponErrorMessage("COUPON_NOT_FOUND", locale),
+      };
     }
-    lastFailure = result;
-  }
 
-  return lastFailure;
+    const res = data as unknown as CouponQuoteResult;
+    if (!res?.valid) {
+      const errorCode = res?.error_code || "COUPON_NOT_FOUND";
+      return { valid: false, error_code: errorCode, message: mapCouponErrorMessage(errorCode, locale) };
+    }
+
+    return {
+      ...res,
+      discount_value: Number(res.discount_value),
+      maximum_discount_amount: res.maximum_discount_amount !== null ? Number(res.maximum_discount_amount) : null,
+      minimum_order_amount: res.minimum_order_amount !== null ? Number(res.minimum_order_amount) : null,
+      eligible_package_ids: (res.eligible_package_ids || []).map(String),
+    };
+  } catch {
+    return {
+      valid: false,
+      error_code: "NETWORK_ERROR",
+      message: locale === "tr" ? "Kupon doğrulanırken bir hata oluştu." : "A network error occurred while validating coupon.",
+    };
+  }
 }
 
 

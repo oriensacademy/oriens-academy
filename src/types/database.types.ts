@@ -1988,6 +1988,10 @@ export type Database = {
         Args: { p_code: string; p_package_id: string; p_student_user_id?: string | null }
         Returns: Json
       }
+      quote_checkout_coupon: {
+        Args: { p_code: string; p_package_ids: string[]; p_student_user_id?: string | null }
+        Returns: Json
+      }
       create_student_checkout: {
         Args: {
           p_package_id: string

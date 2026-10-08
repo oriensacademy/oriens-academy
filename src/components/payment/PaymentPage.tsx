@@ -8,6 +8,7 @@ import { useLocale } from "@/content/locale-context";
 import { getPaymentCopy } from "@/content/payment";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { calculateAuthoritativeTotal } from "@/lib/payments/pricing";
+import { useCheckoutCoupon } from "@/lib/coupons/use-checkout-coupon";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { formatCurrency } from "@/lib/format/currency";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
@@ -150,6 +151,11 @@ export function PaymentPage() {
     : packages.filter((pkg) => pkg.id === directPackageId), [cartItems, directPackageId, isCartCheckout, packages]);
   const packageIds = useMemo(() => checkoutPackages.map((pkg) => pkg.id), [checkoutPackages]);
   const cartMismatch = isCartCheckout && checkoutPackages.length !== cartItems.length;
+  // Kupon kuralı bu siparişin paketleri + seçili öğrenci için sunucudan alınır;
+  // paytr-create-token aynı RPC'yi aynı girdiyle çağırır. Kupon bu sipariş için
+  // geçersizse ne ekranda indirim gösterilir ne de sunucuya kupon gönderilir.
+  const couponState = useCheckoutCoupon(appliedCoupon?.code, packageIds, learnerId || user?.id, locale);
+  const checkoutCouponCode = couponState.rule?.code;
 
   // Denetim: ödeme ekranı açılışı ve ödeme başlatma sonucu (yalnız veli hesabı;
   // yönetici destekli ödemeler sunucuda ayrıca kaydedilir). Sepet kimliği
@@ -186,14 +192,7 @@ export function PaymentPage() {
 
   const pricingBreakdown = calculateAuthoritativeTotal({
     packages: pricingPackages,
-    coupon: appliedCoupon
-      ? {
-          id: appliedCoupon.coupon_id,
-          code: appliedCoupon.code,
-          discount_type: appliedCoupon.discount_type,
-          discount_value: appliedCoupon.discount_value,
-        }
-      : null,
+    coupon: couponState.rule,
   });
 
   const basePrice = pricingBreakdown.subtotal;
@@ -204,12 +203,12 @@ export function PaymentPage() {
   const emailVerified = accountType === "admin" || Boolean(selectedGuardian?.email_verified_at);
   const phoneCheck = validateStudentPhone(paymentPhone, isTr);
   const isPhoneValid = paymentPhone.trim().length > 0 && phoneCheck.valid;
-  const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch && isPhoneValid);
+  const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch && isPhoneValid && couponState.status !== "loading");
 
   const orderSnapshot: LegalOrderSnapshot = {
     packageName: checkoutPackages.map((pkg) => packageDisplayName(pkg, locale)).join(", ") || (isTr ? "Ders Paketi" : "Lesson Package"),
     lessonCount: checkoutPackages.reduce((sum, pkg) => sum + (pkg.lesson_count || 0), 0), baseAmount: basePrice,
-    discountAmount: discountAmount || undefined, couponCode: appliedCoupon?.code, finalAmount: finalPrice, currency,
+    discountAmount: discountAmount || undefined, couponCode: checkoutCouponCode, finalAmount: finalPrice, currency,
     payerName: selectedGuardian?.full_name, payerEmail: selectedGuardian?.email, paymentMethod: "card",
   };
 
@@ -343,9 +342,15 @@ export function PaymentPage() {
               <Tag className="size-3.5 text-emerald-700" />
               <div>
                 <span className="font-mono font-bold text-emerald-950 uppercase">{appliedCoupon.code}</span>
-                <span className="ml-1.5 text-[11px] text-emerald-700">
-                  (-{money(discountAmount, currency)})
-                </span>
+                {couponState.status === "invalid" ? (
+                  <span role="alert" className="ml-1.5 text-[11px] font-medium text-red-600">
+                    {couponState.error || (isTr ? "Bu sipariş için kullanılamaz" : "Not valid for this order")}
+                  </span>
+                ) : (
+                  <span className="ml-1.5 text-[11px] text-emerald-700">
+                    (-{money(discountAmount, currency)})
+                  </span>
+                )}
               </div>
             </div>
             <Link
@@ -477,7 +482,7 @@ export function PaymentPage() {
           <HostedCardPanel
             locale={locale}
             packageIds={packageIds}
-            couponCode={appliedCoupon?.code}
+            couponCode={checkoutCouponCode}
             learnerId={learnerId}
             guardianUserId={accountType === "admin" ? guardianId : undefined}
             paymentPhone={phoneCheck.normalized}

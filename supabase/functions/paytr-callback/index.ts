@@ -165,6 +165,29 @@ Deno.serve(async (req: Request) => {
 
       const isNotFound = rpcResult?.error_code === "TRANSACTION_NOT_FOUND";
       const isAmountMismatch = rpcResult?.error_code === "AMOUNT_MISMATCH";
+      const isLateFailure = rpcResult?.error_code === "CANNOT_DOWNGRADE_PAID_TRANSACTION";
+
+      if (isLateFailure) {
+        // Signed "failed" notification for an order that is already paid.
+        // finalize_paytr_payment changed nothing (status, rights and coupon
+        // stay as they are); acknowledge so PayTR stops retrying.
+        await recordPaymentAuditEvent(admin, {
+          action: "paytr_callback_late_failure_ignored",
+          publicReference: merchantOid,
+          transactionId: rpcResult?.transaction_id ?? null,
+          severity: "WARNING",
+          dedupe: true,
+          metadata: {
+            merchant_oid: merchantOid,
+            provider_status: status,
+            failed_reason_code: payload.failed_reason_code || null,
+          },
+        });
+        return new Response("OK", {
+          status: 200,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
 
       if (isNotFound) {
         await recordPaymentAuditEvent(admin, {

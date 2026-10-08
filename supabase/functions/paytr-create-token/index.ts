@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { buildJsonResponse, validateMutationRequest } from "../_shared/cors.ts";
 import { calculatePaytrToken, encodePaytrUserBasket, mapCurrencyToPaytr } from "../_shared/payments/paytr.ts";
 import { createStatusCredential, generatePaytrMerchantOid, sha256 } from "../_shared/payments/security.ts";
-import { calculateAuthoritativeTotal } from "../_shared/payments/pricing.ts";
+import { calculateAuthoritativeTotal, couponRuleFromQuote } from "../_shared/payments/pricing.ts";
 import { recordPaymentAuditEvent } from "../_shared/payments/audit.ts";
 import { getSupabaseAdminKey } from "../_shared/supabase-admin.ts";
 
@@ -101,27 +101,17 @@ Deno.serve(async (req: Request) => {
     const baseAmounts = packages.map((row) => Number(row.current_total ?? row.price_amount));
     if (packages.some((row, index) => !Number.isFinite(baseAmounts[index]) || baseAmounts[index] <= 0 || !row.lesson_count)) return validationError(req, locale, "PACKAGE_NOT_CONFIGURED", "Paket ödeme bilgileri eksik.", "Package payment data is incomplete.");
 
+    // Kupon kuralı siparişin TÜM paketleri için tek RPC ile alınır (uygun
+    // paketler, en yüksek indirim, en düşük sepet tutarı); ödeme ekranı aynı
+    // RPC'yi aynı paketler + öğrenciyle çağırır, tutarı aynı hesap üretir.
     let couponRule = null;
-    let discountedPackageId: string | null = null;
     if (couponCode) {
-      for (const packageId of packageIds) {
-        const { data: validation } = await admin.rpc("validate_checkout_coupon", {
-          p_code: couponCode,
-          p_package_id: packageId,
-          p_student_user_id: learnerId,
-        });
-        if (validation?.valid) {
-          couponRule = {
-            id: String(validation.coupon_id),
-            code: String(validation.code),
-            discount_type: validation.discount_type as "percentage" | "fixed",
-            discount_value: Number(validation.discount_value),
-            applicable_package_id: packageId,
-          };
-          discountedPackageId = packageId;
-          break;
-        }
-      }
+      const { data: quote } = await admin.rpc("quote_checkout_coupon", {
+        p_code: couponCode,
+        p_package_ids: packageIds,
+        p_student_user_id: learnerId,
+      });
+      couponRule = couponRuleFromQuote(quote);
       if (!couponRule) {
         return validationError(req, locale, "INVALID_COUPON", "Kupon kodu geçersiz veya bu sipariş için kullanılamıyor.", "The coupon is invalid or cannot be used for this order.");
       }
@@ -241,7 +231,8 @@ Deno.serve(async (req: Request) => {
     if (finalAmount > 0 && !userIp) return validationError(req, locale, "CUSTOMER_IP_REQUIRED", "Ödeme isteği doğrulanamadı. Sayfayı yenileyip tekrar deneyin.", "The payment request could not be verified. Refresh the page and try again.");
     const { data: singlePkg } = await admin.from("pricing_packages").select("price_amount,current_total,unit_price").eq("id", "single").maybeSingle();
     const initialMetadata: Record<string, unknown> = {
-      locale, learner_name: learner.full_name, coupon_code: couponCode, coupon_id: couponId, discounted_package_id: discountedPackageId,
+      locale, learner_name: learner.full_name, coupon_code: couponCode, coupon_id: couponId, discounted_package_id: pricing.eligiblePackageIds[0] ?? null, discounted_package_ids: pricing.eligiblePackageIds,
+      coupon_maximum_discount_amount: couponRule?.maximum_discount_amount ?? null,
       base_amount: baseAmount, discount_amount: discountAmount,
       subtotal_kurus: subtotalKurus, discount_kurus: discountKurus, final_total_kurus: finalTotalKurus,
       discount_type: pricing.discountType, discount_value: pricing.discountValue,

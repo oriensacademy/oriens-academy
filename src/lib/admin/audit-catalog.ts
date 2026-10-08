@@ -77,6 +77,7 @@ const TITLES: Record<string, string> = {
   paytr_callback_hash_invalid: "PayTR bildirimi imza doğrulamasından geçmedi",
   paytr_callback_transaction_not_found: "PayTR bildirimi: işlem bulunamadı",
   paytr_callback_amount_mismatch: "Ödeme tutarı uyuşmadı",
+  paytr_callback_late_failure_ignored: "Ödenmiş işleme gelen geç başarısız bildirim yok sayıldı",
   payment_session_superseded: "Ödeme oturumu yenilendi",
   "payment.refund_intent_created": "İade başlatıldı",
   "payment.refund_finalized": "İade tamamlandı",

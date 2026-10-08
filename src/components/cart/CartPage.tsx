@@ -18,6 +18,7 @@ import { useLocale } from "@/content/locale-context";
 import { useCart } from "@/lib/cart/cart-context";
 import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { calculateAuthoritativeTotal } from "@/lib/payments/pricing";
+import { useCheckoutCoupon } from "@/lib/coupons/use-checkout-coupon";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { useAccount } from "@/lib/auth/account-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
@@ -29,7 +30,7 @@ import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 export function CartPage() {
   const locale = useLocale();
   const isTr = locale === "tr";
-  const { accountType, isInitializing } = useAccount();
+  const { accountType, isInitializing, user } = useAccount();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const {
     items,
@@ -48,6 +49,9 @@ export function CartPage() {
   const [prevCouponCode, setPrevCouponCode] = useState(couponCode);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [localCouponError, setLocalCouponError] = useState("");
+  // Kupon kuralı sepetteki güncel paketler için sunucudan alınır (ödeme ekranı ve
+  // paytr-create-token ile aynı kural); paket eklenip çıkarıldığında yenilenir.
+  const couponState = useCheckoutCoupon(appliedCoupon ? couponCode : null, items.map((item) => item.packageId), user?.id, locale);
 
   // Sync couponInput when couponCode in cart changes
   if (couponCode !== prevCouponCode) {
@@ -112,14 +116,7 @@ export function CartPage() {
 
   const pricingBreakdown = calculateAuthoritativeTotal({
     packages: pricingPackages,
-    coupon: appliedCoupon
-      ? {
-          id: appliedCoupon.coupon_id,
-          code: appliedCoupon.code,
-          discount_type: appliedCoupon.discount_type,
-          discount_value: appliedCoupon.discount_value,
-        }
-      : null,
+    coupon: couponState.rule,
   });
 
   const totalLessons = cartPackages.reduce((acc, p) => acc + (p.lesson_count || 0), 0);
@@ -338,12 +335,20 @@ export function CartPage() {
                           <div className="flex items-center gap-1.5">
                             <span className="font-mono text-xs font-bold text-emerald-950 uppercase">{appliedCoupon.code}</span>
                             <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                              {appliedCoupon.discount_type === "percentage" ? `%${appliedCoupon.discount_value}` : `-${money(appliedCoupon.discount_amount, currency)}`}
+                              {appliedCoupon.discount_type === "percentage" ? `%${appliedCoupon.discount_value}` : `-${money(appliedCoupon.discount_value, currency)}`}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-[11px] font-medium text-emerald-700">
-                            {isTr ? "Kupon başarıyla uygulandı" : "Coupon successfully applied"}
-                          </p>
+                          {couponState.status === "invalid" ? (
+                            <p role="alert" className="mt-0.5 text-[11px] font-medium text-red-600">
+                              {couponState.error || (isTr ? "Kupon bu sepet için kullanılamaz." : "This coupon cannot be used for this cart.")}
+                            </p>
+                          ) : (
+                            <p className="mt-0.5 text-[11px] font-medium text-emerald-700">
+                              {couponState.status === "loading"
+                                ? (isTr ? "Kupon kontrol ediliyor…" : "Checking coupon…")
+                                : (isTr ? "Kupon başarıyla uygulandı" : "Coupon successfully applied")}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <button
