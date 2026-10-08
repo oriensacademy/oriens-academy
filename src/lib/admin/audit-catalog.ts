@@ -59,7 +59,7 @@ const TITLES: Record<string, string> = {
   cart_item_added: "Sepete paket eklendi",
   cart_item_removed: "Sepetten paket çıkarıldı",
   cart_cleared: "Sepet temizlendi",
-  checkout_opened: "Ödeme ekranı açıldı",
+  checkout_opened: "Ödeme sayfası görüntülendi",
   checkout_started: "Ödeme başlatıldı",
   payment_session_requested: "Ödeme oturumu oluşturuldu",
   paytr_token_created: "PayTR ödeme oturumu hazırlandı",
@@ -177,7 +177,7 @@ const PERSON_VERBS: Record<string, string> = {
   cart_item_added: "sepete paket ekledi",
   cart_item_removed: "sepetten paket çıkardı",
   cart_cleared: "sepeti temizledi",
-  checkout_opened: "ödeme ekranını açtı",
+  checkout_opened: "ödeme sayfasını görüntüledi",
   checkout_started: "ödeme başlattı",
   paytr_iframe_opened: "ödeme formunu açtı",
   payment_success_return_reached: "ödemeden sonra başarı sayfasına döndü",
@@ -542,7 +542,7 @@ function cartSentence(row: AuditSentenceInput, who: string | null): string {
     case "cart_cleared":
       return `${name} sepeti temizledi${pkgList ? ` (${pkgList})` : ""}.`;
     case "checkout_opened":
-      return `${name} ödeme ekranını açtı${pkgList ? ` — ${pkgList}${total ? ` · toplam ${total}` : ""}` : ""}${forStudent}.`;
+      return `${name} ödeme sayfasını görüntüledi${pkgList ? ` — ${pkgList}${total ? ` · toplam ${total}` : ""}` : ""}${forStudent}.`;
     default: {
       if (meta.result === "session_failed") return `${name} ödeme başlatmak istedi ancak ödeme oturumu oluşturulamadı${pkgList ? ` (${pkgList})` : ""}.`;
       if (meta.result === "zero_payment") return `${name} ödemesiz (tam indirimli) siparişi tamamladı${pkgList ? ` — ${pkgList}` : ""}.`;

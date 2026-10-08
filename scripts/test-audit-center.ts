@@ -164,7 +164,7 @@ check("title cart add", auditTitle("cart_item_added") === "Sepete paket eklendi"
 check("title cart remove", auditTitle("cart_item_removed") === "Sepetten paket çıkarıldı");
 check("title cart clear", auditTitle("cart_cleared") === "Sepet temizlendi");
 check("title checkout started", auditTitle("checkout_started") === "Ödeme başlatıldı");
-check("title checkout opened", auditTitle("checkout_opened") === "Ödeme ekranı açıldı");
+check("title checkout opened", auditTitle("checkout_opened") === "Ödeme sayfası görüntülendi");
 check("title session distinct from checkout", auditTitle("payment_session_requested") !== auditTitle("checkout_started"));
 check("accusative Paket'i", turkishAccusative("5 Derslik Paket") === "5 Derslik Paket'i", turkishAccusative("5 Derslik Paket"));
 check("accusative vowel end", turkishAccusative("Deneme Dersi") === "Deneme Dersi'ni", turkishAccusative("Deneme Dersi"));

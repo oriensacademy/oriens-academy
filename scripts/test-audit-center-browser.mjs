@@ -403,7 +403,7 @@ try {
     }
     assert.match(text, /:\d\d:\d\d/, "saniyeli zaman görünmeli");
     const steps = await drawer.locator(".ak-tl li b").allInnerTexts();
-    for (const title of ["Sepete paket eklendi", "Ödeme ekranı açıldı", "Ödeme başlatıldı", "PayTR bildirimi alındı", "Ödeme başarılı", "Paket tanımlandı", "Mail kuyruğa alındı", "Mail gönderildi"]) {
+    for (const title of ["Sepete paket eklendi", "Ödeme sayfası görüntülendi", "Ödeme başlatıldı", "PayTR bildirimi alındı", "Ödeme başarılı", "Paket tanımlandı", "Mail kuyruğa alındı", "Mail gönderildi"]) {
       assert.ok(steps.includes(title), `akışta "${title}" yok: ${steps.join(" | ")}`);
     }
     assert.ok(steps.indexOf("Sepete paket eklendi") < steps.indexOf("Ödeme başlatıldı") && steps.indexOf("Ödeme başlatıldı") < steps.indexOf("Ödeme başarılı") && steps.indexOf("Ödeme başarılı") < steps.indexOf("Mail gönderildi"), "akış sırası sepet → ödeme → mail olmalı");

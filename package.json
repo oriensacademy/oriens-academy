@@ -36,6 +36,7 @@
     "test:customer:content-browser": "node scripts/customer-content-browser.mjs",
     "test:checkout:multipackage": "node scripts/test-public-checkout-multipackage.mjs",
     "test:checkout:browser": "node scripts/test-public-checkout-browser.mjs",
+    "test:checkout:verification-gate": "node scripts/test-payment-verification-gate-browser.mjs",
     "test:admin:final": "node scripts/test-admin-contact-final.mjs",
     "test:admin:browser": "node scripts/test-admin-contact-browser.mjs",
     "test:contact:live": "node scripts/test-contact-reply-live.mjs",

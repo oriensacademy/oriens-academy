@@ -20,6 +20,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { validateStudentPhone } from "@/lib/student/auth";
 import type { Tables } from "@/types/database.types";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
 import { ButtonLink } from "@/components/ui/button";
 import { HostedCardPanel, type PaymentSessionResult } from "./HostedCardPanel";
 import { PaytrInstallmentTable, paytrInstallmentTableEnabled } from "./PaytrInstallmentTable";
@@ -38,6 +39,7 @@ export function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { accountType, user, isInitializing } = useAccount();
+  const userId = user?.id;
   const { items: cartItems, isHydrated: cartHydrated, appliedCoupon, getCartAuditId } = useCart();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
@@ -48,6 +50,8 @@ export function PaymentPage() {
   const [links, setLinks] = useState<GuardianLink[]>([]);
   const [guardianId, setGuardianId] = useState("");
   const [learnerId, setLearnerId] = useState("");
+  const [paymentGateGuardian, setPaymentGateGuardian] = useState<Guardian | null>(null);
+  const [verificationResolvedUserId, setVerificationResolvedUserId] = useState("");
   const [activeModal, setActiveModal] = useState<LegalDocKey | null>(null);
 
   // Transient checkout-only 3D Secure phone (never persisted to a profile)
@@ -62,19 +66,18 @@ export function PaymentPage() {
   const isCartCheckout = sourceParam === "cart" || (!isDirectPackageMode && cartItems.length > 0);
 
   const refreshGuardianData = useCallback(async () => {
-    if (!user?.id) return;
+    if (!userId) return;
     const supabase = getSupabaseClient();
-    const { data } = await supabase.from("guardian_accounts").select("*").eq("user_id", user.id).maybeSingle();
+    const { data } = await supabase.from("guardian_accounts").select("*").eq("user_id", userId).maybeSingle();
     if (data) {
+      setPaymentGateGuardian(data);
       setGuardians((prev) => {
         const exists = prev.some((g) => g.user_id === data.user_id);
         return exists ? prev.map((g) => (g.user_id === data.user_id ? data : g)) : [...prev, data];
       });
-      if (!guardianId) {
-        setGuardianId(data.user_id);
-      }
+      setGuardianId((current) => current || data.user_id);
     }
-  }, [user, guardianId]);
+  }, [userId]);
 
   useEffect(() => {
     if (isInitializing) return;
@@ -89,8 +92,44 @@ export function PaymentPage() {
     }
   }, [accountType, isInitializing, locale, router, isCartCheckout, sourceParam, isDirectPackageMode, cartItems.length]);
 
+  // Resolve the canonical verification state before loading any checkout data.
+  // This deliberately queries only the signed-in guardian's own row.
   useEffect(() => {
-    if ((accountType !== "student" && accountType !== "admin") || !user?.id) return;
+    if (isInitializing) return;
+    if (accountType !== "student" || !userId) return;
+
+    let cancelled = false;
+    const expectedUserId = userId;
+    const supabase = getSupabaseClient();
+    void supabase
+      .from("guardian_accounts")
+      .select("*")
+      .eq("user_id", expectedUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setPaymentGateGuardian(data ?? null);
+        if (data) {
+          setGuardians([data]);
+          setGuardianId(data.user_id);
+        }
+        setVerificationResolvedUserId(expectedUserId);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accountType, isInitializing, userId]);
+
+  const emailVerified = accountType === "admin"
+    || Boolean(
+      accountType === "student"
+      && paymentGateGuardian?.user_id === user?.id
+      && paymentGateGuardian?.email_verified_at,
+    );
+
+  useEffect(() => {
+    if ((accountType !== "student" && accountType !== "admin") || !user?.id || !emailVerified) return;
     if (initializedForUserRef.current === user.id) return;
     initializedForUserRef.current = user.id;
     const supabase = getSupabaseClient();
@@ -112,6 +151,7 @@ export function PaymentPage() {
       setLearners(learnerResult.data ?? []);
       if (accountType === "student") {
         const ownGuardian = guardianRows.find((row) => row.user_id === user.id);
+        setPaymentGateGuardian(ownGuardian ?? null);
         setGuardianId(ownGuardian?.user_id ?? "");
         const ownLinks = linkRows.filter((row) => row.guardian_user_id === user.id);
         const saved = localStorage.getItem("oriens.selectedLearnerId");
@@ -119,7 +159,7 @@ export function PaymentPage() {
       }
       setDataLoading(false);
     });
-  }, [accountType, user?.id, packageParam]);
+  }, [accountType, emailVerified, user?.id, packageParam]);
 
   // Refresh only the guardian row when checkout regains focus (for example after
   // email verification in another tab). Calling the account-wide refresh here
@@ -163,12 +203,20 @@ export function PaymentPage() {
   const checkoutCartIdRef = useRef<string | null>(null);
   const checkoutOpenedRef = useRef(false);
   const auditCheckout = accountType === "student";
+  const checkoutUiReady = Boolean(
+    emailVerified
+    && selectedGuardian
+    && selectedLearner
+    && packageIds.length
+    && !cartMismatch
+    && couponState.status !== "loading",
+  );
   useEffect(() => {
-    if (!auditCheckout || dataLoading || cartMismatch || !packageIds.length || checkoutOpenedRef.current) return;
+    if (!auditCheckout || dataLoading || !checkoutUiReady || checkoutOpenedRef.current) return;
     checkoutOpenedRef.current = true;
     checkoutCartIdRef.current = (isCartCheckout ? getCartAuditId() : null) ?? newCartId();
     recordCartEvent("checkout_opened", checkoutCartIdRef.current, packageIds, { studentId: learnerId || null, source: "payment" });
-  }, [auditCheckout, cartMismatch, dataLoading, getCartAuditId, isCartCheckout, learnerId, packageIds]);
+  }, [auditCheckout, checkoutUiReady, dataLoading, getCartAuditId, isCartCheckout, learnerId, packageIds]);
 
   const handleSessionResult = useCallback((result: PaymentSessionResult) => {
     if (!auditCheckout) return;
@@ -200,7 +248,6 @@ export function PaymentPage() {
   const finalPrice = pricingBreakdown.finalTotal;
   const currency = checkoutPackages[0]?.currency || "TRY";
   const money = (value: number, code = "TRY") => formatCurrency(value, { currency: code, locale });
-  const emailVerified = accountType === "admin" || Boolean(selectedGuardian?.email_verified_at);
   const phoneCheck = validateStudentPhone(paymentPhone, isTr);
   const isPhoneValid = paymentPhone.trim().length > 0 && phoneCheck.valid;
   const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch && isPhoneValid && couponState.status !== "loading");
@@ -212,7 +259,21 @@ export function PaymentPage() {
     payerName: selectedGuardian?.full_name, payerEmail: selectedGuardian?.email, paymentMethod: "card",
   };
 
-  if (isInitializing || settingsLoading || dataLoading || (accountType !== "student" && accountType !== "admin")) return <AccountWaveLoader />;
+  const verificationResolved = accountType === "admin"
+    || (accountType === "student" && verificationResolvedUserId === user?.id);
+
+  if (isInitializing || !verificationResolved || (accountType !== "student" && accountType !== "admin")) return <AccountWaveLoader />;
+  if (accountType === "student" && !paymentGateGuardian) {
+    return <section className="pt-32 pb-24"><div className="mx-auto max-w-xl px-6 text-center"><h1 className="font-heading text-3xl text-ink">{isTr ? "Hesap doğrulama bilgisi bulunamadı" : "Account verification information was not found"}</h1><ButtonLink href={localizedPath("studentAccount", locale)} className="mt-8">{isTr ? "Hesabıma Git" : "Go to My Account"}</ButtonLink></div></section>;
+  }
+  if (accountType === "student" && paymentGateGuardian && !emailVerified) {
+    return <EmailOtpGate
+      email={paymentGateGuardian.email.trim().toLowerCase()}
+      locale={locale}
+      onVerified={() => { void refreshGuardianData(); }}
+    />;
+  }
+  if (settingsLoading || dataLoading) return <AccountWaveLoader />;
   if (!showPricing && accountType !== "admin") return <section className="pt-32 pb-24"><div className="mx-auto max-w-xl px-6 text-center"><h1 className="font-heading text-3xl text-ink">{isTr ? "Ödeme Sistemi Geçici Olarak Kapalı" : "Payment System Temporarily Unavailable"}</h1><ButtonLink href={localizedPath("home", locale)} className="mt-8">{isTr ? "Ana Sayfa" : "Home"}</ButtonLink></div></section>;
 
   // Extra bottom padding below `lg` clears the fixed mobile contact dock

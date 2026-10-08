@@ -53,15 +53,12 @@ try {
     if (overflow) throw new Error(`Checkout horizontally overflows at ${width}px`);
   }
 
-  const coupon = page.getByPlaceholder("Kupon kodu");
-  await coupon.fill("TABSTATE");
-  await page.getByRole("checkbox").nth(0).check();
-  await page.getByRole("checkbox").nth(1).check();
+  const paymentPhone = page.locator("#payment-phone");
+  await paymentPhone.fill("+90 555 111 22 33");
   const secondTab = await context.newPage();
   await secondTab.goto(`${base}/tr/`, { waitUntil: "domcontentloaded" });
   await page.bringToFront();
-  if (await coupon.inputValue() !== "TABSTATE") throw new Error("Coupon state was lost after tab switch");
-  if (!(await page.getByRole("checkbox").nth(0).isChecked()) || !(await page.getByRole("checkbox").nth(1).isChecked())) throw new Error("Agreement state was lost after tab switch");
+  if (await paymentPhone.inputValue() !== "+90 555 111 22 33") throw new Error("Payment phone state was lost after tab switch");
   if (await page.getByText("Fatura / Ödeme Adresi", { exact: true }).count()) throw new Error("Address copy is visible");
   console.log(JSON.stringify({ status: "PASS", widths, packageCount: 2, total: 42000, tabStatePreserved: true, addressField: false, providerCalls: 0 }));
 } finally {

@@ -212,7 +212,7 @@ const CART_STEP: Record<string, string> = {
   cart_item_added: "Sepete ekleme",
   cart_item_removed: "Sepetten çıkarma",
   cart_cleared: "Sepeti temizleme",
-  checkout_opened: "Ödeme ekranı açılışı",
+  checkout_opened: "Ödeme sayfası görüntüleme",
   checkout_started: "Ödeme başlatma",
 };
 
