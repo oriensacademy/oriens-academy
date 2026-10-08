@@ -53,7 +53,9 @@
     "test:audit:sql": "node supabase/tests/audit-center-sql.mjs",
     "test:audit:logic": "npx tsx scripts/test-audit-center.ts",
     "test:audit:browser": "node scripts/test-audit-center-browser.mjs",
-    "test:dashboard:activity": "npx tsx scripts/test-dashboard-activity.ts"
+    "test:dashboard:activity": "npx tsx scripts/test-dashboard-activity.ts",
+    "test:student:phone": "npx tsx scripts/test-student-phone.ts",
+    "test:student:browser": "node scripts/test-student-phone-browser.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

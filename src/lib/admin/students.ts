@@ -4,6 +4,7 @@ import type { Json, Tables } from "@/types/database.types";
 import type { BookingWithSlot } from "./bookings";
 import { packageDisplayName } from "@/lib/packages/display";
 import { reportAdminFailure, writeAdminAuditLog } from "@/lib/admin/audit";
+import { normalizeStudentPhone } from "@/lib/format/phone";
 
 export type StudentContact = Tables<"contact_requests">;
 export type StudentDelivery = Tables<"notification_deliveries">;
@@ -143,7 +144,7 @@ export async function adminCreateStudent(input: AdminCreateStudentInput): Promis
     p_education_program: input.educationProgram.trim() || null,
     p_exams_taken: input.examsTaken ?? [],
     p_guardian_name: input.guardianName.trim() || null,
-    p_phone: input.phone.trim() || null,
+    p_phone: studentPhonePayload(input.phone),
     p_email: input.email.trim().toLowerCase() || null,
   });
   const result = data as { success?: boolean; error_code?: string; student_id?: string; replayed?: boolean } | null;
@@ -556,6 +557,12 @@ export async function sendStudentPasswordReset(
   }
 }
 
+/** Kanonik "905XXXXXXXXX"; boş → null. Çözümlenemeyen değer sunucuya ham gider ve INVALID_PHONE ile reddedilir. */
+function studentPhonePayload(value: string | null | undefined): string | null {
+  const phone = normalizeStudentPhone(value);
+  return phone === undefined ? String(value ?? "").trim() : phone;
+}
+
 /**
  * Updates a student's personal identity and academic profile securely via Admin RPC with audit logging.
  */
@@ -575,7 +582,7 @@ export async function adminUpdateStudentProfile(
   const supabase = getSupabaseClient();
   try {
     const changes: Record<string, Json | undefined> = { full_name: input.fullName.trim() };
-    if ("phone" in input) changes.phone = input.phone?.trim() || null;
+    if ("phone" in input) changes.phone = studentPhonePayload(input.phone);
     if ("school" in input) changes.school = input.school?.trim() || null;
     if ("gradeLevel" in input) changes.grade_level = input.gradeLevel?.trim() || null;
     if ("educationProgram" in input) changes.education_program = input.educationProgram?.trim() || null;
@@ -592,6 +599,7 @@ export async function adminUpdateStudentProfile(
       const messages: Record<string, string> = {
         GRADE_UNAVAILABLE: "Seçilen sınıf artık kullanılamıyor.",
         INVALID_INPUT: "Öğrenci bilgileri geçersiz.",
+        INVALID_PHONE: "Geçerli bir telefon numarası girin.",
         NOT_FOUND: "Öğrenci bulunamadı.",
       };
       void reportAdminFailure({action:"student.update_failed",category:"student",operation:"admin_update_student_profile",error:{message:"Update not confirmed"},entityType:"student_profile",entityId:studentId});

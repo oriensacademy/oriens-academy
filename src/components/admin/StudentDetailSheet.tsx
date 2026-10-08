@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { formatTrPhoneDisplay, trPhoneWaDigits } from "@/lib/format/phone";
+import { formatTrPhoneDisplay, normalizeStudentPhone, trPhoneWaDigits } from "@/lib/format/phone";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -203,26 +203,35 @@ export function StudentDetailSheet({
     });
   };
 
-  // Referans oriens-admin_6.html #view-detail [data-wa]: velinin (yoksa öğrencinin) numarası.
-  const waPhone = student.guardianPhone || student.phone;
+  // WhatsApp: öğrencinin kendi numarası, yoksa velinin. Doğrudan sohbet açılır
+  // (https://wa.me/<rakamlar>); hazır mesaj (text parametresi) eklenmez.
+  const waPhone = student.phone || student.guardianPhone;
   const waDigits = trPhoneWaDigits(waPhone);
-  const waReady = waDigits.length >= 11 && waDigits.length <= 15;
-  const waName = ((student.guardianPhone ? student.guardianName : null) || student.fullName || "").trim().split(/\s+/)[0] || "";
-  const waHref = waReady ? `https://wa.me/${waDigits}?text=${encodeURIComponent(`Merhaba${waName ? ` ${waName}` : ""}, Oriens Academy'den yazıyorum.`)}` : undefined;
+  const waReady = /^\d{11,15}$/.test(waDigits);
+  const waIcon = <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0 0 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24a8.2 8.2 0 0 1 8.24 8.25c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.44.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48a.92.92 0 0 0-.66.31c-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.22-.16-.47-.29z" /></svg>;
   const headerActions = (
     <div className={styles.actions}>
-      <a
-        className={`${styles.button} ${styles.waButton}`}
-        href={waHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-disabled={waReady ? undefined : true}
-        tabIndex={waReady ? undefined : -1}
-        title={waReady ? `${student.guardianPhone ? "Veliye" : "Öğrenciye"} WhatsApp mesajı: ${formatTrPhoneDisplay(waPhone)}` : "Telefon numarası kayıtlı değil"}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.87 9.87 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91A9.85 9.85 0 0 0 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24a8.2 8.2 0 0 1 8.24 8.25c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.44.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.44-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48a.92.92 0 0 0-.66.31c-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18-.06-.1-.22-.16-.47-.29z" /></svg>
-        WhatsApp
-      </a>
+      {waReady ? (
+        <a
+          className={`${styles.button} ${styles.waButton}`}
+          href={`https://wa.me/${waDigits}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`WhatsApp: ${student.phone ? "öğrenci" : "veli"} ${formatTrPhoneDisplay(waPhone)}`}
+          title={`${student.phone ? "Öğrenci" : "Veli"}: ${formatTrPhoneDisplay(waPhone)}`}
+          data-wa=""
+        >
+          {waIcon}
+          <span className={styles.waLabel}>WhatsApp</span>
+        </a>
+      ) : (
+        <span className={styles.waTip} title="Telefon numarası eklenmemiş">
+          <button type="button" className={`${styles.button} ${styles.waButton}`} disabled aria-label="WhatsApp: Telefon numarası eklenmemiş" data-wa="">
+            {waIcon}
+            <span className={styles.waLabel}>WhatsApp</span>
+          </button>
+        </span>
+      )}
       <button type="button" onClick={() => { setErrorMessage(""); setEditModalOpen(true); }} className={`${styles.button} ${styles.primary}${student.archived ? ` ${styles.isLocked}` : ""}`} aria-disabled={student.archived || undefined} tabIndex={student.archived ? -1 : undefined} title={student.archived ? "Arşivdeki öğrencide işlem yapılamaz" : undefined}><Edit3 size={17} />Bilgileri Düzenle</button>
     </div>
   );
@@ -509,7 +518,8 @@ function Overview({
           {student.activePackage ? (
             <>
               <div className={styles.big}><b>{packageRemaining}</b><span>/ {packageTotal} ders kaldı</span></div>
-              <div className={styles.progress} role="progressbar" aria-label="Paket ilerlemesi" aria-valuemin={0} aria-valuemax={packageTotal} aria-valuenow={packageUsed} aria-valuetext={`${packageTotal} dersten ${packageUsed} ders tamamlandı`}><i style={{ width: `${packageTotal ? (packageUsed / packageTotal) * 100 : 0}%` }} /></div>
+              {/* Tek parça çizgi: dolu kısım kalan ders oranı (10 dersten 6 kaldı → %60). */}
+              <div className={styles.progress} role="progressbar" aria-label="Kalan ders" aria-valuemin={0} aria-valuemax={packageTotal} aria-valuenow={packageRemaining} aria-valuetext={`${packageTotal} dersten ${packageRemaining} ders kaldı`}><i style={{ width: `${packageTotal ? (packageRemaining / packageTotal) * 100 : 0}%` }} /></div>
               <small>{packageUsed} ders tamamlandı</small>
             </>
           ) : (
@@ -1367,7 +1377,7 @@ function EditStudentIdentityModal({
     examsTaken: student.examsTaken,
     gradeLevel: student.gradeLevel || "",
     guardianName: student.guardianName || "",
-    phone: student.phone || "",
+    phone: formatTrPhoneDisplay(student.phone),
   });
   const [adminPassword, setAdminPassword] = useState("");
   const [step, setStep] = useState<"edit" | "reauth">("edit");
@@ -1387,8 +1397,7 @@ function EditStudentIdentityModal({
       setError("Ad Soyad alanı zorunludur.");
       return;
     }
-    const phoneDigits = form.phone.replace(/\D/g, "");
-    if (form.phone.trim() && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
+    if (normalizeStudentPhone(form.phone) === undefined) {
       setError("Geçerli bir telefon numarası girin.");
       return;
     }
@@ -1421,6 +1430,9 @@ function EditStudentIdentityModal({
       }
 
       const targetId = student.userId || student.id.replace("account-", "");
+      // Telefon yalnız gerçekten değiştiyse gönderilir; boş alan kaydı null yapar.
+      const nextPhone = normalizeStudentPhone(form.phone) ?? null;
+      const phoneChanged = nextPhone !== (normalizeStudentPhone(student.phone) ?? null);
       const res = await adminUpdateStudentProfile(targetId, {
         fullName: form.fullName,
         school: form.school || null,
@@ -1429,7 +1441,7 @@ function EditStudentIdentityModal({
         gradeLevel: form.gradeLevel || null,
         preferredLanguage: student.preferredLanguage,
         active: student.active,
-        ...(form.phone.trim() !== (student.phone || "").trim() ? { phone: form.phone.trim() || null } : {}),
+        ...(phoneChanged ? { phone: nextPhone } : {}),
       });
 
       if (!res.success) {
@@ -1490,13 +1502,13 @@ function EditStudentIdentityModal({
                     <div className="m-field"><label htmlFor="f-okul" className="m-lab">Okul / Kurum</label><input id="f-okul" className="m-input" type="text" value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })} /></div>
                     <StudentGradeField reference value={form.gradeLevel} onChange={(gradeLevel) => setForm({ ...form, gradeLevel })} />
                     <div className="m-field"><label htmlFor="f-prog" className="m-lab">Eğitim Programı</label><input id="f-prog" className="m-input" type="text" value={form.educationProgram} onChange={(e) => setForm({ ...form, educationProgram: e.target.value })} /></div>
+                    <div className="m-field" style={{ gridColumn: "1/-1" }}><label htmlFor="f-tel" className="m-lab">Telefon Numarası</label><input id="f-tel" className="m-input" type="tel" inputMode="tel" autoComplete="off" placeholder="0532 123 45 67" maxLength={30} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div>
                   </div>
                   <StudentExamField value={form.examsTaken} onChange={(examsTaken) => setForm({ ...form, examsTaken })} />
                 </section>
                 <section className="m-sec">
                   <div className="m-sechead"><span className="m-secbadge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M22 21v-2a4 4 0 0 0-3-3.9" /></svg></span><h3 className="m-sectitle">Veli Bilgileri</h3><span className="m-secline" /></div>
-                  <div className="m-field"><label htmlFor="f-veli" className="m-lab">Veli Ad Soyad <span className="m-req">*</span></label><input id="f-veli" className="m-input" required type="text" value={form.guardianName} onChange={(event) => setForm({ ...form, guardianName: event.target.value })} /></div>
-                  <div className="m-field"><label htmlFor="f-tel" className="m-lab">Telefon</label><input id="f-tel" className="m-input" type="tel" inputMode="tel" autoComplete="off" placeholder="+90 XXX XXX XX XX" maxLength={20} value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></div>
+                  <div className="m-field"><label htmlFor="f-veli" className="m-lab">Veli Ad Soyad{student.guardianUserId ? <> <span className="m-req">*</span></> : null}</label><input id="f-veli" className="m-input" required={Boolean(student.guardianUserId)} disabled={!student.guardianUserId} type="text" value={form.guardianName} onChange={(event) => setForm({ ...form, guardianName: event.target.value })} /></div>
                   <div className="m-vcard">Hesap e-postası: <b style={{ color: "#1C231E", fontWeight: 600, overflowWrap: "anywhere" }}>{student.guardianEmail || "Belirtilmemiş"}</b></div>
                 </section>
                 <div className="m-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A57622" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg><span>Kimlik değişiklikleri denetim kaydına yazılır ve yönetici şifre doğrulaması gerektirir.</span></div>

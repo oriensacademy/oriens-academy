@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { adminCreateStudent, listStudentGradeOptions, type StudentGradeOption } from "@/lib/admin/students";
+import { normalizeStudentPhone } from "@/lib/format/phone";
 import pages from "./admin-pages.module.css";
 
 // Referans "Yeni Öğrenci" (#yo-dialog). Kayıt tek RPC ile açılır
@@ -31,7 +32,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
   const savingRef = useRef(false);
   const [requestId] = useState(newRequestId);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
-  const [errors, setErrors] = useState<{ ad?: boolean; eposta?: boolean }>({});
+  const [errors, setErrors] = useState<{ ad?: boolean; tel?: boolean; eposta?: boolean }>({});
   const [saving, setSaving] = useState(false);
   const [serverError, setServerError] = useState("");
   const [grades, setGrades] = useState<StudentGradeOption[]>([]);
@@ -53,7 +54,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
 
   const set = (key: keyof Form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
-    if (key === "ad" || key === "eposta") setErrors((current) => (current[key] ? { ...current, [key]: false } : current));
+    if (key === "ad" || key === "tel" || key === "eposta") setErrors((current) => (current[key] ? { ...current, [key]: false } : current));
     setServerError("");
   };
 
@@ -61,9 +62,10 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
     if (savingRef.current) return;
     const ad = form.ad.trim().replace(/\s+/g, " ");
     const eposta = form.eposta.trim();
-    const next = { ad: !ad, eposta: Boolean(eposta) && !EMAIL_RE.test(eposta) };
+    const phone = normalizeStudentPhone(form.tel);
+    const next = { ad: !ad, tel: phone === undefined, eposta: Boolean(eposta) && !EMAIL_RE.test(eposta) };
     setErrors(next);
-    if (next.ad || next.eposta) return;
+    if (next.ad || next.tel || next.eposta) return;
     savingRef.current = true;
     setSaving(true);
     const result = await adminCreateStudent({
@@ -73,7 +75,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
       gradeLevel: form.sinif,
       educationProgram: form.program,
       guardianName: form.veli,
-      phone: form.tel,
+      phone: phone ?? "",
       email: eposta,
     });
     savingRef.current = false;
@@ -107,12 +109,12 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
                   </select>
                 </div>
                 <div className="m-field"><label htmlFor="yo-prog" className="m-lab">Eğitim programı</label><input id="yo-prog" className="m-input" list="yo-prog-l" placeholder="Örn. IB Diploma" maxLength={160} value={form.program} onChange={(event) => set("program", event.target.value)} /><datalist id="yo-prog-l">{programs.map((p) => <option key={p} value={p} />)}</datalist></div>
+                <div className={`m-field${errors.tel ? " fx-err" : ""}`} style={{ gridColumn: "1/-1" }}><label htmlFor="yo-tel" className="m-lab">Telefon Numarası</label><input id="yo-tel" className="m-input" type="tel" inputMode="tel" autoComplete="off" placeholder="0532 123 45 67" maxLength={30} value={form.tel} aria-invalid={errors.tel || undefined} aria-describedby={errors.tel ? "yo-tel-err" : undefined} onChange={(event) => set("tel", event.target.value)} />{errors.tel ? <small id="yo-tel-err" className="yo-hint" style={{ color: "#9A3324" }}>Geçerli bir telefon numarası girin.</small> : null}</div>
               </div>
             </section>
             <section className="fx-sec"><h3 className="fx-sh">Veli</h3>
               <div className="fx-grid">
                 <div className="m-field"><label htmlFor="yo-veli" className="m-lab">Veli ad soyad</label><input id="yo-veli" className="m-input" placeholder="Boşsa iletişim öğrenciye ait sayılır" maxLength={100} value={form.veli} onChange={(event) => set("veli", event.target.value)} /></div>
-                <div className="m-field"><label htmlFor="yo-tel" className="m-lab">Telefon</label><input id="yo-tel" className="m-input" inputMode="tel" placeholder="+90 XXX XXX XX XX" maxLength={17} value={form.tel} onChange={(event) => set("tel", event.target.value)} /></div>
                 <div className={`m-field${errors.eposta ? " fx-err" : ""}`} style={{ gridColumn: "1/-1" }}><label htmlFor="yo-eposta" className="m-lab">E-posta</label><input id="yo-eposta" className="m-input" type="email" placeholder="ornek@mail.com" maxLength={254} value={form.eposta} onChange={(event) => set("eposta", event.target.value)} /><small className="yo-hint">Ders raporları ve bildirimler bu adrese gönderilir.</small></div>
               </div>
             </section>

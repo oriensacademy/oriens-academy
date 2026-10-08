@@ -9,7 +9,7 @@
   color: var(--detail-text); font-family: var(--font-manrope), Manrope, system-ui, sans-serif;
 }
 .scope button, .scope input, .scope select, .scope textarea { font-family: inherit; }
-.page { min-height: 100%; background: var(--detail-bg); padding: 32px 16px 56px; }
+.page { min-height: 100%; background: var(--detail-bg); padding: 32px 32px 56px; }
 .panel { position: relative; z-index: 10; display: flex; height: min(900px, 94dvh); width: min(1280px, 96vw); flex-direction: column; overflow: hidden; border-radius: 20px; border: 1px solid var(--detail-line); background: var(--detail-bg); box-shadow: 0 20px 60px rgb(15 34 27 / 14%); contain: layout paint; will-change: transform, opacity; }
 .pagePanel { z-index: auto; width: 100%; max-width: 1200px; height: auto; min-height: 0; margin: 0 auto; overflow: visible; border: 0; border-radius: 0; box-shadow: none; contain: none; will-change: auto; }
 .scroll { flex: 1; overflow-y: auto; background: var(--detail-bg); }
@@ -24,7 +24,8 @@
 .waButton { border-color: #bfe0cb; background: #eaf7ef; color: #157a3e; font-weight: 700; white-space: nowrap; }
 .waButton:hover { background: #dcf2e4; border-color: #9fd3b3; }
 .waButton svg { color: #25d366; }
-.waButton[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+.waTip { display: inline-flex; cursor: not-allowed; }
+.waButton:disabled { opacity: .5; pointer-events: none; }
 .card { background: var(--detail-surface); border: 1px solid var(--detail-line); border-radius: 20px; }
 .hero { overflow: hidden; flex: none; box-shadow: none; }
 .body { padding: 24px 0 0; }
@@ -61,7 +62,7 @@
 .label { font-size: 13px; font-weight: 600; color: var(--detail-muted); }
 .value { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .cardPad { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
-.academic { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.academic { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .academicCell { min-width: 0; border-radius: 14px; background: var(--detail-soft); padding: 14px 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
 .academicCell .value { font-size: 15px; line-height: 1.4; }
 .overviewCols { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); }
@@ -86,7 +87,7 @@
 .childName { font-size: 15px; font-weight: 600; }
 .childEdit { margin-left: auto; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--detail-line-strong); background: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
 .dashed { border-style: dashed; border-color: #9aa89d; color: var(--detail-green-dark); }
-.package { background: var(--detail-green-deep); color: var(--detail-bg); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.package { background: var(--detail-green-deep); color: var(--detail-bg); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 20px; line-height: normal; }
 .packageHead { display: flex; justify-content: space-between; align-items: flex-start; }
 .packageHeadText { display: flex; flex-direction: column; gap: 4px; }
 .package .label { color: #b9c6bc; }
@@ -107,7 +108,7 @@
 
 @media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); } .generalLeft > :nth-child(n), .generalRight > :nth-child(n) { grid-column: 1; grid-row: auto; } .generalRight > .package { order: -1; } .academic { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .heroBody { flex-direction: column; align-items: flex-start; } }
-@media (max-width: 560px) { .topBar .actions { width: 100%; } .topBar .actions > * { flex: 1 1 auto; justify-content: center; white-space: nowrap; } }
+@media (max-width: 560px) { .topBar .actions { width: 100%; flex-wrap: nowrap; } .topBar .actions .primary { flex: 1 1 auto; min-width: 0; justify-content: center; white-space: nowrap; } .topBar .waButton { width: 44px; padding: 0; flex: none; justify-content: center; } .topBar .waLabel { display: none; } }
 @media (max-width: 560px) { .page { padding: 32px 16px 56px; } .panel:not(.pagePanel) { width: calc(100vw - 12px); height: calc(100dvh - 12px); } .heroBody { padding: 20px; } .tabs { padding: 0 6px; gap: 0; overflow-x: visible; } .tab { flex: 1; padding: 0 6px; font-size: 12px; } .infoGrid { grid-template-columns: minmax(0, 1fr); } .who { flex-direction: column; align-items: flex-start; } .name { font-size: 26px; } .academic { grid-template-columns: repeat(2, minmax(0, 1fr)); } .guardianDetails { grid-template-columns: 1fr; } }
 /* Arşivdeki öğrencinin detayı: şerit + salt okunur (referans .arc-banner) */
 .arcBanner { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding: 14px 18px; border-radius: 16px; background: #F1EFE8; border: 1px solid #DCD9CE; }

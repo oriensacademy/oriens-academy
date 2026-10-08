@@ -2451,8 +2451,9 @@ function PackagePanel({
                       </span>
                     </div>
                     {referenceMode ? (
-                      <div className="flex gap-1.5" role="img" aria-label={`${p.lesson_count} dersten ${p.lessons_used} ders kullanıldı`}>
-                        {Array.from({ length: p.lesson_count }, (_, index) => <i key={index} className={`h-2.5 flex-1 rounded-full ${index < p.lessons_used ? "bg-[#C0902F]" : "bg-[#E6E4DC]"}`} />)}
+                      // Tek parça çizgi: dolu kısım kalan ders oranı (10 dersten 6 kaldı → %60).
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E6E4DC]" role="progressbar" aria-label="Kalan ders" aria-valuemin={0} aria-valuemax={p.lesson_count} aria-valuenow={remaining} aria-valuetext={`${p.lesson_count} dersten ${remaining} ders kaldı`} data-package-bar="">
+                        <div className="h-full rounded-full bg-[#C0902F] transition-[width] duration-300" style={{ width: `${p.lesson_count ? Math.min(100, (remaining / p.lesson_count) * 100) : 0}%` }} />
                       </div>
                     ) : (
                       <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
