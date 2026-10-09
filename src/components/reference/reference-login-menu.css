@@ -1,0 +1,19 @@
+/*
+ * The login reference's `.hb` burger ships without a menu. Its panel reuses the
+ * customer's own mobile panel styles from the pricing/about reference header
+ * (`.oh-panel`, `.oh-pb`, `.oh-ml`), so nothing renders until the burger opens it.
+ */
+.reference-login-page:not(#_) .oh-panel{display:none;position:absolute;left:0;right:0;top:100%;background:#F6F8F3;border-bottom:1px solid rgba(16,39,27,.08);box-shadow:0 24px 40px -20px rgba(16,39,27,.25);padding:8px 20px 20px;max-height:calc(100vh - 70px);overflow:auto;font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
+.reference-login-page:not(#_) header.is-open .oh-panel{display:block}
+.reference-login-page:not(#_) .oh-panel nav{display:flex;flex-direction:column}
+.reference-login-page:not(#_) .oh-panel nav a{height:54px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E1E6DD;font-size:18px;font-weight:500;color:#3E5246;text-decoration:none}
+.reference-login-page:not(#_) .oh-panel nav a[aria-current=page]{color:#10271B;font-weight:600}
+.reference-login-page:not(#_) .oh-panel nav a::after{content:"→";color:#B08D48;font-size:16px}
+.reference-login-page:not(#_) .oh-pb{display:grid;gap:10px;margin-top:18px}
+.reference-login-page:not(#_) .oh-pb a{height:52px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600;font-size:16px;text-decoration:none}
+.reference-login-page:not(#_) .oh-pb .p1{border:1px solid #D5DDD2;background:#FFFFFF;color:#10271B}
+.reference-login-page:not(#_) .oh-pb .p2{background:#10271B;color:#FFFFFF}
+.reference-login-page:not(#_) .oh-ml{display:flex;justify-content:center;gap:6px;margin-top:6px}
+.reference-login-page:not(#_) .oh-ml a{min-width:56px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#5E6E63;text-decoration:none;letter-spacing:.06em}
+.reference-login-page:not(#_) .oh-ml a[aria-current]{background:#10271B;color:#FFFFFF}
+@media (min-width:1291px){.reference-login-page:not(#_) header.is-open .oh-panel{display:none}}

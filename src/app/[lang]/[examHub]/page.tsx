@@ -19,6 +19,9 @@ import { AccountPasswordChangePage } from "@/components/auth/AccountPasswordChan
 import { ResetPasswordPage } from "@/components/auth/ResetPasswordPage";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { Footer } from "@/components/sections/Footer";
+import { ReferenceAboutPage } from "@/components/reference/ReferenceAboutPage";
+import { ReferenceLoginPage } from "@/components/reference/ReferenceLoginPage";
+import { ReferencePricingPage } from "@/components/reference/ReferencePricingPage";
 import { getDictionary, isLocale } from "@/content/dictionaries";
 import {
   aboutSegment,
@@ -148,7 +151,7 @@ export async function generateMetadata({
           : "resetPassword";
     const title = isLogin
       ? lang === "tr"
-        ? "Oturum Aç | Oriens Academy"
+        ? "Giriş Yap | Oriens Academy"
         : "Sign In | Oriens Academy"
       : isForgotPassword
         ? lang === "tr"
@@ -396,6 +399,12 @@ export default async function TopLevelHubPage({
   ) {
     notFound();
   }
+
+  // TR pricing, about and login are literal ports of the customer's reference HTML files,
+  // each with its own header and footer.
+  if (lang === "tr" && isPricing) return <ReferencePricingPage />;
+  if (lang === "tr" && isAbout) return <ReferenceAboutPage />;
+  if (lang === "tr" && isLogin) return <ReferenceLoginPage />;
 
   return (
     <>

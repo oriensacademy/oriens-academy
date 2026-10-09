@@ -53,6 +53,7 @@ import { PublicPageTransition } from "@/components/motion/PublicPageTransition";
 import { Navbar } from "@/components/sections/Navbar";
 import { QuickContactLead } from "@/components/contact/QuickContactLead";
 import { SocialLinks } from "@/components/ui/social-links";
+import { HideOnReferenceRoute } from "@/components/reference/reference-shared";
 
 export default async function LangLayout({
   children,
@@ -78,10 +79,14 @@ export default async function LangLayout({
           >
             {site.skipToContent}
           </a>
-          <Navbar />
+          <HideOnReferenceRoute>
+            <Navbar />
+          </HideOnReferenceRoute>
           <PublicPageTransition>{children}</PublicPageTransition>
-          <SocialLinks />
-          <QuickContactLead />
+          <HideOnReferenceRoute>
+            <SocialLinks />
+            <QuickContactLead />
+          </HideOnReferenceRoute>
         </LanguageTransitionProvider>
       </LocaleProvider>
     </>

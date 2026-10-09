@@ -2,10 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
+import { isReferenceRoute } from "@/components/reference/reference-shared";
 
 export function PublicPageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const reducedMotion = useReducedMotion();
+
+  // The customer reference pages render exactly as their HTML files: no wrapper, no motion.
+  if (isReferenceRoute(pathname)) return <>{children}</>;
 
   return (
     <motion.div
