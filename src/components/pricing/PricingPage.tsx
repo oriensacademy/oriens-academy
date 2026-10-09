@@ -1,218 +1,219 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, CalendarDays, Compass, GraduationCap, Mail, ShieldAlert, Target } from "lucide-react";
-import { CompassMark } from "@/components/brand/CompassMark";
-import { Reveal } from "@/components/motion/Reveal";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ButtonLink } from "@/components/ui/button";
-import { CreativePricing, type PricingTier } from "@/components/ui/creative-pricing";
-import { useLocale, usePricingContent } from "@/content/locale-context";
-import { localizedPath } from "@/lib/routes";
-import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
-import { usePublicSettings } from "@/lib/settings/public-settings-context";
+import { ArrowRight, CalendarDays, Clock3, CreditCard, MessageCircle, Scale, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
+import { ButtonLink } from "@/components/ui/button";
+import { useLocale } from "@/content/locale-context";
+import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { useSiteContact } from "@/lib/contact-settings";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
+import { localizedPath } from "@/lib/routes";
+import { usePublicSettings } from "@/lib/settings/public-settings-context";
+import styles from "./pricing-page.module.css";
 
-function indexOf(position: number) {
-  return String(position + 1).padStart(2, "0");
+const STANDARD_PACKAGE_IDS = ["single", "package5", "package10", "package20", "package30"] as const;
+
+type Copy = {
+  heroStart: string; heroEmphasis: string; heroEnd: string; heroLead: string;
+  transparentPricing: string; fixedPrice: string; packagesLabel: string; lesson: string;
+  perLesson: string; unbundled: string; noDiscount: string; savings: (amount: string) => string;
+  buy: string; taxNote: string; includedEyebrow: string; includedTitle: string;
+  faqEyebrow: string; faqTitle: string; faqIntro: string; helpTitle: string; helpBody: string;
+  write: string; loading: string; unavailable: string; updateTitle: string; updateBody: string;
+};
+
+const COPY: Record<"tr" | "en", Copy> = {
+  tr: {
+    heroStart: "Hedefinize uygun ", heroEmphasis: "çalışma planını", heroEnd: " seçin.",
+    heroLead: "Birebir derslerle sınav sürecinizi düzenli ve güvenle yönetin.",
+    transparentPricing: "Şeffaf fiyatlandırma", fixedPrice: "Haziran 2027'ye kadar sabit fiyat",
+    packagesLabel: "Ders paketleri", lesson: "ders", perLesson: "Ders başı", unbundled: "Paketsiz",
+    noDiscount: "İndirim yok", savings: (amount) => `${amount} tasarruf`, buy: "Satın Al",
+    taxNote: "Tüm ödeme süreci vergi mevzuatına uygundur.", includedEyebrow: "Tüm paketlerde",
+    includedTitle: "Her pakette aynı standartlar.", faqEyebrow: "Sık sorulan sorular",
+    faqTitle: "Ücretler ve paketler hakkında", faqIntro: "Aklınıza takılan bir şey mi var? En sık sorulanları burada topladık.",
+    helpTitle: "Başka bir sorunuz mu var?", helpBody: "WhatsApp'tan yazın, hemen yanıtlayalım.", write: "Yazın",
+    loading: "Paketler yükleniyor", unavailable: "Aktif ders paketleri şu anda görüntülenemiyor. Görüşme formundan bize ulaşabilirsiniz.",
+    updateTitle: "Paket ve Fiyat Bilgileri Güncelleniyor",
+    updateBody: "Eğitim paketlerimizin içerik ve ücret yapıları şu anda güncellenmektedir. Detaylı bilgi için ücretsiz tanışma görüşmesi planlayabilirsiniz.",
+  },
+  en: {
+    heroStart: "Choose the ", heroEmphasis: "study plan", heroEnd: " that fits your goals.",
+    heroLead: "Manage your exam preparation confidently with one-to-one lessons.",
+    transparentPricing: "Transparent pricing", fixedPrice: "Fixed prices until June 2027",
+    packagesLabel: "Lesson packages", lesson: "lessons", perLesson: "Per lesson", unbundled: "Single lesson",
+    noDiscount: "No discount", savings: (amount) => `Save ${amount}`, buy: "Purchase",
+    taxNote: "The entire payment process complies with applicable tax regulations.", includedEyebrow: "Included in every package",
+    includedTitle: "The same standards in every package.", faqEyebrow: "Frequently asked questions",
+    faqTitle: "About fees and packages", faqIntro: "Have a question? We have gathered the most common answers here.",
+    helpTitle: "Still have a question?", helpBody: "Message us on WhatsApp and we will be happy to help.", write: "Message us",
+    loading: "Loading packages", unavailable: "Active lesson packages are currently unavailable. You can contact us through the consultation form.",
+    updateTitle: "Package and Fee Information Is Being Updated",
+    updateBody: "Our lesson packages and fees are currently being updated. You can book a complimentary consultation for details.",
+  },
+};
+
+const BENEFITS = {
+  tr: [
+    { icon: Clock3, value: "60", suffix: "dk", title: "Her ders 60 dakika", body: "Tüm dersler birebir ve 60 dakika olarak işlenir." },
+    { icon: CreditCard, value: "%25", suffix: "'e kadar", title: "Ön ödemeli indirim", body: "İndirimli paket ücretleri ön ödemelidir." },
+    { icon: ShieldCheck, value: "2027", suffix: "", title: "Fiyat garantisi", body: "Ders ücretleri Haziran 2027'ye kadar sabittir." },
+    { icon: UsersRound, value: "1:1", suffix: "", title: "Birebir destek", body: "Esnek planlama ve kişiye özel ders akışı." },
+  ],
+  en: [
+    { icon: Clock3, value: "60", suffix: "min", title: "60-minute lessons", body: "Every lesson is one-to-one and lasts 60 minutes." },
+    { icon: CreditCard, value: "25%", suffix: "off", title: "Prepaid discount", body: "Discounted package fees are prepaid." },
+    { icon: ShieldCheck, value: "2027", suffix: "", title: "Price guarantee", body: "Lesson fees are fixed until June 2027." },
+    { icon: UsersRound, value: "1:1", suffix: "", title: "Personal support", body: "Flexible scheduling and a tailored lesson plan." },
+  ],
+} as const;
+
+const FAQ = {
+  tr: [
+    { icon: Clock3, question: "Dersler kaç dakika sürüyor?", answer: "Tüm dersler birebir ve 60 dakikadır." },
+    { icon: CalendarDays, question: "Fiyatlar ne zamana kadar geçerli?", answer: "Ders ücretleri Haziran 2027 tarihine kadar sabittir." },
+    { icon: CreditCard, question: "Paket ödemeleri nasıl yapılır?", answer: "İndirimli paket ücretleri ön ödemelidir. Ödeme, sitedeki güvenli ödeme sayfasından kartla ve 3D Secure doğrulamasıyla yapılır; tüm süreç vergi mevzuatına uygundur." },
+    { icon: MessageCircle, question: "Tanışma görüşmesi ücretli mi?", answer: "Hayır. İlk tanışma görüşmesi ücretsizdir; hedeflerinizi ve size uygun paketi birlikte belirleriz." },
+    { icon: Scale, question: "Her öğrenci için aynı ücret mi uygulanıyor?", answer: "Evet. Fiyatlandırmamız şeffaftır; tüm öğrenciler için aynı standart ücretler geçerlidir." },
+  ],
+  en: [
+    { icon: Clock3, question: "How long is each lesson?", answer: "Every lesson is one-to-one and lasts 60 minutes." },
+    { icon: CalendarDays, question: "How long are these fees valid?", answer: "Lesson fees are fixed until June 2027." },
+    { icon: CreditCard, question: "How are package payments made?", answer: "Discounted package fees are prepaid. Card payments use our secure checkout with 3D Secure verification, and the process complies with applicable tax regulations." },
+    { icon: MessageCircle, question: "Is the introductory call free?", answer: "Yes. The first consultation is free; together we identify your goals and the package that suits you." },
+    { icon: Scale, question: "Does every student pay the same fee?", answer: "Yes. Our pricing is transparent and the same standard fees apply to every student." },
+  ],
+} as const;
+
+function numeric(value: number | string | null | undefined) {
+  const parsed = value == null ? null : Number(value);
+  return parsed !== null && Number.isFinite(parsed) ? parsed : null;
+}
+
+function money(amount: number, locale: "tr" | "en", currency: "TRY" | "EUR") {
+  const hasDecimals = Math.abs(amount - Math.round(amount)) > 0.005;
+  const formatted = new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-US", {
+    minimumFractionDigits: hasDecimals ? 2 : 0, maximumFractionDigits: hasDecimals ? 2 : 0,
+  }).format(amount);
+  return `${formatted} ${currency === "TRY" ? (locale === "tr" ? "TL" : "TRY") : "EUR"}`;
+}
+
+function splitMoney(amount: number, locale: "tr" | "en", currency: "TRY" | "EUR") {
+  const formatted = money(amount, locale, currency);
+  const separator = formatted.lastIndexOf(" ");
+  return { amount: formatted.slice(0, separator), currency: formatted.slice(separator + 1) };
+}
+
+function referenceBadgeLabel(value: string | null | undefined, locale: "tr" | "en") {
+  const badge = value?.trim();
+  if (!badge) return null;
+  if (locale === "tr") {
+    const normalized = badge.toLocaleLowerCase("tr-TR");
+    if (normalized === "en çok tercih edilen") return "En popüler";
+    if (normalized === "en avantajlı paket") return "En avantajlı";
+  }
+  return badge;
+}
+
+function PackageRow({ item, locale, copy }: { item: PublicPricingPackage; locale: "tr" | "en"; copy: Copy }) {
+  const lessons = numeric(item.lesson_count) ?? 1;
+  const display = getLocalizedPackageDisplayPrice({ locale, tryAmount: item.current_total ?? item.price_amount, eurAmount: item.price_eur });
+  const current = display.amount ?? 0;
+  const discount = numeric(item.discount_percentage);
+  const trOld = numeric(item.old_total);
+  const old = locale === "tr" || display.usesTryFallback
+    ? trOld
+    : discount && discount > 0 && discount < 100 ? current / (1 - discount / 100) : null;
+  const trUnit = numeric(item.unit_price);
+  const unit = locale === "tr" || display.usesTryFallback ? trUnit ?? current / lessons : current / lessons;
+  const savings = old !== null && old > current ? old - current : null;
+  const badge = referenceBadgeLabel(locale === "tr" ? item.badge_tr : item.badge_en, locale);
+  const name = (locale === "tr" ? item.name_tr : item.name_en)?.trim() || item.id;
+  const description = (locale === "tr" ? item.description_tr : item.description_en)?.trim() || "";
+  const total = splitMoney(current, locale, display.currency);
+
+  return (
+    <li
+      className={styles.packageRow}
+      data-package-id={item.id}
+      data-lesson-count={lessons}
+      data-current-price={money(current, locale, display.currency)}
+      data-unit-price={money(unit, locale, display.currency)}
+    >
+      {badge ? <span className={`${styles.badge} ${item.id === "package30" ? styles.badgeAlt : ""}`} data-pricing-badge>{badge}</span> : null}
+      <span className={styles.lessonCount}><b>{lessons}</b><small>{copy.lesson}</small></span>
+      <span className={styles.packageMeta}><span className={styles.packageTitle}>{name}</span><span className={styles.packageDescription}>{description}</span></span>
+      <span className={styles.unitPrice}><small>{copy.perLesson}</small><b>{money(unit, locale, display.currency)}</b></span>
+      <span className={styles.priceBlock}>
+        <span className={styles.oldPrice}>{old !== null ? <><s>{money(old, locale, display.currency)}</s>{discount ? <em>%{discount}</em> : null}</> : <span>{copy.unbundled}</span>}</span>
+        <span className={styles.currentPrice}>{total.amount}<small>{total.currency}</small></span>
+        <span className={styles.mobileUnit}>{copy.perLesson} <b>{money(unit, locale, display.currency)}</b></span>
+        <span className={`${styles.savings} ${savings === null ? styles.savingsMuted : ""}`}>{savings !== null ? copy.savings(money(savings, locale, display.currency)) : copy.noDiscount}</span>
+      </span>
+      <span className={styles.actions}>
+        <Link className={styles.buyButton} href={`${localizedPath("payment", locale)}?package=${encodeURIComponent(item.id)}`} data-pricing-action="purchase">
+          {copy.buy}<ArrowRight aria-hidden="true" size={15} strokeWidth={2.4} />
+        </Link>
+      </span>
+    </li>
+  );
+}
+
+function RoundIcon({ icon: Icon }: { icon: ComponentType<{ size?: number; strokeWidth?: number; "aria-hidden"?: boolean }> }) {
+  return <span className={styles.roundIcon} aria-hidden="true"><Icon size={24} strokeWidth={1.7} /></span>;
 }
 
 export function PricingPage() {
-  const CONTACT = useSiteContact();
   const locale = useLocale();
-  const content = usePricingContent();
+  const copy = COPY[locale];
+  const contact = useSiteContact();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [dbPackages, setDbPackages] = useState<PublicPricingPackage[]>([]);
   const [pricingLoaded, setPricingLoaded] = useState(false);
 
   useEffect(() => {
-    getPublicPricingPackages()
-      .then((rows) => setDbPackages(rows))
-      .finally(() => setPricingLoaded(true));
+    getPublicPricingPackages().then(setDbPackages).finally(() => setPricingLoaded(true));
   }, []);
 
-  const bookingHref = localizedPath("booking", locale);
-  const ownerPackageIds = new Set(["single", "package5", "package10", "package20", "package30"]);
-  const activePackages = dbPackages
-    .filter((row) => ownerPackageIds.has(row.id) && row.active)
-    .sort((a, b) => a.display_order - b.display_order);
+  const activePackages = STANDARD_PACKAGE_IDS
+    .map((id) => dbPackages.find((item) => item.id === id && item.active))
+    .filter((item): item is PublicPricingPackage => Boolean(item));
 
-  function getItemContent(id: string) {
-    const fallback = (content.packages.items as Record<string, { title?: string; description?: string; features?: string[]; unitPrice?: string; totalPrice?: string; originalPrice?: string; discount?: string | null; badge?: string }>)[id] ?? {
-        title: id,
-        description: "",
-        features: [],
-      };
-    const row = activePackages.find((item) => item.id === id);
-    if (!row || !row.name_tr) return fallback;
-    return {
-      ...fallback,
-      title: locale === "tr" ? row.name_tr : row.name_en || fallback.title,
-      description: fallback.description || (locale === "tr" ? row.description_tr : row.description_en),
-    };
-  }
-
-  function iconFor(id: string) {
-    if (id === "single") return <BookOpen className="size-5" aria-hidden="true" />;
-    if (id === "package5") return <CalendarDays className="size-5" aria-hidden="true" />;
-    if (id === "package10") return <GraduationCap className="size-5" aria-hidden="true" />;
-    if (id === "package20") return <Target className="size-5" aria-hidden="true" />;
-    return <Compass className="size-5" aria-hidden="true" />;
-  }
-
-  const tiers: PricingTier[] = activePackages.map((item) => {
-    const itemContent = getItemContent(item.id);
-    const dynamicBadge = (locale === "tr" ? item.badge_tr : item.badge_en)?.trim() || null;
-    const displayPrice = getLocalizedPackageDisplayPrice({
-      locale,
-      tryAmount: item.current_total ?? item.price_amount,
-      eurAmount: item.price_eur,
-    });
-
-    return {
-      id: item.id,
-      name: (locale === "tr" ? item.name_tr : item.name_en) || itemContent.title || item.id,
-      icon: iconFor(item.id),
-      price: displayPrice.amount ?? 0,
-      currency: displayPrice.currency,
-      oldPrice: locale === "tr" ? item.old_total : null,
-      unitPrice: locale === "tr" ? item.unit_price : (displayPrice.amount && item.lesson_count ? displayPrice.amount / item.lesson_count : null),
-      discount: item.discount_percentage,
-      description: itemContent.description || (locale === "tr" ? item.description_tr : item.description_en) || "",
-      features: itemContent.features || [],
-      popular: Boolean(item.featured),
-      badge: dynamicBadge,
-      color: item.id === "package10" ? "gold" : item.id === "package30" ? "forest" : item.id === "package20" ? "ivory" : "sage",
-      ctaLabel: locale === "tr" ? "Görüşme Planla" : "Book a Consultation",
-      ctaHref: `${localizedPath("home", locale)}?package=${encodeURIComponent(item.id)}#consultation-form`,
-      purchaseLabel: locale === "tr" ? "Eğitim Satın Al" : "Purchase Package",
-      purchaseHref: `${localizedPath("payment", locale)}?package=${encodeURIComponent(item.id)}`,
-    };
-  });
-
-  if (settingsLoading) {
-    return <AccountWaveLoader />;
-  }
-
+  if (settingsLoading) return <AccountWaveLoader />;
   if (!showPricing) {
-    return (
-      <section className="min-h-[70vh] bg-[#F6F8F3] pt-32 pb-20 md:pt-40 md:pb-28">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-sage-soft text-primary shadow-xs">
-            <ShieldAlert className="size-8 text-[#819586]" />
-          </div>
-          <h1 className="mt-6 font-heading text-3xl text-[#10271B] sm:text-4xl md:text-5xl">
-            {locale === "tr" ? "Paket ve Fiyat Bilgileri Güncelleniyor" : "Package & Fee Information Being Updated"}
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#68756C] md:text-lg">
-            {locale === "tr"
-              ? "Eğitim paketlerimizin içerik ve ücret yapıları şu anda güncellenmektedir. Akademik hedeflerinize en uygun özel çalışma programını belirlemek ve detaylı bilgi almak için ücretsiz tanışma görüşmesi planlayabilir veya bize doğrudan ulaşabilirsiniz."
-              : "Our lesson package details and fee structures are currently being updated. To determine the most suitable study programme for your academic goals, you can schedule a complimentary consultation or contact us directly."}
-          </p>
-
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <ButtonLink href={bookingHref} size="lg" className="h-12 px-6">
-              {locale === "tr" ? "Ücretsiz Görüşme Planla" : "Book a Free Consultation"}
-              <ArrowRight className="size-4" />
-            </ButtonLink>
-            <ButtonLink href={localizedPath("contact", locale)} variant="outline" size="lg" className="h-12 px-6">
-              {locale === "tr" ? "Bize Ulaşın" : "Contact Us"}
-            </ButtonLink>
-          </div>
-        </div>
-      </section>
-    );
+    return <section className={styles.unavailable}><ShieldAlert aria-hidden="true" size={36} /><h1>{copy.updateTitle}</h1><p>{copy.updateBody}</p><ButtonLink href={localizedPath("booking", locale)} size="lg">{locale === "tr" ? "Ücretsiz Görüşme Planla" : "Book a Free Consultation"}<ArrowRight className="size-4" /></ButtonLink></section>;
   }
 
   return (
-    <>
-      <section id="packages" className="section-offset relative overflow-hidden border-b border-border bg-[#F6F8F3] pt-24 pb-16 md:pt-28 md:pb-24">
-        <div className="relative mx-auto max-w-[1380px] px-6 md:px-8">
-          <nav aria-label={content.breadcrumb.ariaLabel}>
-            <ol className="flex min-h-11 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <li><Link href={localizedPath("home", locale)} className="inline-flex min-h-11 items-center rounded-sm outline-none hover:text-ink focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-4">{content.breadcrumb.home}</Link></li>
-              <li aria-hidden="true">/</li>
-              <li aria-current="page" className="font-medium text-ink">{content.breadcrumb.current}</li>
-            </ol>
-          </nav>
+    <div className={styles.page}>
+      <section className={styles.hero}>
+        <h1>{copy.heroStart}<em>{copy.heroEmphasis}</em>{copy.heroEnd}</h1>
+        <p>{copy.heroLead}</p>
+        <ul className={styles.chips}><li><Scale aria-hidden="true" size={16} />{copy.transparentPricing}</li><li><ShieldCheck aria-hidden="true" size={16} />{copy.fixedPrice}</li></ul>
+      </section>
+      <section className={styles.packages} aria-label={copy.packagesLabel}>
+        {!pricingLoaded ? <div className={styles.packageList} aria-label={copy.loading}>{STANDARD_PACKAGE_IDS.map((id) => <div key={id} className={styles.skeleton} />)}</div>
+          : activePackages.length ? <ul className={styles.packageList}>{activePackages.map((item) => <PackageRow key={item.id} item={item} locale={locale} copy={copy} />)}</ul>
+          : <p className={styles.empty} role="status">{copy.unavailable}</p>}
+        <p className={styles.taxNote}>{copy.taxNote}</p>
+      </section>
+      <section className={styles.benefitsSection} data-pricing-benefits>
+        <div className={styles.benefitsBand}>
+          <div className={styles.benefitsHead}><p>{copy.includedEyebrow}</p><h2>{copy.includedTitle}</h2></div>
+          <ul className={styles.benefits}>{BENEFITS[locale].map((benefit) => <li key={benefit.title}><RoundIcon icon={benefit.icon} /><p className={styles.benefitValue}>{benefit.value}{benefit.suffix ? <small>{benefit.suffix}</small> : null}</p><p className={styles.benefitTitle}>{benefit.title}</p><p className={styles.benefitBody}>{benefit.body}</p></li>)}</ul>
         </div>
-        <Reveal y={8}>
-          <CreativePricing
-            locale={locale}
-            tag={content.hero.eyebrow}
-            title={content.hero.title}
-            description={content.hero.description}
-            headingLevel="h1"
-            tiers={tiers}
-          />
-        </Reveal>
-
-        {!pricingLoaded && (
-          <div className="mx-auto grid max-w-[1320px] gap-5 px-4 sm:grid-cols-2 lg:grid-cols-5" aria-label={locale === "tr" ? "Paketler yükleniyor" : "Loading packages"}>
-            {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-[510px] animate-pulse rounded-[22px] border border-[#DDE4DC] bg-white/70 motion-reduce:animate-none" />)}
+      </section>
+      <section className={styles.faqSection}>
+        <div className={styles.faqLayout}>
+          <div className={styles.faqSide}>
+            <p className={styles.eyebrow}>{copy.faqEyebrow}</p><h2>{copy.faqTitle}</h2><p className={styles.faqIntro}>{copy.faqIntro}</p>
+            <div className={styles.helpCard}><span className={styles.helpIcon} aria-hidden="true"><MessageCircle size={22} strokeWidth={1.7} /></span><div><p>{copy.helpTitle}</p><small>{copy.helpBody}</small></div><a href={contact.whatsappHref} target="_blank" rel="noopener noreferrer">{copy.write}<span aria-hidden="true">→</span></a></div>
           </div>
-        )}
-
-        {pricingLoaded && tiers.length === 0 && (
-          <div role="status" className="mx-auto max-w-xl rounded-2xl border border-[#DDE4DC] bg-white p-8 text-center text-sm leading-6 text-[#68756C]">
-            {locale === "tr" ? "Aktif ders paketleri şu anda görüntülenemiyor. Görüşme formundan bize ulaşabilirsiniz." : "Active lesson packages are currently unavailable. You can contact us through the consultation form."}
-          </div>
-        )}
-
-        {tiers.length > 0 && (
-          <div className="mx-auto mt-12 grid max-w-4xl gap-6 rounded-[24px] border border-[#DDE4DC] bg-white px-6 py-7 text-center shadow-[0_12px_35px_rgba(16,39,27,.05)] md:px-10">
-            <div>
-              <h2 className="font-heading text-2xl text-[#10271B] md:text-3xl">{locale === "tr" ? "Hangi paketin sizin için daha uygun olduğundan emin değil misiniz?" : "Not sure which package is right for you?"}</h2>
-              <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-[#68756C] md:text-base">{locale === "tr" ? "Ücretsiz tanışma görüşmesinde hedeflerinizi ve çalışma planınızı birlikte değerlendirebiliriz." : "We can review your goals and study plan together in a complimentary introductory consultation."}</p>
-            </div>
-            <div className="flex flex-col items-center gap-4">
-              <ButtonLink href={bookingHref} size="lg">{locale === "tr" ? "Ücretsiz Görüşme Planla" : "Book a Free Consultation"}</ButtonLink>
-              <p className="text-xs leading-5 text-[#7A847E]">{locale === "tr" ? "Program içeriği ve ders planı öğrencinin hedeflerine göre şekillendirilir." : "Programme content and lesson planning are shaped around each student’s goals."}</p>
-            </div>
-          </div>
-        )}
-
-        <p className="mt-10 text-center text-xs text-[#819586]/70">
-          {locale === "tr" ? "Tüm ödeme süreci vergi mevzuatına uygundur." : "The entire payment process complies with applicable tax regulations."}
-        </p>
-      </section>
-
-      <section className="border-y border-border bg-surface-muted py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal className="max-w-3xl"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.included.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.3rem)] leading-[1.08] font-medium text-ink">{content.included.title}</h2><p className="mt-5 text-base leading-[1.75] text-ink/70">{content.included.intro}</p></Reveal>
-          <dl className="mt-12 grid border-t border-l border-border md:grid-cols-2">
-            {content.included.items.map((item, index) => <Reveal key={item.title} className="border-r border-b border-border p-6 md:p-8" delay={index * 0.04} y={8}><dt className="flex items-center gap-4"><span className="text-xs tabular-nums text-brand-accent">{indexOf(index)}</span><span className="font-heading text-xl text-ink md:text-2xl">{item.title}</span></dt><dd className="mt-4 max-w-[56ch] text-sm leading-[1.75] text-ink/70">{item.description}</dd></Reveal>)}
-          </dl>
+          <div className={styles.faqList}>{FAQ[locale].map((item, index) => <details className={styles.faqItem} key={item.question} open={index === 0}><summary><RoundIcon icon={item.icon} /><span className={styles.question}>{item.question}</span><span className={styles.plus} aria-hidden="true" /></summary><p>{item.answer}</p></details>)}</div>
         </div>
       </section>
-
-      <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-[1280px] px-6 md:px-12">
-          <Reveal className="grid gap-6 lg:grid-cols-12"><div className="lg:col-span-6"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.explanation.eyebrow}</p><h2 className="mt-4 text-[clamp(2rem,3.6vw,3.3rem)] leading-[1.08] font-medium text-ink">{content.explanation.title}</h2></div><p className="self-end text-base leading-[1.75] text-ink/70 lg:col-span-6">{content.explanation.intro}</p></Reveal>
-          <ol className="relative mt-14 grid border-l border-border md:grid-cols-3 md:border-t md:border-l-0">
-            {content.explanation.steps.map((step, index) => <Reveal key={step.id} className="relative border-b border-border py-7 pl-6 md:border-r md:px-7" delay={index * 0.06} y={8}><span aria-hidden="true" className="absolute top-8 -left-[5px] size-2.5 rounded-full bg-brand-accent md:top-[-5px] md:left-7" /><span className="text-xs tabular-nums text-muted-foreground">{indexOf(index)}</span><h3 className="mt-5 font-heading text-2xl text-ink">{step.title}</h3><p className="mt-3 text-sm leading-[1.7] text-ink/70">{step.description}</p></Reveal>)}
-          </ol>
-        </div>
-      </section>
-
-      <section className="border-y border-border bg-surface-muted py-20 md:py-28">
-        <div className="mx-auto grid max-w-[1280px] gap-10 px-6 md:px-12 lg:grid-cols-12">
-          <Reveal className="lg:col-span-5"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.faq.eyebrow}</p><h2 className="mt-4 max-w-md text-[clamp(2rem,3.6vw,3.3rem)] leading-[1.08] font-medium text-ink">{content.faq.title}</h2></Reveal>
-          <Reveal className="lg:col-span-7" delay={0.08}><Accordion className="border-t border-ink">{content.faq.items.map((item, index) => <AccordionItem key={item.question} value={`pricing-faq-${index}`}><AccordionTrigger className="min-h-16 rounded-none py-5 text-base text-ink md:text-lg">{item.question}</AccordionTrigger><AccordionContent className="pb-6 pr-8 text-base leading-relaxed text-ink/70"><p>{item.answer}</p></AccordionContent></AccordionItem>)}</Accordion></Reveal>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden py-20 md:py-28">
-        <div className="absolute top-0 right-[14%] h-full border-l border-dashed border-border" aria-hidden="true" />
-        <div className="relative mx-auto grid max-w-[1280px] gap-10 px-6 md:px-12 lg:grid-cols-12 lg:items-center">
-          <Reveal className="lg:col-span-2"><CompassMark size={64} rotation={26} interactive /></Reveal>
-          <Reveal className="lg:col-span-7"><p className="text-xs font-medium tracking-[0.22em] text-brand-accent uppercase">{content.cta.eyebrow}</p><h2 className="mt-4 text-[clamp(2.2rem,4vw,3.7rem)] leading-[1.06] font-medium text-ink">{content.cta.title}</h2><p className="mt-5 max-w-[58ch] text-lg leading-relaxed text-ink/70">{content.cta.body}</p></Reveal>
-          <Reveal className="flex flex-col gap-3 sm:flex-row lg:col-span-3 lg:flex-col" delay={0.1}><ButtonLink href={bookingHref} directional size="lg" className="h-12 px-5">{content.cta.primary}<ArrowRight data-directional-arrow className="size-4" aria-hidden="true" /></ButtonLink><ButtonLink href={CONTACT.emailHref} variant="outline" size="lg" className="h-12 px-5">{content.cta.secondary}<Mail className="size-4" aria-hidden="true" /></ButtonLink></Reveal>
-        </div>
-      </section>
-    </>
+    </div>
   );
 }

@@ -34,6 +34,7 @@
     "test:customer:runtime": "node scripts/test-customer-runtime.mjs",
     "test:customer:browser": "node scripts/customer-acceptance-browser.mjs",
     "test:customer:content-browser": "node scripts/customer-content-browser.mjs",
+    "test:pricing:reference": "node scripts/pricing-reference-browser.mjs",
     "test:checkout:multipackage": "node scripts/test-public-checkout-multipackage.mjs",
     "test:checkout:browser": "node scripts/test-public-checkout-browser.mjs",
     "test:checkout:verification-gate": "node scripts/test-payment-verification-gate-browser.mjs",
