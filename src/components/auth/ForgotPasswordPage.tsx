@@ -95,13 +95,13 @@ export function ForgotPasswordPage() {
             </div>
           ) : (
             <>
-              <header className="mb-6 text-center">
-                <h1 className="font-heading text-3xl font-bold text-ink">
+              <header className="mb-[26px]">
+                <h1 className="font-heading text-[clamp(28px,3vw,36px)] font-normal leading-[1.1] text-ink">
                   {locale === "tr" ? "Şifrenizi sıfırlayın" : "Reset your password"}
                 </h1>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                <p className="mt-1.5 text-[15px] leading-6 text-muted-foreground">
                   {locale === "tr"
-                    ? "Hesabınıza bağlı e-posta adresini girin; size güvenli bir şifre sıfırlama bağlantısı iletelim."
+                    ? "Hesabınızın e-posta adresini yazın; şifrenizi yenilemeniz için bir bağlantı gönderelim."
                     : "Enter the email address associated with your account, and we will send you a secure password reset link."}
                 </p>
               </header>
@@ -116,7 +116,7 @@ export function ForgotPasswordPage() {
               )}
 
               <form onSubmit={submit} className="space-y-4">
-                <label htmlFor="recovery-email" className="block text-xs font-semibold text-ink">
+                <label htmlFor="recovery-email" className="block text-sm font-semibold text-ink">
                   {locale === "tr" ? "E-posta" : "Email"}
                   <span className="relative mt-1.5 block">
                     <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -127,7 +127,8 @@ export function ForgotPasswordPage() {
                       autoComplete="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      className="min-h-12 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-xs sm:text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 transition-all"
+                      placeholder={locale === "tr" ? "ornek@eposta.com" : "example@email.com"}
+                      className="h-[52px] w-full rounded-[14px] border-[1.5px] border-input bg-[#FBFCFA] pr-12 pl-[46px] text-base text-ink outline-none transition-all hover:border-[#AEBBAA] focus:border-ink focus:bg-white focus:ring-4 focus:ring-ink/10"
                     />
                   </span>
                 </label>
@@ -145,10 +146,10 @@ export function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={!email.trim() || !token}
-                  className="min-h-12 w-full rounded-xl bg-ink px-5 text-xs sm:text-sm font-semibold text-white hover:bg-forest transition-colors shadow-xs disabled:opacity-45 cursor-pointer disabled:cursor-not-allowed"
+                  className="h-[54px] w-full rounded-xl bg-ink px-5 text-base font-semibold text-white shadow-xs transition-colors hover:bg-forest disabled:cursor-not-allowed"
                 >
                   {locale === "tr"
-                    ? "Şifre Sıfırlama Bağlantısı Gönder"
+                    ? "Sıfırlama bağlantısı gönder"
                     : "Send Password Reset Link"}
                 </button>
               </form>
@@ -159,7 +160,7 @@ export function ForgotPasswordPage() {
                   className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground hover:text-ink transition-colors"
                 >
                   <ArrowLeft className="size-4" />
-                  {locale === "tr" ? "Oturum Aç sayfasına dön" : "Return to Sign In"}
+                  {locale === "tr" ? "Girişe dön" : "Return to Sign In"}
                 </Link>
               </div>
             </>

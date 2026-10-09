@@ -50,7 +50,6 @@ export function UnifiedLoginPage() {
 
   // Register fields
   const [fullName, setFullName] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -166,10 +165,6 @@ export function UnifiedLoginPage() {
       setError(isTr ? "Lütfen gizlilik politikasını ve kullanım koşullarını onaylayın." : "Please accept the privacy policy and terms of service.");
       return;
     }
-    if (password !== confirmPassword) {
-      setError(isTr ? "Girilen şifreler birbiriyle eşleşmiyor." : "The passwords do not match.");
-      return;
-    }
     if (password.length < 6) {
       setError(isTr ? "Şifreniz en az 6 karakter olmalıdır." : "Password must be at least 6 characters.");
       return;
@@ -252,7 +247,6 @@ export function UnifiedLoginPage() {
       navigatedRef.current = false;
       setAwaitingOtpVerification(false);
       setPassword("");
-      setConfirmPassword("");
       setSubmitting(false);
     }
   }
@@ -298,17 +292,17 @@ export function UnifiedLoginPage() {
             className="mb-7"
           />
 
-          <header className="mb-7">
-            <h1 className="font-heading text-2xl text-ink sm:text-3xl">
+          <header className="mb-[26px]">
+            <h1 className="font-heading text-[clamp(28px,3vw,36px)] leading-[1.1] text-ink">
               {mode === "login"
                 ? isTr
-                  ? "Hesabınıza Giriş Yapın"
+                  ? "Hesabınıza giriş yapın"
                   : "Sign In to Your Account"
                 : isTr
                 ? "Veli hesabı oluşturun"
                 : "Create a guardian account"}
             </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            <p className="mt-1.5 text-[15px] leading-6 text-muted-foreground">
               {mode === "login"
                 ? isTr
                   ? "Oriens Academy hesabınıza güvenle erişin."
@@ -332,7 +326,7 @@ export function UnifiedLoginPage() {
           {mode === "login" ? (
             /* Login Form */
             <form onSubmit={handleLogin} className="space-y-4" noValidate>
-              <label className="block text-xs font-semibold text-ink" htmlFor="account-email">
+              <label className="block text-sm font-semibold text-ink" htmlFor="account-email">
                 {isTr ? "E-posta" : "Email"}
                 <span className="relative mt-1.5 block">
                   <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -343,12 +337,13 @@ export function UnifiedLoginPage() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="min-h-12 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    placeholder={isTr ? "ornek@eposta.com" : "example@email.com"}
+                    className="h-[52px] w-full rounded-[14px] border-[1.5px] border-input bg-[#FBFCFA] pr-12 pl-[46px] text-base outline-none hover:border-[#AEBBAA] focus:border-ink focus:bg-white focus:ring-4 focus:ring-ink/10"
                   />
                 </span>
               </label>
 
-              <label className="block text-xs font-semibold text-ink" htmlFor="account-password">
+              <label className="block text-sm font-semibold text-ink" htmlFor="account-password">
                 <span className="flex items-center justify-between gap-3">
                   <span>{isTr ? "Şifre" : "Password"}</span>
                   <Link
@@ -370,7 +365,8 @@ export function UnifiedLoginPage() {
                     onKeyDown={(event) => setCapsLock(event.getModifierState("CapsLock"))}
                     onKeyUp={(event) => setCapsLock(event.getModifierState("CapsLock"))}
                     onBlur={() => setCapsLock(false)}
-                    className="min-h-12 w-full rounded-xl border border-input bg-background pr-11 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    placeholder={isTr ? "Şifreniz" : "Your password"}
+                    className="h-[52px] w-full rounded-[14px] border-[1.5px] border-input bg-[#FBFCFA] pr-12 pl-[46px] text-base outline-none hover:border-[#AEBBAA] focus:border-ink focus:bg-white focus:ring-4 focus:ring-ink/10"
                   />
                   <button
                     type="button"
@@ -397,15 +393,15 @@ export function UnifiedLoginPage() {
                 </p>
               ) : null}
 
-              <label className="flex min-h-8 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} className="size-4 rounded border-input accent-[#10271B]" />
+              <label className="flex min-h-8 cursor-pointer items-center gap-2.5 text-sm text-muted-foreground">
+                <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} className="size-[18px] rounded border-input accent-[#10271B]" />
                 {isTr ? "Beni hatırla" : "Remember me"}
               </label>
 
               <button
                 type="submit"
                 disabled={!email.trim() || !password || submitting}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
+                className="inline-flex h-[54px] w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-base font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <span>{isTr ? "Giriş yapılıyor..." : "Signing in..."}</span>
@@ -417,7 +413,7 @@ export function UnifiedLoginPage() {
                 )}
               </button>
 
-              <p className="mt-4 text-center text-xs text-muted-foreground">
+              <p className="mt-[22px] text-center text-[14.5px] text-muted-foreground">
                 {isTr ? "Hesabınız yok mu?" : "Don't have an account?"}{" "}
                 <button
                   type="button"
@@ -427,21 +423,14 @@ export function UnifiedLoginPage() {
                   }}
                   className="font-semibold text-ink underline decoration-primary underline-offset-4"
                 >
-                  {isTr ? "Kayıt Ol" : "Create Account"}
+                  {isTr ? "Kayıt olun" : "Create Account"}
                 </button>
               </p>
             </form>
           ) : (
-            /* Minimal Initial Registration Form */
-            <form onSubmit={handleRegister} className="space-y-3.5" noValidate>
-              <div className="flex items-center rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-3 text-xs leading-5 text-ink">
-                <span className="block w-full text-center" style={{ width: "100%", textAlign: "center" }}>
-                  {isTr ? "Lütfen üyelik işleminizi veliye ait ad-soyad ve e-posta bilgileri ile gerçekleştiriniz." : "Please register with the guardian's name and email address."}
-                </span>
-              </div>
-
-              <label className="block text-xs font-semibold text-ink" htmlFor="register-name">
-                {isTr ? "Ad Soyad — Veli" : "Full Name — Guardian"}
+            <form onSubmit={handleRegister} className="space-y-4" noValidate>
+              <label className="block text-sm font-semibold text-ink" htmlFor="register-name">
+                <span className="flex items-baseline justify-between gap-2"><span>{isTr ? "Ad Soyad" : "Full Name"}</span><small className="font-normal text-muted-foreground">{isTr ? "Veli" : "Guardian"}</small></span>
                 <span className="relative mt-1 block">
                   <UserIcon className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -452,12 +441,12 @@ export function UnifiedLoginPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder={isTr ? "Adınız Soyadınız" : "Your full name"}
-                    className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    className="h-[52px] w-full rounded-[14px] border-[1.5px] border-input bg-[#FBFCFA] pr-12 pl-[46px] text-base outline-none hover:border-[#AEBBAA] focus:border-ink focus:bg-white focus:ring-4 focus:ring-ink/10"
                   />
                 </span>
               </label>
 
-              <label className="block text-xs font-semibold text-ink" htmlFor="register-email">
+              <label className="block text-sm font-semibold text-ink" htmlFor="register-email">
                 {isTr ? "E-posta" : "Email"}
                 <span className="relative mt-1 block">
                   <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -468,14 +457,13 @@ export function UnifiedLoginPage() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={isTr ? "E-posta adresiniz" : "Your email address"}
-                    className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    placeholder={isTr ? "ornek@eposta.com" : "example@email.com"}
+                    className="h-[52px] w-full rounded-[14px] border-[1.5px] border-input bg-[#FBFCFA] pr-12 pl-[46px] text-base outline-none hover:border-[#AEBBAA] focus:border-ink focus:bg-white focus:ring-4 focus:ring-ink/10"
                   />
                 </span>
               </label>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="block text-xs font-semibold text-ink" htmlFor="register-password">
+                <label className="block text-sm font-semibold text-ink" htmlFor="register-password">
                   {isTr ? "Şifre" : "Password"}
                   <span className="relative mt-1 block">
                     <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -483,10 +471,12 @@ export function UnifiedLoginPage() {
                       id="register-password"
                       type={showPassword ? "text" : "password"}
                       required
+                      minLength={6}
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="min-h-11 w-full rounded-xl border border-input bg-background pr-11 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      placeholder={isTr ? "Şifreniz" : "Your password"}
+                      className="h-[52px] w-full rounded-[14px] border-[1.5px] border-input bg-[#FBFCFA] pr-12 pl-[46px] text-base outline-none hover:border-[#AEBBAA] focus:border-ink focus:bg-white focus:ring-4 focus:ring-ink/10"
                     />
                     <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-ink" aria-label={showPassword ? (isTr ? "Şifreyi gizle" : "Hide password") : (isTr ? "Şifreyi göster" : "Show password")}>
                       {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -494,35 +484,13 @@ export function UnifiedLoginPage() {
                   </span>
                 </label>
 
-                <label className="block text-xs font-semibold text-ink" htmlFor="register-confirm">
-                  {isTr ? "Şifre Tekrar" : "Confirm Password"}
-                  <span className="relative mt-1 block">
-                    <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      id="register-confirm"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="min-h-11 w-full rounded-xl border border-input bg-background pr-3 pl-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-                    />
-                  </span>
-                </label>
-              </div>
-
-              <ul className="flex flex-wrap gap-2 text-[10px] font-semibold text-muted-foreground" aria-label={isTr ? "Şifre gereksinimleri" : "Password requirements"}>
-                <li className={`rounded-full px-2.5 py-1 ${password.length >= 6 ? "bg-emerald-50 text-emerald-800" : "bg-muted"}`}>{isTr ? "En az 6 karakter" : "At least 6 characters"}</li>
-                <li className={`rounded-full px-2.5 py-1 ${password && password === confirmPassword ? "bg-emerald-50 text-emerald-800" : "bg-muted"}`}>{isTr ? "Şifreler eşleşmeli" : "Passwords must match"}</li>
-              </ul>
-
               {/* Terms & Privacy */}
-              <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-[11px] leading-4 text-muted-foreground">
+              <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-sm leading-[1.5] text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-0.5 size-4 rounded border-input text-primary focus:ring-primary"
+                  className="mt-0.5 size-[18px] shrink-0 rounded border-input text-primary focus:ring-primary"
                 />
                 <span>
                   <Link
@@ -548,8 +516,8 @@ export function UnifiedLoginPage() {
 
               <button
                 type="submit"
-                disabled={!fullName.trim() || !email.trim() || !password || !confirmPassword || !termsAccepted || submitting}
-                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
+                disabled={!fullName.trim() || !email.trim() || password.length < 6 || !termsAccepted || submitting}
+                className="inline-flex h-[54px] w-full items-center justify-center gap-2 rounded-xl bg-ink px-5 text-base font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <span>{isTr ? "Hesap oluşturuluyor..." : "Creating account..."}</span>
@@ -561,8 +529,8 @@ export function UnifiedLoginPage() {
                 )}
               </button>
 
-              <p className="mt-4 text-center text-xs text-muted-foreground">
-                {isTr ? "Zaten bir hesabınız var mı?" : "Already have an account?"}{" "}
+              <p className="mt-[22px] text-center text-[14.5px] text-muted-foreground">
+                {isTr ? "Zaten hesabınız var mı?" : "Already have an account?"}{" "}
                 <button
                   type="button"
                   onClick={() => {
@@ -571,7 +539,7 @@ export function UnifiedLoginPage() {
                   }}
                   className="font-semibold text-ink underline decoration-primary underline-offset-4"
                 >
-                  {isTr ? "Giriş Yap" : "Sign In"}
+                  {isTr ? "Giriş yapın" : "Sign In"}
                 </button>
               </p>
             </form>

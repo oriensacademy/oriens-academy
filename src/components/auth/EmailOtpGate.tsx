@@ -171,8 +171,8 @@ export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onCha
     <AuthExperience locale={locale}>
         <div className="text-center">
           <Mail className="mx-auto size-10 text-primary" />
-          <h1 className="mt-4 font-heading text-2xl text-ink">
-            {isTr ? "E-posta Adresinizi Doğrulayın" : "Verify Your Email Address"}
+          <h1 className="mt-4 font-heading text-[clamp(28px,3vw,36px)] leading-[1.1] text-ink">
+            {isTr ? "E-postanızı doğrulayın" : "Verify your email"}
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
             {isTr
@@ -190,10 +190,10 @@ export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onCha
           ) : null}
 
           <form onSubmit={handleVerify} className="mt-6 space-y-4">
-            <div className="mx-auto flex max-w-[360px] items-center justify-center gap-2" onPaste={pasteOtp} aria-label={isTr ? "6 haneli doğrulama kodu" : "6-digit verification code"}>
+            <div className="mx-auto flex max-w-[370px] items-center justify-center gap-2" onPaste={pasteOtp} aria-label={isTr ? "6 haneli doğrulama kodu" : "6-digit verification code"}>
               {Array.from({ length: 6 }, (_, index) => (
                 <span key={index} className="contents">
-                  {index === 3 ? <span aria-hidden="true" className="h-px w-3 shrink-0 bg-border" /> : null}
+                  {index === 3 ? <span aria-hidden="true" className="h-0.5 w-2.5 shrink-0 bg-border" /> : null}
                   <input
                     ref={(node) => { inputRefs.current[index] = node; }}
                     type="text"
@@ -205,7 +205,7 @@ export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onCha
                     onChange={(event) => setDigit(index, event.target.value)}
                     onKeyDown={(event) => handleOtpKeyDown(index, event)}
                     aria-label={`${index + 1}. ${isTr ? "hane" : "digit"}`}
-                    className="h-14 min-w-0 flex-1 rounded-xl border border-input bg-background text-center font-mono text-xl font-bold outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    className="h-[62px] min-w-0 max-w-14 flex-1 rounded-[14px] border-[1.5px] border-input bg-[#FBFCFA] text-center text-2xl font-semibold outline-none hover:border-[#AEBBAA] focus:border-ink focus:bg-white focus:ring-4 focus:ring-ink/10"
                   />
                 </span>
               ))}
@@ -213,9 +213,9 @@ export function EmailOtpGate({ email, locale, mode = "signup", onVerified, onCha
             <button
               type="submit"
               disabled={code.length !== 6 || verifying}
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-45"
+              className="inline-flex h-[54px] w-full items-center justify-center rounded-xl bg-ink px-5 text-base font-semibold text-white transition-colors hover:bg-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed"
             >
-              {verifying ? (isTr ? "Doğrulanıyor..." : "Verifying...") : (isTr ? "Doğrula" : "Verify")}
+              {verifying ? (isTr ? "Doğrulanıyor..." : "Verifying...") : (isTr ? "Doğrula ve devam et" : "Verify and continue")}
             </button>
           </form>
 

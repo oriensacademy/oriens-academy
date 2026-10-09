@@ -21,7 +21,7 @@ export function AuthSwitch({
   return (
     <div
       className={cn(
-        "relative flex w-full rounded-2xl bg-surface-muted p-1 border border-border/80 shadow-xs",
+        "relative grid h-[54px] w-full grid-cols-2 rounded-[14px] border border-border bg-surface-muted p-1",
         className
       )}
       role="tablist"
@@ -33,9 +33,9 @@ export function AuthSwitch({
         aria-selected={activeTab === "login"}
         onClick={() => onChange("login")}
         className={cn(
-          "relative z-10 flex flex-1 items-center justify-center rounded-xl py-2.5 text-xs font-semibold tracking-wide transition-all duration-200",
+          "relative z-10 flex h-11 items-center justify-center rounded-[10px] text-[15px] font-semibold transition-all duration-200",
           activeTab === "login"
-            ? "bg-white text-ink shadow-sm border border-border/60"
+            ? "bg-white text-ink shadow-sm"
             : "text-muted-foreground hover:text-ink"
         )}
       >
@@ -48,9 +48,9 @@ export function AuthSwitch({
         aria-selected={activeTab === "register"}
         onClick={() => onChange("register")}
         className={cn(
-          "relative z-10 flex flex-1 items-center justify-center rounded-xl py-2.5 text-xs font-semibold tracking-wide transition-all duration-200",
+          "relative z-10 flex h-11 items-center justify-center rounded-[10px] text-[15px] font-semibold transition-all duration-200",
           activeTab === "register"
-            ? "bg-white text-ink shadow-sm border border-border/60"
+            ? "bg-white text-ink shadow-sm"
             : "text-muted-foreground hover:text-ink"
         )}
       >
