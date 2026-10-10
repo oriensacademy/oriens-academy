@@ -139,7 +139,7 @@ export function PaymentRefundDialog({ row, subtitle, busy, onClose, onSubmit }: 
                 </div>
                 <div className={`m-field${showErrors && !amountValid ? " fx-err" : ""}`} hidden={mode !== "partial"}>
                   <label htmlFor="odi-tutar" className="m-lab">İade tutarı</label>
-                  <div className="m-suffix">
+                  <div className="m-suffix cur">
                     <TrNumberInput id="odi-tutar" decimals className="m-input" value={amount} onValueChange={(value) => { setAmount(value); setShowErrors(false); setSubmitError(""); }} />
                     <span className="m-unit">₺</span>
                   </div>

@@ -11,7 +11,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { localizedPath } from "@/lib/routes";
 import { packageDisplayName } from "@/lib/packages/display";
-import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { getPublicPricingPackages, selectPurchasablePackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { getPaymentRefundCopy } from "@/content/payment-refund";
@@ -35,7 +35,6 @@ const SEKME_AD: Record<TabKey, [string, string]> = {
   paket: ["Ödemeler", "Payments"],
   profil: ["Hesap", "Account"],
 };
-const OWNER_PACKAGE_IDS = new Set(["single", "package5", "package10", "package20", "package30"]);
 const DEFAULT_TZ = "Europe/Istanbul";
 const HASH_EVENT = "hb-hashchange";
 
@@ -855,7 +854,7 @@ function PaketTab({ data, pkg, ctx }: { data: StudentPortalData; pkg: PackageSta
     };
   }, []);
 
-  const options = packages.filter((row) => OWNER_PACKAGE_IDS.has(row.id) && row.active).sort((a, b) => a.display_order - b.display_order);
+  const options = selectPurchasablePackages(packages);
 
   // Tanışma görüşmesi ödeme listesinde yer almaz; başarısız ödemeler gösterilir.
   const payments = data.payments
@@ -1017,9 +1016,7 @@ function PaketTab({ data, pkg, ctx }: { data: StudentPortalData; pkg: PackageSta
                     {payment.public_reference ? (
                       <div style={{ gridColumn: "1/-1" }}>
                         <dt>{t("Referans no", "Reference no")}</dt>
-                        <dd>
-                          <code>{payment.public_reference}</code>
-                        </dd>
+                        <dd>{payment.public_reference}</dd>
                       </div>
                     ) : null}
                   </dl>

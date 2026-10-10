@@ -5,6 +5,7 @@
   --detail-green: #10271b; --detail-green-dark: #1e3d2b; --detail-green-deep: #10271b;
   --detail-green-tint: #e4ece5; --detail-green-dot: #3f7a52;
   --detail-gold: #c0902f; --detail-gold-light: #d9ae57;
+  --detail-ink: #1d1e1b; --detail-ink-hover: #30312c;
   --font-sans: var(--font-manrope); --font-heading: var(--font-newsreader);
   color: var(--detail-text); font-family: var(--font-manrope), Manrope, system-ui, sans-serif;
 }
@@ -14,13 +15,15 @@
 .pagePanel { z-index: auto; width: 100%; max-width: 1200px; height: auto; min-height: 0; margin: 0 auto; overflow: visible; border: 0; border-radius: 0; box-shadow: none; contain: none; will-change: auto; }
 .scroll { flex: 1; overflow-y: auto; background: var(--detail-bg); }
 .wrap { width: 100%; min-height: 100%; display: flex; flex-direction: column; }
-.backLink { align-self: flex-start; min-height: 44px; margin-bottom: 12px; padding: 0 12px; border-radius: 12px; color: var(--detail-green); display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; text-decoration: none; transition: background-color 160ms ease, transform 160ms ease; }
-.backLink:hover { background: var(--detail-surface); transform: translateX(-2px); }
+/* "‹ Öğrenciler": gri, normal ağırlık, arka plansız (PDF-15). */
+.backLink { align-self: flex-start; min-height: 44px; margin-bottom: 12px; padding: 0 12px; border-radius: 12px; color: var(--detail-muted); display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 400; text-decoration: none; background: transparent; transition: color 160ms ease; }
+.backLink:hover { color: var(--detail-text); }
+.backLink:focus-visible { outline: 2px solid var(--detail-green); outline-offset: 2px; }
 /* Sayfa üst barı: sol "← Öğrenciler", sağ WhatsApp + Bilgileri Düzenle */
 .topBar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .topBar .backLink { margin-bottom: 0; margin-left: -12px; }
-.topBar .primary { background: var(--detail-green); border-color: var(--detail-green); color: #fff; }
-.topBar .primary:hover { background: var(--detail-green-dark); }
+.topBar .primary { background: var(--detail-ink); border-color: var(--detail-ink); color: #fff; }
+.topBar .primary:hover { background: var(--detail-ink-hover); }
 .waButton { border-color: #bfe0cb; background: #eaf7ef; color: #157a3e; font-weight: 700; white-space: nowrap; }
 .waButton:hover { background: #dcf2e4; border-color: #9fd3b3; }
 .waButton svg { color: #25d366; }
@@ -47,12 +50,16 @@
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .button { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--detail-line-strong); background: #fff; color: var(--detail-text); font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none; }
 .button:hover { background: var(--detail-soft); }
-.heroBody .primary { background: var(--detail-green); border-color: var(--detail-green); color: #fff; }
-.heroBody .primary:hover { background: var(--detail-green-deep); }
-.tabs { display: flex; gap: 4px; padding: 6px 20px 0; border-top: 1px solid #eeece5; background: #f8f7f2; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
-.tab { min-height: 48px; padding: 0 14px; border: 0; border-radius: 10px 10px 0 0; background: transparent; font-size: 14px; font-weight: 600; color: var(--detail-muted); white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.heroBody .primary { background: var(--detail-ink); border-color: var(--detail-ink); color: #fff; font-weight: 700; box-shadow: 0 6px 16px rgb(20 20 18 / 18%); }
+.heroBody .primary:hover { background: var(--detail-ink-hover); }
+/* Koyu butonlarda altın daire ikon (Bilgileri Düzenle / Ders Kaydı Ekle / Yeni Paket Tanımla). */
+.btnIco { width: 24px; height: 24px; flex: none; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: rgb(217 174 87 / 22%); color: var(--detail-gold-light); }
+.tabs { display: flex; gap: 8px; padding: 6px 20px 0; border-top: 1px solid #eeece5; background: #faf8f2; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+.tab { min-height: 48px; padding: 0 16px; border: 0; border-radius: 0; background: transparent; font-size: 14px; font-weight: 600; color: var(--detail-muted); white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .tab:hover { color: var(--detail-text); }
-.activeTab { color: var(--detail-text); background: #fff; font-weight: 700; box-shadow: inset 0 -3px 0 var(--detail-gold), 0 0 0 1px rgb(230 228 220 / 75%); }
+.tab svg { color: var(--detail-muted); }
+.activeTab { color: var(--detail-text); background: transparent; font-weight: 700; box-shadow: inset 0 -3px 0 var(--detail-gold); }
+.activeTab svg { color: var(--detail-gold); }
 .cols { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 24px; align-items: stretch; }
 .stack { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 .generalLeft, .generalRight { display: contents; }

@@ -110,7 +110,7 @@ export async function quoteCheckoutCoupon(
     return {
       valid: false,
       error_code: "EMPTY_CART",
-      message: locale === "tr" ? "Sepetinizde paket bulunmuyor." : "There are no packages in your cart.",
+      message: locale === "tr" ? "Önce bir paket seçin." : "Select a package first.",
     };
   }
 

@@ -27,6 +27,10 @@ import {
   Settings,
   BookOpen,
   Lock,
+  ChevronDown,
+  ArrowDownWideNarrow,
+  Package,
+  CreditCard,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useConfirmationDialog } from "@/hooks/use-confirmation-dialog";
@@ -239,6 +243,7 @@ export function StudentLearningManager({
     return (
       <PackagePanel
         purchases={purchases}
+        payments={payments}
         packages={packages}
         adjustments={adjustments}
         rightsNotification={rightsNotification}
@@ -264,9 +269,9 @@ export function StudentLearningManager({
             const refunded = payment.refund_status === "full";
             return (
               <div key={payment.id} className={`flex flex-wrap items-center gap-4 border-b border-[#E6E4DC] px-6 py-4 last:border-b-0 ${failed ? "bg-[#FFF9F8]" : ""}`}>
-                <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${failed ? "bg-[#FBECEA] text-[#9A3324]" : "bg-[#FBF4E4] text-[#A57622]"}`}><PackagePlus className="size-5" /></span>
-                <div className="min-w-[220px] flex-1"><div className="text-[15px] font-semibold text-[#1C231E]">{packageDisplayName(purchases.find((purchase) => purchase.payment_transaction_id === payment.id) || { package_id: payment.package_id })}</div><div className="mt-1 text-[13px] text-[#5B635C]">{new Date(payment.paid_at || payment.created_at).toLocaleString("tr-TR")} · Ref. no: <span className="font-mono">{payment.public_reference}</span></div></div>
-                <strong className={`text-[15px] ${failed ? "text-[#5B635C] line-through" : "text-[#1C231E]"}`}>{money(payment.amount, payment.currency)}</strong>
+                <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${failed ? "bg-[#FBECEA] text-[#9A3324]" : "bg-[#F7F6F1] text-[#A57622]"}`}><CreditCard className="size-5" /></span>
+                <div className="min-w-[200px] flex-1"><div className="text-[15px] font-semibold text-[#1C231E]">{packageDisplayName(purchases.find((purchase) => purchase.payment_transaction_id === payment.id) || { package_id: payment.package_id })}</div><div className="mt-1 text-[13px] text-[#5B635C]">{longDate(payment.paid_at || payment.created_at)} · {paymentMethodLabel(payment.payment_method)}</div></div>
+                <strong className={`text-[15px] ${failed ? "text-[#5B635C] line-through" : "text-[#1C231E]"}`}>{symbolMoney(payment.amount, payment.currency)}</strong>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${failed ? "bg-[#FBECEA] text-[#9A3324]" : refunded ? "bg-[#EEE9F8] text-[#6B4BB8]" : "bg-[#E4ECE5] text-[#1E3D2B]"}`}>{failed ? "Başarısız" : refunded ? "İade Edildi" : formatPaymentStatus(payment.status)}</span>
               </div>
             );
@@ -750,9 +755,11 @@ function LessonsPanel({
               setLessonDialogError("");
               setError("");
             }}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 font-semibold shadow-xs cursor-pointer ${referenceMode ? "min-h-11 border border-[#10271B] bg-[#10271B] text-sm text-white hover:bg-[#1E3D2B]" : "min-h-10 border border-border bg-white text-xs font-bold text-ink hover:bg-surface-muted"}`}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 font-semibold shadow-xs cursor-pointer ${referenceMode ? "min-h-11 border border-[#1D1E1B] bg-[#1D1E1B] pl-2.5 text-sm font-bold text-white shadow-[0_6px_16px_rgba(20,20,18,0.18)] hover:bg-[#30312C]" : "min-h-10 border border-border bg-white text-xs font-bold text-ink hover:bg-surface-muted"}`}
           >
-            <History className={`size-4 ${referenceMode ? "text-white" : "text-emerald-700"}`} />
+            {referenceMode
+              ? <span className="inline-flex size-6 items-center justify-center rounded-full bg-[#D9AE57]/25 text-[#D9AE57]" aria-hidden="true"><Plus className="size-3.5" /></span>
+              : <History className="size-4 text-emerald-700" />}
             Ders Kaydı Ekle
           </button>
           {ADMIN_UI_FEATURES.showFutureLessonPlanning && <button
@@ -1132,32 +1139,15 @@ function LessonsPanel({
       )}
 
       {referenceMode && (
-        <section className="overflow-hidden rounded-[20px] border border-[#E6E4DC] bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6E4DC] px-6 py-5">
-            <div className="flex items-center gap-2.5"><h2 className="font-heading text-[22px] font-semibold text-[#1C231E]">Yapılan Dersler</h2><span className="rounded-full bg-[#F0EFE9] px-2.5 py-0.5 text-[13px] font-bold text-[#4A524B]">{pastLessons.filter((lesson) => lesson.status === "completed").length}</span></div>
-            <span className="text-[13px] text-[#5B635C]">En yeni ders üstte</span>
-          </div>
-          {pastLessons.some((lesson) => lesson.status === "completed") ? (
-            <ul className="m-0 list-none p-0">
-              {pastLessons.filter((lesson) => lesson.status === "completed").map((lesson) => {
-                const lessonDate = new Date(lesson.lesson_date);
-                const delivery = lessonNotifications.find((item) => item.entity_id === lesson.id && item.event_type === "lesson.report_email");
-                return (
-                  <li key={lesson.id} className="border-b border-[#E6E4DC] px-6 py-5 last:border-b-0">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-[58px] w-[52px] shrink-0 flex-col items-center justify-center rounded-xl bg-[#F7F6F1] text-[#1C231E]"><b className="font-heading text-2xl leading-none">{String(lessonDate.getDate()).padStart(2, "0")}</b><span className="mt-1 text-[10px] font-bold uppercase tracking-wider">{lessonDate.toLocaleDateString("tr-TR", { month: "short" }).replace(".", "")}</span></div>
-                      <div className="min-w-0 flex-1"><div className="text-[17px] font-semibold text-[#1C231E]">{lesson.title}</div><div className="mt-1 text-[13px] text-[#5B635C]">{lesson.subject} · {formatLessonDateTime(lesson.lesson_date, "tr", lesson.lesson_timezone || "Europe/Istanbul", lesson.lesson_timezone_label || "TR")} · {lesson.duration_minutes} dk{lesson.instructor_id ? ` · ${instructors.find((item) => item.id === lesson.instructor_id)?.name || ""}` : ""}</div></div>
-                      <button type="button" onClick={() => setEditCompletedTarget(lesson)} className="inline-flex min-h-9 items-center gap-1.5 rounded-[10px] border border-[#D9D6CC] bg-white px-3 text-xs font-semibold text-[#1C231E]"><Pencil className="size-3.5" />Düzenle</button>
-                    </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#F7F6F1] px-4 py-3"><span className="inline-flex items-center gap-2 text-[13px] font-bold text-[#1C231E]"><FileText className="size-4 text-[#A57622]" />Ders sonu raporu</span><span className="text-xs text-[#5B635C]">{delivery?.status === "sent" ? `Gönderildi · ${new Date(delivery.sent_at || delivery.created_at).toLocaleString("tr-TR")}` : lesson.completion_report ? "Taslak kaydedildi" : "Rapor bekleniyor"}</span></div>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <div className="flex flex-wrap items-center gap-4 px-6 py-10"><div className="flex size-14 items-center justify-center rounded-2xl bg-[#F7F6F1]"><BookOpen className="size-7 text-[#5B635C]" /></div><div className="flex-1"><div className="text-[17px] font-semibold">Henüz yapılan ders kaydı yok</div><div className="mt-1 text-sm text-[#5B635C]">Tamamlanan dersleri ekledikçe burada tarih sırasıyla listelenecek.</div></div><button type="button" onClick={() => { setIsLessonModalOpen(true); setLessonTypeSelection("past"); }} className="rounded-xl border border-[#D9D6CC] px-4 py-2.5 text-sm font-semibold">İlk kaydı ekle</button></div>
-          )}
-        </section>
+        <RefCompletedLessonList
+          lessons={pastLessons.filter((lesson) => lesson.status === "completed")}
+          notifications={lessonNotifications}
+          topics={topics}
+          instructors={instructors}
+          purchases={purchases}
+          onEdit={setEditCompletedTarget}
+          onAdd={() => { setIsLessonModalOpen(true); setLessonTypeSelection("past"); }}
+        />
       )}
 
       {/* Lesson cards retain their action ownership here; StudentDetailSheet
@@ -1681,6 +1671,7 @@ function formatPaymentStatus(status: string | null | undefined): string {
 
 function PackagePanel({
   purchases,
+  payments,
   packages,
   adjustments,
   rightsNotification,
@@ -1694,6 +1685,7 @@ function PackagePanel({
   notifyEmail,
 }: {
   purchases: PackagePurchase[];
+  payments: StudentPayment[];
   packages: PackageOption[];
   adjustments: PackageAdjustment[];
   rightsNotification: LessonNotificationState | null;
@@ -1986,9 +1978,11 @@ function PackagePanel({
         </button>}<button
           type="button"
           onClick={openAssignModal}
-          className={`inline-flex items-center gap-2 rounded-xl bg-[#10271B] px-4 font-semibold text-white hover:bg-[#1E3D2B] cursor-pointer transition-colors shadow-xs ${referenceMode ? "min-h-11 text-sm" : "min-h-9 text-xs"}`}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 font-semibold text-white cursor-pointer transition-colors shadow-xs ${referenceMode ? "min-h-11 bg-[#1D1E1B] pl-2.5 text-sm font-bold shadow-[0_6px_16px_rgba(20,20,18,0.18)] hover:bg-[#30312C]" : "min-h-9 bg-[#10271B] text-xs hover:bg-[#1E3D2B]"}`}
         >
-          <PackagePlus className="size-3.5" />
+          {referenceMode
+            ? <span className="inline-flex size-6 items-center justify-center rounded-full bg-[#D9AE57]/25 text-[#D9AE57]" aria-hidden="true"><Package className="size-3.5" /></span>
+            : <PackagePlus className="size-3.5" />}
           Yeni Paket Tanımla
         </button>
         </div>
@@ -1998,7 +1992,7 @@ function PackagePanel({
       {/* COÖRDINATED IN-PLACE ACTION VIEW: Paket Tanımla */}
       {activeModal === "assign_package" && referenceMode && (
         <RefPkDialog
-          packages={packages.filter((p) => p.id !== "custom" && [1, 5, 10, 20, 30].includes(p.lesson_count || 0) && !p.name_tr?.toLowerCase().includes("özel"))}
+          packages={packages.filter((p) => p.id !== "custom" && (p.lesson_count || 0) > 0 && !p.name_tr?.toLowerCase().includes("özel"))}
           form={packageForm}
           onChoosePackage={chooseCatalogPackage}
           onChange={(patch) => setPackageForm((current) => ({ ...current, ...patch }))}
@@ -2451,9 +2445,9 @@ function PackagePanel({
                       </span>
                     </div>
                     {referenceMode ? (
-                      // Tek parça çizgi: dolu kısım kalan ders oranı (10 dersten 6 kaldı → %60).
-                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E6E4DC]" role="progressbar" aria-label="Kalan ders" aria-valuemin={0} aria-valuemax={p.lesson_count} aria-valuenow={remaining} aria-valuetext={`${p.lesson_count} dersten ${remaining} ders kaldı`} data-package-bar="">
-                        <div className="h-full rounded-full bg-[#C0902F] transition-[width] duration-300" style={{ width: `${p.lesson_count ? Math.min(100, (remaining / p.lesson_count) * 100) : 0}%` }} />
+                      // Tek parça çizgi: dolu kısım kullanılan ders oranı (30 dersten 1 kullanıldı → %3,3) — PDF-21.
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#E6E4DC]" role="progressbar" aria-label="Kullanılan ders" aria-valuemin={0} aria-valuemax={p.lesson_count} aria-valuenow={Math.min(p.lessons_used, p.lesson_count)} aria-valuetext={`${p.lesson_count} dersten ${p.lessons_used} ders kullanıldı`} data-package-bar="">
+                        <div className="h-full rounded-full bg-[#B08A3E] transition-[width] duration-300" style={{ width: `${p.lesson_count ? Math.min(100, (p.lessons_used / p.lesson_count) * 100) : 0}%` }} />
                       </div>
                     ) : (
                       <div className="h-2 w-full overflow-hidden rounded-full bg-surface-muted">
@@ -2470,7 +2464,15 @@ function PackagePanel({
                   {/* Info Badges */}
                   <div className={`flex flex-wrap items-center gap-5 border-t border-[#E6E4DC] pt-4 text-[#5B635C] ${referenceMode ? "text-sm" : "text-[11px]"}`}>
                     <span>Ödeme: <strong className="text-[#1E3D2B]">{formatPaymentStatus(p.payment_status)}</strong></span>
-                    <span>Kaynak: <strong className="text-[#1C231E]">{p.assignment_source === "admin_manual" ? "Yönetici Tanımlı" : "Satın Alma"}</strong></span>
+                    {referenceMode ? (() => {
+                      const linkedPayment = payments.find((payment) => payment.id === p.payment_transaction_id);
+                      return (
+                        <>
+                          <span>Ödeme şekli: <strong className="text-[#1C231E]">{linkedPayment ? paymentMethodLabel(linkedPayment.payment_method) : p.assignment_source === "admin_manual" ? "Yönetici tanımlı" : "—"}</strong></span>
+                          <span>Alındı: <strong className="text-[#1C231E]">{longDate(linkedPayment?.paid_at || p.created_at)}</strong></span>
+                        </>
+                      );
+                    })() : <span>Kaynak: <strong className="text-[#1C231E]">{p.assignment_source === "admin_manual" ? "Yönetici Tanımlı" : "Satın Alma"}</strong></span>}
                     {!referenceMode && p.admin_notes && (
                       <>
                         <span>·</span>
@@ -2479,8 +2481,8 @@ function PackagePanel({
                     )}
                   </div>
 
-                  {/* Adjustment History Timeline */}
-                  {pkgAdjustments.length > 0 && (
+                  {/* Adjustment History Timeline — referans görünümde gösterilmez (PDF-21). */}
+                  {!referenceMode && pkgAdjustments.length > 0 && (
                     <div className={`mt-2 rounded-[14px] bg-[#F7F6F1] p-4 text-[13px] ${referenceMode ? "space-y-2" : "space-y-2 border border-[#E6E4DC]"}`}>
                       <div className="flex items-center gap-1.5 font-bold text-ink">
                         <History className="size-3.5 text-primary" />
@@ -2622,8 +2624,8 @@ function PackagePanel({
                     )}
                   </div>
 
-                  {/* Adjustment History Timeline */}
-                  {pkgAdjustments.length > 0 && (
+                  {/* Adjustment History Timeline — referans görünümde gösterilmez (PDF-21). */}
+                  {!referenceMode && pkgAdjustments.length > 0 && (
                     <div className="mt-2 rounded-xl bg-surface p-3 text-[11px] space-y-2 border border-border">
                       <div className="flex items-center gap-1.5 font-bold text-ink">
                         <History className="size-3.5 text-primary" />
@@ -2749,7 +2751,7 @@ function NotesPanel({
       <form onSubmit={submit} className="space-y-4 rounded-[20px] border border-[#E6E4DC] bg-white p-6">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-heading text-2xl font-semibold text-[#1C231E]">Özel Yönetici Notu</h2><p className="mt-1 text-sm text-[#5B635C]">Öğrenci hakkında özel notlar, çalışma hedefleri veya danışmanlık detayları.</p></div><span className="inline-flex items-center gap-1.5 rounded-full border border-[#EBC4BD] bg-[#FBECEA] px-2.5 py-1 text-xs font-semibold text-[#9A3324]"><Lock className="size-3.5" />Yalnızca yöneticiler görür</span></div>
         <textarea id="student-private-note" required maxLength={5000} rows={4} value={note} onChange={(event) => setNote(event.target.value)} className="min-h-[120px] w-full resize-y rounded-[14px] border border-[#D9D6CC] bg-[#F7F6F1] px-4 py-3.5 text-[15px] text-[#1C231E] outline-none focus:bg-white focus:ring-2 focus:ring-[#10271B]" placeholder="Notunuzu yazın…" />
-        <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-[13px] text-[#5B635C]">Öğrenci paneline hiçbir zaman yansıtılmaz.</span><button disabled={busy || !note.trim()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#10271B] px-4 text-sm font-semibold text-white disabled:opacity-50"><Plus className="size-4" />{busy ? "Kaydediliyor…" : "Not Ekle"}</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-[13px] text-[#5B635C]">Öğrenci paneline hiçbir zaman yansıtılmaz.</span><button disabled={busy || !note.trim()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#1D1E1B] pl-2.5 pr-4 text-sm font-bold text-white shadow-[0_6px_16px_rgba(20,20,18,0.18)] hover:bg-[#30312C] disabled:bg-[#A9A8A2] disabled:shadow-none"><span className="inline-flex size-6 items-center justify-center rounded-full bg-white/20" aria-hidden="true"><Plus className="size-3.5" /></span>{busy ? "Kaydediliyor…" : "Not Ekle"}</button></div>
       </form>
       <section className="overflow-hidden rounded-[20px] border border-[#E6E4DC] bg-white">
         <div className="flex items-center gap-2.5 border-b border-[#E6E4DC] px-6 py-5"><h2 className="font-heading text-[22px] font-semibold text-[#1C231E]">Kayıtlı Notlar</h2><span className="rounded-full bg-[#F0EFE9] px-2.5 py-0.5 text-[13px] font-bold text-[#4A524B]">{notes.length}</span></div>
@@ -2996,6 +2998,28 @@ function money(amount: number, currency: string) {
   return formatCurrency(amount, { currency, locale: "tr" });
 }
 
+/** Referans görünüm: sembol başta (₺72.000 / €1.250,50). */
+function symbolMoney(amount: number, currency: string) {
+  const value = Number(amount || 0);
+  const fraction = Math.abs(value % 1) >= 0.009 ? 2 : 0;
+  try {
+    return new Intl.NumberFormat("tr-TR", { style: "currency", currency: (currency || "TRY").toUpperCase(), minimumFractionDigits: fraction, maximumFractionDigits: fraction }).format(value);
+  } catch {
+    return money(value, currency);
+  }
+}
+
+/** "21 Eylül 2026" */
+function longDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Istanbul" });
+}
+
+function paymentMethodLabel(method: string | null | undefined) {
+  return method === "bank_transfer" ? "Havale / EFT" : method === "card" ? "Kredi Kartı" : "—";
+}
+
 function AdminExamHistoryPanel({ userId }: { userId: string }) {
   const [attempts, setAttempts] = useState<StudentExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3177,5 +3201,103 @@ function AdminExamHistoryPanel({ userId }: { userId: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+/* Referans "Yapılan Dersler" (PDF-16/21): ay başlığı, altın tarih rozeti, açılır detay. */
+type RefLessonParts = { day: string; month: string; monthTitle: string; weekday: string; time: string; fullDate: string };
+function refLessonParts(lesson: LessonRow): RefLessonParts {
+  const timeZone = lesson.lesson_timezone || "Europe/Istanbul";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("tr-TR", { timeZone, day: "2-digit", month: "long", year: "numeric", weekday: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(new Date(lesson.lesson_date)).map((part) => [part.type, part.value]));
+  const shortMonth = new Intl.DateTimeFormat("tr-TR", { timeZone, month: "short" }).format(new Date(lesson.lesson_date)).replace(".", "");
+  const label = lesson.lesson_timezone_label && lesson.lesson_timezone_label !== "TR" ? ` ${lesson.lesson_timezone_label}` : "";
+  return {
+    day: parts.day,
+    month: shortMonth.toLocaleUpperCase("tr-TR"),
+    monthTitle: `${parts.month.charAt(0).toLocaleUpperCase("tr-TR")}${parts.month.slice(1)} ${parts.year}`,
+    weekday: parts.weekday,
+    time: `${parts.hour}:${parts.minute}${label}`,
+    fullDate: `${parts.day} ${parts.month} ${parts.year}, ${parts.weekday}`,
+  };
+}
+
+function RefCompletedLessonList({ lessons, notifications, topics, instructors, purchases, onEdit, onAdd }: {
+  lessons: LessonRow[];
+  notifications: LessonNotificationState[];
+  topics: LessonReference[];
+  instructors: InstructorReference[];
+  purchases: PackagePurchase[];
+  onEdit: (lesson: LessonRow) => void;
+  onAdd: () => void;
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const groups: { title: string; items: { lesson: LessonRow; parts: RefLessonParts }[] }[] = [];
+  for (const lesson of lessons) {
+    const parts = refLessonParts(lesson);
+    const last = groups[groups.length - 1];
+    if (last && last.title === parts.monthTitle) last.items.push({ lesson, parts });
+    else groups.push({ title: parts.monthTitle, items: [{ lesson, parts }] });
+  }
+  return (
+    <section className="overflow-hidden rounded-[20px] border border-[#E6E4DC] bg-white" data-ref-lessons="">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6E4DC] px-6 py-5">
+        <div className="flex items-center gap-2.5"><h2 className="font-heading text-[22px] font-semibold text-[#1C231E]">Yapılan Dersler</h2><span className="rounded-full bg-[#F0EFE9] px-2.5 py-0.5 text-[13px] font-bold text-[#4A524B]">{lessons.length}</span></div>
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-[#5B635C]"><ArrowDownWideNarrow className="size-4" aria-hidden="true" />En yeni ders üstte</span>
+      </div>
+      {lessons.length ? (
+        <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+          {groups.map((group) => (
+            <div key={group.title}>
+              <div className="px-1 pb-2.5 pt-4 text-[13px] font-bold text-[#8A6A1F]">{group.title}</div>
+              <ul className="m-0 grid list-none gap-3 p-0">
+                {group.items.map(({ lesson, parts }) => {
+                  const delivery = notifications.find((item) => item.entity_id === lesson.id && item.event_type === "lesson.report_email");
+                  const topic = topics.find((item) => item.id === lesson.topic_id)?.label || lesson.subject || "—";
+                  const instructor = instructors.find((item) => item.id === lesson.instructor_id)?.name || "—";
+                  const purchase = purchases.find((item) => item.id === lesson.package_purchase_id);
+                  const duration = `${lesson.duration_minutes} dk`;
+                  const reportStatus = delivery?.status === "sent"
+                    ? `Gönderildi · ${new Date(delivery.sent_at || delivery.created_at).toLocaleString("tr-TR", { dateStyle: "medium", timeStyle: "short" })}`
+                    : lesson.completion_report ? "Taslak kaydedildi" : "Rapor bekleniyor";
+                  const open = expandedId === lesson.id;
+                  const detailId = `ref-lesson-${lesson.id}`;
+                  return (
+                    <li key={lesson.id} className="overflow-hidden rounded-2xl border border-[#E6E4DC] bg-white" data-ref-lesson="">
+                      <div className="flex items-center gap-4 px-4 py-4 sm:px-5">
+                        <div className="flex h-[58px] w-[56px] shrink-0 flex-col items-center justify-center rounded-xl border border-[#E6D3A8] bg-[#F6EFDD]" aria-hidden="true"><b className="font-heading text-[26px] font-semibold leading-none text-[#1C231E]">{parts.day}</b><span className="mt-1 text-[11px] font-bold tracking-wider text-[#A57622]">{parts.month}</span></div>
+                        <button type="button" onClick={() => setExpandedId(open ? null : lesson.id)} aria-expanded={open} aria-controls={detailId} className="min-w-0 flex-1 cursor-pointer text-left">
+                          <span className="block truncate text-[17px] font-semibold text-[#1C231E]">{lesson.title}</span>
+                          <span className="mt-1 block text-[13px] text-[#5B635C]">{topic} · {parts.weekday} {parts.time} · {duration}</span>
+                        </button>
+                        <button type="button" onClick={() => setExpandedId(open ? null : lesson.id)} aria-expanded={open} aria-controls={detailId} aria-label={open ? "Ders detayını kapat" : "Ders detayını aç"} className="hidden size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[#5B635C] hover:bg-[#F7F6F1] sm:inline-flex"><ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} /></button>
+                        <button type="button" onClick={() => onEdit(lesson)} className="inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-[10px] border border-[#D9D6CC] bg-white px-3.5 text-[13px] font-semibold text-[#1C231E] hover:bg-[#F7F6F1]"><Pencil className="size-3.5" />Düzenle</button>
+                      </div>
+                      {open ? (
+                        <div id={detailId} className="border-t border-[#EEECE5] px-4 pb-4 pt-4 sm:px-5">
+                          <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+                            {([["Ders", lesson.title], ["Konu / Alan", topic], ["Eğitmen", instructor], ["Tarih", parts.fullDate], ["Saat", parts.time], ["Süre", duration], ["Paket", purchase ? packageDisplayName(purchase) : "—"]] as const).map(([label, value]) => (
+                              <div key={label} className="min-w-0"><dt className="text-xs text-[#5B635C]">{label}</dt><dd className="m-0 mt-0.5 text-sm font-medium text-[#1C231E] [overflow-wrap:anywhere]">{value}</dd></div>
+                            ))}
+                          </dl>
+                          <div className="mt-4 rounded-xl bg-[#F7F6F1] px-4 py-3">
+                            <div className="text-xs text-[#5B635C]">Ders sonu raporu · {reportStatus}</div>
+                            <p className="m-0 mt-1.5 whitespace-pre-wrap text-sm text-[#1C231E] [overflow-wrap:anywhere]">{lesson.completion_report || "Henüz rapor yazılmadı."}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div id={detailId} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[#EEECE5] bg-[#FAF8F2] px-4 py-3 sm:px-5"><span className="inline-flex items-center gap-2 text-[13px] font-semibold text-[#1C231E]"><FileText className="size-4 text-[#A57622]" />Ders sonu raporu</span><span className="text-xs text-[#5B635C]">{reportStatus}</span></div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-4 px-6 py-10"><div className="flex size-14 items-center justify-center rounded-2xl bg-[#F7F6F1]"><BookOpen className="size-7 text-[#5B635C]" /></div><div className="flex-1"><div className="text-[17px] font-semibold">Henüz yapılan ders kaydı yok</div><div className="mt-1 text-sm text-[#5B635C]">Tamamlanan dersleri ekledikçe burada tarih sırasıyla listelenecek.</div></div><button type="button" onClick={onAdd} className="rounded-xl border border-[#D9D6CC] px-4 py-2.5 text-sm font-semibold">İlk kaydı ekle</button></div>
+      )}
+    </section>
   );
 }

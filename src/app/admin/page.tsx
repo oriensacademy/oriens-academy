@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
         <div className="head">
           <div><h1 data-db-selam>{greeting}</h1><p data-db-tarih>{view?.sentence ?? (loading ? "Özet hazırlanıyor…" : "")}</p></div>
           <div className="db-head-act">
-            <button type="button" className="fx-btn" onClick={() => router.push("/admin/blog/editor")}><Svg size={16}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></Svg>Blog Yazısı</button>
+            <button type="button" className="fx-btn" onClick={() => router.push("/admin/blog/")}><Svg size={16}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></Svg>Blog Yazısı</button>
             <button type="button" className="fx-btn primary" onClick={() => router.push("/admin/ogrenciler?yeni=1")}><Svg size={16}><path d="M12 5v14M5 12h14" /></Svg>Yeni Öğrenci</button>
           </div>
         </div>

@@ -43,24 +43,16 @@ const publicSettingsContent = fs.readFileSync(publicSettingsPath, "utf-8");
 assert.ok(!publicSettingsContent.includes("localStorage.getItem"), "getPricingNavigationVisibility must not use localStorage dev override");
 console.log("✓ public-settings.ts database-authoritative visibility verified.");
 
-// 5. Check Navbar, CartPage, PaymentPage, CreativePricing guards
+// 5. Check Navbar (sepet kaldırıldı) and PaymentPage guards
 const navbarPath = path.resolve(process.cwd(), "src/components/sections/Navbar.tsx");
 const navbarContent = fs.readFileSync(navbarPath, "utf-8");
-assert.ok(navbarContent.includes("showPricing && (cartCount > 0 || isStudent)"), "Navbar must gate cart icon and mobile link with showPricing");
-
-const cartPath = path.resolve(process.cwd(), "src/components/cart/CartPage.tsx");
-const cartContent = fs.readFileSync(cartPath, "utf-8");
-assert.ok(cartContent.includes("usePublicSettings"), "CartPage must consume usePublicSettings");
-assert.ok(cartContent.includes("!showPricing && accountType !== \"admin\""), "CartPage must block non-admin when pricing is offline");
+assert.ok(!/useCart|ShoppingBag|Sepetim/.test(navbarContent), "Navbar must not render a cart icon or cart link");
+assert.ok(!fs.existsSync(path.resolve(process.cwd(), "src/components/cart/CartPage.tsx")), "CartPage must be removed");
 
 const paymentPath = path.resolve(process.cwd(), "src/components/payment/PaymentPage.tsx");
 const paymentContent = fs.readFileSync(paymentPath, "utf-8");
 assert.ok(paymentContent.includes("usePublicSettings"), "PaymentPage must consume usePublicSettings");
 assert.ok(paymentContent.includes("!showPricing && accountType !== \"admin\""), "PaymentPage must block checkout when pricing is offline");
-
-const creativePricingPath = path.resolve(process.cwd(), "src/components/ui/oriens-creative-pricing.tsx");
-const creativePricingContent = fs.readFileSync(creativePricingPath, "utf-8");
-assert.ok(creativePricingContent.includes("usePublicSettings"), "CreativePricing must consume usePublicSettings");
 
 console.log("✓ All runtime pricing entry-point guards verified.");
 console.log("\n=== ALL PHASE 02 VERIFICATION CHECKS PASSED SUCCESSFULLY ===");

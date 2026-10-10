@@ -286,14 +286,15 @@ async function start() {
   });
   page.on("pageerror", (error) => emit("BROWSER_PAGE_ERROR", { message: error.message }));
 
-  const cartResponse = await page.goto(`${SITE_URL}/tr/sepet/`, { waitUntil: "domcontentloaded" });
-  if (!cartResponse?.ok()) throw new Error(`Production cart returned ${cartResponse?.status()}.`);
-  await page.locator("#cart-coupon-input").waitFor({ timeout: 30_000 });
-  await page.locator("#cart-coupon-input").fill(COUPON_CODE);
-  await page.locator("#cart-coupon-input").press("Enter");
-  await page.getByText("Kupon başarıyla uygulandı", { exact: false }).waitFor({ timeout: 30_000 });
+  // Sepet yok: doğrudan paket ödemesi + ödeme sayfasındaki indirim kodu.
+  const checkoutResponse = await page.goto(`${SITE_URL}/tr/odeme/?package=${encodeURIComponent(PACKAGE_ID)}`, { waitUntil: "domcontentloaded" });
+  if (!checkoutResponse?.ok()) throw new Error(`Production checkout returned ${checkoutResponse?.status()}.`);
+  await page.getByRole("button", { name: "İndirim kodunuz mu var?" }).click({ timeout: 30_000 });
+  await page.locator("#pay-coupon-input").fill(COUPON_CODE);
+  await page.locator("#pay-coupon-input").press("Enter");
+  await page.locator("[data-coupon-chip]").waitFor({ timeout: 30_000 });
 
-  const totalRowText = await page.getByText("Toplam Tutar", { exact: true }).locator("..").innerText();
+  const totalRowText = await page.locator("[data-amount]").innerText();
   const totalMatch = totalRowText.match(/([0-9.]+)(?:,([0-9]{2}))?\s*TL/);
   const displayedFinalKurus = totalMatch
     ? Number(totalMatch[1].replaceAll(".", "")) * 100 + Number(totalMatch[2] || "0")
@@ -310,8 +311,6 @@ async function start() {
     throw new Error("Displayed cart total is outside the authorized real-charge limit.");
   }
 
-  await page.getByRole("link", { name: "Ödemeye Geç", exact: true }).click();
-  await page.waitForURL("**/tr/odeme/**", { timeout: 30_000 });
   await page.evaluate(() => {
     window.__paytrQaLifecycle = [];
     const record = (event) => window.__paytrQaLifecycle.push({ event, ms: Math.round(performance.now()) });
@@ -330,7 +329,7 @@ async function start() {
     }).observe(document.documentElement, { childList: true, subtree: true });
   });
   await page.locator("#payment-phone").fill(QA_PHONE);
-  await page.getByRole("button", { name: "Ödemeye Geç", exact: true }).click();
+  await page.locator("[data-pay-button]").click();
   const tokenDeadline = Date.now() + 30_000;
   while (!reference && Date.now() < tokenDeadline) {
     await new Promise((resolve) => setTimeout(resolve, 250));

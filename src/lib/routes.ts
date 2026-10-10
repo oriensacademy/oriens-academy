@@ -14,7 +14,6 @@ export type LocalizedRouteId =
   | "assessment"
   | "examTest"
   | "payment"
-  | "cart"
   | "studentAccount"
   | "login"
   | "forgotPassword"
@@ -40,7 +39,6 @@ const localizedSegments: Record<LocalizedRouteId, Record<Locale, string>> = {
   assessment: { tr: "degerlendirme", en: "assessment" },
   examTest: { tr: "kendini-dene", en: "test-yourself" },
   payment: { tr: "odeme", en: "payment" },
-  cart: { tr: "sepet", en: "cart" },
   studentAccount: { tr: "hesabim", en: "account" },
   login: { tr: "giris", en: "login" },
   forgotPassword: { tr: "sifremi-unuttum", en: "forgot-password" },
@@ -97,14 +95,6 @@ export function blogDetailPath(locale: Locale, slug: string): string {
 
 export function pricingSegment(locale: Locale): string {
   return localizedSegments.pricing[locale];
-}
-
-export function cartSegment(locale: Locale): string {
-  return localizedSegments.cart[locale];
-}
-
-export function cartPath(locale: Locale): string {
-  return localizedPath("cart", locale);
 }
 
 export function aboutSegment(locale: Locale): string {

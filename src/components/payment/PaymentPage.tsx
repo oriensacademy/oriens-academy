@@ -1,20 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CreditCard, LockKeyhole, Tag } from "lucide-react";
+import { Fraunces } from "next/font/google";
+import { Check, ChevronDown, LockKeyhole, Mail, Tag, UserRound } from "lucide-react";
 import { useLocale } from "@/content/locale-context";
 import { getPaymentCopy } from "@/content/payment";
-import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { getPublicPricingPackages, selectPurchasablePackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { calculateAuthoritativeTotal } from "@/lib/payments/pricing";
 import { useCheckoutCoupon } from "@/lib/coupons/use-checkout-coupon";
 import { localizedPath, unifiedLoginPath } from "@/lib/routes";
 import { formatCurrency } from "@/lib/format/currency";
+import { formatPaymentPhoneInput, isValidPaymentPhoneDigits, trPhoneInputDigits } from "@/lib/format/phone";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 import { packageDisplayName } from "@/lib/packages/display";
 import { useAccount } from "@/lib/auth/account-context";
-import { useCart } from "@/lib/cart/cart-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { validateStudentPhone } from "@/lib/student/auth";
@@ -23,15 +23,28 @@ import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { EmailOtpGate } from "@/components/auth/EmailOtpGate";
 import { ButtonLink } from "@/components/ui/button";
 import { HostedCardPanel, type PaymentSessionResult } from "./HostedCardPanel";
-import { PaytrInstallmentTable, paytrInstallmentTableEnabled } from "./PaytrInstallmentTable";
 import { newCartId, recordCartEvent } from "@/lib/cart/cart-audit";
 import { LegalModal, type LegalOrderSnapshot } from "@/components/legal/LegalModal";
 import type { LegalDocKey } from "@/config/legal";
+import styles from "./payment.module.css";
 
 type Guardian = Tables<"guardian_accounts">;
 type Learner = Tables<"student_profiles">;
 type GuardianLink = Tables<"guardian_students">;
 
+const fraunces = Fraunces({
+  subsets: ["latin", "latin-ext"],
+  weight: ["500", "600"],
+  display: "swap",
+  variable: "--pay-serif",
+});
+
+/**
+ * Doğrudan paket ödemesi (sepet yok): /tr/odeme/?package=<id>.
+ * Görünüm müşteri referansı oriens-odeme_8.html'in birebir uyarlamasıdır;
+ * tutarlar ortak hesapla (lib/payments/pricing) üretilir ve paytr-create-token
+ * aynı paket + kupon + öğrenci girdisiyle aynı toplamı hesaplar.
+ */
 export function PaymentPage() {
   const locale = useLocale();
   const isTr = locale === "tr";
@@ -40,7 +53,6 @@ export function PaymentPage() {
   const searchParams = useSearchParams();
   const { accountType, user, isInitializing } = useAccount();
   const userId = user?.id;
-  const { items: cartItems, isHydrated: cartHydrated, appliedCoupon, getCartAuditId } = useCart();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
   const [packages, setPackages] = useState<PublicPricingPackage[]>([]);
   const [directPackageId, setDirectPackageId] = useState("");
@@ -54,16 +66,26 @@ export function PaymentPage() {
   const [verificationResolvedUserId, setVerificationResolvedUserId] = useState("");
   const [activeModal, setActiveModal] = useState<LegalDocKey | null>(null);
 
-  // Transient checkout-only 3D Secure phone (never persisted to a profile)
+  // Transient checkout-only 3D Secure phone (never persisted to a profile).
+  // TR: "+90" sabit önek + 10 hane (5XX XXX XX XX). EN: serbest uluslararası numara.
   const [paymentPhone, setPaymentPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+
+  // İndirim kodu: kural yalnız sunucudan (quote_checkout_coupon) gelir.
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponNote, setCouponNote] = useState("");
+  const couponInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Mobil alt ödeme çubuğu: asıl ödeme butonu ekrandayken gizlenir.
+  const [payButton, setPayButton] = useState<HTMLButtonElement | null>(null);
+  const [payButtonVisible, setPayButtonVisible] = useState(false);
+  const [iframeOpen, setIframeOpen] = useState(false);
 
   const initializedForUserRef = useRef("");
-
-  // Reactive Cart Mode determination (compatible with static export)
-  const sourceParam = searchParams.get("source");
   const packageParam = searchParams.get("package");
-  const isDirectPackageMode = Boolean(packageParam) && sourceParam !== "cart";
-  const isCartCheckout = sourceParam === "cart" || (!isDirectPackageMode && cartItems.length > 0);
 
   const refreshGuardianData = useCallback(async () => {
     if (!userId) return;
@@ -77,20 +99,16 @@ export function PaymentPage() {
       });
       setGuardianId((current) => current || data.user_id);
     }
-  }, [userId]);
+  }, [userId, setGuardianId]);
 
   useEffect(() => {
     if (isInitializing) return;
     if (accountType !== "student" && accountType !== "admin") {
-      const search = new URLSearchParams(window.location.search);
-      if (isCartCheckout || sourceParam === "cart" || (!isDirectPackageMode && cartItems.length > 0)) {
-        search.set("source", "cart");
-      }
-      const qs = search.toString();
-      const next = `${localizedPath("payment", locale)}${qs ? `?${qs}` : ""}`;
+      const qs = window.location.search;
+      const next = `${localizedPath("payment", locale)}${qs}`;
       router.replace(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
     }
-  }, [accountType, isInitializing, locale, router, isCartCheckout, sourceParam, isDirectPackageMode, cartItems.length]);
+  }, [accountType, isInitializing, locale, router]);
 
   // Resolve the canonical verification state before loading any checkout data.
   // This deliberately queries only the signed-in guardian's own row.
@@ -139,13 +157,15 @@ export function PaymentPage() {
       supabase.from("guardian_accounts").select("*").eq("active", true),
       supabase.from("guardian_students").select("*").eq("active", true),
     ]).then(async ([packageRows, guardianResult, linkResult]) => {
-      const purchasable = packageRows.filter((row) => row.purchase_mode === "purchasable" && row.active);
+      // Dinamik paket listesi: aktif + satın alınabilir + ders sayısı > 0 (package40 dahil).
+      const purchasable = selectPurchasablePackages(packageRows);
       const guardianRows = guardianResult.data ?? [];
       const linkRows = linkResult.data ?? [];
       const ids = [...new Set(linkRows.map((row) => row.student_id))];
       const learnerResult = ids.length ? await supabase.from("student_profiles").select("*").in("id", ids).eq("active", true) : { data: [] as Learner[] };
       setPackages(purchasable);
-      setDirectPackageId(purchasable.some((row) => row.id === requested) ? requested : purchasable[0]?.id ?? "");
+      // Geçersiz/eksik paket kimliğinde hiçbir paket kendiliğinden seçilmez.
+      setDirectPackageId(purchasable.some((row) => row.id === requested) ? requested : "");
       setGuardians(guardianRows);
       setLinks(linkRows);
       setLearners(learnerResult.data ?? []);
@@ -179,6 +199,17 @@ export function PaymentPage() {
     };
   }, [refreshGuardianData]);
 
+  // Asıl ödeme butonu görünürken mobil çubuğu gizle (iki buton üst üste görünmesin).
+  useEffect(() => {
+    if (!payButton) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      setPayButtonVisible(Boolean(entries[0]?.isIntersecting));
+    }, { threshold: 0.6 });
+    observer.observe(payButton);
+    return () => observer.disconnect();
+  }, [payButton]);
+
   const selectedGuardian = guardians.find((item) => item.user_id === guardianId) ?? null;
 
   const availableLearners = useMemo(() => {
@@ -186,20 +217,16 @@ export function PaymentPage() {
     return learners.filter((row) => allowed.has(row.id));
   }, [guardianId, learners, links]);
   const selectedLearner = availableLearners.find((item) => item.id === learnerId) ?? null;
-  const checkoutPackages = useMemo(() => isCartCheckout
-    ? cartItems.map((item) => packages.find((pkg) => pkg.id === item.packageId)).filter((pkg): pkg is PublicPricingPackage => Boolean(pkg))
-    : packages.filter((pkg) => pkg.id === directPackageId), [cartItems, directPackageId, isCartCheckout, packages]);
-  const packageIds = useMemo(() => checkoutPackages.map((pkg) => pkg.id), [checkoutPackages]);
-  const cartMismatch = isCartCheckout && checkoutPackages.length !== cartItems.length;
-  // Kupon kuralı bu siparişin paketleri + seçili öğrenci için sunucudan alınır;
-  // paytr-create-token aynı RPC'yi aynı girdiyle çağırır. Kupon bu sipariş için
-  // geçersizse ne ekranda indirim gösterilir ne de sunucuya kupon gönderilir.
-  const couponState = useCheckoutCoupon(appliedCoupon?.code, packageIds, learnerId || user?.id, locale);
-  const checkoutCouponCode = couponState.rule?.code;
+  const selectedPackage = packages.find((pkg) => pkg.id === directPackageId) ?? null;
+  const packageIds = useMemo(() => (selectedPackage ? [selectedPackage.id] : []), [selectedPackage]);
+
+  // Kupon kuralı bu paket + seçili öğrenci için sunucudan alınır;
+  // paytr-create-token aynı RPC'yi aynı girdiyle çağırır.
+  const couponState = useCheckoutCoupon(couponCode, packageIds, learnerId || user?.id, locale);
 
   // Denetim: ödeme ekranı açılışı ve ödeme başlatma sonucu (yalnız veli hesabı;
-  // yönetici destekli ödemeler sunucuda ayrıca kaydedilir). Sepet kimliği
-  // sepet → ödeme akışını bağlar; doğrudan paket alımında sayfaya özel kimlik.
+  // yönetici destekli ödemeler sunucuda ayrıca kaydedilir). Doğrudan paket
+  // alımında her ödeme sayfası açılışı kendi kimliğini alır.
   const checkoutCartIdRef = useRef<string | null>(null);
   const checkoutOpenedRef = useRef(false);
   const auditCheckout = accountType === "student";
@@ -208,19 +235,18 @@ export function PaymentPage() {
     && selectedGuardian
     && selectedLearner
     && packageIds.length
-    && !cartMismatch
     && couponState.status !== "loading",
   );
   useEffect(() => {
     if (!auditCheckout || dataLoading || !checkoutUiReady || checkoutOpenedRef.current) return;
     checkoutOpenedRef.current = true;
-    checkoutCartIdRef.current = (isCartCheckout ? getCartAuditId() : null) ?? newCartId();
+    checkoutCartIdRef.current = newCartId();
     recordCartEvent("checkout_opened", checkoutCartIdRef.current, packageIds, { studentId: learnerId || null, source: "payment" });
-  }, [auditCheckout, checkoutUiReady, dataLoading, getCartAuditId, isCartCheckout, learnerId, packageIds]);
+  }, [auditCheckout, checkoutUiReady, dataLoading, learnerId, packageIds]);
 
   const handleSessionResult = useCallback((result: PaymentSessionResult) => {
     if (!auditCheckout) return;
-    const cartId = checkoutCartIdRef.current ?? (isCartCheckout ? getCartAuditId() : null) ?? newCartId();
+    const cartId = checkoutCartIdRef.current ?? newCartId();
     checkoutCartIdRef.current = cartId;
     recordCartEvent("checkout_started", cartId, packageIds, {
       studentId: learnerId || null,
@@ -229,34 +255,109 @@ export function PaymentPage() {
       errorCode: result.errorCode ?? null,
       source: "payment",
     });
-  }, [auditCheckout, getCartAuditId, isCartCheckout, learnerId, packageIds]);
-  const pricingPackages = checkoutPackages.map((pkg) => ({
-    id: pkg.id,
-    price: Number(pkg.current_total ?? pkg.price_amount ?? 0),
-    name_tr: pkg.name_tr,
-    name_en: pkg.name_en,
-    lesson_count: pkg.lesson_count,
-  }));
+  }, [auditCheckout, learnerId, packageIds]);
 
   const pricingBreakdown = calculateAuthoritativeTotal({
-    packages: pricingPackages,
+    packages: selectedPackage
+      ? [{
+          id: selectedPackage.id,
+          price: Number(selectedPackage.current_total ?? selectedPackage.price_amount ?? 0),
+          name_tr: selectedPackage.name_tr,
+          name_en: selectedPackage.name_en,
+          lesson_count: selectedPackage.lesson_count,
+        }]
+      : [],
     coupon: couponState.rule,
   });
 
   const basePrice = pricingBreakdown.subtotal;
-  const discountAmount = pricingBreakdown.discount;
+  const couponDiscount = pricingBreakdown.discount;
   const finalPrice = pricingBreakdown.finalTotal;
-  const currency = checkoutPackages[0]?.currency || "TRY";
-  const money = (value: number, code = "TRY") => formatCurrency(value, { currency: code, locale });
-  const phoneCheck = validateStudentPhone(paymentPhone, isTr);
-  const isPhoneValid = paymentPhone.trim().length > 0 && phoneCheck.valid;
-  const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && !cartMismatch && isPhoneValid && couponState.status !== "loading");
+  const currency = selectedPackage?.currency || "TRY";
+  const money = (value: number) => formatCurrency(value, { currency, locale });
+  const listPrice = selectedPackage ? Number(selectedPackage.old_total ?? selectedPackage.price_amount ?? 0) : 0;
+  const packageDiscount = Math.max(0, listPrice - basePrice);
+  const packageDiscountPct = selectedPackage && packageDiscount > 0
+    ? selectedPackage.discount_percentage || Math.round((packageDiscount / listPrice) * 100)
+    : 0;
+
+  // Geçerli kural bu siparişe indirim sağlamıyorsa (ör. alt limit) kupon gönderilmez:
+  // ekrandaki toplam ile PayTR'ye giden toplam her durumda aynı kalır.
+  const couponApplied = couponState.status === "valid" && couponDiscount > 0;
+  const checkoutCouponCode = couponApplied ? couponState.rule?.code : undefined;
+  const couponLoading = couponState.status === "loading";
+  const couponError = couponState.status === "invalid"
+    ? couponState.error || (isTr ? "Bu kod geçerli değil." : "This code is not valid.")
+    : couponState.status === "valid" && couponDiscount <= 0
+      ? (isTr ? "Bu kod bu pakete indirim sağlamıyor." : "This code does not apply to this package.")
+      : "";
+  const couponRuleLabel = couponState.rule
+    ? couponState.rule.discount_type === "percentage"
+      ? (isTr ? `%${couponState.rule.discount_value} indirim` : `${couponState.rule.discount_value}% discount`)
+      : (isTr ? "İndirim kodu" : "Discount code")
+    : "";
+  const couponMessage = couponError
+    || (couponApplied
+      ? (isTr ? `${couponRuleLabel} uygulandı. ${money(couponDiscount)} tasarruf ettiniz.` : `${couponRuleLabel} applied. You saved ${money(couponDiscount)}.`)
+      : couponNote);
+
+  const phoneDigits = isTr ? trPhoneInputDigits(paymentPhone) : "";
+  const phoneCheck = isTr
+    ? validateStudentPhone(`+90${phoneDigits}`, true)
+    : validateStudentPhone(paymentPhone, false);
+  const isPhoneValid = isTr ? isValidPaymentPhoneDigits(phoneDigits) && phoneCheck.valid : paymentPhone.trim().length > 0 && phoneCheck.valid;
+  const phoneError = !isPhoneValid && phoneTouched && paymentPhone.trim()
+    ? (isTr ? "Lütfen 5 ile başlayan 10 haneli cep telefonu numaranızı girin." : phoneCheck.error || "Please enter a valid phone number.")
+    : "";
+  const contextReady = Boolean(selectedGuardian && selectedLearner && emailVerified && packageIds.length && isPhoneValid && !couponLoading);
+
+  const pendingMessage = !packageIds.length
+    ? (isTr ? "Ödemeye devam etmek için bir paket seçin." : "Select a package to continue.")
+    : !selectedGuardian || !selectedLearner
+      ? (isTr ? "Hesap sahibi ve öğrenci bilgisi bekleniyor." : "Waiting for the account holder and learner.")
+      : !isPhoneValid
+        ? (isTr ? "Telefon numaranızı girin, PayTR kart formu burada açılsın." : "Enter your phone number to open the PayTR card form here.")
+        : (isTr ? "İndirim kodu kontrol ediliyor…" : "Checking the discount code…");
+  const amountText = money(finalPrice);
+  const payLabel = finalPrice <= 0
+    ? (isTr ? "Siparişi tamamla" : "Complete order")
+    : (isTr ? `${amountText} öde` : `Pay ${amountText}`);
 
   const orderSnapshot: LegalOrderSnapshot = {
-    packageName: checkoutPackages.map((pkg) => packageDisplayName(pkg, locale)).join(", ") || (isTr ? "Ders Paketi" : "Lesson Package"),
-    lessonCount: checkoutPackages.reduce((sum, pkg) => sum + (pkg.lesson_count || 0), 0), baseAmount: basePrice,
-    discountAmount: discountAmount || undefined, couponCode: checkoutCouponCode, finalAmount: finalPrice, currency,
+    packageName: selectedPackage ? packageDisplayName(selectedPackage, locale) : (isTr ? "Ders Paketi" : "Lesson Package"),
+    lessonCount: selectedPackage?.lesson_count || 0, baseAmount: basePrice,
+    discountAmount: couponApplied ? couponDiscount : undefined, couponCode: checkoutCouponCode, finalAmount: finalPrice, currency,
     payerName: selectedGuardian?.full_name, payerEmail: selectedGuardian?.email, paymentMethod: "card",
+  };
+
+  const handleCouponSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const code = couponInput.trim().toUpperCase();
+    if (code.length < 3 || couponLoading) return;
+    setCouponNote("");
+    setCouponCode(code);
+  };
+
+  const removeCoupon = () => {
+    setCouponCode("");
+    setCouponInput("");
+    setCouponOpen(true);
+    setCouponNote(isTr ? "İndirim kodu kaldırıldı." : "Discount code removed.");
+    window.setTimeout(() => couponInputRef.current?.focus(), 0);
+  };
+
+  const handleMobilePay = () => {
+    if (payButton && !payButton.disabled) {
+      payButton.click();
+      return;
+    }
+    if (!isPhoneValid && phoneInputRef.current) {
+      setPhoneTouched(true);
+      phoneInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => phoneInputRef.current?.focus({ preventScroll: true }), 350);
+      return;
+    }
+    payButton?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
   const verificationResolved = accountType === "admin"
@@ -276,295 +377,249 @@ export function PaymentPage() {
   if (settingsLoading || dataLoading) return <AccountWaveLoader />;
   if (!showPricing && accountType !== "admin") return <section className="pt-32 pb-24"><div className="mx-auto max-w-xl px-6 text-center"><h1 className="font-heading text-3xl text-ink">{isTr ? "Ödeme Sistemi Geçici Olarak Kapalı" : "Payment System Temporarily Unavailable"}</h1><ButtonLink href={localizedPath("home", locale)} className="mt-8">{isTr ? "Ana Sayfa" : "Home"}</ButtonLink></div></section>;
 
-  // Extra bottom padding below `lg` clears the fixed mobile contact dock
-  // (SocialLinks, bottom-6 right-6, ~88px tall) so it never sits on top of
-  // the payment phone / Ödemeye Geç area when scrolled to the bottom.
-  return <section className="pt-24 pb-32 md:pt-32 md:pb-28 lg:pb-20"><div className="mx-auto max-w-[1120px] px-4 sm:px-6">
-    <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary"><LockKeyhole className="size-3.5" />{isTr ? "Güvenli Ödeme" : "Secure Checkout"}</div>
-    <h1 className="mt-4 font-heading text-3xl font-bold text-ink sm:text-4xl">{copy.title}</h1>
-    {/* Explicit grid-cols-1 (minmax(0,1fr) track) instead of relying on the
-        implicit auto-sized single-column default -- see the matching fix and
-        comment in StudentPortal.tsx for why this is load-bearing on mobile. */}
-    <div className="mt-9 grid grid-cols-1 gap-8 lg:grid-cols-[380px_1fr]">
-      <aside className="rounded-3xl border border-border bg-surface p-6 shadow-editorial">
-        <h2 className="font-heading text-xl text-ink">{isTr ? "Sipariş Özeti" : "Order Summary"}</h2>
-        
-        {/* Only show package select if not cart checkout AND direct package is not yet chosen */}
-        {!isCartCheckout && !directPackageId && !checkoutPackages.length ? (
-          <label className="mt-5 block text-xs font-semibold text-ink">
-            {isTr ? "Eğitim Paketi" : "Package"}
-            <select
-              value={directPackageId}
-              onChange={(event) => { setDirectPackageId(event.target.value); }}
-              className="mt-2 min-h-12 w-full rounded-xl border border-input bg-surface px-3"
-            >
-              <option value="">{isTr ? "Paket seçin" : "Select package"}</option>
-              {packages.map((pkg) => (
-                <option key={pkg.id} value={pkg.id}>
-                  {packageDisplayName(pkg, locale)} — {getLocalizedPackageDisplayPrice({ locale, tryAmount: pkg.current_total ?? pkg.price_amount, eurAmount: pkg.price_eur }).formatted}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+  const displayPrice = selectedPackage
+    ? getLocalizedPackageDisplayPrice({ locale, tryAmount: selectedPackage.current_total ?? selectedPackage.price_amount, eurAmount: selectedPackage.price_eur })
+    : null;
+  const showPaybar = Boolean(payButton) && !payButtonVisible && !iframeOpen;
 
-        <div className="mt-5 space-y-3">
-          {checkoutPackages.map((pkg) => {
-            const regularTotal = Number(pkg.old_total ?? pkg.price_amount ?? 0);
-            const currentTotal = Number(pkg.current_total ?? pkg.price_amount ?? 0);
-            const displayPrice = getLocalizedPackageDisplayPrice({ locale, tryAmount: currentTotal, eurAmount: pkg.price_eur });
-            const hasDiscount = isTr && regularTotal > currentTotal;
-            const discountPct = pkg.discount_percentage || (hasDiscount ? Math.round(((regularTotal - currentTotal) / regularTotal) * 100) : 0);
+  return (
+    <section className={`${styles.root} ${fraunces.variable} pt-16 md:pt-20`} data-payment-page="">
+      <div className={styles.main}>
+        <ol className={styles.stepper} aria-label={isTr ? "Satın alma adımları" : "Checkout steps"}>
+          <li className={styles.current} aria-current="step"><span className={styles.dot}>1</span>{isTr ? "Ödeme" : "Payment"}</li>
+          <li className={styles.bar} aria-hidden="true" />
+          <li className={styles.todo}><span className={styles.dot}>2</span>{isTr ? "Onay" : "Confirmation"}</li>
+        </ol>
 
-            return (
-              <div key={pkg.id} className="rounded-2xl border border-border bg-surface-muted p-3.5 text-xs space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-ink text-sm">{packageDisplayName(pkg, locale)}</h3>
-                    {pkg.lesson_count ? (
-                      <span className="text-[11px] text-muted-foreground">
-                        {pkg.lesson_count} {isTr ? "Ders" : "Lessons"}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="text-right">
-                    {hasDiscount && (
-                      <span className="block text-[11px] text-muted-foreground line-through">
-                        {money(regularTotal, pkg.currency)}
-                      </span>
-                    )}
-                    <span className="text-sm font-bold text-ink">
-                      {displayPrice.formatted}
-                    </span>
-                  </div>
-                </div>
-
-                {hasDiscount && discountPct > 0 && (
-                  <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                      %{discountPct} {isTr ? "İndirim" : "Discount"}
-                    </span>
-                    <span className="text-[11px] text-emerald-800 font-medium">
-                      {money(regularTotal - currentTotal, pkg.currency)} {isTr ? "avantaj" : "savings"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {cartMismatch || (isCartCheckout && cartHydrated && !cartItems.length) || (!isCartCheckout && !checkoutPackages.length) ? (
-          <p role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            {isCartCheckout && !cartItems.length
-              ? (isTr ? "Sepetiniz boş. Paket seçmek için eğitim paketlerimize göz atabilirsiniz." : "Your cart is empty. You can browse our pricing packages to add items.")
-              : (isTr ? "Paket seçimi bulunamadı. Lütfen bir paket seçiniz." : "No package found. Please select a package.")}
-          </p>
-        ) : null}
-
-        <div className="mt-5 rounded-2xl bg-surface-muted p-4 text-sm space-y-2">
-          {!isTr ? (
-            <div className="mb-3 border-b border-border pb-3 text-xs leading-5 text-muted-foreground">
-              <p>Displayed package prices are in EUR.</p>
-              <p className="font-semibold text-ink">Your payment will be processed in TRY.</p>
-            </div>
-          ) : null}
-          {checkoutPackages.some((pkg) => Number(pkg.old_total ?? 0) > Number(pkg.current_total ?? 0)) && (
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{isTr ? "Paket Liste Fiyatı" : "TRY list amount"}</span>
-              <span className="line-through">
-                {money(
-                  checkoutPackages.reduce((sum, pkg) => sum + Number(pkg.old_total ?? pkg.price_amount ?? 0), 0),
-                  currency
-                )}
-              </span>
-            </div>
-          )}
-          <div className="flex justify-between font-medium">
-            <span>{isTr ? "Ara Toplam" : "TRY subtotal"}</span>
-            <span>{money(basePrice, currency)}</span>
+        <div className={styles.pageHead}>
+          <div>
+            <h1 className={styles.h1}>{copy.title.replace(/\.$/, "")}</h1>
           </div>
-          {appliedCoupon && discountAmount > 0 ? (
-            <div className="flex justify-between text-emerald-800 text-xs font-semibold">
-              <span>{isTr ? `Kupon İndirimi (${appliedCoupon.code})` : `Coupon Discount (${appliedCoupon.code})`}</span>
-              <span>-{money(discountAmount, currency)}</span>
-            </div>
-          ) : null}
-          <div className="pt-2 border-t border-border/80 flex justify-between text-base">
-            <span className="font-bold text-ink">{isTr ? "Ödenecek Tutar" : "Payment amount (TRY)"}</span>
-            <strong className="text-primary font-bold">{money(finalPrice, currency)}</strong>
+          <div className={styles.securePill}>
+            <LockKeyhole size={15} aria-hidden="true" />
+            {isTr ? "Güvenli ödeme · 3D Secure" : "Secure payment · 3D Secure"}
           </div>
         </div>
 
-        {/* Read-only Coupon State & Return to Cart Link */}
-        {appliedCoupon ? (
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs">
-            <div className="flex items-center gap-2">
-              <Tag className="size-3.5 text-emerald-700" />
-              <div>
-                <span className="font-mono font-bold text-emerald-950 uppercase">{appliedCoupon.code}</span>
-                {couponState.status === "invalid" ? (
-                  <span role="alert" className="ml-1.5 text-[11px] font-medium text-red-600">
-                    {couponState.error || (isTr ? "Bu sipariş için kullanılamaz" : "Not valid for this order")}
-                  </span>
-                ) : (
-                  <span className="ml-1.5 text-[11px] text-emerald-700">
-                    (-{money(discountAmount, currency)})
-                  </span>
-                )}
+        <div className={styles.layout}>
+          <div className={styles.steps}>
+            {/* 1. İletişim */}
+            <section className={styles.card} aria-labelledby="pay-s1">
+              <div className={styles.stepHead}>
+                <span className={`${styles.stepNum} ${isPhoneValid ? styles.ok : ""}`} data-step-ok={isPhoneValid ? "" : undefined}>
+                  {isPhoneValid ? <Check size={13} strokeWidth={3} aria-hidden="true" /> : "1"}
+                </span>
+                <h2 id="pay-s1" className={styles.h2}>{isTr ? "İletişim bilgileri" : "Contact information"}</h2>
               </div>
-            </div>
-            <Link
-              href={localizedPath("cart", locale)}
-              className="font-semibold text-primary underline underline-offset-2 hover:no-underline"
-            >
-              {isTr ? "Kuponu Değiştir / Sepete Dön" : "Change Coupon / Back to Cart"}
-            </Link>
-          </div>
-        ) : (
-          <div className="mt-4 text-center">
-            <Link
-              href={localizedPath("cart", locale)}
-              className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isTr ? "Kupon kodu kullanmak için sepete dönün" : "Return to cart to use a coupon code"}
-            </Link>
-          </div>
-        )}
-      </aside>
-      <div className="rounded-3xl border border-border bg-surface p-6 shadow-editorial sm:p-8"><h2 className="font-heading text-2xl text-ink">{isTr ? "Kart ile Ödeme" : "Pay by Card"}</h2>
-        {appliedCoupon && discountAmount > 0 ? (
-          <div data-testid="payment-coupon-summary" className="mt-5 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
-            <div className="flex items-center gap-2 font-bold">
-              <Tag className="size-4 text-emerald-700" />
-              <span>{isTr ? "Kupon bu ödemeye uygulandı" : "Coupon applied to this payment"}</span>
-              <span className="rounded-md bg-white px-2 py-0.5 font-mono text-xs">{appliedCoupon.code}</span>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold sm:text-sm">
-              <span className="line-through text-muted-foreground">{money(basePrice, currency)}</span>
-              <span aria-hidden="true">−</span>
-              <span className="text-emerald-800">{money(discountAmount, currency)}</span>
-              <span aria-hidden="true">=</span>
-              <strong className="text-base text-primary">{money(finalPrice, currency)}</strong>
-              <span>{isTr ? "kartınızdan çekilecek" : "will be charged to your card"}</span>
-            </div>
-          </div>
-        ) : null}
-        {accountType === "admin" ? <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="text-xs font-semibold text-amber-900">{isTr ? "Yönetici işlemi için hesap sahibi ve öğrenci bağlamını seçin." : "Select the account holder and learner for this admin-assisted payment."}</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><select value={guardianId} onChange={(event) => { setGuardianId(event.target.value); setLearnerId(""); }} className="min-h-11 rounded-xl border bg-white px-3 text-xs"><option value="">{isTr ? "Hesap sahibi seçin" : "Select account holder"}</option>{guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}</select><select value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className="min-h-11 rounded-xl border bg-white px-3 text-xs disabled:opacity-50"><option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>{availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}</select></div></div> : null}
-        {(selectedGuardian?.full_name || selectedGuardian?.email) ? (
-          <div className="mt-6 border-t border-border pt-6">
-            <h3 className="text-sm font-semibold text-ink">{isTr ? "İletişim Bilgileri" : "Contact Information"}</h3>
-            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-              {selectedGuardian?.full_name ? (
-                <div className="rounded-xl border bg-surface-muted p-3">
-                  <dt className="text-[10px] text-muted-foreground">{isTr ? "Ad Soyad" : "Full Name"}</dt>
-                  <dd className="mt-1 text-xs font-semibold">{selectedGuardian.full_name}</dd>
+
+              {accountType === "admin" ? (
+                <div className={styles.adminBox}>
+                  <p>{isTr ? "Yönetici işlemi için hesap sahibi ve öğrenci bağlamını seçin." : "Select the account holder and learner for this admin-assisted payment."}</p>
+                  <div className={styles.adminGrid}>
+                    <select aria-label={isTr ? "Hesap sahibi" : "Account holder"} value={guardianId} onChange={(event) => { setGuardianId(event.target.value); setLearnerId(""); }} className={styles.select}>
+                      <option value="">{isTr ? "Hesap sahibi seçin" : "Select account holder"}</option>
+                      {guardians.map((item) => <option key={item.user_id} value={item.user_id}>{item.full_name} — {item.email}</option>)}
+                    </select>
+                    <select aria-label={isTr ? "Öğrenci" : "Learner"} value={learnerId} onChange={(event) => setLearnerId(event.target.value)} disabled={!guardianId} className={styles.select}>
+                      <option value="">{isTr ? "Öğrenci seçin" : "Select learner"}</option>
+                      {availableLearners.map((item) => <option key={item.id} value={item.id}>{item.full_name}</option>)}
+                    </select>
+                  </div>
                 </div>
               ) : null}
-              {selectedGuardian?.email ? (
-                <div className="rounded-xl border bg-surface-muted p-3">
-                  <dt className="text-[10px] text-muted-foreground">{isTr ? "E-posta" : "Email"}</dt>
-                  <dd className="mt-1 break-all text-xs font-semibold">{selectedGuardian.email}</dd>
+
+              <div className={styles.readonlyGrid}>
+                <div className={styles.readonly}>
+                  <span className={styles.ic}><UserRound size={16} aria-hidden="true" /></span>
+                  <div className={styles.tx}><div className={styles.k}>{isTr ? "Ad Soyad" : "Full name"}</div><div className={styles.v} title={selectedGuardian?.full_name || ""}>{selectedGuardian?.full_name || "—"}</div></div>
                 </div>
-              ) : null}
-            </dl>
-          </div>
-        ) : null}
-        
-        {!emailVerified ? (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:p-5">
-            <p className="text-xs font-bold text-amber-900 tracking-wider uppercase">
-              {isTr ? "E-posta Doğrulaması Gereklidir" : "Email Verification Required"}
-            </p>
-            <p className="mt-1.5 text-xs text-amber-800">
-              {isTr
-                ? "Ödeme yapabilmek için önce hesabınızdan e-posta adresinizi doğrulayınız."
-                : "Please verify your email address from your account before making a payment."}
-            </p>
-            <ButtonLink href={localizedPath("studentAccount", locale)} className="mt-3.5">
-              {isTr ? "Hesabıma Git" : "Go to My Account"}
-            </ButtonLink>
-          </div>
-        ) : (
-          <div className="mt-6">
-            <label className="block text-xs font-semibold text-ink" htmlFor="payment-phone">
-              {isTr ? "Ödeme Telefonu" : "Payment Phone"}
-              <input
-                id="payment-phone"
-                type="tel"
-                required
-                autoComplete="tel"
-                value={paymentPhone}
-                onChange={(event) => setPaymentPhone(event.target.value)}
-                placeholder={isTr ? "+90 5xx xxx xx xx" : "+1 xxx xxx xxxx"}
-                className="mt-1.5 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                <div className={styles.readonly}>
+                  <span className={styles.ic}><Mail size={16} aria-hidden="true" /></span>
+                  <div className={styles.tx}><div className={styles.k}>{isTr ? "E-posta" : "Email"}</div><div className={styles.v} title={selectedGuardian?.email || ""}>{selectedGuardian?.email || "—"}</div></div>
+                </div>
+              </div>
+
+              <label className={styles.fieldLabel} htmlFor="payment-phone">{isTr ? "Ödeme telefonu" : "Payment phone"}</label>
+              <div className={styles.phone} data-invalid={phoneError ? "true" : undefined}>
+                {isTr ? <span className={styles.prefix}>+90</span> : null}
+                <input
+                  ref={phoneInputRef}
+                  id="payment-phone"
+                  name="phone"
+                  type="tel"
+                  inputMode={isTr ? "numeric" : "tel"}
+                  autoComplete={isTr ? "tel-national" : "tel"}
+                  required
+                  value={isTr ? formatPaymentPhoneInput(paymentPhone) : paymentPhone}
+                  onChange={(event) => setPaymentPhone(isTr ? trPhoneInputDigits(event.target.value) : event.target.value)}
+                  onBlur={() => setPhoneTouched(true)}
+                  placeholder={isTr ? "5xx xxx xx xx" : "+44 7xxx xxx xxx"}
+                  maxLength={isTr ? 13 : 24}
+                  aria-invalid={phoneError ? true : undefined}
+                  aria-describedby="payment-phone-hint"
+                />
+              </div>
+              {phoneError ? <p role="alert" className={styles.fieldError}>{phoneError}</p> : null}
+              <p id="payment-phone-hint" className={styles.hint}>
+                {isTr
+                  ? "3D Secure doğrulaması için kullanılır; profilinize kaydedilmez."
+                  : "Used for 3D Secure verification; it is not saved to your profile."}
+              </p>
+            </section>
+
+            {/* 2. Kart */}
+            <section className={styles.card} aria-labelledby="pay-s2">
+              <div className={styles.stepHead}><span className={styles.stepNum}>2</span><h2 id="pay-s2" className={styles.h2}>{isTr ? "Kart ile ödeme" : "Pay by card"}</h2></div>
+              <HostedCardPanel
+                locale={locale}
+                packageIds={packageIds}
+                couponCode={checkoutCouponCode}
+                learnerId={learnerId}
+                guardianUserId={accountType === "admin" ? guardianId : undefined}
+                paymentPhone={phoneCheck.normalized}
+                contextReady={contextReady}
+                payLabel={payLabel}
+                pendingMessage={pendingMessage}
+                payButtonRef={setPayButton}
+                onIframeChange={setIframeOpen}
+                onOpenLegalDoc={setActiveModal}
+                onSessionResult={handleSessionResult}
               />
-            </label>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              {isTr
-                ? "3D Secure doğrulama kodu, bankanız tarafından bankanızda kayıtlı iletişim kanalınıza gönderilir."
-                : "Your bank sends the 3D Secure verification code to the contact channel registered with your bank."}
-            </p>
-            {paymentPhone.trim() && !isPhoneValid ? (
-              <p role="alert" className="mt-1.5 text-xs text-red-700">{phoneCheck.error}</p>
-            ) : null}
+            </section>
           </div>
-        )}
 
-        {currency === "TRY" && finalPrice > 0 ? (
-          <div className="mt-6 rounded-2xl border bg-surface-muted p-4">
-            <p className="flex items-center gap-2 text-xs font-semibold text-ink">
-              <CreditCard aria-hidden className="size-4 shrink-0 text-primary" />
-              {isTr ? "Taksitli Ödeme" : "Instalment Payment"}
-            </p>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-              {paytrInstallmentTableEnabled
-                ? isTr
-                  ? "Banka bazlı taksit seçenekleri ve taksit tutarları aşağıdaki tabloda PayTR tarafından listelenir. Taksitli ödemelerde bankanın vade farkı uygulanabilir; tablodaki tutarlar vade farkı dahildir. Taksit seçimini kart numaranızı girdikten sonra güvenli PayTR ödeme formunda yaparsınız."
-                  : "Instalment options and amounts by bank are listed by PayTR in the table below. Instalment payments may include the bank's financing cost; amounts in the table include it. You choose the instalment in the secure PayTR form after entering your card number."
-                : isTr
-                  ? "Kredi kartınıza uygun taksit seçenekleri (varsa), kart numaranızı girdikten sonra aşağıdaki güvenli PayTR ödeme formunda bankanıza göre listelenir. Taksitli ödemelerde bankanın vade farkı uygulanabilir."
-                  : "Instalment options available for your credit card (if any) are listed by your bank in the secure PayTR form below after you enter your card number. Instalment payments may include the bank's financing cost."}
-            </p>
-            <p className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 text-xs text-ink">
-              <span>{isTr ? "Tek çekim" : "Single payment"}</span>
-              <strong data-single-payment>{money(finalPrice, currency)}</strong>
-            </p>
-            {paytrInstallmentTableEnabled ? (
-              <details open className="mt-2 text-xs">
-                <summary className="cursor-pointer font-semibold text-primary">{isTr ? "Taksit tablosu" : "Instalment table"}</summary>
-                {couponState.status === "loading" ? null : (
-                  <PaytrInstallmentTable
-                    amountKurus={pricingBreakdown.finalTotalKurus}
-                    fallback={
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">
-                        {isTr
-                          ? "Taksit tablosu şu anda görüntülenemiyor. Taksit seçenekleri kart numaranızı girdikten sonra güvenli PayTR ödeme formunda listelenir."
-                          : "The instalment table is not available right now. Instalment options are listed in the secure PayTR form after you enter your card number."}
-                      </p>
-                    }
-                  />
+          {/* Özet */}
+          <aside className={styles.summary} aria-labelledby="pay-sum">
+            <div className={`${styles.card} ${styles.summaryCard}`}>
+              <div className={styles.sumGroup}>
+                <h2 id="pay-sum" className={styles.h2} style={{ marginBottom: 18 }}>{isTr ? "Sipariş özeti" : "Order summary"}</h2>
+                {selectedPackage ? (
+                  <>
+                    <div className={styles.item} data-summary-package={selectedPackage.id}>
+                      <div className={styles.badgeTile} aria-hidden="true"><b>{selectedPackage.lesson_count}</b><small>{isTr ? "DERS" : "LESSONS"}</small></div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className={styles.name}>{packageDisplayName(selectedPackage, locale)}</div>
+                        <div className={styles.priceRow}>
+                          <span className={styles.now}>{isTr ? money(basePrice) : displayPrice?.formatted}</span>
+                          {isTr && packageDiscount > 0 ? <span className={styles.strike}>{money(listPrice)}</span> : null}
+                        </div>
+                      </div>
+                    </div>
+                    {isTr && packageDiscount > 0 ? (
+                      <div className={styles.discount}>
+                        <Tag size={12} strokeWidth={2.4} aria-hidden="true" />
+                        %{packageDiscountPct} indirim · {money(packageDiscount)} avantaj
+                      </div>
+                    ) : null}
+                  </>
+                ) : packages.length ? (
+                  <label className={styles.k} style={{ display: "block" }}>
+                    {isTr ? "Eğitim paketi" : "Package"}
+                    <select
+                      value={directPackageId}
+                      onChange={(event) => { setDirectPackageId(event.target.value); }}
+                      className={styles.select}
+                      style={{ marginTop: 8 }}
+                    >
+                      <option value="">{isTr ? "Paket seçin" : "Select package"}</option>
+                      {packages.map((pkg) => (
+                        <option key={pkg.id} value={pkg.id}>
+                          {packageDisplayName(pkg, locale)} — {getLocalizedPackageDisplayPrice({ locale, tryAmount: pkg.current_total ?? pkg.price_amount, eurAmount: pkg.price_eur }).formatted}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <p role="alert" className={styles.notice}>{isTr ? "Şu anda satın alınabilir paket bulunmuyor." : "No packages are available for purchase right now."}</p>
                 )}
-              </details>
-            ) : null}
-          </div>
-        ) : null}
+              </div>
 
-        <div className="mt-6">
-          <HostedCardPanel
-            locale={locale}
-            packageIds={packageIds}
-            couponCode={checkoutCouponCode}
-            learnerId={learnerId}
-            guardianUserId={accountType === "admin" ? guardianId : undefined}
-            paymentPhone={phoneCheck.normalized}
-            contextReady={contextReady}
-            emailVerified={emailVerified}
-            onOpenLegalDoc={setActiveModal}
-            onSessionResult={handleSessionResult}
-          />
+              <div className={styles.sep} />
+
+              {/* İndirim kodu */}
+              <div>
+                {couponApplied ? (
+                  <div className={styles.couponChip} data-coupon-chip="">
+                    <span className={styles.code}><Check size={14} strokeWidth={2.6} aria-hidden="true" /><span>{couponState.rule?.code}</span></span>
+                    <button type="button" onClick={removeCoupon}>{isTr ? "Kaldır" : "Remove"}</button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={styles.couponToggle}
+                      aria-expanded={couponOpen}
+                      aria-controls="pay-coupon-form"
+                      onClick={() => {
+                        const next = !couponOpen;
+                        setCouponOpen(next);
+                        if (next) window.setTimeout(() => couponInputRef.current?.focus(), 0);
+                      }}
+                    >
+                      <Tag size={15} aria-hidden="true" />
+                      <span style={{ flex: 1 }}>{isTr ? "İndirim kodunuz mu var?" : "Have a discount code?"}</span>
+                      <ChevronDown size={15} className={styles.chev} aria-hidden="true" />
+                    </button>
+                    <form id="pay-coupon-form" className={styles.couponForm} hidden={!couponOpen} noValidate onSubmit={handleCouponSubmit}>
+                      <label htmlFor="pay-coupon-input" className={styles.srOnly}>{isTr ? "İndirim kodu" : "Discount code"}</label>
+                      <input
+                        ref={couponInputRef}
+                        id="pay-coupon-input"
+                        name="coupon"
+                        type="text"
+                        autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        placeholder={isTr ? "Kodu girin" : "Enter code"}
+                        maxLength={32}
+                        value={couponInput}
+                        onChange={(event) => {
+                          setCouponInput(event.target.value);
+                          // Hatalı koddan sonra yazmaya başlayınca hata temizlenir.
+                          if (couponCode && couponState.status !== "loading") setCouponCode("");
+                          setCouponNote("");
+                        }}
+                        aria-invalid={couponError ? true : undefined}
+                        aria-describedby="pay-coupon-msg"
+                      />
+                      <button type="submit" disabled={couponInput.trim().length < 3 || couponLoading || !packageIds.length}>
+                        {couponLoading ? (isTr ? "Kontrol ediliyor…" : "Checking…") : (isTr ? "Uygula" : "Apply")}
+                      </button>
+                    </form>
+                  </>
+                )}
+                <p id="pay-coupon-msg" className={`${styles.couponMsg} ${couponError ? styles.err : ""}`} role="status" aria-live="polite">{couponMessage}</p>
+              </div>
+
+              <div className={styles.sep} />
+              <div className={styles.lines}>
+                <div><span className={styles.k}>{isTr ? "Paket liste fiyatı" : "Package list price"}</span><span>{money(selectedPackage ? listPrice : 0)}</span></div>
+                {packageDiscount > 0 ? (
+                  <div><span className={styles.k}>{isTr ? "Paket indirimi" : "Package discount"}</span><span className={styles.minus}>−{money(packageDiscount)}</span></div>
+                ) : null}
+                {couponApplied ? (
+                  <div data-coupon-line=""><span className={styles.k}>{isTr ? "İndirim kodu" : "Discount code"} ({couponState.rule?.code})</span><span className={styles.minus}>−{money(couponDiscount)}</span></div>
+                ) : null}
+              </div>
+              <div className={styles.totalBox}>
+                <div className={styles.total}><span>{isTr ? "Ödenecek tutar" : "Amount due"}</span><span className={styles.totalV} data-amount="">{amountText}</span></div>
+                {!isTr ? <p className={styles.totalNote}>Displayed package prices are in EUR. Your payment will be processed in TRY.</p> : null}
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
-    </div>
-  </div>{activeModal ? <LegalModal isOpen onClose={() => setActiveModal(null)} docKey={activeModal} locale={locale} orderSnapshot={orderSnapshot} /> : null}</section>;
+
+      {/* Yalnızca telefonda görünür */}
+      <div className={`${styles.mobilePaybar} ${showPaybar ? "" : styles.hide}`} aria-hidden={showPaybar ? undefined : true}>
+        <div className={styles.amt}><small>{isTr ? "Ödenecek tutar" : "Amount due"}</small><b>{amountText}</b></div>
+        <button type="button" onClick={handleMobilePay} tabIndex={showPaybar ? undefined : -1}>
+          <LockKeyhole size={15} aria-hidden="true" />
+          {isTr ? "Ödemeye geç" : "Continue to payment"}
+        </button>
+      </div>
+
+      {activeModal ? <LegalModal isOpen onClose={() => setActiveModal(null)} docKey={activeModal} locale={locale} orderSnapshot={orderSnapshot} /> : null}
+    </section>
+  );
 }

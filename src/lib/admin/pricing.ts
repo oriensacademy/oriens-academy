@@ -176,6 +176,30 @@ export const CANONICAL_DEFAULT_PACKAGES: PublicPricingPackage[] = [
 ];
 
 /**
+ * Sitede ve ödeme ekranında satın alınabilir paketler: aktif, satın alınabilir
+ * ve en az bir dersi olan her paket. Sabit kimlik listesi yoktur; yönetim
+ * panelinden eklenen paket (ör. 40 derslik) pasife alınmadıkça görünür.
+ * Sıra: display_order → ders sayısı → kimlik.
+ */
+export function selectPurchasablePackages<T extends Pick<PublicPricingPackage, "id" | "active" | "purchase_mode" | "lesson_count" | "display_order">>(packages: T[]): T[] {
+  return packages
+    .filter((item) => item.active && item.purchase_mode === "purchasable" && Number(item.lesson_count ?? 0) > 0)
+    .sort((a, b) =>
+      a.display_order - b.display_order
+      || Number(a.lesson_count ?? 0) - Number(b.lesson_count ?? 0)
+      || a.id.localeCompare(b.id),
+    );
+}
+
+/** "En avantajlı" rozeti ikincil (alt) rozet stilini kullanır; sabit paket kimliğine bağlı değildir. */
+export function isBestValueBadge(item: Pick<PublicPricingPackage, "id" | "badge_tr" | "badge_en">): boolean {
+  const tr = item.badge_tr?.trim().toLocaleLowerCase("tr-TR") ?? "";
+  const en = item.badge_en?.trim().toLowerCase() ?? "";
+  if (tr.includes("avantajl") || en.includes("best value")) return true;
+  return item.id === "package30" && Boolean(tr || en);
+}
+
+/**
  * Fetches public pricing packages directly from Supabase at runtime.
  * Ensures runtime dynamism on static Next.js export builds without rebuild.
  */
@@ -209,7 +233,6 @@ export async function getPublicPricingPackages(): Promise<PublicPricingPackage[]
           ...pkg,
           price_amount: canonicalPrice,
           current_total: canonicalPrice,
-          purchase_mode: "purchasable",
         };
       });
     }

@@ -3,7 +3,6 @@ import { Inter, Manrope, Newsreader, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { CompassLoader } from "@/components/brand/CompassLoader";
 import { AccountProvider } from "@/lib/auth/account-context";
-import { CartProvider } from "@/lib/cart/cart-context";
 import { ToastProvider } from "@/components/ui/toast";
 import { RELEASE_VERSION } from "@/lib/release-version";
 
@@ -108,7 +107,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Google Tag Manager */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{document.documentElement.lang=location.pathname.split("/")[1]==="en"?"en":"tr";var th=localStorage.getItem("oriens-theme")||localStorage.getItem("oriens-theme-preview");if(th){document.documentElement.dataset.theme=th;}if(sessionStorage.getItem("oriens-loader-seen")==="1"||sessionStorage.getItem("oriens-language-transition")){document.documentElement.dataset.oriensLoaderSkip="1"}}catch(e){}`,
+            __html: `try{document.documentElement.lang=location.pathname.split("/")[1]==="en"?"en":"tr";localStorage.removeItem("oriens-theme");localStorage.removeItem("oriens-theme-preview");if(sessionStorage.getItem("oriens-loader-seen")==="1"||sessionStorage.getItem("oriens-language-transition")){document.documentElement.dataset.oriensLoaderSkip="1"}}catch(e){}`,
           }}
         />
       </head>
@@ -125,11 +124,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Google Tag Manager (noscript) */}
         <PublicSettingsProvider>
           <AccountProvider>
-            <CartProvider>
-              <ToastProvider>
-                <CompassLoader>{children}</CompassLoader>
-              </ToastProvider>
-            </CartProvider>
+            <ToastProvider>
+              <CompassLoader>{children}</CompassLoader>
+            </ToastProvider>
           </AccountProvider>
         </PublicSettingsProvider>
       </body>

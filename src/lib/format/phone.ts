@@ -35,6 +35,19 @@ export function formatTrPhoneInput(digits: string): string {
   return `(${d.slice(0, 3)}${d.length > 3 ? `) ${d.slice(3, 6)}` : ""}${d.length > 6 ? ` ${d.slice(6, 8)}` : ""}${d.length > 8 ? ` ${d.slice(8, 10)}` : ""}`;
 }
 
+/** Veli telefonu alanı (+90 XXX XXX XX XX): alandaki "+90" önekini ülke kodu sayar, en fazla 10 hane. */
+export function guardianPhoneInputDigits(value: string | null | undefined): string {
+  const raw = String(value ?? "").trim();
+  return trPhoneInputDigits(raw.startsWith("+90") ? raw.slice(3) : raw);
+}
+
+/** Veli telefonu alanı: +90 XXX XXX XX XX — yazılırken kısmi biçim. */
+export function formatTrGuardianPhoneInput(value: string | null | undefined): string {
+  const d = trPhoneInputDigits(value);
+  if (!d) return "";
+  return ["+90", d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10)].filter(Boolean).join(" ");
+}
+
 /** Panel gösterimi: +90 (XXX) XXX XX XX. Biçimlenemeyen değer olduğu gibi gösterilir. */
 export function formatTrPhoneDisplay(value: string | null | undefined): string {
   const digits = normalizeTrPhone(value);
@@ -68,4 +81,15 @@ export function normalizeStudentPhone(value: string | null | undefined): string 
   if (/^90[1-9]\d{9}$/.test(digits)) return digits;
   if (/^[1-9]\d{10,14}$/.test(digits) && !digits.startsWith("90")) return digits;
   return undefined;
+}
+
+/** Ödeme sayfası 3D Secure telefonu (+90 sabit önek): 5XX XXX XX XX — yazılırken kısmi biçim. Profile kaydedilmez. */
+export function formatPaymentPhoneInput(value: string | null | undefined): string {
+  const d = trPhoneInputDigits(value);
+  return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10)].filter(Boolean).join(" ");
+}
+
+/** Ödeme telefonu geçerliliği: Türkiye cep numarası, 10 hane, 5 ile başlar. */
+export function isValidPaymentPhoneDigits(digits: string | null | undefined): boolean {
+  return /^5\d{9}$/.test(digits ?? "");
 }

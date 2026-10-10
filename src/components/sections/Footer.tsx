@@ -4,7 +4,6 @@ import { MessageSquare, Phone, Mail, MapPin } from "lucide-react";
 import { FaInstagram } from "react-icons/fa6";
 import Link from "next/link";
 import Image from "next/image";
-import { ThemeSelector } from "@/components/theme/ThemeSelector";
 import { useLocale } from "@/content/locale-context";
 import {
   localizedPath,
@@ -184,7 +183,6 @@ export function Footer() {
             <p className="text-[11px] whitespace-nowrap">
               &copy; 2026 Oriens Academy. {isTr ? "Tüm hakları saklıdır." : "All rights reserved."}
             </p>
-            <ThemeSelector locale={locale} />
           </div>
         </div>
       }

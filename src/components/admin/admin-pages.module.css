@@ -707,12 +707,6 @@
 .root :global(.fx-amt) b{display:block;font-size:15px;font-weight:700;white-space:nowrap}
 .root :global(.fx-amt) s{font-size:12px;color:var(--faint)}
 .root :global(.fx-amt) small{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gold-text);font-weight:700}
-.root :global(.fx-ref){display:flex;align-items:center;gap:6px}
-.root :global(.fx-ref) code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#1C231E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.root :global(.fx-copy){flex-shrink:0;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
-.root :global(.fx-copy):hover{color:var(--green);background:var(--soft)}
-.root :global(.fx-refund){margin-top:6px;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:#fff;color:#1C231E;font-size:13px;font-weight:700;cursor:pointer}
-.root :global(.fx-refund):hover{background:#FBECEA;border-color:#EBC4BD;color:#9A3324}
 .root :global(.fx-sum){display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 16px;border-radius:14px;background:var(--soft)}
 .root :global(.fx-sum) span{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted);font-weight:600}
 .root :global(.fx-sum) b{font-size:15px;color:var(--text)}
@@ -799,8 +793,6 @@
 .root :global(.fx-price) :global(.fx-muted){white-space:normal;font-weight:600}
 .root :global(.m-field)[hidden]{display:none}
 .root:global(#view-fiyat) :global(.wrap){max-width:1120px}
-.root:global(#view-odeme) :global(.fx-ref) code{white-space:normal;word-break:break-all;line-height:1.35}
-.root:global(#view-odeme) :global(.fx-ref){align-items:flex-start}
 .root:global(#view-odeme) :global(.fx-table) th:not(:first-child), .root:global(#view-odeme) :global(.fx-table) td:not(:first-child){padding-left:12px;padding-right:12px}
 .root:global(#view-odeme) :global(.fx-table) td:nth-child(2){white-space:nowrap}
 .root:global(#view-mali) :global(.fx-table) td:nth-child(2){white-space:nowrap}
@@ -812,7 +804,7 @@
 .root:global(#view-odeme) :global(.od-c){text-align:right;color:#9AA09B}
 .root:global(#view-odeme) :global(.od-chev){transition:transform .2s}
 .root:global(#view-odeme) tr:global(.od-row)[aria-expanded="true"] :global(.od-chev){transform:rotate(180deg);color:var(--green)}
-.root:global(#view-odeme) tr:global(.od-det) td{padding:0 20px 16px 24px;background:#FAF9F5}
+.root:global(#view-odeme) tr:global(.od-det) td{padding:0 0 16px;background:#FAF9F5}
 .root:global(#view-odeme) tr:global(.od-det)[hidden]{display:none}
 .root:global(#view-odeme) tr:global(.od-det):hover{background:#FAF9F5}
 .root:global(#view-mali) tr:global(.od-row){cursor:pointer}
@@ -825,20 +817,30 @@
 .root:global(#view-mali) tr:global(.od-det) td{padding:0 20px 16px 24px;background:#FAF9F5}
 .root:global(#view-mali) tr:global(.od-det)[hidden]{display:none}
 .root:global(#view-mali) tr:global(.od-det):hover{background:#FAF9F5}
-.root :global(.od-box){display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:14px 16px;border-radius:14px;background:#fff;border:1px solid var(--line)}
-.root :global(.od-dl){display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px 24px;margin:0;flex:1}
-.root :global(.od-dl) > div{min-width:0}
-.root :global(.od-dl) dt{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px}
-.root :global(.od-dl) dd{margin:0;font-size:14px;word-break:break-word}
-.root :global(.od-dl) :global(.fx-ref) code{white-space:nowrap !important;overflow:visible;font-family:inherit;font-size:14px;color:inherit}
-.root :global(.od-box) :global(.fx-refund){margin-top:0;flex-shrink:0}
+/* Ödeme ayrıntısı: tablo ile aynı sütun oranları (COLUMN_WIDTHS) — kutu tablo genişliğini kaplar,
+   alanlar başlık sütunlarının metin başlangıcına hizalanır. */
+.root :global(.od-box){position:relative;display:grid;grid-template-columns:var(--od-cols);row-gap:10px;align-items:center;padding:14px 0}
+.root :global(.od-box)::before{content:"";position:absolute;inset:0 8px;border-radius:14px;background:#fff;border:1px solid var(--line);pointer-events:none}
+.root :global(.od-f), .root :global(.od-act){position:relative;min-width:0;padding:0 12px}
+.root :global(.od-f1){padding-left:24px}
+.root :global(.od-ref){grid-column:span 2}
+.root :global(.od-wide){grid-column:1 / 6}
+.root :global(.od-k){display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px}
+.root :global(.od-v){display:block;font-size:14px;color:#1C231E;overflow-wrap:anywhere}
+.root :global(.od-act){display:flex;justify-content:flex-end;padding-right:20px}
+.root :global(.od-refund){position:relative;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(16,39,27,.08);transition:background .15s,color .15s,border-color .15s}
+.root :global(.od-refund):hover, .root :global(.od-refund):focus-visible{background:#FBECEA;border-color:#EBC4BD;color:#9A3324}
+.root :global(.od-refund):focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.root :global(.od-refund):disabled{opacity:.5;cursor:not-allowed}
+.root :global(.od-refund)::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 8px);padding:5px 9px;border-radius:8px;background:#10271B;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .15s,transform .15s}
+.root :global(.od-refund):hover::after, .root :global(.od-refund):focus-visible::after{opacity:1;transform:none}
 .root:global(#view-odeme) :global(.tools) :global(.search), .root:global(#view-mali) :global(.tools) :global(.search){flex:1.6 1 300px}
 .root:global(#view-odeme) :global(.tools) label:not(:global(.search)), .root:global(#view-mali) :global(.tools) label:not(:global(.search)){flex:1 1 150px}
 .root :global(.fx-ogr){color:inherit;text-decoration:underline;text-decoration-color:#CFCBBE;text-underline-offset:2px}
 .root :global(.fx-ogr):hover{color:var(--green);text-decoration-color:var(--gold)}
 .root :global(.fx-mix){padding:20px 24px 22px}
 .root :global(.fx-mix-h){display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
-.root :global(.fx-mix-h) span{font-size:13px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:999px;background:var(--soft);border:1px solid var(--line);white-space:nowrap}
+.root :global(.fx-mix-h) > span{font-size:13px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:999px;background:var(--soft);border:1px solid var(--line);white-space:nowrap}
 .root :global(.fx-mix-bars){display:grid !important;grid-template-columns:max-content max-content minmax(80px,1fr) max-content max-content;column-gap:20px;row-gap:12px;align-items:center}
 .root :global(.fx-mix-bars) :global(.fx-bar){display:contents}
 .root :global(.fx-bar) > span:first-child{white-space:nowrap;font-size:14px}
@@ -888,7 +890,7 @@
 .root :global(.fx-table) td{font-size:14px}
 .root :global(.fx-who) b, .root :global(.fx-name) b{font-size:15px;font-weight:700}
 .root :global(.fx-who) small, .root :global(.fx-name) small, .root :global(.fx-date) small, .root :global(.fx-amt) small, .root :global(.fx-use) small{font-size:13px}
-.root :global(.fx-name) small, .root :global(.fx-id), .root :global(.fx-ref) code{font-size:12px}
+.root :global(.fx-name) small, .root :global(.fx-id){font-size:12px}
 .root :global(.fx-bar) small{font-size:12px}
 .root :global(.fx-tag){font-size:12px}
 .root :global(.m-lab){font-size:13px}
@@ -1478,10 +1480,11 @@
 @keyframes twBlink2{0%,100%{opacity:1}50%{opacity:.45}}
 .root :global(.be-top){margin:-8px 0 0 !important;padding:12px 0 !important}
 @media (max-width:900px){
-  .root :global(.od-box){align-items:stretch;flex-direction:column}
-  .root :global(.od-dl){grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  .root :global(.od-box){grid-template-columns:repeat(2,minmax(0,1fr))}
+  .root :global(.od-f), .root :global(.od-f1){padding:0 24px}
+  .root :global(.od-ref), .root :global(.od-wide), .root :global(.od-act){grid-column:1 / -1}
 }
-@media (max-width:560px){.root :global(.od-dl){grid-template-columns:1fr}}
+@media (max-width:560px){.root :global(.od-box){grid-template-columns:1fr}}
 .root :global(.be-main){min-height:calc(100vh - 72px - 120px)}
 .root :global(.be-pane):not([hidden]){display:flex;flex-direction:column;gap:14px;flex:1}
 .root :global(.be-pane) :global(.be-addbig):not([hidden]){flex:1;justify-content:center;min-height:220px}

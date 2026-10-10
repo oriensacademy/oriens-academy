@@ -33,9 +33,10 @@ async function runVerification() {
   const pricingTr = await checkUrl("https://oriens-academy.com/tr/ucretler", "TR Pricing Page");
   assert.ok(pricingTr.includes("Paket") || pricingTr.includes("Fiyatlandırma") || pricingTr.includes("Danışmanlık"), "Pricing page rendered");
 
-  // 3. Check Cart Route
-  const cartTr = await checkUrl("https://oriens-academy.com/tr/sepet", "TR Cart Page");
-  assert.ok(cartTr.includes("Sepet") || cartTr.includes("Paket"), "Cart page rendered");
+  // 3. Sepet kaldırıldı: eski adres ücretler sayfasına 301 ile yönlenir.
+  const cartRedirect = await fetch("https://oriens-academy.com/tr/sepet/", { redirect: "manual" });
+  assert.equal(cartRedirect.status, 301, "Old cart URL must 301");
+  assert.ok((cartRedirect.headers.get("location") || "").endsWith("/tr/ucretler/"), "Old cart URL must redirect to pricing");
 
   // 4. Check Exam Hub
   const examsTr = await checkUrl("https://oriens-academy.com/tr/sinavlar", "TR Exams Hub");

@@ -380,7 +380,7 @@ export const CHANGE_FIELD_LABELS: Record<string, string> = {
   full_name: "Ad soyad", phone: "Telefon", email: "E-posta", school: "Okul", target_country: "Hedef ülke",
   target_university: "Hedef üniversite", target_exam: "Hedef sınav", target_exams: "Hedef sınavlar",
   target_countries: "Hedef ülkeler", education_program: "Program", exams_taken: "Girilen sınavlar",
-  grade_level: "Sınıf", contact_guardian_name: "Veli adı", preferred_language: "Dil", active: "Durum",
+  grade_level: "Sınıf", contact_guardian_name: "Veli adı", contact_guardian_phone: "Veli telefonu", preferred_language: "Dil", active: "Durum",
   archived_at: "Arşiv tarihi", contact_address: "Adres", email_verified_at: "E-posta doğrulama",
   title: "Başlık", subject: "Ders", exam_code: "Sınav", lesson_date: "Ders tarihi", duration_minutes: "Süre (dk)",
   status: "Durum", topic_id: "Konu", instructor_id: "Eğitmen", package_purchase_id: "Paket",

@@ -11,7 +11,6 @@ import { AssessmentPage } from "@/components/assessment/AssessmentPage";
 import { LegalPage } from "@/components/legal/LegalPage";
 import { ExamTestPage } from "@/components/exam-test/ExamTestPage";
 import { PaymentPage } from "@/components/payment/PaymentPage";
-import { CartPage } from "@/components/cart/CartPage";
 import { StudentPortal } from "@/components/student/StudentPortal";
 import { UnifiedLoginPage } from "@/components/auth/UnifiedLoginPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
@@ -27,7 +26,6 @@ import {
   aboutSegment,
   assessmentSegment,
   bookingSegment,
-  cartSegment,
   changePasswordSegment,
   contactSegment,
   cookiePolicySegment,
@@ -64,7 +62,6 @@ export function generateStaticParams({ params }: { params: { lang: string } }) {
         { examHub: assessmentSegment(params.lang) },
         { examHub: examTestSegment(params.lang) },
         { examHub: paymentSegment(params.lang) },
-        { examHub: cartSegment(params.lang) },
         { examHub: studentAccountSegment(params.lang) },
         { examHub: unifiedLoginSegment(params.lang) },
         { examHub: forgotPasswordSegment(params.lang) },
@@ -100,7 +97,6 @@ export async function generateMetadata({
   const isAssessment = examHub === assessmentSegment(lang);
   const isExamTest = examHub === examTestSegment(lang);
   const isPayment = examHub === paymentSegment(lang);
-  const isCart = examHub === cartSegment(lang);
   const isStudentAccount = examHub === studentAccountSegment(lang);
   const isLogin = examHub === unifiedLoginSegment(lang);
   const isForgotPassword = examHub === forgotPasswordSegment(lang);
@@ -124,7 +120,6 @@ export async function generateMetadata({
     !isAssessment &&
     !isExamTest &&
     !isPayment &&
-    !isCart &&
     !isStudentAccount &&
     !isLogin &&
     !isForgotPassword &&
@@ -182,18 +177,6 @@ export async function generateMetadata({
       alternates: {
         canonical: localizedPath("studentAccount", lang),
         languages: { tr: localizedPath("studentAccount", "tr"), en: localizedPath("studentAccount", "en") },
-      },
-    };
-  }
-
-  if (isCart) {
-    const title = lang === "tr" ? "Sepetim | Oriens Academy" : "My Cart | Oriens Academy";
-    return {
-      title,
-      robots: { index: false, follow: false },
-      alternates: {
-        canonical: localizedPath("cart", lang),
-        languages: { tr: localizedPath("cart", "tr"), en: localizedPath("cart", "en") },
       },
     };
   }
@@ -359,7 +342,6 @@ export default async function TopLevelHubPage({
   const isAssessment = examHub === assessmentSegment(lang);
   const isExamTest = examHub === examTestSegment(lang);
   const isPayment = examHub === paymentSegment(lang);
-  const isCart = examHub === cartSegment(lang);
   const isStudentAccount = examHub === studentAccountSegment(lang);
   const isLogin = examHub === unifiedLoginSegment(lang);
   const isForgotPassword = examHub === forgotPasswordSegment(lang);
@@ -383,7 +365,6 @@ export default async function TopLevelHubPage({
     !isAssessment &&
     !isExamTest &&
     !isPayment &&
-    !isCart &&
     !isStudentAccount &&
     !isLogin &&
     !isForgotPassword &&
@@ -429,8 +410,6 @@ export default async function TopLevelHubPage({
           <Suspense fallback={<AccountWaveLoader />}>
             <PaymentPage />
           </Suspense>
-        ) : isCart ? (
-          <CartPage />
         ) : isStudentAccount ? (
           <Suspense fallback={<AccountWaveLoader />}>
             <StudentPortal />

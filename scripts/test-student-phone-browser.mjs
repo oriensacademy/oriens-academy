@@ -270,7 +270,8 @@ try {
     for (const key of ["back", "wa", "edit"]) assert.ok(m[key].x >= 0 && m[key].r <= m.vw, `${width}: ${key} ekranda`);
     assert.ok(m.wa.r <= m.edit.x + 1 && Math.abs(m.wa.y - m.edit.y) < 2, `${width}: WhatsApp, Bilgileri Düzenle'nin solunda`);
     assert.equal(m.actionsInHero, true, `${width}: aksiyonlar header kartında`);
-    assert.match(m.metadata, /IELEV Lisesi.*Mezun.*IB Diploma.*Veli son giriş/, `${width}: gerçek header metadata`);
+    assert.match(m.metadata, /IELEV Lisesi.*Mezun.*IB Diploma/, `${width}: gerçek header metadata`);
+    assert.doesNotMatch(m.metadata, /Veli son giriş/, `${width}: PDF-16 header'da veli son giriş yok`);
     assert.match(m.accent, /linear-gradient/, `${width}: green-gold accent`);
     assert.equal(m.tabIcons, 4, `${width}: dört tab ikonu`);
     assert.notEqual(m.tabBackground, "rgba(0, 0, 0, 0)", `${width}: tab background`);
@@ -299,8 +300,9 @@ try {
     await pb.waitFor({ timeout: 15_000 });
     const pm = await pb.evaluate((el) => ({ children: el.children.length, now: el.getAttribute("aria-valuenow"), ratio: el.firstElementChild.getBoundingClientRect().width / el.getBoundingClientRect().width, docW: document.documentElement.scrollWidth, vw: innerWidth }));
     assert.equal(pm.children, 1, "Paket: tek parça çizgi");
-    assert.equal(pm.now, "6");
-    assert.ok(Math.abs(pm.ratio - 0.6) < 0.01, `Paket: %60 (${pm.ratio})`);
+    // PDF-21: paket sekmesinde dolu kısım kullanılan ders oranı (10 dersten 4 kullanıldı).
+    assert.equal(pm.now, "4");
+    assert.ok(Math.abs(pm.ratio - 0.4) < 0.01, `Paket: kullanılan %40 (${pm.ratio})`);
     assert.ok(pm.docW <= pm.vw, `${width}: paket sekmesi taşma yok`);
     await shot(page, `package-tab-${width}`);
     results.layout[width] = { academic: `${Math.round(m.card.w)}x${Math.round(m.card.h)}`, grid: `${Math.round(m.grid.w)}x${Math.round(m.grid.h)}`, package: `${Math.round(m.pkg.w)}x${Math.round(m.pkg.h)}`, cols: m.cols, bar: `${Math.round(m.bar.ratio * 100)}%`, packageTab: `${Math.round(pm.ratio * 100)}%`, wa: Math.round(m.wa.w) };

@@ -7,12 +7,12 @@ import { useLocale } from "@/content/locale-context";
 
 // The fixed mobile contact dock (bottom-6 right-6) is a viewport-corner
 // overlay -- it stays in the same spot regardless of scroll position, so on
-// the critical mobile conversion routes (register, cart, payment) it can sit
+// the critical mobile conversion routes (register, payment) it can sit
 // directly on top of the last form field or CTA at small viewports, and on
 // the student account area it collides with the fixed mobile bottom tab bar.
 // The desktop side-dock is unaffected; contact info stays reachable from the
 // footer/navbar on these pages either way.
-const MOBILE_DOCK_HIDDEN_SEGMENTS = ["giris", "login", "sepet", "cart", "odeme", "payment", "hesabim", "account"];
+const MOBILE_DOCK_HIDDEN_SEGMENTS = ["giris", "login", "odeme", "payment", "hesabim", "account"];
 
 export function SocialLinks() {
   const CONTACT = useSiteContact();

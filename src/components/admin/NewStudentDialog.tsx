@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { adminCreateStudent, listStudentGradeOptions, type StudentGradeOption } from "@/lib/admin/students";
 import { normalizeStudentPhone } from "@/lib/format/phone";
-import { AdminTrPhoneInput } from "@/components/admin/AdminTrPhoneInput";
+import { AdminGuardianPhoneInput, AdminTrPhoneInput } from "@/components/admin/AdminTrPhoneInput";
 import pages from "./admin-pages.module.css";
 
 // Referans "Yeni Öğrenci" (#yo-dialog). Kayıt tek RPC ile açılır
@@ -15,8 +15,8 @@ import pages from "./admin-pages.module.css";
 // tanımlamanın kanonik bir sunucu akışı bulunmuyor ve ödeme / paket hakkı
 // mantığına dokunulmuyor. Paket, öğrencinin satın alma akışından gelir.
 
-type Form = { ad: string; okul: string; sinif: string; program: string; veli: string; tel: string; eposta: string };
-const EMPTY_FORM: Form = { ad: "", okul: "", sinif: "", program: "", veli: "", tel: "", eposta: "" };
+type Form = { ad: string; okul: string; sinif: string; program: string; veli: string; veliTel: string; tel: string; eposta: string };
+const EMPTY_FORM: Form = { ad: "", okul: "", sinif: "", program: "", veli: "", veliTel: "", tel: "", eposta: "" };
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function newRequestId(): string {
@@ -33,7 +33,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
   const savingRef = useRef(false);
   const [requestId] = useState(newRequestId);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
-  const [errors, setErrors] = useState<{ ad?: boolean; tel?: boolean; eposta?: boolean }>({});
+  const [errors, setErrors] = useState<{ ad?: boolean; tel?: boolean; veliTel?: boolean; eposta?: boolean }>({});
   const [saving, setSaving] = useState(false);
   const [serverError, setServerError] = useState("");
   const [grades, setGrades] = useState<StudentGradeOption[]>([]);
@@ -55,7 +55,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
 
   const set = (key: keyof Form, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
-    if (key === "ad" || key === "tel" || key === "eposta") setErrors((current) => (current[key] ? { ...current, [key]: false } : current));
+    if (key === "ad" || key === "tel" || key === "veliTel" || key === "eposta") setErrors((current) => (current[key] ? { ...current, [key]: false } : current));
     setServerError("");
   };
 
@@ -64,9 +64,10 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
     const ad = form.ad.trim().replace(/\s+/g, " ");
     const eposta = form.eposta.trim();
     const phone = normalizeStudentPhone(form.tel);
-    const next = { ad: !ad, tel: phone === undefined, eposta: Boolean(eposta) && !EMAIL_RE.test(eposta) };
+    const guardianPhone = normalizeStudentPhone(form.veliTel);
+    const next = { ad: !ad, tel: phone === undefined, veliTel: guardianPhone === undefined, eposta: Boolean(eposta) && !EMAIL_RE.test(eposta) };
     setErrors(next);
-    if (next.ad || next.tel || next.eposta) return;
+    if (next.ad || next.tel || next.veliTel || next.eposta) return;
     savingRef.current = true;
     setSaving(true);
     const result = await adminCreateStudent({
@@ -76,6 +77,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
       gradeLevel: form.sinif,
       educationProgram: form.program,
       guardianName: form.veli,
+      guardianPhone: guardianPhone ?? "",
       phone: phone ?? "",
       email: eposta,
     });
@@ -116,6 +118,7 @@ export function NewStudentDialog({ programs, onClose, onCreated }: {
             <section className="fx-sec"><h3 className="fx-sh">Veli</h3>
               <div className="fx-grid">
                 <div className="m-field"><label htmlFor="yo-veli" className="m-lab">Veli ad soyad</label><input id="yo-veli" className="m-input" placeholder="Boşsa iletişim öğrenciye ait sayılır" maxLength={100} value={form.veli} onChange={(event) => set("veli", event.target.value)} /></div>
+                <div className={`m-field${errors.veliTel ? " fx-err" : ""}`}><label htmlFor="yo-veli-tel" className="m-lab">Telefon</label><AdminGuardianPhoneInput id="yo-veli-tel" value={form.veliTel} invalid={errors.veliTel} describedBy={errors.veliTel ? "yo-veli-tel-err" : undefined} onChange={(value) => set("veliTel", value)} />{errors.veliTel ? <small id="yo-veli-tel-err" className="yo-hint" style={{ color: "#9A3324" }}>Geçerli bir veli telefonu girin.</small> : null}</div>
                 <div className={`m-field${errors.eposta ? " fx-err" : ""}`} style={{ gridColumn: "1/-1" }}><label htmlFor="yo-eposta" className="m-lab">E-posta</label><input id="yo-eposta" className="m-input" type="email" placeholder="ornek@mail.com" maxLength={254} value={form.eposta} onChange={(event) => set("eposta", event.target.value)} /><small className="yo-hint">Ders raporları ve bildirimler bu adrese gönderilir.</small></div>
               </div>
             </section>

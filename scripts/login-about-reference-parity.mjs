@@ -48,15 +48,15 @@ for (const [name, url] of selected) {
         assert.equal(await page.locator("aside li").count(), 4);
         if (width === 390 || width === 1440) {
           await page.getByRole("tab", { name: "Kayıt Ol", exact: true }).click();
-          assert.equal((await page.locator("h1").first().textContent())?.trim(), "Veli hesabı oluşturun");
-          assert.equal(await page.locator("#register-password").getAttribute("minlength"), "6");
+          assert.equal((await page.locator("h1:visible").first().textContent())?.trim(), "Veli hesabı oluşturun");
+          assert.equal(await page.locator("#r-pass").getAttribute("minlength"), "6");
           await page.screenshot({ path: `${outputDirectory}/${name}-register-${width}.png`, fullPage: true });
         }
       } else {
         assert.equal(metrics.title, "Oriens Academy ile tanışın.");
         assert.equal(metrics.sections, 4);
         assert.equal(await page.locator("main section").nth(1).locator("li").count(), 6);
-        assert.equal(await page.locator("main section").nth(2).locator("article").count(), 9);
+        assert.equal(await page.locator("main section").nth(2).locator("h3").count(), 9);
         assert.equal(await page.locator("main section").nth(3).locator("li").count(), 4);
       }
     }

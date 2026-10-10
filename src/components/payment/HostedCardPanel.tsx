@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, FileCheck2, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowRight, Check, Loader2, LockKeyhole, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
-import { getPaymentCopy } from "@/content/payment";
 import { confirmPaymentAgreements, createPaytrToken, recordPaymentClientEvent } from "@/lib/payments/client";
 import { localizedPath, paymentSuccessPath, unifiedLoginPath } from "@/lib/routes";
 import { paymentErrorMessage, paymentErrorRequiresLogin } from "@/lib/payments/public-errors";
 import { LEGAL_VERSIONS } from "@/config/legal";
 import type { LegalDocKey } from "@/config/legal";
+import styles from "./payment.module.css";
 
 interface ErrorState {
   message: string;
@@ -29,7 +29,14 @@ interface HostedCardPanelProps {
   guardianUserId?: string;
   paymentPhone: string;
   contextReady: boolean;
-  emailVerified?: boolean;
+  /** Buton metni: "15.000 TL öde" (sıfır tutarda "Siparişi tamamla"). */
+  payLabel: string;
+  /** Bağlam hazır değilken durum satırı (ör. telefon bekleniyor). */
+  pendingMessage: string;
+  /** Mobil alt ödeme çubuğu bu butonu izler ve tetikler. */
+  payButtonRef?: (element: HTMLButtonElement | null) => void;
+  /** PayTR iframe'i açıldığında/kapandığında bildirilir. */
+  onIframeChange?: (open: boolean) => void;
   locale: Locale;
   onOpenLegalDoc: (key: LegalDocKey) => void;
   /** Denetim kaydı için ödeme oturumu sonucu (yalnız bilgi; akışı etkilemez). */
@@ -43,7 +50,7 @@ export interface PaymentSessionResult {
 }
 
 /**
- * The single "Ödemeye Geç" action is the legal acceptance: no checkboxes,
+ * The single pay button ("15.000 TL öde") action is the legal acceptance: no checkboxes,
  * no separate confirmation step. One click runs, in order: create the PayTR
  * session (the edge function commits legal-acceptance metadata to the new
  * payment_transactions row BEFORE it ever calls PayTR's API -- see
@@ -58,12 +65,14 @@ export function HostedCardPanel({
   guardianUserId,
   paymentPhone,
   contextReady,
-  emailVerified = true,
+  payLabel,
+  pendingMessage,
+  payButtonRef,
+  onIframeChange,
   locale,
   onOpenLegalDoc,
   onSessionResult,
 }: HostedCardPanelProps) {
-  const copy = getPaymentCopy(locale);
   const router = useRouter();
   const isTr = locale === "tr";
 
@@ -172,6 +181,11 @@ export function HostedCardPanel({
   }, [contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onSessionResult, packageIds, paymentPhone, router]);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const iframeOpen = Boolean(prepared?.token);
+
+  useEffect(() => {
+    onIframeChange?.(iframeOpen);
+  }, [iframeOpen, onIframeChange]);
 
   // Safe server-side audit logging when iframe mounts
   useEffect(() => {
@@ -226,29 +240,11 @@ export function HostedCardPanel({
   }, [prepared?.token]);
 
   return (
-    <div className="space-y-4">
-      {!contextReady ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#819586]/40 bg-[#F6F8F3] p-8 text-center sm:p-10">
-          <FileCheck2 className="size-7 text-[#10271B]" />
-          <h3 className="mt-4 font-heading text-base font-semibold text-[#10271B]">
-            {!packageIds.length
-              ? (isTr ? "Paket Seçimi Bekleniyor" : "Package Selection Pending")
-              : !emailVerified
-                ? (isTr ? "E-posta Doğrulaması Bekleniyor" : "Email Verification Pending")
-                : (isTr ? "Ödeme Bilgileri Bekleniyor" : "Payment Information Pending")}
-          </h3>
-          <p className="mt-2 max-w-md text-xs leading-relaxed text-[#68756C]">
-            {!packageIds.length
-              ? (isTr ? "Ödemeye devam etmek için lütfen bir eğitim paketi seçiniz." : "Please select an academic package to proceed.")
-              : !emailVerified
-                ? (isTr ? "Kart ile ödeme formunun açılması için lütfen yukarıdaki alandan e-posta adresinizi doğrulayınız." : "Please verify your email address above to proceed with card payment.")
-                : (isTr ? "Ödemeye devam etmek için lütfen sipariş ve iletişim adımlarını tamamlayınız." : "Please complete the required order and contact steps to proceed.")}
-          </p>
-        </div>
-      ) : prepared?.token ? (
-        <div className="rounded-2xl border border-border bg-white shadow-xs">
+    <div>
+      {prepared?.token ? (
+        <div className={styles.iframeBox}>
           {/*
-            PayTR'nin ödeme formu (kart alanları + taksit tablosu + "Ödemeyi
+            PayTR'nin ödeme formu (kart alanları + taksit seçenekleri + "Ödemeyi
             Tamamla" butonu) sabit bir yüksekliğe sığmaz. Önceki sürümde iframe
             `scrolling="no"` ile sabit yükseklikteydi ve dıştaki kap
             `overflow-hidden` idi: formun altı -- yani ödemeyi tamamlayan buton
@@ -270,7 +266,6 @@ export function HostedCardPanel({
             id="paytriframe"
             title="PayTR Secure Payment"
             src={`https://www.paytr.com/odeme/guvenli/${prepared.token}`}
-            className="w-full rounded-2xl border-0"
             scrolling="auto"
             style={{ minHeight: "850px", width: "100%" }}
           />
@@ -280,8 +275,8 @@ export function HostedCardPanel({
             gecersiz" der. Bu buton kullaniciyi cikmaza birakmaz: tek tikla
             yepyeni bir odeme oturumu baslatilir.
           */}
-          <div className="border-t border-border p-3 text-center">
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <div className={styles.iframeFoot}>
+            <p>
               {isTr
                 ? "Ödeme formu yüklenmediyse veya \"bu ödeme sayfası geçersiz\" uyarısı görüyorsanız:"
                 : "If the payment form did not load, or you see an \"invalid payment page\" warning:"}
@@ -294,19 +289,35 @@ export function HostedCardPanel({
                 void handleProceedToPayment();
               }}
               disabled={starting}
-              className="mt-2 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-white px-4 text-xs font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60"
+              className={styles.ghostBtn}
             >
-              {starting ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+              {starting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
               {isTr ? "Yeni Ödeme Oturumu Başlat" : "Start a New Payment Session"}
             </button>
           </div>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className={`${styles.payBox} ${contextReady ? styles.ready : ""}`} data-pay-box="">
+          {/* Görsel önizleme; gerçek kart alanları PayTR formunda. */}
+          <div className={styles.skeleton} aria-hidden="true">
+            <div className={styles.skField}><span>{isTr ? "Kart numarası" : "Card number"}</span><i>•••• •••• •••• ••••</i></div>
+            <div className={styles.skRow}>
+              <div className={styles.skField}><span>{isTr ? "Son kullanma" : "Expiry"}</span><i>{isTr ? "AA / YY" : "MM / YY"}</i></div>
+              <div className={styles.skField}><span>CVC</span><i>•••</i></div>
+            </div>
+          </div>
+          <div className={styles.payStatus}>
+            <span className={styles.ic}><LockKeyhole size={14} aria-hidden="true" /></span>
+            <p aria-live="polite">
+              {contextReady
+                ? (isTr ? "Hazır. Devam ettiğinizde PayTR güvenli kart formu açılır." : "Ready. The secure PayTR card form opens when you continue.")
+                : pendingMessage}
+            </p>
+          </div>
+
           {error ? (
-            <div role="alert" aria-live="assertive" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-center">
-              <AlertCircle className="mx-auto size-5 text-red-600" />
-              <p className="mt-2 text-sm font-semibold text-red-900">{error.message}</p>
+            <div role="alert" aria-live="assertive" className={styles.payError}>
+              <p>{error.message}</p>
               {error.requiresLogin ? (
                 <button
                   type="button"
@@ -314,26 +325,26 @@ export function HostedCardPanel({
                     const next = `${localizedPath("payment", locale)}${window.location.search}`;
                     router.push(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
                   }}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-forest"
+                  className={styles.ghostBtn}
                 >
                   {isTr ? "Yeniden Giriş Yap" : "Sign In Again"}
-                  <ArrowRight className="size-3.5" />
+                  <ArrowRight size={14} />
                 </button>
               ) : null}
             </div>
           ) : null}
 
-          <p className="text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
-            {isTr ? '"Ödemeye Geç" butonuna tıklayarak ' : 'By clicking "Proceed to Payment", you confirm that you have read and accepted the '}
-            <button type="button" onClick={() => onOpenLegalDoc("preInformation")} className="font-semibold text-primary underline underline-offset-2 hover:no-underline">
+          <p className={styles.legal}>
+            {isTr ? "Ödeme butonuna tıklayarak " : "By clicking the pay button, you confirm that you have read and accepted the "}
+            <button type="button" onClick={() => onOpenLegalDoc("preInformation")}>
               {isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}
             </button>
             {", "}
-            <button type="button" onClick={() => onOpenLegalDoc("salesAgreement")} className="font-semibold text-primary underline underline-offset-2 hover:no-underline">
+            <button type="button" onClick={() => onOpenLegalDoc("salesAgreement")}>
               {isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}
             </button>
             {isTr ? " ve " : " and "}
-            <button type="button" onClick={() => onOpenLegalDoc("refundPolicy")} className="font-semibold text-primary underline underline-offset-2 hover:no-underline">
+            <button type="button" onClick={() => onOpenLegalDoc("refundPolicy")}>
               {isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}
             </button>
             {isTr
@@ -343,27 +354,33 @@ export function HostedCardPanel({
 
           {error?.requiresLogin ? null : (
             <button
+              ref={payButtonRef}
               type="button"
               onClick={() => void handleProceedToPayment()}
-              disabled={starting}
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#6748D7] px-5 text-base font-bold text-white shadow-md shadow-violet-900/15 transition-all hover:-translate-y-0.5 hover:bg-[#593BC8] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[#6748D7]/30 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-60"
+              disabled={!contextReady || starting}
+              className={styles.payBtn}
+              data-pay-button=""
             >
               {starting ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
-                  {isTr ? "Ödeme Hazırlanıyor…" : "Preparing Payment…"}
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  {isTr ? "Ödeme hazırlanıyor…" : "Preparing payment…"}
                 </>
               ) : (
-                <>{isTr ? "Ödemeye Geç" : "Proceed to Payment"}</>
+                <>
+                  <LockKeyhole size={16} aria-hidden="true" />
+                  <span>{payLabel}</span>
+                </>
               )}
             </button>
           )}
         </div>
       )}
 
-      <div className="flex items-start gap-2 rounded-xl bg-surface-muted p-3 text-[11px] leading-relaxed text-[#68756C]">
-        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-        <span>{copy.secureText}</span>
+      <div className={styles.trust}>
+        <span><ShieldCheck size={14} aria-hidden="true" />{isTr ? "3D Secure doğrulama" : "3D Secure verification"}</span>
+        <span><LockKeyhole size={14} aria-hidden="true" />{isTr ? "256-bit SSL şifreleme" : "256-bit SSL encryption"}</span>
+        <span><Check size={14} aria-hidden="true" />{isTr ? "Kart bilgileriniz sunucularımızda saklanmaz" : "Your card details are never stored on our servers"}</span>
       </div>
     </div>
   );

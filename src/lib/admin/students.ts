@@ -52,6 +52,8 @@ export interface StudentProfile {
   guardianName: string | null;
   guardianEmail: string | null;
   guardianPhone: string | null;
+  /** Panelden girilen veli telefonu (student_profiles.contact_guardian_phone). */
+  contactGuardianPhone?: string | null;
   guardianLastSignIn: string | null;
 }
 
@@ -127,6 +129,7 @@ export interface AdminCreateStudentInput {
   educationProgram: string;
   examsTaken?: string[];
   guardianName: string;
+  guardianPhone?: string;
   phone: string;
   email: string;
 }
@@ -148,6 +151,7 @@ export async function adminCreateStudent(input: AdminCreateStudentInput): Promis
     p_guardian_name: input.guardianName.trim() || null,
     p_phone: studentPhonePayload(input.phone),
     p_email: input.email.trim().toLowerCase() || null,
+    p_guardian_phone: studentPhonePayload(input.guardianPhone),
   });
   const result = data as { success?: boolean; error_code?: string; student_id?: string; replayed?: boolean } | null;
   if (error || !result?.success) {
@@ -156,6 +160,7 @@ export async function adminCreateStudent(input: AdminCreateStudentInput): Promis
       INVALID_GUARDIAN_NAME: "Veli adı 2–100 karakter arasında olmalıdır.",
       INVALID_EMAIL: "Geçerli bir e-posta adresi girin.",
       INVALID_PHONE: "Geçerli bir telefon numarası girin.",
+      INVALID_GUARDIAN_PHONE: "Geçerli bir veli telefonu girin.",
       GRADE_UNAVAILABLE: "Seçilen sınıf artık kullanılamıyor.",
       INVALID_EXAMS: "Sınav listesi geçersiz.",
       DUPLICATE_STUDENT: "Bu ad ve e-posta ile kayıtlı aktif bir öğrenci zaten var.",
@@ -295,7 +300,9 @@ export async function listAdminStudents(params: { archived?: boolean } = {}): Pr
       // Veli hesabı bağlı değilse panelden eklenirken girilen iletişim kişisi.
       guardianName: (link?.guardian_accounts as { full_name?: string })?.full_name || (typeof accountRecord.contact_guardian_name === "string" ? accountRecord.contact_guardian_name : null),
       guardianEmail: (link?.guardian_accounts as { email?: string })?.email || null,
-      guardianPhone: (link?.guardian_accounts as { phone?: string })?.phone || null,
+      // Veli hesabındaki telefon yoksa panelden girilen veli telefonu.
+      guardianPhone: (link?.guardian_accounts as { phone?: string })?.phone || (typeof accountRecord.contact_guardian_phone === "string" ? accountRecord.contact_guardian_phone : null),
+      contactGuardianPhone: typeof accountRecord.contact_guardian_phone === "string" ? accountRecord.contact_guardian_phone : null,
       guardianLastSignIn: link?.guardian_user_id ? guardianSignInsResult.data.get(link.guardian_user_id) ?? null : null,
     };
     profiles.push(profile);
@@ -576,6 +583,7 @@ export async function adminUpdateStudentProfile(
   input: {
     fullName: string;
     phone?: string | null;
+    guardianPhone?: string | null;
     school?: string | null;
     gradeLevel?: string | null;
     educationProgram?: string | null;
@@ -588,6 +596,7 @@ export async function adminUpdateStudentProfile(
   try {
     const changes: Record<string, Json | undefined> = { full_name: input.fullName.trim() };
     if ("phone" in input) changes.phone = studentPhonePayload(input.phone);
+    if ("guardianPhone" in input) changes.contact_guardian_phone = studentPhonePayload(input.guardianPhone);
     if ("school" in input) changes.school = input.school?.trim() || null;
     if ("gradeLevel" in input) changes.grade_level = input.gradeLevel?.trim() || null;
     if ("educationProgram" in input) changes.education_program = input.educationProgram?.trim() || null;
@@ -605,6 +614,7 @@ export async function adminUpdateStudentProfile(
         GRADE_UNAVAILABLE: "Seçilen sınıf artık kullanılamıyor.",
         INVALID_INPUT: "Öğrenci bilgileri geçersiz.",
         INVALID_PHONE: "Geçerli bir telefon numarası girin.",
+        INVALID_GUARDIAN_PHONE: "Geçerli bir veli telefonu girin.",
         NOT_FOUND: "Öğrenci bulunamadı.",
       };
       void reportAdminFailure({action:"student.update_failed",category:"student",operation:"admin_update_student_profile",error:{message:"Update not confirmed"},entityType:"student_profile",entityId:studentId});

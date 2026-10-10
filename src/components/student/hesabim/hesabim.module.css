@@ -277,7 +277,6 @@
 .root :global(.hb-pay):global(.hb-open) :global(.hb-chev){transform:rotate(180deg)}
 .root :global(.hb-pay-b){padding:4px 24px 18px 80px}
 .root :global(.hb-pay-b) :global(.hb-dl){padding:14px 16px;border-radius:12px;background:var(--soft)}
-.root :global(.hb-pay-b) code{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:600}
 @media (max-width:640px){
   .root :global(.hb-pay) :global(.hb-m){grid-template-columns:minmax(0,1fr)}
   .root :global(.hb-pay) :global(.hb-m)>span{font-size:13px}

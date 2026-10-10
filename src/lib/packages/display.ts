@@ -36,7 +36,9 @@ function positiveLessonCount(source: PackageDisplaySource | number | null | unde
 
 function isLegacyPackageNote(value: string) {
   const normalized = value.toLocaleLowerCase("tr-TR").replace(/\s+/g, " ").trim();
-  return normalized.includes("eski paketten kalan");
+  if (normalized.includes("eski paketten kalan")) return true;
+  // "Önceki paket içeriğinden kalan ders bakiyesi" gibi bakiye aktarım notları.
+  return normalized.includes("ders bakiyesi") || (normalized.includes("önceki paket") && normalized.includes("kalan"));
 }
 
 /** Prefer canonical DB labels; known IDs provide a safe, human-readable fallback. */

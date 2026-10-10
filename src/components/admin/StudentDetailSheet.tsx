@@ -9,14 +9,11 @@ import {
   X,
   BookOpen,
   Package,
-  StickyNote,
-  LayoutDashboard,
   KeyRound,
   Video,
   ExternalLink,
   ShieldCheck,
   AlertCircle,
-  Edit3,
   History,
   MinusCircle,
   Clock,
@@ -25,10 +22,15 @@ import {
   Settings,
   School,
   GraduationCap,
-  BadgeCheck,
   ChevronDown,
   Phone,
-  ArrowLeft,
+  ChevronLeft,
+  House,
+  CreditCard,
+  FileText,
+  Book,
+  SquareCheck,
+  Pencil,
 } from "lucide-react";
 import type { NormalizedSessionItem } from "@/components/admin/StudentLearningManager";
 import { ADMIN_UI_FEATURES } from "@/config/admin-ui";
@@ -66,7 +68,7 @@ import { ControlledLessonDate, ControlledLessonTime } from "@/components/admin/C
 import styles from "./student-detail.module.css";
 import pages from "./admin-pages.module.css";
 import { CloseIcon, GearIcon } from "@/components/admin/StudentRefDialogs";
-import { AdminTrPhoneInput } from "@/components/admin/AdminTrPhoneInput";
+import { AdminGuardianPhoneInput, AdminTrPhoneInput } from "@/components/admin/AdminTrPhoneInput";
 
 const StudentLearningManager = dynamic(
   () => import("@/components/admin/StudentLearningManager").then((module) => module.StudentLearningManager),
@@ -80,12 +82,19 @@ const StudentLearningManager = dynamic(
 );
 
 type Tab = "overview" | "education" | "packages" | "notes";
-const tabs: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
-  { id: "overview", label: "Genel", icon: LayoutDashboard },
-  { id: "education", label: "Eğitim", icon: BookOpen },
-  { id: "packages", label: "Paket & Ödeme", icon: Package },
-  { id: "notes", label: "Notlar", icon: StickyNote },
+// Referans sekme ikonları: ev / kep / kart / belge.
+const tabs: { id: Tab; label: string; icon: typeof House }[] = [
+  { id: "overview", label: "Genel", icon: House },
+  { id: "education", label: "Eğitim", icon: GraduationCap },
+  { id: "packages", label: "Paket & Ödeme", icon: CreditCard },
+  { id: "notes", label: "Notlar", icon: FileText },
 ];
+
+/** Sınıf gösterimi: yalnız sayı kayıtlıysa "12. sınıf"; diğer etiketler aynen. */
+function gradeLabel(value: string | null | undefined): string {
+  const text = value?.trim() || "";
+  return /^\d{1,2}$/.test(text) ? `${text}. sınıf` : text;
+}
 
 export function StudentDetailSheet({
   student: studentProp,
@@ -233,7 +242,7 @@ export function StudentDetailSheet({
           </button>
         </span>
       )}
-      <button type="button" onClick={() => { setErrorMessage(""); setEditModalOpen(true); }} className={`${styles.button} ${styles.primary}${student.archived ? ` ${styles.isLocked}` : ""}`} aria-disabled={student.archived || undefined} tabIndex={student.archived ? -1 : undefined} title={student.archived ? "Arşivdeki öğrencide işlem yapılamaz" : undefined}><Edit3 size={17} />Bilgileri Düzenle</button>
+      <button type="button" onClick={() => { setErrorMessage(""); setEditModalOpen(true); }} className={`${styles.button} ${styles.primary}${student.archived ? ` ${styles.isLocked}` : ""}`} aria-disabled={student.archived || undefined} tabIndex={student.archived ? -1 : undefined} title={student.archived ? "Arşivdeki öğrencide işlem yapılamaz" : undefined}><span className={styles.btnIco} aria-hidden="true"><Pencil size={13} /></span>Bilgileri Düzenle</button>
     </div>
   );
 
@@ -248,7 +257,7 @@ export function StudentDetailSheet({
         {pageMode && (
           <div className={styles.topBar}>
             <Link href="/admin/ogrenciler" className={styles.backLink} aria-label="Öğrencilere Dön">
-              <ArrowLeft size={17} />
+              <ChevronLeft size={15} aria-hidden="true" />
               Öğrenciler
             </Link>
           </div>
@@ -265,10 +274,9 @@ export function StudentDetailSheet({
                 </div>
                 <div className={styles.metadata} aria-label="Öğrenci bilgileri">
                   {student.school ? <span><School size={15} />{student.school}</span> : null}
-                  {student.gradeLevel ? <span><GraduationCap size={15} />{student.gradeLevel}</span> : null}
+                  {student.gradeLevel ? <span><GraduationCap size={15} />{gradeLabel(student.gradeLevel)}</span> : null}
                   {student.educationProgram ? <span><BookOpen size={15} />{student.educationProgram}</span> : null}
-                  {student.guardianLastSignIn ? <span><Clock size={15} />Veli son giriş: {new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.guardianLastSignIn))}</span> : null}
-                  {!student.school && !student.gradeLevel && !student.educationProgram && !student.guardianLastSignIn ? <span className={styles.metadataEmpty}>Akademik bilgiler henüz eklenmemiş.</span> : null}
+                  {!student.school && !student.gradeLevel && !student.educationProgram ? <span className={styles.metadataEmpty}>Akademik bilgiler henüz eklenmemiş.</span> : null}
                 </div>
               </div>
             </div>
@@ -500,9 +508,9 @@ function Overview({
         <section className={`${styles.card} ${styles.cardPad}`}>
           <h2 className={styles.sectionTitle}>Akademik Profil</h2>
           <div className={styles.academic}>
-            <AcademicCell label="Okul" value={val(student.school)} icon={<School size={20} />} />
-            <AcademicCell label="Sınıf" value={val(student.gradeLevel)} icon={<GraduationCap size={20} />} />
-            <AcademicCell label="Eğitim Programı" value={val(student.educationProgram)} icon={<BookOpen size={20} />} />
+            <AcademicCell label="Okul" value={val(student.school)} icon={<House size={20} />} />
+            <AcademicCell label="Sınıf" value={val(gradeLabel(student.gradeLevel))} icon={<GraduationCap size={20} />} />
+            <AcademicCell label="Eğitim Programı" value={val(student.educationProgram)} icon={<Book size={20} />} />
             <ExamInfo exams={student.examsTaken} />
           </div>
         </section>
@@ -1347,13 +1355,9 @@ function ExamInfo({ exams }: { exams: string[] }) {
 
   return (
     <div className={styles.academicCell}>
-      <BadgeCheck size={20} />
+      <SquareCheck size={20} />
       <span className={styles.label}>Aldığı Sınavlar</span>
-      {sortedExams.length ? (
-        <div className="flex flex-wrap gap-1.5">
-          {sortedExams.map((exam, index) => <span key={`${exam}-${index}`} className="rounded-md bg-[#e4ece5] px-2 py-0.5 text-xs font-semibold text-[#2b4234]">{exam}</span>)}
-        </div>
-  ) : <span className={styles.value}>—</span>}
+      <span className={styles.value}>{sortedExams.length ? sortedExams.join(", ") : "—"}</span>
     </div>
   );
 }
@@ -1386,6 +1390,7 @@ function EditStudentIdentityModal({
     examsTaken: student.examsTaken,
     gradeLevel: student.gradeLevel || "",
     guardianName: student.guardianName || "",
+    guardianPhone: trPhoneInputDigits(student.contactGuardianPhone),
     phone: trPhoneInputDigits(student.phone),
   });
   const [adminPassword, setAdminPassword] = useState("");
@@ -1408,6 +1413,10 @@ function EditStudentIdentityModal({
     }
     if (normalizeStudentPhone(form.phone) === undefined) {
       setError("Geçerli bir telefon numarası girin.");
+      return;
+    }
+    if (normalizeStudentPhone(form.guardianPhone) === undefined) {
+      setError("Geçerli bir veli telefonu girin.");
       return;
     }
     setError("");
@@ -1442,6 +1451,8 @@ function EditStudentIdentityModal({
       // Telefon yalnız gerçekten değiştiyse gönderilir; boş alan kaydı null yapar.
       const nextPhone = normalizeStudentPhone(form.phone) ?? null;
       const phoneChanged = nextPhone !== (normalizeStudentPhone(student.phone) ?? null);
+      const nextGuardianPhone = normalizeStudentPhone(form.guardianPhone) ?? null;
+      const guardianPhoneChanged = nextGuardianPhone !== (normalizeStudentPhone(student.contactGuardianPhone) ?? null);
       const res = await adminUpdateStudentProfile(targetId, {
         fullName: form.fullName,
         school: form.school || null,
@@ -1451,6 +1462,7 @@ function EditStudentIdentityModal({
         preferredLanguage: student.preferredLanguage,
         active: student.active,
         ...(phoneChanged ? { phone: nextPhone } : {}),
+        ...(guardianPhoneChanged ? { guardianPhone: nextGuardianPhone } : {}),
       });
 
       if (!res.success) {
@@ -1517,7 +1529,10 @@ function EditStudentIdentityModal({
                 </section>
                 <section className="m-sec">
                   <div className="m-sechead"><span className="m-secbadge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M22 21v-2a4 4 0 0 0-3-3.9" /></svg></span><h3 className="m-sectitle">Veli Bilgileri</h3><span className="m-secline" /></div>
-                  <div className="m-field"><label htmlFor="f-veli" className="m-lab">Veli Ad Soyad{student.guardianUserId ? <> <span className="m-req">*</span></> : null}</label><input id="f-veli" className="m-input" required={Boolean(student.guardianUserId)} disabled={!student.guardianUserId} type="text" value={form.guardianName} onChange={(event) => setForm({ ...form, guardianName: event.target.value })} /></div>
+                  <div className="m-grid">
+                    <div className="m-field"><label htmlFor="f-veli" className="m-lab">Veli Ad Soyad{student.guardianUserId ? <> <span className="m-req">*</span></> : null}</label><input id="f-veli" className="m-input" required={Boolean(student.guardianUserId)} disabled={!student.guardianUserId} type="text" value={form.guardianName} onChange={(event) => setForm({ ...form, guardianName: event.target.value })} /></div>
+                    <div className="m-field"><label htmlFor="f-veli-tel" className="m-lab">Veli Telefonu</label><AdminGuardianPhoneInput id="f-veli-tel" value={form.guardianPhone} onChange={(guardianPhone) => setForm({ ...form, guardianPhone })} /></div>
+                  </div>
                   <div className="m-vcard">Hesap e-postası: <b style={{ color: "#1C231E", fontWeight: 600, overflowWrap: "anywhere" }}>{student.guardianEmail || "Belirtilmemiş"}</b></div>
                 </section>
                 <div className="m-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A57622" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }} aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg><span>Kimlik değişiklikleri denetim kaydına yazılır ve yönetici şifre doğrulaması gerektirir.</span></div>

@@ -131,14 +131,19 @@ function AccountSecuritySection() {
   );
 }
 
-// Referans telFmt: alandan çıkınca / yapıştırınca +90 XXX XXX XX XX
+// İletişim telefonları ulusal biçimde gösterilir: 05XX XXX XX XX / 0850 XXX XX XX.
+// wa.me / tel: bağlantıları contact-settings içinde uluslararası biçime çevrilir.
 function telFmt(value: string) {
   let d = value.replace(/\D/g, "");
   if (!d) return "";
-  if (d.length === 10) d = `90${d}`;
-  else if (d.length === 11 && d[0] === "0") d = `9${d}`;
-  if (d.length === 12 && d.startsWith("90")) return `+90 ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8, 10)} ${d.slice(10, 12)}`;
+  if (d.length === 12 && d.startsWith("90")) d = `0${d.slice(2)}`;
+  else if (d.length === 10) d = `0${d}`;
+  if (d.length === 11 && d[0] === "0") return `${d.slice(0, 4)} ${d.slice(4, 7)} ${d.slice(7, 9)} ${d.slice(9, 11)}`;
   return value.trim();
+}
+
+function contactView(value: ContactSettings): ContactSettings {
+  return { ...value, whatsapp: telFmt(value.whatsapp), landline: telFmt(value.landline) };
 }
 
 const CONTACT_FIELDS: { key: keyof ContactSettings; id: string; label: string; tel?: boolean; type?: string }[] = [
@@ -149,7 +154,7 @@ const CONTACT_FIELDS: { key: keyof ContactSettings; id: string; label: string; t
 
 function ContactSection() {
   const [saved, setSaved] = useState<ContactSettings | null>(null);
-  const [form, setForm] = useState<ContactSettings>(DEFAULT_CONTACT_SETTINGS);
+  const [form, setForm] = useState<ContactSettings>(() => contactView(DEFAULT_CONTACT_SETTINGS));
   const [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -157,8 +162,9 @@ function ContactSection() {
     let alive = true;
     void fetchContactSettings().then((value) => {
       if (!alive) return;
-      setSaved(value);
-      setForm(value);
+      const view = contactView(value);
+      setSaved(view);
+      setForm(view);
     });
     return () => {
       alive = false;
@@ -185,14 +191,15 @@ function ContactSection() {
       return;
     }
     setBusy(true);
-    const result = await saveContactSettings(form);
+    const result = await saveContactSettings(contactView(form));
     setBusy(false);
     if (!result.ok) {
       toast.error(result.error);
       return;
     }
-    setSaved(result.value);
-    setForm(result.value);
+    const view = contactView(result.value);
+    setSaved(view);
+    setForm(view);
     toast.success("İletişim bilgileri kaydedildi");
   };
 

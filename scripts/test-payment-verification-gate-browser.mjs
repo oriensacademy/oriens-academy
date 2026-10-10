@@ -21,24 +21,23 @@ const relation = { guardian_user_id: holderId, student_id: learnerId, relationsh
 const coupon = { valid: true, coupon_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", code: "QA10", name: "QA", discount_type: "percentage", discount_value: 10, maximum_discount_amount: null, minimum_order_amount: null, eligible_package_ids: ["package10", "package5"], currency: "TRY" };
 const json = (route, body, status = 200, object = false) => route.fulfill({ status, headers: { "content-type": object ? "application/vnd.pgrst.object+json" : "application/json" }, body: JSON.stringify(body) });
 
+// EmailOtpGate: 6 ayrı hane kutusu.
+async function enterOtp(page, code) {
+  const boxes = page.locator('form input[inputmode="numeric"]');
+  for (let index = 0; index < 6; index += 1) await boxes.nth(index).fill(code[index]);
+}
+
 function check(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-async function createFixture(browser, { verified = false, cart = true, width = 1280 } = {}) {
+// Sepet kaldırıldı: tüm senaryolar doğrudan paket ödemesi (?package=) ile çalışır.
+async function createFixture(browser, { verified = false, width = 1280 } = {}) {
   const state = { verified, otpRequests: 0, otpVerifications: 0, pricingRequests: 0, checkoutOpened: 0, paytrRequests: 0, installmentRequests: 0, blockedExternalUrls: [] };
   const context = await browser.newContext({ viewport: { width, height: 950 } });
-  await context.addInitScript(({ authKey, authValue, cartKey, cartValue, couponValue }) => {
+  await context.addInitScript(({ authKey, authValue }) => {
     localStorage.setItem(authKey, JSON.stringify(authValue));
-    localStorage.setItem(cartKey, JSON.stringify(cartValue));
-    if (couponValue) localStorage.setItem(`${cartKey}_coupon`, JSON.stringify({ code: couponValue.code, coupon: couponValue }));
-  }, {
-    authKey: `sb-${projectRef}-auth-token`,
-    authValue: session,
-    cartKey: `oriens_cart_user_${holderId}`,
-    cartValue: cart ? packages.map((pkg) => ({ packageId: pkg.id, quantity: 1 })) : [],
-    couponValue: cart ? coupon : null,
-  });
+  }, { authKey: `sb-${projectRef}-auth-token`, authValue: session });
   const page = await context.newPage();
   await page.route("**/*", (route) => {
     if (route.request().url().startsWith(base)) return route.continue();
@@ -94,11 +93,11 @@ async function createFixture(browser, { verified = false, cart = true, width = 1
 
 const browser = await chromium.launch({ headless: true });
 try {
-  const cartFixture = await createFixture(browser, { cart: true });
-  const { context, page, state } = cartFixture;
-  const checkoutUrl = `${base}/tr/odeme/?source=cart&campaign=qa-preserve`;
+  const gateFixture = await createFixture(browser);
+  const { context, page, state } = gateFixture;
+  const checkoutUrl = `${base}/tr/odeme/?package=package10&campaign=qa-preserve`;
   await page.goto(checkoutUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "E-posta Adresinizi Doğrulayın" }).waitFor();
+  await page.getByRole("heading", { name: "E-postanızı doğrulayın" }).waitFor();
   check(state.pricingRequests === 0, "Unverified checkout fetched pricing packages");
   check(state.checkoutOpened === 0, "Unverified checkout emitted checkout_opened");
   check(state.paytrRequests === 0 && state.installmentRequests === 0, "Unverified checkout contacted PayTR");
@@ -107,51 +106,49 @@ try {
   check(await page.locator("[data-single-payment]").count() === 0, "Unverified checkout rendered installment UI");
 
   await page.reload({ waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "E-posta Adresinizi Doğrulayın" }).waitFor();
+  await page.getByRole("heading", { name: "E-postanızı doğrulayın" }).waitFor();
   check(state.pricingRequests === 0 && state.checkoutOpened === 0, "Refresh bypassed the unverified gate");
   check(page.url() === checkoutUrl, "Refresh changed checkout intent URL");
 
-  const otp = page.locator('[autocomplete="one-time-code"]');
-  await otp.fill("000000");
+  await enterOtp(page, "000000");
   await page.locator('form button[type="submit"]').click();
   await page.locator('p[role="alert"]').waitFor();
-  check(await page.getByRole("heading", { name: "E-posta Adresinizi Doğrulayın" }).count() === 1, "Failed OTP left the gate");
+  check(await page.getByRole("heading", { name: "E-postanızı doğrulayın" }).count() === 1, "Failed OTP left the gate");
   check(state.pricingRequests === 0 && state.checkoutOpened === 0 && state.paytrRequests === 0, "Failed OTP initialized checkout");
 
-  await otp.fill("222222");
+  await enterOtp(page, "222222");
   await page.locator('form button[type="submit"]').click();
   await page.locator('p[role="alert"]').waitFor();
-  check(await page.getByRole("heading", { name: "E-posta Adresinizi Doğrulayın" }).count() === 1, "Expired OTP left the gate");
+  check(await page.getByRole("heading", { name: "E-postanızı doğrulayın" }).count() === 1, "Expired OTP left the gate");
   check(state.pricingRequests === 0 && state.checkoutOpened === 0 && state.paytrRequests === 0, "Expired OTP initialized checkout");
 
-  await otp.fill("111111");
+  await enterOtp(page, "111111");
   await page.locator('form button[type="submit"]').click();
   await page.getByRole("heading", { name: "Sipariş Özeti" }).waitFor();
   await page.getByText("10 Derslik Paket", { exact: true }).first().waitFor();
-  await page.waitForFunction(() => document.body.textContent?.includes("QA10"));
   await page.waitForTimeout(200);
   check(page.url() === checkoutUrl, "OTP success changed checkout route or query intent");
   check(state.checkoutOpened === 1, `Expected one checkout_opened after reveal, got ${state.checkoutOpened}`);
   check(state.paytrRequests === 0, "Checkout reveal created a PayTR payment session");
   check(state.otpRequests === 1, `Refresh sent another OTP request (${state.otpRequests})`);
-  check(state.blockedExternalUrls.every((url) => new URL(url).hostname === "www.googletagmanager.com"), `Unexpected external request: ${state.blockedExternalUrls.join(", ")}`);
+  check(state.blockedExternalUrls.every((url) => ["www.googletagmanager.com", "static.cloudflareinsights.com"].includes(new URL(url).hostname)), `Unexpected external request: ${state.blockedExternalUrls.join(", ")}`);
   await context.close();
 
   for (const width of [390, 1280, 1440]) {
     const fixture = await createFixture(browser, { width });
-    await fixture.page.goto(`${base}/tr/odeme/?source=cart`, { waitUntil: "domcontentloaded" });
-    await fixture.page.getByRole("heading", { name: "E-posta Adresinizi Doğrulayın" }).waitFor();
+    await fixture.page.goto(`${base}/tr/odeme/?package=package10`, { waitUntil: "domcontentloaded" });
+    await fixture.page.getByRole("heading", { name: "E-postanızı doğrulayın" }).waitFor();
     const overflow = await fixture.page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
     check(!overflow, `Verification gate overflowed at ${width}px`);
     check(fixture.state.pricingRequests === 0 && fixture.state.checkoutOpened === 0 && fixture.state.paytrRequests === 0 && fixture.state.installmentRequests === 0, `Unverified network/audit leak at ${width}px`);
     await fixture.context.close();
   }
 
-  const direct = await createFixture(browser, { cart: false });
+  const direct = await createFixture(browser);
   const directUrl = `${base}/tr/odeme/?package=package10&campaign=direct-qa`;
   await direct.page.goto(directUrl, { waitUntil: "domcontentloaded" });
-  await direct.page.getByRole("heading", { name: "E-posta Adresinizi Doğrulayın" }).waitFor();
-  await direct.page.locator('[autocomplete="one-time-code"]').fill("111111");
+  await direct.page.getByRole("heading", { name: "E-postanızı doğrulayın" }).waitFor();
+  await enterOtp(direct.page, "111111");
   await direct.page.locator('form button[type="submit"]').click();
   await direct.page.getByText("10 Derslik Paket", { exact: true }).first().waitFor();
   await direct.page.waitForTimeout(200);
@@ -160,10 +157,10 @@ try {
   await direct.context.close();
 
   const verified = await createFixture(browser, { verified: true });
-  await verified.page.goto(`${base}/tr/odeme/?source=cart`, { waitUntil: "domcontentloaded" });
+  await verified.page.goto(`${base}/tr/odeme/?package=package10`, { waitUntil: "domcontentloaded" });
   await verified.page.getByRole("heading", { name: "Sipariş Özeti" }).waitFor();
   await verified.page.waitForTimeout(200);
-  check(await verified.page.getByRole("heading", { name: "E-posta Adresinizi Doğrulayın" }).count() === 0, "Verified account saw OTP gate");
+  check(await verified.page.getByRole("heading", { name: "E-postanızı doğrulayın" }).count() === 0, "Verified account saw OTP gate");
   check(verified.state.checkoutOpened === 1 && verified.state.otpRequests === 0, "Verified checkout audit/OTP behavior is wrong");
   await verified.context.close();
 

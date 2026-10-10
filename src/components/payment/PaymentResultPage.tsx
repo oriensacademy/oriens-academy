@@ -18,7 +18,6 @@ import { getPaymentCopy } from "@/content/payment";
 import { getPaymentStatus } from "@/lib/payments/client";
 import type { VerifiedPaymentStatus } from "@/lib/payments/types";
 import { localizedPath } from "@/lib/routes";
-import { useCart } from "@/lib/cart/cart-context";
 import { useAccount } from "@/lib/auth/account-context";
 import { formatCurrency } from "@/lib/format/currency";
 import { packageDisplayName } from "@/lib/packages/display";
@@ -30,7 +29,6 @@ export function PaymentResultPage() {
   const locale = useLocale();
   const pathname = usePathname();
   const copy = getPaymentCopy(locale);
-  const { removeItemsFromCart } = useCart();
   const { accountType } = useAccount();
   const isTr = locale === "tr";
   const money = (value: number, currency: string) => formatCurrency(value, { currency, locale });
@@ -42,7 +40,6 @@ export function PaymentResultPage() {
   const [pollAttempt, setPollAttempt] = useState(0);
   const [isPendingGrace, setIsPendingGrace] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
-  const cartCleanedRef = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // If mounted inside an iframe (PayTR fallback navigation), break out to top window immediately
@@ -107,12 +104,6 @@ export function PaymentResultPage() {
         if (res.status === "paid") {
           setLoading(false);
           setIsPendingGrace(false);
-          if (!cartCleanedRef.current) {
-            cartCleanedRef.current = true;
-            const purchasedIds =
-              res.packageIds && res.packageIds.length > 0 ? res.packageIds : [res.packageId];
-            removeItemsFromCart(purchasedIds);
-          }
           return;
         }
 
@@ -156,7 +147,7 @@ export function PaymentResultPage() {
         clearTimeout(timerRef.current);
       }
     };
-  }, [pollAttempt, removeItemsFromCart, isTr, isSuccessUrl]);
+  }, [pollAttempt, isTr, isSuccessUrl]);
 
   const handleManualCheck = () => {
     setLoading(true);
@@ -323,8 +314,8 @@ export function PaymentResultPage() {
                 {payment?.statusReason ||
                   (payment?.status === "cancelled"
                     ? isTr
-                      ? "Ödeme oturumu zaman aşımına uğramış veya işlem iptal edilmiştir. Sepetiniz korunmaktadır."
-                      : "The payment session timed out or was cancelled. Your cart items are preserved."
+                      ? "Ödeme oturumu zaman aşımına uğramış veya işlem iptal edilmiştir. Paketiniz için yeniden ödeme başlatabilirsiniz."
+                      : "The payment session timed out or was cancelled. You can start a new payment for your package."
                     : isTr
                       ? "Ödeme işleminiz sırasında bir hata oluştu veya işlem onaylanmadı. Kart bilgilerinizi ve limitinizi kontrol ederek tekrar deneyebilirsiniz."
                       : "An error occurred during payment processing or the transaction was not approved. Please check your card details and try again.")}

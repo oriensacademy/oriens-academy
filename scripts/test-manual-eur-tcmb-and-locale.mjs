@@ -18,7 +18,6 @@ const adminModal = read("src/components/admin/PricingModal.tsx");
 const languageSwitch = read("src/components/sections/LanguageSwitch.tsx");
 const rootPage = read("src/app/page.tsx");
 const rootLayout = read("src/app/layout.tsx");
-const cart = read("src/components/cart/CartPage.tsx");
 const payment = read("src/components/payment/PaymentPage.tsx");
 const pricing = read("src/components/pricing/PricingPage.tsx");
 const paytr = read("supabase/functions/paytr-create-token/index.ts");
@@ -102,7 +101,7 @@ test("missing EN EUR falls back to explicitly labeled TRY", () => {
 });
 
 test("customer components use package display helper and never TCMB", () => {
-  for (const source of [pricing, cart, payment]) {
+  for (const source of [pricing, payment]) {
     assert.match(source, /getLocalizedPackageDisplayPrice/);
     assert.doesNotMatch(source, /getTcmbEurRecommendation|tcmb-eur-rate|today\.xml/i);
   }

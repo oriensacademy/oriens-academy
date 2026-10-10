@@ -91,6 +91,7 @@ function createMockDevSession(accountType: "admin" | "student", email: string): 
           date_of_birth: null,
           school: "Oriens Academy",
           contact_guardian_name: null,
+          contact_guardian_phone: null,
           grade_level: null,
           education_program: null,
           exams_taken: [],

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { queryKeys, useQuery } from "@/lib/data/query-store";
 import { useAdminNotifications } from "@/lib/admin/admin-notifications-context";
@@ -22,6 +22,10 @@ import pages from "@/components/admin/admin-pages.module.css";
 
 const EMPTY_LEDGER: AdminPaymentLedgerRow[] = [];
 const PACKAGE_ORDER = ["single", "package5", "package10", "package20", "package30"];
+// Tablo ve açılan ayrıntı aynı sütun oranlarını kullanır: Telefon → Paket,
+// Ödeme şekli → Tutar, Referans → Durum sütunu hizasında kalır; iade ikonu
+// sabit genişlikteki son sütunda durduğu için satırlar arası kayma olmaz.
+const COLUMN_WIDTHS = ["25%", "19%", "16%", "15%", "19%", "6%"] as const;
 
 const SOURCE_LABEL: Record<AdminLedgerSource, string> = {
   paytr: "Kredi Kartı",
@@ -93,7 +97,9 @@ export default function AdminPaymentsPage() {
       const ib = PACKAGE_ORDER.indexOf(b);
       return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "tr");
     });
-    return ordered.map((id) => ({ id, label: rows.find((row) => row.packageId === id)?.packageLabel || packageDisplayName({ package_id: id }) }));
+    // Seçenek etiketi kanonik paket adıdır; satırlardaki serbest metin
+    // (ör. eski paket bakiyesi notları) filtrede paket adı gibi görünmez.
+    return ordered.map((id) => ({ id, label: packageDisplayName({ package_id: id }) }));
   }, [rows]);
 
   const filtered = useMemo(() => {
@@ -114,15 +120,6 @@ export default function AdminPaymentsPage() {
 
   function toggle(key: string) {
     setOpen((current) => ({ ...current, [key]: !current[key] }));
-  }
-
-  async function copyReference(reference: string) {
-    try {
-      await navigator.clipboard.writeText(reference);
-    } catch {
-      // Pano erişimi yoksa da bilgi metni gösterilir (referans davranışı).
-    }
-    toast.success("Referans kopyalandı");
   }
 
   async function submitRefund(request: RefundReviewRequest) {
@@ -169,7 +166,7 @@ export default function AdminPaymentsPage() {
             <label><span className="sr">Zaman</span><select className="sel" id="od-zaman" value={zaman} onChange={(event) => setZaman(event.target.value)}><option value="">Tüm zamanlar</option><option value="bugun">Bugün</option><option value="7">Son 7 gün</option><option value="ay">Bu ay</option><option value="30">Son 30 gün</option></select></label>
           </div>
           <table className="fx-table" id="od-table" aria-label="Ödemeler" hidden={!showTable}>
-            <colgroup><col style={{ width: "25%" }} /><col style={{ width: "18%" }} /><col style={{ width: "23%" }} /><col style={{ width: "12%" }} /><col style={{ width: "18%" }} /><col style={{ width: 56 }} /></colgroup>
+            <colgroup>{COLUMN_WIDTHS.map((width, index) => <col key={index} style={{ width }} />)}</colgroup>
             <thead><tr><th>Ad Soyad</th><th>Paket</th><th>Tutar</th><th>Durum</th><th>Tarih</th><th><span className="sr">Ayrıntı</span></th></tr></thead>
             <tbody id="od-rows">
               {filtered.map((row) => {
@@ -213,35 +210,22 @@ export default function AdminPaymentsPage() {
                     </tr>
                     <tr className="od-det" hidden={!expanded}>
                       <td colSpan={6}>
-                        <div className="od-box">
-                          <dl className="od-dl">
-                            <div><dt>E-posta</dt><dd>{row.email || <span className="fx-muted">—</span>}</dd></div>
-                            <div><dt>Telefon</dt><dd>{row.phone ? formatTrPhoneDisplay(row.phone) : <span className="fx-muted">—</span>}</dd></div>
-                            <div><dt>Ödeme şekli</dt><dd>{SOURCE_LABEL[row.source]}</dd></div>
-                            <div className="od-wide">
-                              <dt>Referans</dt>
-                              <dd>
-                                {row.reference ? (
-                                  <span className="fx-ref">
-                                    <code>{row.reference}</code>
-                                    <button type="button" className="fx-copy" title="Kopyala" aria-label="Referansı kopyala" onClick={() => void copyReference(row.reference as string)}>
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                                    </button>
-                                  </span>
-                                ) : "Yönetici tarafından eklendi"}
-                              </dd>
-                            </div>
-                            {row.transaction?.last_refunded_at && row.refundedAmount > 0 ? (
-                              <div className="od-wide"><dt>İade</dt><dd>{formatTrLira(row.refundedAmount)} · {formatTrShortListDate(row.transaction.last_refunded_at).primary}{row.transaction.last_refund_reason ? ` · ${row.transaction.last_refund_reason}` : ""}</dd></div>
+                        <div className="od-box" style={{ "--od-cols": COLUMN_WIDTHS.join(" ") } as CSSProperties}>
+                          <div className="od-f od-f1"><span className="od-k">E-posta</span><span className="od-v">{row.email || <span className="fx-muted">—</span>}</span></div>
+                          <div className="od-f"><span className="od-k">Telefon</span><span className="od-v">{row.phone ? formatTrPhoneDisplay(row.phone) : <span className="fx-muted">—</span>}</span></div>
+                          <div className="od-f"><span className="od-k">Ödeme şekli</span><span className="od-v">{SOURCE_LABEL[row.source]}</span></div>
+                          <div className="od-f od-ref"><span className="od-k">Referans</span><span className="od-v">{row.reference || "Yönetici tarafından eklendi"}</span></div>
+                          <div className="od-act">
+                            {canRefundLedgerRow(row) ? (
+                              <button type="button" className="od-refund" data-tip="İade et" aria-label={`${titleCaseTr(row.payerName)} ödemesini iade et`} disabled={refunding} onClick={() => setRefundRow(row)}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+                              </button>
                             ) : null}
-                            {row.adminNote ? <div className="od-wide"><dt>Yönetici notu</dt><dd>{row.adminNote}</dd></div> : null}
-                          </dl>
-                          {canRefundLedgerRow(row) ? (
-                            <button type="button" className="fx-refund" disabled={refunding} onClick={() => setRefundRow(row)}>
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
-                              İade başlat
-                            </button>
+                          </div>
+                          {row.transaction?.last_refunded_at && row.refundedAmount > 0 ? (
+                            <div className="od-f od-f1 od-wide"><span className="od-k">İade</span><span className="od-v">{formatTrLira(row.refundedAmount)} · {formatTrShortListDate(row.transaction.last_refunded_at).primary}{row.transaction.last_refund_reason ? ` · ${row.transaction.last_refund_reason}` : ""}</span></div>
                           ) : null}
+                          {row.adminNote ? <div className="od-f od-f1 od-wide"><span className="od-k">Yönetici notu</span><span className="od-v">{row.adminNote}</span></div> : null}
                         </div>
                       </td>
                     </tr>

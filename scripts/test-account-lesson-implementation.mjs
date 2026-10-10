@@ -11,7 +11,6 @@ const files = {
   portalCopy: read("src/content/student-portal.ts"),
   phone: read("src/components/ui/phone-mockups-1-utils/phone-carousel.tsx"),
   pricing: read("src/components/pricing/PricingPage.tsx"),
-  canonicalPricing: read("src/components/ui/oriens-creative-pricing.tsx"),
   modal: read("src/components/auth/LogoutConfirmationModal.tsx"),
   migration: read("supabase/migrations/20260901090000_account_learner_completed_lesson_outbox.sql"),
   worker: read("supabase/functions/process-notification-outbox/index.ts"),
@@ -71,8 +70,7 @@ assert.match(files.worker, /Güncel ders bakiyeniz sıfırdır\. Yeni paketinizi
 assert.match(files.worker, /if \(report\.length < 5\) throw new Error\("REPORT_REQUIRED"\)/);
 assert.doesNotMatch(files.liveLesson, /dispatchLessonCompletedEmail/);
 
-const transparentPricingCount = (files.pricing.match(/Şeffaf Fiyatlandırma/g) || []).length
-  + (files.canonicalPricing.match(/Şeffaf Fiyatlandırma/g) || []).length;
+const transparentPricingCount = (files.pricing.match(/Şeffaf Fiyatlandırma/g) || []).length;
 assert.equal(transparentPricingCount, 1);
 
 console.log("account/lesson/email implementation checks: PASS");

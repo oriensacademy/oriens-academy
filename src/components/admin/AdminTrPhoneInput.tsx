@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTrPhoneInput, trPhoneInputDigits } from "@/lib/format/phone";
+import { formatTrGuardianPhoneInput, formatTrPhoneInput, guardianPhoneInputDigits, trPhoneInputDigits } from "@/lib/format/phone";
 import styles from "./admin-tr-phone-input.module.css";
 
 export function AdminTrPhoneInput({
@@ -33,5 +33,37 @@ export function AdminTrPhoneInput({
         onChange={(event) => onChange(trPhoneInputDigits(event.target.value))}
       />
     </div>
+  );
+}
+
+/** Veli telefonu: tek alanda "+90 XXX XXX XX XX" (müşteri revizyonu PDF-14). Değer 10 hane tutulur. */
+export function AdminGuardianPhoneInput({
+  id,
+  value,
+  onChange,
+  invalid,
+  describedBy,
+}: {
+  id: string;
+  value: string;
+  onChange: (digits: string) => void;
+  invalid?: boolean;
+  describedBy?: string;
+}) {
+  return (
+    <input
+      id={id}
+      className="m-input"
+      type="tel"
+      inputMode="numeric"
+      autoComplete="off"
+      placeholder="+90 XXX XXX XX XX"
+      maxLength={20}
+      value={formatTrGuardianPhoneInput(value)}
+      aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
+      data-guardian-phone-input=""
+      onChange={(event) => onChange(guardianPhoneInputDigits(event.target.value))}
+    />
   );
 }

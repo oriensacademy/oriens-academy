@@ -267,7 +267,7 @@ export function UnifiedLoginPage() {
     return <AccountWaveLoader />;
   }
 
-  const isFromCheckout = searchParams.get("source") === "checkout" || (requested && (requested.includes("payment") || requested.includes("cart") || requested.includes("odeme") || requested.includes("sepet")));
+  const isFromCheckout = searchParams.get("source") === "checkout" || (requested && (requested.includes("payment") || requested.includes("odeme")));
 
   return (
     <AuthExperience locale={locale}>

@@ -11,14 +11,16 @@ import {
   useReferenceContact,
   useReferenceHeader,
 } from "./reference-shared";
-import { CANONICAL_DEFAULT_PACKAGES, getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { CANONICAL_DEFAULT_PACKAGES, getPublicPricingPackages, isBestValueBadge, selectPurchasablePackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 import { localizedPath } from "@/lib/routes";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 
-const STANDARD_PACKAGE_IDS = ["single", "package5", "package10", "package20", "package30"] as const;
-
-/** Row copy exactly as printed in the customer's reference file (oriens-ucretler_17). */
+/**
+ * Row copy exactly as printed in the customer's reference file (oriens-ucretler_17).
+ * Paneldeki yeni paketler (ör. 40 derslik) aynı satır yapısıyla ve DB'deki
+ * description_tr ile listelenir.
+ */
 const REFERENCE_DESCRIPTIONS: Record<string, string> = {
   single: "Esnek, tek seferlik birebir ders.",
   package5: "Düzenli çalışmaya başlamak için.",
@@ -72,7 +74,7 @@ function PackageRow({ item }: { item: PublicPricingPackage }) {
 
   return (
     <li className="pr" data-package-id={item.id}>
-      {badge ? <span className={item.id === "package30" ? "pr-badge alt" : "pr-badge"}>{badge}</span> : null}
+      {badge ? <span className={isBestValueBadge(item) ? "pr-badge alt" : "pr-badge"}>{badge}</span> : null}
       <span className="pr-n"><b>{lessons}</b><small>ders</small></span>
       <span className="pr-m"><span className="pr-t">{name}</span><span className="pr-d">{description}</span></span>
       <span className="pr-u"><small>Ders başı</small><b>{unitText}</b></span>
@@ -95,9 +97,7 @@ function PackageRow({ item }: { item: PublicPricingPackage }) {
 }
 
 function pickPackages(packages: PublicPricingPackage[]) {
-  return STANDARD_PACKAGE_IDS
-    .map((id) => packages.find((item) => item.id === id && item.active))
-    .filter((item): item is PublicPricingPackage => Boolean(item));
+  return selectPurchasablePackages(packages);
 }
 
 export function ReferencePricingPage() {

@@ -143,7 +143,6 @@ const publicFilesToCheck = [
   "src/components/payment/PaymentPage.tsx",
   "src/components/student/StudentPortal.tsx",
   "src/components/sections/Navbar.tsx",
-  "src/components/cart/CartPage.tsx",
 ];
 
 for (const filePath of publicFilesToCheck) {

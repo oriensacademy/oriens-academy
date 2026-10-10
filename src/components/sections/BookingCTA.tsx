@@ -9,13 +9,11 @@ import { ExamSelector, type ExamSelectorValue } from "@/components/forms/ExamSel
 import { useHomeContent, useLocale } from "@/content/locale-context";
 import { submitContact } from "@/lib/contact/api";
 import { Wave } from "@/components/ui/wave";
-import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { getPublicPricingPackages, selectPurchasablePackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { useAccount } from "@/lib/auth/account-context";
 import { getStudentPrefillProfile } from "@/lib/student/data";
 import { useSiteContact } from "@/lib/contact-settings";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
-
-const CONSULTATION_PACKAGE_IDS = new Set(["single", "package5", "package10", "package20", "package30"]);
 
 export function BookingCTA() {
   const CONTACT = useSiteContact();
@@ -59,10 +57,12 @@ export function BookingCTA() {
 
   useEffect(() => {
     const packageId = new URLSearchParams(window.location.search).get("package");
-    if (!packageId || !CONSULTATION_PACKAGE_IDS.has(packageId)) return;
-    queueMicrotask(() => setSelectedPackageId(packageId));
+    if (!packageId) return;
     getPublicPricingPackages().then((packages) => {
-      setSelectedPackage(packages.find((item) => item.id === packageId) || null);
+      const match = selectPurchasablePackages(packages).find((item) => item.id === packageId);
+      if (!match) return;
+      setSelectedPackageId(packageId);
+      setSelectedPackage(match);
     });
   }, []);
 

@@ -6,14 +6,14 @@ import { ArrowRight, CalendarDays, Clock3, CreditCard, MessageCircle, Scale, Shi
 import { AccountWaveLoader } from "@/components/auth/AccountWaveLoader";
 import { ButtonLink } from "@/components/ui/button";
 import { useLocale } from "@/content/locale-context";
-import { getPublicPricingPackages, type PublicPricingPackage } from "@/lib/admin/pricing";
+import { getPublicPricingPackages, isBestValueBadge, selectPurchasablePackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { useSiteContact } from "@/lib/contact-settings";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
 import { localizedPath } from "@/lib/routes";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import styles from "./pricing-page.module.css";
 
-const STANDARD_PACKAGE_IDS = ["single", "package5", "package10", "package20", "package30"] as const;
+const SKELETON_ROWS = ["s1", "s2", "s3", "s4", "s5"] as const;
 
 type Copy = {
   heroStart: string; heroEmphasis: string; heroEnd: string; heroLead: string;
@@ -142,7 +142,7 @@ function PackageRow({ item, locale, copy }: { item: PublicPricingPackage; locale
       data-current-price={money(current, locale, display.currency)}
       data-unit-price={money(unit, locale, display.currency)}
     >
-      {badge ? <span className={`${styles.badge} ${item.id === "package30" ? styles.badgeAlt : ""}`} data-pricing-badge>{badge}</span> : null}
+      {badge ? <span className={`${styles.badge} ${isBestValueBadge(item) ? styles.badgeAlt : ""}`} data-pricing-badge>{badge}</span> : null}
       <span className={styles.lessonCount}><b>{lessons}</b><small>{copy.lesson}</small></span>
       <span className={styles.packageMeta}><span className={styles.packageTitle}>{name}</span><span className={styles.packageDescription}>{description}</span></span>
       <span className={styles.unitPrice}><small>{copy.perLesson}</small><b>{money(unit, locale, display.currency)}</b></span>
@@ -177,9 +177,7 @@ export function PricingPage() {
     getPublicPricingPackages().then(setDbPackages).finally(() => setPricingLoaded(true));
   }, []);
 
-  const activePackages = STANDARD_PACKAGE_IDS
-    .map((id) => dbPackages.find((item) => item.id === id && item.active))
-    .filter((item): item is PublicPricingPackage => Boolean(item));
+  const activePackages = selectPurchasablePackages(dbPackages);
 
   if (settingsLoading) return <AccountWaveLoader />;
   if (!showPricing) {
@@ -194,7 +192,7 @@ export function PricingPage() {
         <ul className={styles.chips}><li><Scale aria-hidden="true" size={16} />{copy.transparentPricing}</li><li><ShieldCheck aria-hidden="true" size={16} />{copy.fixedPrice}</li></ul>
       </section>
       <section className={styles.packages} aria-label={copy.packagesLabel}>
-        {!pricingLoaded ? <div className={styles.packageList} aria-label={copy.loading}>{STANDARD_PACKAGE_IDS.map((id) => <div key={id} className={styles.skeleton} />)}</div>
+        {!pricingLoaded ? <div className={styles.packageList} aria-label={copy.loading}>{SKELETON_ROWS.map((id) => <div key={id} className={styles.skeleton} />)}</div>
           : activePackages.length ? <ul className={styles.packageList}>{activePackages.map((item) => <PackageRow key={item.id} item={item} locale={locale} copy={copy} />)}</ul>
           : <p className={styles.empty} role="status">{copy.unavailable}</p>}
         <p className={styles.taxNote}>{copy.taxNote}</p>

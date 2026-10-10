@@ -9,7 +9,7 @@
  * 2. paytr-create-token is executed in-process with a fake Supabase client and
  *    a stubbed fetch (the PayTR get-token POST is captured, never sent). The
  *    amount the PayTR form would carry is compared with what the cart /
- *    payment page displays and hands to the installment table.
+ *    payment page displays (the summary total and the pay button).
  * 3. paytr-callback is executed in-process with locally signed payloads to
  *    check duplicate success / late failure on an already paid order.
  */
@@ -19,7 +19,6 @@ import Module, { register } from "node:module";
 import { pathToFileURL } from "node:url";
 import * as shared from "../supabase/functions/_shared/payments/pricing";
 import * as frontend from "../src/lib/payments/pricing";
-import { buildPaytrInstallmentTableUrl, PAYTR_INSTALLMENT_TABLE_ENDPOINT } from "../src/lib/payments/paytr-installment-table";
 
 type Row = Record<string, unknown>;
 type Handler = (req: Request) => Promise<Response>;
@@ -151,6 +150,7 @@ const PACKAGES: Row[] = [
   { id: "package5", name_tr: "5 Ders", name_en: "5 Lessons", current_total: 15000, price_amount: 15000, currency: "TRY", lesson_count: 5, unit_price: 3000, purchase_mode: "purchasable", active: true },
   { id: "package10", name_tr: "10 Ders", name_en: "10 Lessons", current_total: 27000, price_amount: 27000, currency: "TRY", lesson_count: 10, unit_price: 2700, purchase_mode: "purchasable", active: true },
   { id: "package30", name_tr: "30 Ders", name_en: "30 Lessons", current_total: 72000, price_amount: 72000, currency: "TRY", lesson_count: 30, unit_price: 2400, purchase_mode: "purchasable", active: true },
+  { id: "package40", name_tr: "40 Ders", name_en: "40 Lessons", current_total: 100000, price_amount: 100000, currency: "TRY", lesson_count: 40, unit_price: 2500, purchase_mode: "purchasable", active: true },
   { id: "odd", name_tr: "Kuruşlu", name_en: "Odd", current_total: 333.33, price_amount: 333.33, currency: "TRY", lesson_count: 1, unit_price: 333.33, purchase_mode: "purchasable", active: true },
 ];
 
@@ -183,11 +183,9 @@ function quoteFor(coupon: CouponDef, packageIds: string[]): Row {
   };
 }
 
-// --- Frontend path (CartPage / PaymentPage) -----------------------------------
+// --- Frontend path (PaymentPage) ----------------------------------------------
 
 // Table embed values (public, not merchant_key / merchant_salt). Dummy token: the real one lives in .env.local.
-const TABLE_MERCHANT_ID = "741293";
-const TABLE_TOKEN = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 function frontendTotals(packageIds: string[], quote: Row | null) {
   // client.ts quoteCheckoutCoupon normalization → useCheckoutCoupon → page pricing
@@ -209,10 +207,9 @@ function frontendTotals(packageIds: string[], quote: Row | null) {
     coupon: rule,
   });
   const finalPrice = breakdown.finalTotal;
-  // PaymentPage → <PaytrInstallmentTable amountKurus={finalTotalKurus} /> → official script URL
-  const tableUrl = buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: breakdown.finalTotalKurus });
-  const installmentAmount = tableUrl ? new URL(tableUrl).searchParams.get("amount") ?? "" : "";
-  return { breakdown, finalPrice, discount: breakdown.discount, installmentAmount, couponCode: rule?.code };
+  // PaymentPage: "Ödenecek tutar" + "<tutar> öde" butonu finalTotal'dan gelir.
+  const displayAmount = frontend.kurusToDecimalString(breakdown.finalTotalKurus);
+  return { breakdown, finalPrice, discount: breakdown.discount, displayAmount, couponCode: rule?.code };
 }
 
 // --- Server path (paytr-create-token) -----------------------------------------
@@ -284,7 +281,7 @@ async function main() {
   const tokenHandler = await loadHandler("../supabase/functions/paytr-create-token/index.ts");
   const callbackHandler = await loadHandler("../supabase/functions/paytr-callback/index.ts");
 
-  /** Display total = installment table amount = PayTR payment_amount = stored transaction amount. */
+  /** Display total = PayTR payment_amount = stored transaction amount. */
   async function consistent(packageIds: string[], coupon: CouponDef | null, expectedFinalKurus: number, expectedDiscountKurus: number) {
     const quote = coupon ? quoteFor(coupon, packageIds) : null;
     const display = frontendTotals(packageIds, quote);
@@ -292,7 +289,7 @@ async function main() {
     assert.equal(server.status, 200, `token status ${server.status} ${JSON.stringify(server.body)}`);
     assert.equal(display.breakdown.finalTotalKurus, expectedFinalKurus, "display final");
     assert.equal(display.breakdown.discountKurus, expectedDiscountKurus, "display discount");
-    assert.equal(display.installmentAmount, tl(expectedFinalKurus), "installment amount");
+    assert.equal(display.displayAmount, tl(expectedFinalKurus), "display amount");
     assert.equal(server.paymentAmount, String(expectedFinalKurus), "PayTR payment_amount");
     assert.equal(Number(server.txInsert?.amount), display.finalPrice, "transaction amount");
     assert.equal(server.body.final_amount, display.finalPrice, "server-computed final_amount in token response");
@@ -309,7 +306,7 @@ async function main() {
     const basket = JSON.parse(Buffer.from(server.basket ?? "", "base64").toString("utf8")) as Array<[string, string, number]>;
     const basketKurus = basket.reduce((sum, [, price]) => sum + Math.round(Number(price) * 100), 0);
     assert.equal(basketKurus, expectedFinalKurus, "basket sum");
-    return `display=${tl(display.breakdown.finalTotalKurus)} installment=${display.installmentAmount} paytr=${tl(Number(server.paymentAmount))} discount=${tl(display.breakdown.discountKurus)}`;
+    return `display=${tl(display.breakdown.finalTotalKurus)} shown=${display.displayAmount} paytr=${tl(Number(server.paymentAmount))} discount=${tl(display.breakdown.discountKurus)}`;
   }
 
   await test("FRONTEND USES SHARED PRICING MODULE", () => {
@@ -317,7 +314,7 @@ async function main() {
     assert.equal(frontend.couponRuleFromQuote, shared.couponRuleFromQuote);
   });
 
-  await test("KURUS → TABLE AMOUNT FORMAT (integer only)", () => {
+  await test("KURUS → PAYTR AMOUNT FORMAT (integer only)", () => {
     const cases: Array<[number, string]> = [[2_700_000, "27000.00"], [4_200_000, "42000.00"], [188_138, "1881.38"], [16_210, "162.10"], [264_050, "2640.50"], [1, "0.01"], [32_333, "323.33"]];
     for (const [kurus, text] of cases) assert.equal(shared.kurusToDecimalString(kurus), text);
     for (const bad of [0, -100, 12.5, Number.NaN, Number.POSITIVE_INFINITY]) assert.equal(shared.kurusToDecimalString(bad), "");
@@ -326,24 +323,13 @@ async function main() {
     assert.equal(shared.kurusToDecimalString(drift.finalTotalKurus), "0.30");
     return cases.map(([, text]) => text).join(" ");
   });
-  await test("INSTALLMENT TABLE URL (panel format, taksit=0, tumu=0)", () => {
-    const url = buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 2_700_000 });
-    assert.equal(url, `${PAYTR_INSTALLMENT_TABLE_ENDPOINT}?token=${TABLE_TOKEN}&merchant_id=741293&amount=27000.00&taksit=0&tumu=0`);
-    const all = new URL(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 2_700_000, taksit: 12, tumu: 1 })!);
-    assert.equal(all.searchParams.get("taksit"), "12");
-    assert.equal(all.searchParams.get("tumu"), "1");
-    // out-of-range taksit falls back to the panel default
-    const clamped = new URL(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 100, taksit: 99 })!);
-    assert.equal(clamped.searchParams.get("taksit"), "0");
-    // missing env / zero amount → no table (payment UI unaffected)
-    assert.equal(buildPaytrInstallmentTableUrl({ merchantId: "", installmentToken: TABLE_TOKEN, amountKurus: 2_700_000 }), null);
-    assert.equal(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: "", amountKurus: 2_700_000 }), null);
-    assert.equal(buildPaytrInstallmentTableUrl({ merchantId: TABLE_MERCHANT_ID, installmentToken: TABLE_TOKEN, amountKurus: 0 }), null);
-    return url ?? "";
-  });
-
   await test("SINGLE PACKAGE NO COUPON", () => consistent(["package5"], null, 1_500_000, 0));
   await test("SINGLE PACKAGE PERCENT COUPON", () => consistent(["package10"], { type: "percentage", value: 10 }, 2_430_000, 270_000));
+  // Doğrudan ödeme (sepet yok): /tr/odeme/?package=package40 tek paketle gelir.
+  await test("DIRECT CHECKOUT package40 NO COUPON", () => consistent(["package40"], null, 10_000_000, 0));
+  await test("DIRECT CHECKOUT package40 PERCENT COUPON", () => consistent(["package40"], { type: "percentage", value: 10 }, 9_000_000, 1_000_000));
+  await test("DIRECT CHECKOUT package40 MAX DISCOUNT (10%, cap 2500)", () => consistent(["package40"], { type: "percentage", value: 10, max: 2500 }, 9_750_000, 250_000));
+  await test("DIRECT CHECKOUT package40 FIXED COUPON", () => consistent(["package40"], { type: "fixed", value: 5000 }, 9_500_000, 500_000));
   await test("MULTI PACKAGE NO COUPON (A)", () => consistent(["package5", "package10"], null, 4_200_000, 0));
   await test("MULTI PACKAGE ONE-ELIGIBLE PERCENT (B: package5)", () =>
     consistent(["package5", "package10"], { type: "percentage", value: 10, packages: ["package5"] }, 4_050_000, 150_000));
@@ -409,7 +395,7 @@ async function main() {
     // end-to-end with a kuruş price
     return consistent(["odd", "package5"], { type: "percentage", value: 3, packages: ["odd"] }, 33333 + 1_500_000 - 1000, 1000);
   });
-  await test("INSTALLMENT = DISPLAY = PAYTR (all scenarios)", async () => {
+  await test("DISPLAY = PAYTR (all scenarios)", async () => {
     const scenarios: Array<[string[], CouponDef | null]> = [
       [["package5", "package10"], null],
       [["package5", "package10"], { type: "percentage", value: 10, packages: ["package5"] }],
@@ -424,9 +410,9 @@ async function main() {
       const display = frontendTotals(ids, coupon ? quoteFor(coupon, ids) : null);
       const server = await serverTotals(tokenHandler, ids, display.couponCode, coupon);
       assert.equal(server.status, 200);
-      assert.equal(display.installmentAmount, tl(Number(server.paymentAmount)));
-      assert.equal(Number(server.txInsert?.amount).toFixed(2), display.installmentAmount);
-      lines.push(display.installmentAmount);
+      assert.equal(display.displayAmount, tl(Number(server.paymentAmount)));
+      assert.equal(Number(server.txInsert?.amount).toFixed(2), display.displayAmount);
+      lines.push(display.displayAmount);
     }
     return lines.join(" | ");
   });

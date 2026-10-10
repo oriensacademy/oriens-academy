@@ -44,7 +44,6 @@ const ROUTES = [
   "/en/blog/",
   "/tr/giris/",
   "/en/login/",
-  "/tr/sepet/",
   "/tr/gizlilik-politikasi/",
   "/tr/mesafeli-satis-sozlesmesi/",
 ];

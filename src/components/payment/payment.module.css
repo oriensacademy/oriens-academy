@@ -1,0 +1,178 @@
+/* Ödeme sayfası — müşteri referansı (oriens-odeme_8.html) birebir; sınıflar bu kökle sınırlı. */
+.root{
+  --bg:#F3F2EA; --card:#FFFFFF; --soft:#F7F6F0; --muted-bg:#E9E8DF;
+  --line:#E2E0D5; --line-2:#ECEAE0; --line-3:#DCDACE;
+  --ink:#15241D; --ink-2:#3A4A42; --ink-3:#4F5A53; --ink-4:#5E655E; --ink-5:#6B6F66;
+  --green:#2F5D46; --green-d:#1F3B2D; --green-bg:#E6EEE8; --green-t:#24513A;
+  --serif:var(--pay-serif),'Fraunces', Georgia, serif; --sans:var(--font-manrope),'Manrope', system-ui, sans-serif;
+  background:var(--bg);font-family:var(--sans);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+.root *{box-sizing:border-box}
+.root p{font-family:inherit}
+.root button{font-family:var(--sans)}
+.root a{color:var(--green)}
+.root :focus-visible{outline:2px solid var(--green);outline-offset:2px}
+
+.main{max-width:1180px;margin:0 auto;padding:40px 24px 72px}
+
+/* Stepper */
+.stepper{list-style:none;margin:0 0 28px;padding:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;font-weight:600}
+.stepper li{display:flex;align-items:center;gap:8px}
+.dot{width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.current{color:var(--ink)} .current .dot{background:var(--ink);color:#fff}
+.todo{color:var(--ink-5)} .todo .dot{border:1px solid #BDBCB1}
+.bar{width:40px;height:1px;background:#CFCDC1}
+
+.pageHead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:32px}
+.h1{margin:0;font-family:var(--serif);font-weight:600;font-size:44px;line-height:1.08;letter-spacing:-.01em;color:var(--ink)}
+.securePill{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;color:var(--green)}
+
+/* Layout */
+.layout{display:flex;flex-wrap:wrap;gap:28px;align-items:stretch}
+.steps{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.summary{flex:1 1 340px;max-width:400px;display:flex;flex-direction:column;gap:14px}
+.summaryCard{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:22px}
+.sumGroup{display:flex;flex-direction:column}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px}
+.stepHead{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.stepNum{width:28px;height:28px;border-radius:999px;background:var(--green-bg);color:var(--green);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,color .2s}
+.stepNum.ok{background:var(--green);color:#fff}
+.h2{margin:0;font-family:var(--serif);font-weight:600;font-size:22px;line-height:1.25;color:var(--ink)}
+
+/* Yönetici bağlamı */
+.adminBox{margin-bottom:18px;border:1px solid #EAD9B0;background:#FBF6E9;border-radius:14px;padding:14px 16px}
+.adminBox p{margin:0;font-size:12px;font-weight:600;color:#7A5A12}
+.adminGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.select{width:100%;min-height:44px;border:1.5px solid #CFCDC1;border-radius:12px;background:#fff;padding:0 12px;font:500 14px var(--sans);color:var(--ink)}
+.select:disabled{opacity:.5}
+
+/* Adım 1 */
+.readonlyGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.readonly{background:var(--soft);border-radius:14px;padding:14px 16px;min-width:0;display:flex;align-items:center;gap:12px}
+.readonly .ic{width:36px;height:36px;border-radius:999px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--green);flex-shrink:0}
+.tx{min-width:0}
+.k{font-size:12px;color:var(--ink-4);font-weight:500;line-height:1.3}
+.v{font-weight:600;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fieldLabel{display:block;font-weight:600;font-size:14px;margin:18px 0 8px}
+.phone{display:flex;align-items:stretch;border:1.5px solid #CFCDC1;border-radius:12px;overflow:hidden;background:#fff;transition:border-color .15s, box-shadow .15s}
+.phone:focus-within{border-color:var(--green);box-shadow:0 0 0 4px rgba(47,93,70,.12)}
+.phone[data-invalid="true"]{border-color:#A3341F}
+.prefix{display:flex;align-items:center;padding:0 14px;background:var(--soft);border-right:1px solid var(--line);font-weight:600;color:var(--ink-2)}
+.phone input{flex:1;min-width:0;border:0;outline:none;padding:14px 16px;font:500 16px var(--sans);color:var(--ink);background:transparent}
+.phone input::placeholder{color:#8C8F86}
+.hint{margin:8px 0 0;font-size:12px;color:var(--ink-5)}
+.fieldError{margin:8px 0 0;font-size:12px;color:#A3341F}
+
+/* Adım 2 */
+.payBox{display:flex;flex-direction:column;gap:16px}
+.skeleton{display:grid;gap:12px;opacity:.55;transition:opacity .3s}
+.payBox.ready .skeleton{opacity:1}
+.skRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.skField{border:1.5px dashed #D3D1C5;border-radius:12px;padding:10px 16px;background:var(--soft)}
+.skField span{display:block;font-size:12px;color:var(--ink-4);font-weight:500}
+.skField i{display:block;font-style:normal;font-weight:600;letter-spacing:.12em;color:#9A9D93;margin-top:2px}
+.payStatus{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-4)}
+.payStatus .ic{width:28px;height:28px;border-radius:999px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--ink-4);flex-shrink:0;transition:background .2s,color .2s}
+.payBox.ready .payStatus{color:var(--green-t)}
+.payBox.ready .payStatus .ic{background:var(--green-bg);color:var(--green)}
+.payStatus p{margin:0}
+.legal{margin:0;font-size:12px;line-height:1.6;color:var(--ink-4)}
+.legal button{border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--green);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.legal button:hover{text-decoration:none}
+.payBtn{width:100%;min-height:56px;padding:0 28px;border:0;border-radius:14px;background:var(--green-d);color:#fff;font-weight:700;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s,opacity .2s}
+.payBtn:hover{background:#13261c}
+.payBtn:disabled{opacity:.35;cursor:not-allowed}
+.payBtn:disabled:hover{background:var(--green-d)}
+.payError{border:1px solid #F0C9C0;background:#FBEEEA;border-radius:14px;padding:14px 16px;font-size:13px;color:#7A2414;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.payError p{margin:0;font-weight:600}
+.ghostBtn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:12px;border:1px solid var(--line-3);background:#fff;color:var(--ink);font-weight:600;font-size:13px;cursor:pointer}
+.ghostBtn:hover{background:var(--soft)}
+.ghostBtn:disabled{opacity:.6;cursor:not-allowed}
+.iframeBox{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.iframeBox iframe{width:100%;border:0;display:block}
+.iframeFoot{border-top:1px solid var(--line);padding:12px;text-align:center}
+.iframeFoot p{margin:0 0 8px;font-size:12px;color:var(--ink-4)}
+.trust{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin-top:18px;font-size:12px;color:var(--ink-4)}
+.trust span{display:flex;align-items:center;gap:6px}
+.trust svg{color:var(--green)}
+
+/* Özet */
+.item{display:flex;gap:14px;align-items:center}
+.badgeTile{width:76px;height:76px;border-radius:18px;background:var(--green-d);color:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex-shrink:0}
+.badgeTile b{font-family:var(--serif);font-weight:600;font-size:38px;line-height:.9}
+.badgeTile small{font-size:10px;font-weight:700;letter-spacing:.14em;opacity:.8}
+.name{font-size:17px;line-height:1.3;font-weight:700}
+.priceRow{display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap}
+.now{font-weight:700;font-size:15px}
+.strike{font-size:13px;color:var(--ink-5);text-decoration:line-through}
+.discount{margin-top:14px;display:inline-flex;align-items:center;gap:6px;background:var(--green-bg);color:var(--green-t);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;align-self:flex-start}
+.sep{height:1px;background:var(--line-2);margin:0}
+.lines{display:flex;flex-direction:column;gap:14px;font-size:15px}
+.lines > div{display:flex;justify-content:space-between;gap:12px}
+.lines .k{color:var(--ink-3);font-size:inherit;font-weight:400;line-height:inherit}
+.minus{color:var(--green-t);font-weight:600;white-space:nowrap}
+.totalBox{background:var(--soft);border-radius:14px;padding:16px 18px}
+.total{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.total > span:first-child{font-size:13px;color:var(--ink-4);font-weight:600}
+.totalV{font-family:var(--serif);font-weight:600;font-size:34px;line-height:1.1;color:var(--green-d);white-space:nowrap}
+.totalNote{font-size:12px;color:var(--ink-5);margin:6px 0 0}
+.notice{margin:0;border:1px solid #EAD9B0;background:#FBF6E9;border-radius:12px;padding:10px 12px;font-size:12px;color:#7A5A12}
+
+/* Kupon */
+.couponToggle{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0;border:0;background:none;color:var(--green);font-weight:600;font-size:14px;cursor:pointer;text-align:left}
+.couponToggle .chev{transition:transform .2s}
+.couponToggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.couponForm{display:flex;gap:8px;margin-top:6px}
+.couponForm input{flex:1;min-width:0;height:46px;border:1.5px solid #CFCDC1;border-radius:12px;padding:0 14px;font:600 14px var(--sans);color:var(--ink);text-transform:uppercase;letter-spacing:.04em;background:#fff;outline:none;transition:border-color .15s, box-shadow .15s}
+.couponForm input::placeholder{text-transform:none;letter-spacing:0;color:#8C8F86;font-weight:500}
+.couponForm input:focus{border-color:var(--green);box-shadow:0 0 0 4px rgba(47,93,70,.12)}
+.couponForm input[aria-invalid="true"]{border-color:#A3341F}
+.couponForm button{height:46px;padding:0 18px;border-radius:12px;border:0;background:var(--ink);color:#fff;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.couponForm button:disabled{background:#C9CEC6;color:#46504A;cursor:not-allowed}
+.couponMsg{margin:8px 0 0;font-size:12px;color:var(--ink-3)}
+.couponMsg:empty{display:none}
+.couponMsg.err{color:#A3341F}
+.couponChip{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--green-bg);border-radius:12px;padding:10px 14px;color:var(--green-t)}
+.couponChip .code{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;letter-spacing:.04em}
+.couponChip button{border:0;background:none;color:var(--ink-3);font-weight:600;font-size:13px;text-decoration:underline;cursor:pointer;min-height:32px;padding:0 4px}
+.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.mobilePaybar{display:none}
+
+@media (max-width: 900px){
+  .layout{flex-direction:column-reverse;align-items:stretch}
+  .steps,.summary{flex:none;max-width:none;width:100%}
+  .summaryCard{gap:18px}
+}
+
+@media (max-width: 640px){
+  .main{padding:20px 16px 120px}
+  .stepper{margin-bottom:18px}
+  .pageHead{margin-bottom:20px;gap:12px}
+  .h1{font-size:30px}
+  .securePill{padding:6px 12px;font-size:12px}
+  .layout{gap:16px}
+  .steps{gap:16px}
+  .card{padding:20px;border-radius:18px}
+  .h2{font-size:20px}
+  .stepHead{margin-bottom:16px}
+  .readonlyGrid,.adminGrid{grid-template-columns:minmax(0,1fr);gap:10px}
+  .readonly{padding:12px 14px}
+  .badgeTile{width:64px;height:64px;border-radius:16px}
+  .badgeTile b{font-size:32px}
+  .skField{padding:8px 14px}
+  .trust{flex-direction:column;align-items:flex-start;gap:8px;margin-top:16px}
+  .couponForm input{font-size:16px}
+
+  .mobilePaybar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;align-items:center;gap:14px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(21,36,29,.06);transition:transform .25s ease;font-family:var(--sans)}
+  .mobilePaybar .amt{display:flex;flex-direction:column;line-height:1.15}
+  .mobilePaybar .amt small{font-size:12px;color:var(--ink-4);font-weight:600}
+  .mobilePaybar .amt b{font-family:var(--serif);font-weight:600;font-size:22px;color:var(--green-d);white-space:nowrap}
+  .mobilePaybar button{flex:1;min-height:50px;border:0;border-radius:14px;background:var(--green-d);color:#fff;font:700 15px var(--sans);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+  .mobilePaybar.hide{transform:translateY(110%)}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .mobilePaybar,.stepNum,.skeleton,.couponToggle .chev{transition:none}
+}

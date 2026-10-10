@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, Menu, ShoppingBag, UserRound, X } from "lucide-react";
+import { ArrowRight, Menu, UserRound, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,7 +15,6 @@ import { useCommonContent, useLocale } from "@/content/locale-context";
 import { cn } from "@/lib/utils";
 import { isPrimaryNavigationActive, localizedPath } from "@/lib/routes";
 import { useAccount } from "@/lib/auth/account-context";
-import { useCart } from "@/lib/cart/cart-context";
 import { usePublicSettings } from "@/lib/settings/public-settings-context";
 import { unifiedLoginPath } from "@/lib/routes";
 import { Wave } from "@/components/ui/wave";
@@ -38,7 +37,6 @@ export function Navbar() {
   const pathname = usePathname();
   const { accountType, isInitializing, signOut } = useAccount();
   const router = useRouter();
-  const { cartCount } = useCart();
   const { showPricing } = usePublicSettings();
   const scrolled = useScrolled(80);
   const [open, setOpen] = useState(false);
@@ -59,14 +57,12 @@ export function Navbar() {
   const accountLabel = accountType === "student" ? (locale === "tr" ? "Hesabım" : "My Account") : accountType === "admin" ? (locale === "tr" ? "Hesap" : "Account") : (locale === "tr" ? "Giriş Yap" : "Sign In");
   const mobileItems = useMemo(() => [
     ...publicNavigation(locale, showPricing),
-    ...(showPricing && (cartCount > 0 || isStudent) ? [{ href: localizedPath("cart", locale), label: locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})` }] : []),
     ...(!isStudent ? [{ href: accountHref, label: accountLabel }] : []),
-  ], [accountHref, accountLabel, cartCount, isStudent, locale, showPricing]);
+  ], [accountHref, accountLabel, isStudent, locale, showPricing]);
   const activeTab = headerTabs.find((tab) =>
     isPrimaryNavigationActive(tab.id, pathname, locale),
   )?.id;
 
-  const isCartActive = pathname === localizedPath("cart", locale) || pathname.startsWith(`/${locale}/sepet`) || pathname.startsWith(`/${locale}/cart`);
   const isAccountActive =
     (accountType === "admin" && pathname.startsWith("/admin")) ||
     (accountType === "student" && (
@@ -194,30 +190,6 @@ export function Navbar() {
           <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
             <div className="flex items-center gap-1.5 sm:gap-3">
               <LanguageSwitch />
-              {showPricing && (cartCount > 0 || isStudent) && (
-                <Link
-                  href={localizedPath("cart", locale)}
-                  aria-current={isCartActive ? "page" : undefined}
-                  // Hidden below 360px: at that width the logo + language switch +
-                  // cart + account icons don't all fit in the header, and the
-                  // hamburger menu already lists "Sepetim" as a fallback (see the
-                  // matching cartCount || isStudent condition in mobileNavItems).
-                  className={cn(
-                    "relative hidden min-[360px]:flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                    isCartActive
-                      ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/25 shadow-xs"
-                      : "border-border text-ink hover:bg-surface-muted"
-                  )}
-                  aria-label={locale === "tr" ? `Sepetim (${cartCount})` : `My Cart (${cartCount})`}
-                >
-                  <ShoppingBag className="size-4" />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-xs">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-              )}
               {isInitializing ? (
                 <span className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border" aria-label="Oriens Academy">
                   <Wave className="h-4 w-8 text-primary" aria-label="Oriens Academy" />
