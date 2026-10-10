@@ -10,6 +10,8 @@
   color: var(--detail-text); font-family: var(--font-manrope), Manrope, system-ui, sans-serif;
 }
 .scope button, .scope input, .scope select, .scope textarea { font-family: inherit; }
+/* PDF-16..22: bölüm/paket başlıkları öğrenci adıyla aynı serif; global `.admin-shell hN` (sans) kuralını yalnız bu kapsamda geçer. */
+.scope :is(h1, h2, h3, h4, h5, h6):global(.font-heading) { font-family: var(--font-newsreader), Newsreader, Georgia, serif; }
 .page { min-height: 100%; background: var(--detail-bg); padding: 32px 32px 56px; }
 .panel { position: relative; z-index: 10; display: flex; height: min(900px, 94dvh); width: min(1280px, 96vw); flex-direction: column; overflow: hidden; border-radius: 20px; border: 1px solid var(--detail-line); background: var(--detail-bg); box-shadow: 0 20px 60px rgb(15 34 27 / 14%); contain: layout paint; will-change: transform, opacity; }
 .pagePanel { z-index: auto; width: 100%; max-width: 1200px; height: auto; min-height: 0; margin: 0 auto; overflow: visible; border: 0; border-radius: 0; box-shadow: none; contain: none; will-change: auto; }

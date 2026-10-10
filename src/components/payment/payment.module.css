@@ -33,6 +33,9 @@
 .summary{flex:1 1 340px;max-width:400px;display:flex;flex-direction:column;gap:14px}
 .summaryCard{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:22px}
 .sumGroup{display:flex;flex-direction:column}
+/* Gerçek PayTR formu referans iskeletinden çok uzun: özet kartı onunla birlikte uzayıp boşluk açmasın, formun yanında sabit dursun. */
+.layout:has([data-paytr-iframe]) .summary{align-self:flex-start;position:sticky;top:104px}
+.layout:has([data-paytr-iframe]) .summaryCard{flex:none;justify-content:flex-start}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px}
 .stepHead{display:flex;align-items:center;gap:12px;margin-bottom:20px}
@@ -66,34 +69,27 @@
 
 /* Adım 2 */
 .payBox{display:flex;flex-direction:column;gap:16px}
-.skeleton{display:grid;gap:12px;opacity:.55;transition:opacity .3s}
-.payBox.ready .skeleton{opacity:1}
-.skRow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.skField{border:1.5px dashed #D3D1C5;border-radius:12px;padding:10px 16px;background:var(--soft)}
-.skField span{display:block;font-size:12px;color:var(--ink-4);font-weight:500}
-.skField i{display:block;font-style:normal;font-weight:600;letter-spacing:.12em;color:#9A9D93;margin-top:2px}
-.payStatus{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-4)}
-.payStatus .ic{width:28px;height:28px;border-radius:999px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--ink-4);flex-shrink:0;transition:background .2s,color .2s}
-.payBox.ready .payStatus{color:var(--green-t)}
-.payBox.ready .payStatus .ic{background:var(--green-bg);color:var(--green)}
-.payStatus p{margin:0}
+.payState{display:flex;align-items:center;gap:10px;min-height:56px;border:1px solid var(--line);border-radius:14px;padding:12px 16px;background:var(--soft);font-size:13px;color:var(--ink-4)}
+.payState .ic{width:28px;height:28px;border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--green);flex-shrink:0}
+.payState p{margin:0}
 .legal{margin:0;font-size:12px;line-height:1.6;color:var(--ink-4)}
 .legal button{border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--green);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .legal button:hover{text-decoration:none}
-.payBtn{width:100%;min-height:56px;padding:0 28px;border:0;border-radius:14px;background:var(--green-d);color:#fff;font-weight:700;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s,opacity .2s}
-.payBtn:hover{background:#13261c}
-.payBtn:disabled{opacity:.35;cursor:not-allowed}
-.payBtn:disabled:hover{background:var(--green-d)}
 .payError{border:1px solid #F0C9C0;background:#FBEEEA;border-radius:14px;padding:14px 16px;font-size:13px;color:#7A2414;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
-.payError p{margin:0;font-weight:600}
+.payError p{margin:0;font-weight:700}
+.payErrorDetail{font-size:12px;color:#8A3A28}
 .ghostBtn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:12px;border:1px solid var(--line-3);background:#fff;color:var(--ink);font-weight:600;font-size:13px;cursor:pointer}
 .ghostBtn:hover{background:var(--soft)}
 .ghostBtn:disabled{opacity:.6;cursor:not-allowed}
-.iframeBox{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
-.iframeBox iframe{width:100%;border:0;display:block}
-.iframeFoot{border-top:1px solid var(--line);padding:12px;text-align:center}
-.iframeFoot p{margin:0 0 8px;font-size:12px;color:var(--ink-4)}
-.trust{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin-top:18px;font-size:12px;color:var(--ink-4)}
+.iframeBox{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.iframeBox iframe{width:100%;height:640px;border:0;display:block}
+.frameLoading{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;font-size:13px;color:var(--ink-4)}
+.frameLoading svg{color:var(--green)}
+.zeroBox{display:flex;flex-direction:column;gap:12px}
+.zeroBox p{margin:0;font-size:14px;color:var(--ink-3)}
+.zeroBtn{width:100%;min-height:52px;border:0;border-radius:14px;background:var(--green-d);color:#fff;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.zeroBtn:disabled{opacity:.6;cursor:not-allowed}
+.trust{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;margin-top:2px;font-size:12px;color:var(--ink-4)}
 .trust span{display:flex;align-items:center;gap:6px}
 .trust svg{color:var(--green)}
 
@@ -144,6 +140,7 @@
   .layout{flex-direction:column-reverse;align-items:stretch}
   .steps,.summary{flex:none;max-width:none;width:100%}
   .summaryCard{gap:18px}
+  .layout:has([data-paytr-iframe]) .summary{align-self:stretch;position:static}
 }
 
 @media (max-width: 640px){
@@ -161,8 +158,8 @@
   .readonly{padding:12px 14px}
   .badgeTile{width:64px;height:64px;border-radius:16px}
   .badgeTile b{font-size:32px}
-  .skField{padding:8px 14px}
-  .trust{flex-direction:column;align-items:flex-start;gap:8px;margin-top:16px}
+  .iframeBox iframe{height:720px}
+  .trust{flex-direction:column;align-items:flex-start;gap:8px;margin-top:0}
   .couponForm input{font-size:16px}
 
   .mobilePaybar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;align-items:center;gap:14px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(21,36,29,.06);transition:transform .25s ease;font-family:var(--sans)}
@@ -174,5 +171,6 @@
 }
 
 @media (prefers-reduced-motion: reduce){
-  .mobilePaybar,.stepNum,.skeleton,.couponToggle .chev{transition:none}
+  .mobilePaybar,.stepNum,.couponToggle .chev{transition:none}
 }
+.root [data-card-section]{scroll-margin-top:96px}

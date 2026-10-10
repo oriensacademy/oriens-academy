@@ -126,10 +126,12 @@ try {
   await page.locator('form button[type="submit"]').click();
   await page.getByRole("heading", { name: "Sipariş Özeti" }).waitFor();
   await page.getByText("10 Derslik Paket", { exact: true }).first().waitFor();
-  await page.waitForTimeout(200);
+  // Doğrulamadan sonra kayıtlı telefonla PayTR formu otomatik istenir (taklit 400 döner → görünür hata).
+  await page.locator("[data-paytr-error]").waitFor();
   check(page.url() === checkoutUrl, "OTP success changed checkout route or query intent");
   check(state.checkoutOpened === 1, `Expected one checkout_opened after reveal, got ${state.checkoutOpened}`);
-  check(state.paytrRequests === 0, "Checkout reveal created a PayTR payment session");
+  check(state.paytrRequests === 1, `Expected exactly one PayTR session request after reveal, got ${state.paytrRequests}`);
+  check(state.installmentRequests === 0, "Failed session still loaded PayTR");
   check(state.otpRequests === 1, `Refresh sent another OTP request (${state.otpRequests})`);
   check(state.blockedExternalUrls.every((url) => ["www.googletagmanager.com", "static.cloudflareinsights.com"].includes(new URL(url).hostname)), `Unexpected external request: ${state.blockedExternalUrls.join(", ")}`);
   await context.close();
@@ -151,9 +153,9 @@ try {
   await enterOtp(direct.page, "111111");
   await direct.page.locator('form button[type="submit"]').click();
   await direct.page.getByText("10 Derslik Paket", { exact: true }).first().waitFor();
-  await direct.page.waitForTimeout(200);
+  await direct.page.locator("[data-paytr-error]").waitFor();
   check(direct.page.url() === directUrl, "Direct-package intent was not preserved");
-  check(direct.state.checkoutOpened === 1 && direct.state.paytrRequests === 0, "Direct-package reveal audit/payment behavior is wrong");
+  check(direct.state.checkoutOpened === 1 && direct.state.paytrRequests === 1, "Direct-package reveal audit/payment behavior is wrong");
   await direct.context.close();
 
   const verified = await createFixture(browser, { verified: true });
@@ -164,7 +166,7 @@ try {
   check(verified.state.checkoutOpened === 1 && verified.state.otpRequests === 0, "Verified checkout audit/OTP behavior is wrong");
   await verified.context.close();
 
-  console.log(JSON.stringify({ status: "PASS", emailSends: 0, realNetworkCalls: 0, paytrTokenRequests: 0, unverifiedCheckoutOpened: 0, verifiedCheckoutOpened: 1, viewports: [390, 1280, 1440] }));
+  console.log(JSON.stringify({ status: "PASS", emailSends: 0, realNetworkCalls: 0, paytrTokenRequestsBeforeVerification: 0, paytrTokenRequestsAfterVerification: 1, unverifiedCheckoutOpened: 0, verifiedCheckoutOpened: 1, viewports: [390, 1280, 1440] }));
 } finally {
   await browser.close();
 }

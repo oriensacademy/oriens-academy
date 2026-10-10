@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import "./generated/reference-login.css";
-import "./reference-login-menu.css";
-import { LOGIN_FOOTER_HTML, LOGIN_HEADER_HTML } from "./generated/markup";
-import { ReferenceFonts, ReferenceHtml, fillContact, useInternalLinkNavigation, useReferenceContact } from "./reference-shared";
+import { LOGIN_FOOTER_HTML } from "./generated/markup";
+import { NavbarSpacer, ReferenceFonts, ReferenceHtml, fillContact, useInternalLinkNavigation, useReferenceContact } from "./reference-shared";
 import { TurnstileWidget, type TurnstileWidgetRef } from "@/components/security/TurnstileWidget";
 import { useAccount } from "@/lib/auth/account-context";
 import { destinationForAccount, safeReturnPath } from "@/lib/auth/account-routing";
@@ -25,13 +24,6 @@ const REGISTER_HREF = "/tr/giris/?mode=register";
 const TITLES: Partial<Record<View, string>> = { login: "Giriş Yap | Oriens Academy", reg: "Kayıt Ol | Oriens Academy" };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const RESEND_SECONDS = 60;
-
-/** Mobile menu for the reference `.hb` burger, built from the customer's own `.oh-panel` markup. */
-const LOGIN_MENU_HTML =
-  '<div class="oh-panel" id="oh-panel"><nav aria-label="Mobil menü"><a href="/tr/">Ana Sayfa</a><a href="/tr/sinavlar/">Sınavlar</a><a href="/tr/universite-destegi/">Üniversite Desteği</a><a href="/tr/ucretler/">Ücretler</a><a href="/tr/blog/">Blog</a><a href="/tr/hakkimizda/">Hakkımızda</a></nav>' +
-  '<div class="oh-pb"><a class="p1" href="/tr/giris/" aria-current="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Giriş / Kayıt Ol</a><a class="p2" href="/tr/randevu/">Ücretsiz Görüşme Planla <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>' +
-  '<div class="oh-ml" role="group" aria-label="Dil seçimi"><a href="/tr/giris/" aria-current="true" lang="tr">TR</a><a href="/en/login/" lang="en" hreflang="en">EN</a></div></div>';
-const LOGIN_HEADER_WITH_MENU = LOGIN_HEADER_HTML.replace(/<\/header>$/, `${LOGIN_MENU_HTML}</header>`);
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -570,49 +562,14 @@ export function ReferenceLoginPage() {
     }
   }
 
-  /* ---------- header burger (.hb) ---------- */
-  useEffect(() => {
-    const header = scopeRef.current?.querySelector<HTMLElement>("header");
-    const burger = header?.querySelector<HTMLButtonElement>(".hb");
-    if (!header || !burger) return;
-    burger.setAttribute("aria-expanded", "false");
-    burger.setAttribute("aria-controls", "oh-panel");
-    const set = (open: boolean) => {
-      header.classList.toggle("is-open", open);
-      burger.setAttribute("aria-expanded", String(open));
-      burger.setAttribute("aria-label", open ? "Menüyü kapat" : "Menüyü aç");
-    };
-    const onBurger = () => set(!header.classList.contains("is-open"));
-    const links = Array.from(header.querySelectorAll<HTMLAnchorElement>(".oh-panel a"));
-    const close = () => set(false);
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && header.classList.contains("is-open")) {
-        set(false);
-        burger.focus();
-      }
-    };
-    const onResize = () => {
-      if (window.innerWidth > 1290) set(false);
-    };
-    burger.addEventListener("click", onBurger);
-    links.forEach((link) => link.addEventListener("click", close));
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onResize);
-    return () => {
-      burger.removeEventListener("click", onBurger);
-      links.forEach((link) => link.removeEventListener("click", close));
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
-
   const tabView = view === "reg" ? "reg" : "login";
   const otpCode = otpEmail ? maskEmail(otpEmail) : "";
 
   return (
+    <>
+    <NavbarSpacer />
     <div ref={scopeRef} className="reference-login-page">
       <ReferenceFonts />
-      <ReferenceHtml html={LOGIN_HEADER_WITH_MENU} />
       <main id="giris">
         <div className="wrap">
           <aside className="side" aria-label="Veli hesabı avantajları">
@@ -775,6 +732,7 @@ export function ReferenceLoginPage() {
       </main>
       <ReferenceHtml html={fillContact(LOGIN_FOOTER_HTML, contact)} />
     </div>
+    </>
   );
 }
 

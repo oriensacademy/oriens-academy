@@ -13,7 +13,7 @@ export function isReferenceRoute(pathname: string | null | undefined) {
   return (REFERENCE_ROUTES as readonly string[]).includes(normalized);
 }
 
-/** Renders site chrome (navbar, floating docks) everywhere except the reference routes. */
+/** Renders the floating docks everywhere except the reference routes (their bodies carry their own). */
 export function HideOnReferenceRoute({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return isReferenceRoute(pathname) ? null : <>{children}</>;
@@ -79,50 +79,14 @@ export function fillContact(html: string, contact: ReferenceContact) {
   });
 }
 
+/** Reserves the fixed canonical Navbar's height (`h-[72px] md:h-20`) above a reference body. */
+export function NavbarSpacer() {
+  return <div aria-hidden="true" className="h-[72px] md:h-20" data-navbar-spacer="" />;
+}
+
 /** Static reference markup. `display: contents` keeps the fragment out of layout (sticky, grid). */
 export function ReferenceHtml({ html }: { html: string }) {
   return <div style={{ display: "contents" }} dangerouslySetInnerHTML={{ __html: html }} />;
-}
-
-/** Literal port of the reference `#oh-js` header script (burger panel + scrolled state). */
-export function useReferenceHeader(scopeRef: RefObject<HTMLElement | null>) {
-  useEffect(() => {
-    const header = scopeRef.current?.querySelector<HTMLElement>("[data-oh]");
-    if (!header) return;
-    const burger = header.querySelector<HTMLButtonElement>(".oh-burger");
-    if (!burger) return;
-    const set = (open: boolean) => {
-      header.classList.toggle("is-open", open);
-      burger.setAttribute("aria-expanded", String(open));
-      burger.setAttribute("aria-label", open ? "Menüyü kapat" : "Menüyü aç");
-    };
-    const onBurger = () => set(!header.classList.contains("is-open"));
-    const panelLinks = Array.from(header.querySelectorAll<HTMLAnchorElement>(".oh-panel a"));
-    const close = () => set(false);
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && header.classList.contains("is-open")) {
-        set(false);
-        burger.focus();
-      }
-    };
-    const onResize = () => {
-      if (window.innerWidth > 1310) set(false);
-    };
-    const onScroll = () => header.classList.toggle("is-scrolled", window.scrollY > 8);
-    burger.addEventListener("click", onBurger);
-    panelLinks.forEach((link) => link.addEventListener("click", close));
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onResize);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      burger.removeEventListener("click", onBurger);
-      panelLinks.forEach((link) => link.removeEventListener("click", close));
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, [scopeRef]);
 }
 
 /** Client-side navigation for the plain `<a href="/…">` links inside the static reference markup. */

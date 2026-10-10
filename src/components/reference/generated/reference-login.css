@@ -33,17 +33,6 @@ body:has(> * .reference-login-page), body:has(.reference-login-page) { backgroun
 .reference-login-page:not(#_) p,.reference-login-page:not(#_) li{text-wrap:pretty}
 .reference-login-page:not(#_) ::selection{background:rgba(201,165,92,.32);color:#10271B}
 .reference-login-page:not(#_) a:focus-visible,.reference-login-page:not(#_) button:focus-visible,.reference-login-page:not(#_) input:focus-visible,.reference-login-page:not(#_) label:focus-visible,.reference-login-page:not(#_) summary:focus-visible{outline:2px solid #C9A55C;outline-offset:2px;border-radius:8px}
-.reference-login-page:not(#_) .oa-lang{display:inline-flex;align-items:center;gap:2px;height:38px;padding:3px 3px 3px 10px;border:1px solid #DCE3D8;border-radius:999px;background:rgba(255,255,255,.75);box-sizing:border-box;flex:none}
-.reference-login-page:not(#_) .oa-lang svg{color:#6B7B70;margin-right:4px;flex:none}
-.reference-login-page:not(#_) .oa-lang a{position:relative;min-width:34px;height:30px;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font-size:12.5px;font-weight:600;letter-spacing:.06em;color:#5E6E63;text-decoration:none;transition:background .15s,color .15s}
-.reference-login-page:not(#_) .oa-lang a::after{content:"";position:absolute;inset:-7px -1px}
-.reference-login-page:not(#_) .oa-lang a:hover{color:#10271B;background:#EEF2EC}
-.reference-login-page:not(#_) .oa-lang a[aria-current]{background:#10271B;color:#FFFFFF}
-.reference-login-page:not(#_) header .hn,.reference-login-page:not(#_) header .nav{flex-wrap:nowrap!important}
-@media(max-width:1380px){.reference-login-page:not(#_) .oa-lang svg{display:none}.reference-login-page:not(#_) .oa-lang{padding-left:3px}.reference-login-page:not(#_) header .hn .nl,.reference-login-page:not(#_) header .nav a{padding-left:10px!important;padding-right:10px!important}}
-@media(max-width:1290px){.reference-login-page:not(#_) .oa-lang{display:inline-flex!important}}
-@media(max-width:560px){.reference-login-page:not(#_) .oa-lang{display:none!important}}
-@media(max-width:360px){.reference-login-page:not(#_) header img.hl,.reference-login-page:not(#_) header .logo img{height:30px!important}.reference-login-page:not(#_) header a.hc,.reference-login-page:not(#_) header .hr a.btn-p{padding:0 10px!important;font-size:13px!important}}
 
 
 .reference-login-page:not(#_){
@@ -61,20 +50,9 @@ body:has(> * .reference-login-page), body:has(.reference-login-page) { backgroun
 .reference-login-page:not(#_) :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
 /* header */
-.reference-login-page:not(#_) header{position:sticky;top:0;z-index:20;background:rgba(246,248,243,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-.reference-login-page:not(#_) .hw{max-width:1280px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.reference-login-page:not(#_) .logo img{height:46px;width:auto;max-width:none;display:block;object-fit:contain;flex-shrink:0}
-.reference-login-page:not(#_) .nav{display:flex;font-size:15px;font-weight:500}
-.reference-login-page:not(#_) .nav a{text-decoration:none;color:var(--muted);padding:0 12px;height:44px;display:flex;align-items:center;border-radius:10px;white-space:nowrap}
-.reference-login-page:not(#_) .nav a:hover{background:var(--tint)}
-.reference-login-page:not(#_) .hr{display:flex;align-items:center;gap:10px}
 .reference-login-page:not(#_) .lang{color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;height:44px;display:flex;align-items:center;padding:0 8px;white-space:nowrap}
-.reference-login-page:not(#_) .btn-o{display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 16px;border:1.5px solid var(--ink);background:var(--card);border-radius:12px;font-weight:600;font-size:15px;text-decoration:none;color:var(--ink);white-space:nowrap}
 .reference-login-page:not(#_) .btn-p{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 20px;background:var(--ink);color:#fff;border:0;border-radius:12px;font:inherit;font-weight:600;font-size:15px;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .15s}
 .reference-login-page:not(#_) .btn-p:hover{background:var(--ink-2)}
-.reference-login-page:not(#_) .hb{display:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;align-items:center;justify-content:center;padding:0}
-@media (max-width:1290px){.reference-login-page:not(#_) .nav,.reference-login-page:not(#_) .hr .btn-o{display:none}.reference-login-page:not(#_) .hb{display:flex}.reference-login-page:not(#_) .hr .btn-p{height:44px;padding:0 14px;font-size:14px}.reference-login-page:not(#_) .hr .btn-p svg{display:none}.reference-login-page:not(#_) .logo img{height:38px}}
-@media (max-width:480px){.reference-login-page:not(#_) .hfl{display:none}.reference-login-page:not(#_) .hw{padding:12px 16px}}
 
 /* main */
 .reference-login-page:not(#_) main{max-width:1180px;margin:0 auto;padding:56px 24px 88px}

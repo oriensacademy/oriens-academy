@@ -79,9 +79,7 @@ export default async function LangLayout({
           >
             {site.skipToContent}
           </a>
-          <HideOnReferenceRoute>
-            <Navbar />
-          </HideOnReferenceRoute>
+          <Navbar />
           <PublicPageTransition>{children}</PublicPageTransition>
           <HideOnReferenceRoute>
             <SocialLinks />

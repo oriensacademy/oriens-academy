@@ -68,7 +68,8 @@ export function PaymentPage() {
 
   // Transient checkout-only 3D Secure phone (never persisted to a profile).
   // TR: "+90" sabit önek + 10 hane (5XX XXX XX XX). EN: serbest uluslararası numara.
-  const [paymentPhone, setPaymentPhone] = useState("");
+  // null = kullanıcı henüz yazmadı: hesap sahibinin kayıtlı telefonu önerilir.
+  const [phoneInput, setPhoneInput] = useState<string | null>(null);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const phoneInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -79,9 +80,9 @@ export function PaymentPage() {
   const [couponNote, setCouponNote] = useState("");
   const couponInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Mobil alt ödeme çubuğu: asıl ödeme butonu ekrandayken gizlenir.
-  const [payButton, setPayButton] = useState<HTMLButtonElement | null>(null);
-  const [payButtonVisible, setPayButtonVisible] = useState(false);
+  // Mobil alt ödeme çubuğu: kart bölümü (PayTR formu) ekrandayken gizlenir.
+  const [cardSection, setCardSection] = useState<HTMLElement | null>(null);
+  const [cardSectionVisible, setCardSectionVisible] = useState(false);
   const [iframeOpen, setIframeOpen] = useState(false);
 
   const initializedForUserRef = useRef("");
@@ -199,18 +200,20 @@ export function PaymentPage() {
     };
   }, [refreshGuardianData]);
 
-  // Asıl ödeme butonu görünürken mobil çubuğu gizle (iki buton üst üste görünmesin).
+  // Kart bölümü görünürken mobil çubuğu gizle (PayTR formunun üstünü örtmesin).
   useEffect(() => {
-    if (!payButton) return;
+    if (!cardSection) return;
     if (typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver((entries) => {
-      setPayButtonVisible(Boolean(entries[0]?.isIntersecting));
-    }, { threshold: 0.6 });
-    observer.observe(payButton);
+      setCardSectionVisible(Boolean(entries[0]?.isIntersecting));
+    }, { threshold: 0 });
+    observer.observe(cardSection);
     return () => observer.disconnect();
-  }, [payButton]);
+  }, [cardSection]);
 
   const selectedGuardian = guardians.find((item) => item.user_id === guardianId) ?? null;
+  const savedPhone = isTr ? trPhoneInputDigits(selectedGuardian?.phone) : (selectedGuardian?.phone || "").trim();
+  const paymentPhone = phoneInput ?? savedPhone;
 
   const availableLearners = useMemo(() => {
     const allowed = new Set(links.filter((row) => row.guardian_user_id === guardianId).map((row) => row.student_id));
@@ -319,9 +322,7 @@ export function PaymentPage() {
         ? (isTr ? "Telefon numaranızı girin, PayTR kart formu burada açılsın." : "Enter your phone number to open the PayTR card form here.")
         : (isTr ? "İndirim kodu kontrol ediliyor…" : "Checking the discount code…");
   const amountText = money(finalPrice);
-  const payLabel = finalPrice <= 0
-    ? (isTr ? "Siparişi tamamla" : "Complete order")
-    : (isTr ? `${amountText} öde` : `Pay ${amountText}`);
+  const expectedAmountKurus = Math.round(finalPrice * 100);
 
   const orderSnapshot: LegalOrderSnapshot = {
     packageName: selectedPackage ? packageDisplayName(selectedPackage, locale) : (isTr ? "Ders Paketi" : "Lesson Package"),
@@ -347,17 +348,13 @@ export function PaymentPage() {
   };
 
   const handleMobilePay = () => {
-    if (payButton && !payButton.disabled) {
-      payButton.click();
-      return;
-    }
     if (!isPhoneValid && phoneInputRef.current) {
       setPhoneTouched(true);
       phoneInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
       window.setTimeout(() => phoneInputRef.current?.focus({ preventScroll: true }), 350);
       return;
     }
-    payButton?.scrollIntoView({ behavior: "smooth", block: "center" });
+    cardSection?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const verificationResolved = accountType === "admin"
@@ -380,7 +377,7 @@ export function PaymentPage() {
   const displayPrice = selectedPackage
     ? getLocalizedPackageDisplayPrice({ locale, tryAmount: selectedPackage.current_total ?? selectedPackage.price_amount, eurAmount: selectedPackage.price_eur })
     : null;
-  const showPaybar = Boolean(payButton) && !payButtonVisible && !iframeOpen;
+  const showPaybar = Boolean(cardSection) && !cardSectionVisible && !iframeOpen;
 
   return (
     <section className={`${styles.root} ${fraunces.variable} pt-16 md:pt-20`} data-payment-page="">
@@ -451,7 +448,7 @@ export function PaymentPage() {
                   autoComplete={isTr ? "tel-national" : "tel"}
                   required
                   value={isTr ? formatPaymentPhoneInput(paymentPhone) : paymentPhone}
-                  onChange={(event) => setPaymentPhone(isTr ? trPhoneInputDigits(event.target.value) : event.target.value)}
+                  onChange={(event) => setPhoneInput(isTr ? trPhoneInputDigits(event.target.value) : event.target.value)}
                   onBlur={() => setPhoneTouched(true)}
                   placeholder={isTr ? "5xx xxx xx xx" : "+44 7xxx xxx xxx"}
                   maxLength={isTr ? 13 : 24}
@@ -468,7 +465,7 @@ export function PaymentPage() {
             </section>
 
             {/* 2. Kart */}
-            <section className={styles.card} aria-labelledby="pay-s2">
+            <section ref={setCardSection} className={styles.card} aria-labelledby="pay-s2" data-card-section="">
               <div className={styles.stepHead}><span className={styles.stepNum}>2</span><h2 id="pay-s2" className={styles.h2}>{isTr ? "Kart ile ödeme" : "Pay by card"}</h2></div>
               <HostedCardPanel
                 locale={locale}
@@ -478,9 +475,8 @@ export function PaymentPage() {
                 guardianUserId={accountType === "admin" ? guardianId : undefined}
                 paymentPhone={phoneCheck.normalized}
                 contextReady={contextReady}
-                payLabel={payLabel}
+                expectedAmountKurus={expectedAmountKurus}
                 pendingMessage={pendingMessage}
-                payButtonRef={setPayButton}
                 onIframeChange={setIframeOpen}
                 onOpenLegalDoc={setActiveModal}
                 onSessionResult={handleSessionResult}

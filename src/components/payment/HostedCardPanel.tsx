@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, Loader2, LockKeyhole, RefreshCw, ShieldCheck } from "lucide-react";
 import type { Locale } from "@/content/dictionaries";
 import { confirmPaymentAgreements, createPaytrToken, recordPaymentClientEvent } from "@/lib/payments/client";
+import type { CreatePaytrTokenResult } from "@/lib/payments/client";
 import { localizedPath, paymentSuccessPath, unifiedLoginPath } from "@/lib/routes";
 import { paymentErrorMessage, paymentErrorRequiresLogin } from "@/lib/payments/public-errors";
 import { LEGAL_VERSIONS } from "@/config/legal";
@@ -12,14 +14,15 @@ import type { LegalDocKey } from "@/config/legal";
 import styles from "./payment.module.css";
 
 interface ErrorState {
-  message: string;
+  /** Sunucunun/yerelleştirilmiş ikincil açıklama (ham yanıt asla gösterilmez). */
+  detail: string;
   requiresLogin: boolean;
 }
 
 interface PreparedPayment {
   token: string;
-  reference?: string;
-  statusToken?: string;
+  reference: string;
+  statusToken: string;
 }
 
 interface HostedCardPanelProps {
@@ -29,12 +32,10 @@ interface HostedCardPanelProps {
   guardianUserId?: string;
   paymentPhone: string;
   contextReady: boolean;
-  /** Buton metni: "15.000 TL öde" (sıfır tutarda "Siparişi tamamla"). */
-  payLabel: string;
+  /** Ekrandaki ödenecek tutar (kuruş). PayTR oturumunun tutarı bununla aynı olmalı. */
+  expectedAmountKurus: number;
   /** Bağlam hazır değilken durum satırı (ör. telefon bekleniyor). */
   pendingMessage: string;
-  /** Mobil alt ödeme çubuğu bu butonu izler ve tetikler. */
-  payButtonRef?: (element: HTMLButtonElement | null) => void;
   /** PayTR iframe'i açıldığında/kapandığında bildirilir. */
   onIframeChange?: (open: boolean) => void;
   locale: Locale;
@@ -49,14 +50,39 @@ export interface PaymentSessionResult {
   zero?: boolean;
 }
 
+const LEGAL_ACCEPTED_VERSIONS = {
+  salesAgreement: LEGAL_VERSIONS.salesAgreement,
+  preInformation: LEGAL_VERSIONS.preInformation,
+  refundPolicy: LEGAL_VERSIONS.refundPolicy,
+};
+
+/** Bağlam değiştikten sonra token istemeden önce beklenen süre (yazarken istek yağmurunu önler). */
+const REQUEST_DEBOUNCE_MS = 350;
+/** PayTR iframe'i bu süre içinde `load` olmazsa görünür hata + yeniden dene gösterilir. */
+const IFRAME_LOAD_TIMEOUT_MS = 20_000;
+
+function newClientRequestId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 /**
- * The single pay button ("15.000 TL öde") action is the legal acceptance: no checkboxes,
- * no separate confirmation step. One click runs, in order: create the PayTR
- * session (the edge function commits legal-acceptance metadata to the new
- * payment_transactions row BEFORE it ever calls PayTR's API -- see
- * supabase/functions/paytr-create-token/index.ts), then confirm that
- * acceptance via the existing confirm_payment_agreements RPC, then show the
- * iframe. No PayTR session is ever created just from the page loading.
+ * Kart bilgisi yalnızca PayTR'nin barındırdığı iframe'e girilir; Oriens hiçbir
+ * kart alanı çizmez, kart verisi Oriens DOM/state/backend'inden geçmez.
+ *
+ * Bağlam hazır olduğunda (e-posta doğrulanmış, paket, geçerli telefon, kupon
+ * teklifi) PayTR oturumu otomatik istenir ve form açılır. Her istek kendi
+ * `clientRequestId`'sini taşır: sunucu tek kullanımlık bir token'ı yalnız aynı
+ * isteğin ağ tekrarına geri verir, böylece yenileme veya kupon/paket değişimi
+ * hiçbir zaman tüketilmiş ("bu ödeme sayfası geçersiz") bir formu açmaz.
+ * Bağlam değişince sürüm artar; geç gelen eski yanıtlar yok sayılır ve eski
+ * iframe hemen kaldırılır.
+ *
+ * Yasal kabul: oturum oluşturulurken edge function kabul meta verisini işlemin
+ * satırına yazar; ardından confirm_payment_agreements ile teyit edilir. Kabul
+ * metni PayTR formunun hemen altında, ödemeyi tamamlayan PayTR butonunun
+ * yanında gösterilir. Sıfır tutarlı siparişler (ör. %100 kupon) otomatik
+ * tamamlanmaz; açık bir "Siparişi tamamla" tıklaması gerekir.
  */
 export function HostedCardPanel({
   packageIds,
@@ -65,9 +91,8 @@ export function HostedCardPanel({
   guardianUserId,
   paymentPhone,
   contextReady,
-  payLabel,
+  expectedAmountKurus,
   pendingMessage,
-  payButtonRef,
   onIframeChange,
   locale,
   onOpenLegalDoc,
@@ -75,131 +100,193 @@ export function HostedCardPanel({
 }: HostedCardPanelProps) {
   const router = useRouter();
   const isTr = locale === "tr";
+  const zeroOrder = expectedAmountKurus <= 0;
 
-  const [starting, setStarting] = useState(false);
-  const [prepared, setPrepared] = useState<PreparedPayment | null>(null);
-  const [error, setError] = useState<ErrorState | null>(null);
-  const inFlightRef = useRef(false);
+  const [attempt, setAttempt] = useState(0);
+  const [zeroStarting, setZeroStarting] = useState(false);
+  /**
+   * Oturum durumu, üretildiği istek anahtarıyla saklanır. Bağlam (paket, kupon,
+   * telefon, tutar…) veya deneme sayacı değişince anahtar değişir; eski token,
+   * iframe ve hata böylece anında geçersiz sayılır.
+   */
+  const [session, setSession] = useState<{ key: string; prepared: PreparedPayment | null; error: ErrorState | null }>({ key: "", prepared: null, error: null });
+  const [loadedToken, setLoadedToken] = useState("");
 
-  const handleProceedToPayment = useCallback(async () => {
-    // Belt-and-suspenders re-entrancy guard on top of the disabled button --
-    // covers a rapid double-click landing between React's disabled-state
-    // paint and the actual click handler running.
-    if (inFlightRef.current || !contextReady) return;
-    const notifySession = (sessionResult: PaymentSessionResult) => {
-      try {
-        onSessionResult?.(sessionResult);
-      } catch {
-        // Denetim bildirimi ödeme akışını asla etkilemez.
-      }
-    };
-    inFlightRef.current = true;
-    setStarting(true);
-    setError(null);
+  const packageKey = packageIds.join(",");
+  const requestKey = useMemo(
+    () => (contextReady
+      ? JSON.stringify([packageKey, couponCode || "", learnerId, guardianUserId || "", paymentPhone, locale, expectedAmountKurus])
+      : ""),
+    [contextReady, couponCode, expectedAmountKurus, guardianUserId, learnerId, locale, packageKey, paymentPhone],
+  );
+  const sessionKey = !requestKey ? "" : zeroOrder ? `zero#${requestKey}` : `${requestKey}#${attempt}`;
+  const current = sessionKey && session.key === sessionKey ? session : null;
+  const prepared = current?.prepared ?? null;
+  const error = current?.error ?? null;
+  const loading = Boolean(sessionKey) && !zeroOrder && !current;
+  const frameLoaded = Boolean(prepared?.token) && loadedToken === prepared?.token;
 
+  const notifySession = useCallback((sessionResult: PaymentSessionResult) => {
     try {
-      const legalVersions = {
-        salesAgreement: LEGAL_VERSIONS.salesAgreement,
-        preInformation: LEGAL_VERSIONS.preInformation,
-        refundPolicy: LEGAL_VERSIONS.refundPolicy,
-      };
+      onSessionResult?.(sessionResult);
+    } catch {
+      // Denetim bildirimi ödeme akışını asla etkilemez.
+    }
+  }, [onSessionResult]);
 
-      // PAYMENT_SESSION_RETRY: sunucu bayat (tek kullanımlık, tüketilmiş) bir
-      // PayTR oturumu bulup arşivledi. Kullanıcıya hata göstermek yerine aynı
-      // tık içinde bir kez daha, taze bir oturumla deneriz.
-      let result = await createPaytrToken({
-        packageIds,
-        couponCode,
-        learnerId,
-        guardianUserId,
-        paymentPhone,
-        locale,
-        // The click itself is the acceptance -- see plan "PayTR Legal
-        // Acceptance + Payment Start Flow Repair".
-        termsAccepted: true,
-        refundPolicyAccepted: true,
-        legalVersions,
-      });
+  /** Tek bir PayTR oturumu ister; PAYMENT_SESSION_RETRY'da yeni kimlikle bir kez daha dener. */
+  const requestSession = useCallback(async (): Promise<CreatePaytrTokenResult> => {
+    const input = {
+      packageIds: packageKey ? packageKey.split(",") : [],
+      couponCode,
+      learnerId,
+      guardianUserId,
+      paymentPhone,
+      locale,
+      termsAccepted: true,
+      refundPolicyAccepted: true,
+      legalVersions: LEGAL_ACCEPTED_VERSIONS,
+    };
+    let result = await createPaytrToken({ ...input, clientRequestId: newClientRequestId() });
+    if (result.errorCode === "PAYMENT_SESSION_RETRY") {
+      result = await createPaytrToken({ ...input, clientRequestId: newClientRequestId() });
+    }
+    return result;
+  }, [couponCode, guardianUserId, learnerId, locale, packageKey, paymentPhone]);
 
-      if (result.errorCode === "PAYMENT_SESSION_RETRY") {
-        result = await createPaytrToken({
-          packageIds,
-          couponCode,
-          learnerId,
-          guardianUserId,
-          paymentPhone,
-          locale,
-          termsAccepted: true,
-          refundPolicyAccepted: true,
-          legalVersions,
-        });
-      }
+  const fail = useCallback((key: string, errorCode: string | undefined, message?: string) => {
+    setSession({
+      key,
+      prepared: null,
+      error: {
+        detail: message || paymentErrorMessage(errorCode || "TOKEN_ERROR", locale),
+        requiresLogin: paymentErrorRequiresLogin(errorCode),
+      },
+    });
+  }, [locale]);
 
-      notifySession(!result.success || (!result.iframe_token && !result.zero_payment)
-        ? { errorCode: result.errorCode || "PAYMENT_SESSION_FAILED" }
-        : { reference: result.reference || result.merchant_oid, zero: Boolean(result.zero_payment) });
+  // Effect yalnız gerçek girdiler (requestKey) ve yeniden deneme sayacıyla
+  // tetiklenir; geri çağırımların kimliği değişti diye yeni token istenmez.
+  const latestRef = useRef({ requestSession, notifySession, fail, expectedAmountKurus, isTr });
+  useEffect(() => {
+    latestRef.current = { requestSession, notifySession, fail, expectedAmountKurus, isTr };
+  });
 
-      if (!result.success || (!result.iframe_token && !result.zero_payment)) {
-        setError({
-          message: result.message || (isTr ? "Ödeme ekranı şu anda hazırlanamadı." : "Payment screen could not be prepared."),
-          requiresLogin: paymentErrorRequiresLogin(result.errorCode),
-        });
-        return;
-      }
+  // Otomatik açılış: bağlam (veya yeniden deneme sayacı) her değiştiğinde yeni
+  // bir PayTR oturumu istenir; temizlikte eski isteğin geç yanıtı yok sayılır.
+  useEffect(() => {
+    if (!sessionKey || zeroOrder) return;
+    const key = sessionKey;
+    let cancelled = false;
 
-      if (result.zero_payment) {
-        // Zero-amount (100% coupon) orders are finalized server-side in the
-        // same request once legal acceptance is true -- nothing left to show.
-        if (result.reference && result.statusToken) {
-          const path = paymentSuccessPath(locale);
-          router.push(`${path}?reference=${encodeURIComponent(result.reference)}&token=${encodeURIComponent(result.statusToken)}`);
+    const timer = window.setTimeout(async () => {
+      const { requestSession, notifySession, fail, expectedAmountKurus, isTr } = latestRef.current;
+      try {
+        const result = await requestSession();
+        if (cancelled) return;
+
+        if (!result.success || !result.iframe_token) {
+          notifySession({ errorCode: result.errorCode || "PAYMENT_SESSION_FAILED" });
+          fail(key, result.errorCode, result.message);
+          return;
         }
+
+        const reference = result.reference || result.merchant_oid || "";
+        // Ekrandaki tutar ile PayTR oturumunun tutarı kuruş düzeyinde aynı olmalı;
+        // değilse form gösterilmez (yanlış tutarla ödeme alınmaz).
+        const tokenKurus = Math.round(Number(result.final_amount ?? Number.NaN) * 100);
+        if (!Number.isFinite(tokenKurus) || tokenKurus !== expectedAmountKurus) {
+          notifySession({ reference, errorCode: "AMOUNT_MISMATCH" });
+          fail(key, "AMOUNT_MISMATCH", isTr
+            ? "Ödeme tutarı güncellendi. Güncel tutarla formu yeniden yükleyin."
+            : "The payment amount changed. Reload the form with the current amount.");
+          return;
+        }
+
+        notifySession({ reference });
+
+        // Zorunlu: kabul teyidi kaydedilemezse ödeme formu gösterilmez
+        // (bekleyen işlem 30 dakikalık stale-pending TTL ile kendiliğinden düşer).
+        const confirmed = await confirmPaymentAgreements(result.merchant_oid || reference, LEGAL_ACCEPTED_VERSIONS);
+        if (cancelled) return;
+        if (!confirmed) {
+          fail(key, "AGREEMENT_RECORD_FAILED");
+          return;
+        }
+
+        setSession({ key, prepared: { token: result.iframe_token, reference, statusToken: result.statusToken || "" }, error: null });
+      } catch {
+        if (cancelled) return;
+        notifySession({ errorCode: "NETWORK_ERROR" });
+        fail(key, "NETWORK_ERROR");
+      }
+    }, REQUEST_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [sessionKey, zeroOrder]);
+
+  const retry = useCallback(() => {
+    // Yükleme sürerken ikinci istek açılmaz.
+    if (loading || zeroStarting) return;
+    // Sıfır tutarlı siparişte "Siparişi tamamla" adımına dönülür; diğerlerinde aynı girdilerle yeni oturum.
+    if (zeroOrder) setSession({ key: "", prepared: null, error: null });
+    else setAttempt((value) => value + 1);
+  }, [loading, zeroOrder, zeroStarting]);
+
+  /** Sıfır tutarlı sipariş: kullanıcının açık onayıyla sunucuda tamamlanır. */
+  const completeZeroOrder = useCallback(async () => {
+    if (zeroStarting || !contextReady || !sessionKey) return;
+    const key = sessionKey;
+    setZeroStarting(true);
+    setSession({ key: "", prepared: null, error: null });
+    try {
+      const result = await requestSession();
+      if (!result.success || !result.zero_payment) {
+        notifySession({ errorCode: result.errorCode || "PAYMENT_SESSION_FAILED" });
+        fail(key, result.errorCode, result.message);
         return;
       }
-
-      // Required, not fire-and-forget: if this fails, no actionable payment
-      // session is shown, even though a pending transaction row now exists
-      // (it will simply expire via the existing 30-minute stale-pending TTL).
-      const confirmed = await confirmPaymentAgreements(result.merchant_oid || result.reference || "", legalVersions);
-      if (!confirmed) {
-        setError({ message: paymentErrorMessage("AGREEMENT_RECORD_FAILED", locale), requiresLogin: false });
-        return;
+      notifySession({ reference: result.reference || result.merchant_oid, zero: true });
+      if (result.reference && result.statusToken) {
+        router.push(`${paymentSuccessPath(locale)}?reference=${encodeURIComponent(result.reference)}&token=${encodeURIComponent(result.statusToken)}`);
       }
-
-      setPrepared({
-        token: result.iframe_token || "",
-        reference: result.reference || result.merchant_oid || "",
-        statusToken: result.statusToken || "",
-      });
     } catch {
       notifySession({ errorCode: "NETWORK_ERROR" });
-      setError({ message: paymentErrorMessage("NETWORK_ERROR", locale), requiresLogin: false });
+      fail(key, "NETWORK_ERROR");
     } finally {
-      inFlightRef.current = false;
-      setStarting(false);
+      setZeroStarting(false);
     }
-  }, [contextReady, couponCode, guardianUserId, isTr, learnerId, locale, onSessionResult, packageIds, paymentPhone, router]);
+  }, [contextReady, fail, locale, notifySession, requestSession, router, sessionKey, zeroStarting]);
 
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const iframeOpen = Boolean(prepared?.token);
-
   useEffect(() => {
     onIframeChange?.(iframeOpen);
   }, [iframeOpen, onIframeChange]);
 
-  // Safe server-side audit logging when iframe mounts
+  // Sunucu tarafı denetim kaydı: iframe DOM'a girdiğinde.
   useEffect(() => {
-    if (!prepared?.token || !prepared?.reference || !prepared?.statusToken) return;
+    if (!prepared?.token || !prepared.reference || !prepared.statusToken) return;
     void recordPaymentClientEvent(prepared.reference, prepared.statusToken, "paytr_iframe_opened");
   }, [prepared?.token, prepared?.reference, prepared?.statusToken]);
 
+  // PayTR formu makul sürede yüklenmezse sonsuz yükleme yerine hata + yeniden dene.
+  useEffect(() => {
+    if (!prepared?.token || frameLoaded) return;
+    const key = sessionKey;
+    const timer = window.setTimeout(() => fail(key, "PAYTR_FRAME_TIMEOUT", isTr
+      ? "PayTR güvenli ödeme formuna ulaşılamadı."
+      : "The secure PayTR payment form could not be reached."), IFRAME_LOAD_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [fail, frameLoaded, isTr, prepared?.token, sessionKey]);
+
   /**
    * PayTR'nin resmi iframeResizer betiği, ödeme formunun gerçek yüksekliğini
-   * üst pencereye bildirip çerçeveyi büyütür. Yalnızca ödeme oturumu
-   * hazırlandıktan sonra, yani iframe DOM'a girdikten sonra yüklenir.
-   *
-   * Betik yüklenemezse hiçbir şey bozulmaz: iframe en az 850px yüksekliğiyle
-   * ve kaydırmasıyla kalır, kullanıcı butona her durumda ulaşır.
+   * üst pencereye bildirip çerçeveyi büyütür. Betik yüklenemezse iframe en az
+   * 600px yüksekliğiyle ve kendi kaydırmasıyla kalır; PayTR'nin ödeme butonuna
+   * her durumda ulaşılır.
    */
   useEffect(() => {
     if (!prepared?.token) return;
@@ -239,143 +326,109 @@ export function HostedCardPanel({
     };
   }, [prepared?.token]);
 
+  const legalDocs = (
+    <>
+      <button type="button" onClick={() => onOpenLegalDoc("preInformation")}>
+        {isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}
+      </button>
+      {", "}
+      <button type="button" onClick={() => onOpenLegalDoc("salesAgreement")}>
+        {isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}
+      </button>
+      {isTr ? " ve " : " and "}
+      <button type="button" onClick={() => onOpenLegalDoc("refundPolicy")}>
+        {isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}
+      </button>
+    </>
+  );
+
+  let body: ReactNode;
+  if (error) {
+    body = (
+      <div role="alert" aria-live="assertive" className={styles.payError} data-paytr-error="">
+        <p>{isTr ? "Ödeme formu yüklenemedi. Tekrar deneyin." : "The payment form could not be loaded. Please try again."}</p>
+        {error.detail ? <span className={styles.payErrorDetail}>{error.detail}</span> : null}
+        {error.requiresLogin ? (
+          <button
+            type="button"
+            onClick={() => {
+              const next = `${localizedPath("payment", locale)}${window.location.search}`;
+              router.push(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
+            }}
+            className={styles.ghostBtn}
+          >
+            {isTr ? "Yeniden Giriş Yap" : "Sign In Again"}
+            <ArrowRight size={14} aria-hidden="true" />
+          </button>
+        ) : (
+          <button type="button" onClick={retry} disabled={loading} className={styles.ghostBtn} data-paytr-retry="">
+            <RefreshCw size={14} aria-hidden="true" />
+            {isTr ? "Tekrar dene" : "Try again"}
+          </button>
+        )}
+      </div>
+    );
+  } else if (prepared?.token) {
+    body = (
+      <div className={styles.iframeBox} data-paytr-frame-state={frameLoaded ? "loaded" : "loading"}>
+        {!frameLoaded ? (
+          <div className={styles.frameLoading} aria-live="polite">
+            <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+            <span>{isTr ? "PayTR güvenli ödeme formu yükleniyor…" : "Loading the secure PayTR payment form…"}</span>
+          </div>
+        ) : null}
+        <iframe
+          // Her yeni oturum yepyeni bir iframe elemanıdır: React eski elemanı
+          // yeniden kullanıp tüketilmiş bir token'ı ikinci kez yükleyemez.
+          key={prepared.token}
+          id="paytriframe"
+          title={isTr ? "PayTR güvenli ödeme formu" : "PayTR secure payment form"}
+          src={`https://www.paytr.com/odeme/guvenli/${prepared.token}`}
+          scrolling="auto"
+          onLoad={() => setLoadedToken(prepared.token)}
+          data-paytr-iframe=""
+        />
+      </div>
+    );
+  } else if (loading) {
+    body = (
+      <div className={styles.payState} aria-live="polite" data-paytr-loading="">
+        <span className={styles.ic}><Loader2 size={15} className="animate-spin" aria-hidden="true" /></span>
+        <p>{isTr ? "PayTR güvenli ödeme formu hazırlanıyor…" : "Preparing the secure PayTR payment form…"}</p>
+      </div>
+    );
+  } else if (contextReady && zeroOrder) {
+    body = (
+      <div className={styles.zeroBox}>
+        <p>{isTr ? "Bu sipariş için kart ile ödeme gerekmiyor." : "No card payment is required for this order."}</p>
+        <button type="button" onClick={() => void completeZeroOrder()} disabled={zeroStarting} className={styles.zeroBtn} data-zero-order="">
+          {zeroStarting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}
+          {isTr ? "Siparişi tamamla" : "Complete order"}
+        </button>
+      </div>
+    );
+  } else {
+    body = (
+      <div className={styles.payState} aria-live="polite" data-paytr-pending="">
+        <span className={styles.ic}><LockKeyhole size={14} aria-hidden="true" /></span>
+        <p>{pendingMessage}</p>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      {prepared?.token ? (
-        <div className={styles.iframeBox}>
-          {/*
-            PayTR'nin ödeme formu (kart alanları + taksit seçenekleri + "Ödemeyi
-            Tamamla" butonu) sabit bir yüksekliğe sığmaz. Önceki sürümde iframe
-            `scrolling="no"` ile sabit yükseklikteydi ve dıştaki kap
-            `overflow-hidden` idi: formun altı -- yani ödemeyi tamamlayan buton
-            -- tamamen erişilemez oluyordu, ödeme bitirilemiyordu.
+    <div className={styles.payBox} data-pay-box="">
+      {body}
 
-            Çözüm PayTR'nin kendi iframeResizer entegrasyonu: iframe içeriği
-            yüksekliğini üst pencereye bildirir ve çerçeve içeriğe göre büyür,
-            böylece sayfa normal şekilde kaydırılır ve buton görünür olur.
-            Betik yüklenemezse `scrolling` varsayılanda kalır (auto), yani
-            kullanıcı yine de iframe içinde kaydırıp butona ulaşabilir --
-            para akışını tek bir üçüncü taraf betiğine bağlamıyoruz.
-          */}
-          <iframe
-            // Her yeni oturum yepyeni bir iframe elemanıdır: React eski
-            // elemanı yeniden kullanıp tüketilmiş bir token'ı ikinci kez
-            // yükleyemez.
-            key={prepared.token}
-            ref={iframeRef}
-            id="paytriframe"
-            title="PayTR Secure Payment"
-            src={`https://www.paytr.com/odeme/guvenli/${prepared.token}`}
-            scrolling="auto"
-            style={{ minHeight: "850px", width: "100%" }}
-          />
-          {/*
-            PayTR token'i tek kullanimliktir; kullanici geri gelip cerceveyi
-            yeniden yuklerse PayTR kendi sayfasinda "Bu odeme sayfasi artik
-            gecersiz" der. Bu buton kullaniciyi cikmaza birakmaz: tek tikla
-            yepyeni bir odeme oturumu baslatilir.
-          */}
-          <div className={styles.iframeFoot}>
-            <p>
-              {isTr
-                ? "Ödeme formu yüklenmediyse veya \"bu ödeme sayfası geçersiz\" uyarısı görüyorsanız:"
-                : "If the payment form did not load, or you see an \"invalid payment page\" warning:"}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setPrepared(null);
-                setError(null);
-                void handleProceedToPayment();
-              }}
-              disabled={starting}
-              className={styles.ghostBtn}
-            >
-              {starting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              {isTr ? "Yeni Ödeme Oturumu Başlat" : "Start a New Payment Session"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className={`${styles.payBox} ${contextReady ? styles.ready : ""}`} data-pay-box="">
-          {/* Görsel önizleme; gerçek kart alanları PayTR formunda. */}
-          <div className={styles.skeleton} aria-hidden="true">
-            <div className={styles.skField}><span>{isTr ? "Kart numarası" : "Card number"}</span><i>•••• •••• •••• ••••</i></div>
-            <div className={styles.skRow}>
-              <div className={styles.skField}><span>{isTr ? "Son kullanma" : "Expiry"}</span><i>{isTr ? "AA / YY" : "MM / YY"}</i></div>
-              <div className={styles.skField}><span>CVC</span><i>•••</i></div>
-            </div>
-          </div>
-          <div className={styles.payStatus}>
-            <span className={styles.ic}><LockKeyhole size={14} aria-hidden="true" /></span>
-            <p aria-live="polite">
-              {contextReady
-                ? (isTr ? "Hazır. Devam ettiğinizde PayTR güvenli kart formu açılır." : "Ready. The secure PayTR card form opens when you continue.")
-                : pendingMessage}
-            </p>
-          </div>
-
-          {error ? (
-            <div role="alert" aria-live="assertive" className={styles.payError}>
-              <p>{error.message}</p>
-              {error.requiresLogin ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = `${localizedPath("payment", locale)}${window.location.search}`;
-                    router.push(`${unifiedLoginPath(locale)}?next=${encodeURIComponent(next)}&source=checkout`);
-                  }}
-                  className={styles.ghostBtn}
-                >
-                  {isTr ? "Yeniden Giriş Yap" : "Sign In Again"}
-                  <ArrowRight size={14} />
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          <p className={styles.legal}>
-            {isTr ? "Ödeme butonuna tıklayarak " : "By clicking the pay button, you confirm that you have read and accepted the "}
-            <button type="button" onClick={() => onOpenLegalDoc("preInformation")}>
-              {isTr ? "Ön Bilgilendirme Formu" : "Pre-Information Form"}
-            </button>
-            {", "}
-            <button type="button" onClick={() => onOpenLegalDoc("salesAgreement")}>
-              {isTr ? "Mesafeli Satış Sözleşmesi" : "Distance Sales Agreement"}
-            </button>
-            {isTr ? " ve " : " and "}
-            <button type="button" onClick={() => onOpenLegalDoc("refundPolicy")}>
-              {isTr ? "İptal ve İade Koşulları" : "Cancellation & Refund Policy"}
-            </button>
-            {isTr
-              ? "'nı okuduğunuzu ve kabul ettiğinizi; siparişin ödeme yükümlülüğü doğurduğunu onaylamış olursunuz."
-              : ", and acknowledge that placing the order creates a payment obligation."}
-          </p>
-
-          {error?.requiresLogin ? null : (
-            <button
-              ref={payButtonRef}
-              type="button"
-              onClick={() => void handleProceedToPayment()}
-              disabled={!contextReady || starting}
-              className={styles.payBtn}
-              data-pay-button=""
-            >
-              {starting ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                  {isTr ? "Ödeme hazırlanıyor…" : "Preparing payment…"}
-                </>
-              ) : (
-                <>
-                  <LockKeyhole size={16} aria-hidden="true" />
-                  <span>{payLabel}</span>
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      )}
+      <p className={styles.legal} data-legal-consent="">
+        {zeroOrder
+          ? (isTr ? "Siparişi tamamlayarak " : "By completing the order, you confirm that you have read and accepted the ")
+          : (isTr ? "Ödemeyi PayTR güvenli formunda tamamlayarak " : "By completing the payment in the secure PayTR form, you confirm that you have read and accepted the ")}
+        {legalDocs}
+        {isTr
+          ? "'nı okuduğunuzu ve kabul ettiğinizi; siparişin ödeme yükümlülüğü doğurduğunu onaylamış olursunuz."
+          : ", and acknowledge that placing the order creates a payment obligation."}
+      </p>
 
       <div className={styles.trust}>
         <span><ShieldCheck size={14} aria-hidden="true" />{isTr ? "3D Secure doğrulama" : "3D Secure verification"}</span>

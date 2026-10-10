@@ -32,6 +32,13 @@ const WRAPPER = {
 };
 const CURRENT_ROUTE = { login: "/tr/giris/", pricing: "/tr/ucretler/", about: "/tr/hakkimizda/" };
 const EN_ROUTE = { login: "/en/login/", pricing: "/en/pricing/", about: "/en/about/" };
+// The site's canonical Navbar replaces the reference headers, so their markup is
+// not emitted and every selector that only styles the old header is dropped.
+const HEADER_ONLY_CLASSES = {
+  login: ["hw", "logo", "nav", "hr", "oa-lang", "btn-o", "hfl", "hb", "oh-panel", "oh-pb", "p1", "p2", "oh-ml"],
+  pricing: ["oh", "oh-in", "oh-logo", "oh-nav", "oh-act", "oa-lang", "oh-sep", "oh-login", "oh-av", "oh-cta", "f", "oh-burger", "m", "x", "oh-static", "oh-panel", "oh-pb", "p1", "p2", "oh-ml"],
+};
+HEADER_ONLY_CLASSES.about = HEADER_ONLY_CLASSES.pricing;
 
 const PUBLIC_DIR = path.join(ROOT, "public", "reference");
 const OUT_DIR = path.join(ROOT, "src", "components", "reference", "generated");
@@ -119,10 +126,29 @@ function scopeCss(css, page) {
     keyframes.set(rule.params, renamed);
     rule.params = renamed;
   });
+  const headerOnly = new RegExp(
+    `(?:^|[\\s>+~(,])header(?![\\w-])|\\[data-oh\\]|\\.(?:${HEADER_ONLY_CLASSES[page].join("|")})(?![\\w-])`,
+  );
   root.walkRules((rule) => {
     if (rule.parent?.type === "atrule" && /keyframes$/.test(rule.parent.name)) return;
-    rule.selectors = rule.selectors.map((selector) => scopeSelector(selector, scope));
+    const kept = rule.selectors.filter((selector) => !headerOnly.test(selector));
+    if (!kept.length) {
+      rule.remove();
+      return;
+    }
+    rule.selectors = kept.map((selector) => scopeSelector(selector, scope));
   });
+  // Drop at-rules (e.g. `@container oh`) left empty by the header removal.
+  let removed = true;
+  while (removed) {
+    removed = false;
+    root.walkAtRules((atRule) => {
+      if (atRule.nodes && atRule.nodes.length === 0) {
+        atRule.remove();
+        removed = true;
+      }
+    });
+  }
   root.walkDecls(/^(-webkit-)?animation(-name)?$/, (decl) => {
     decl.value = decl.value
       .split(",")
@@ -192,7 +218,7 @@ async function processPage(page) {
   const { css, markup } = extractStyles(html);
   const body = between(markup, "<body>", "</body>", { includeStart: false, includeEnd: false });
   const fragments = {};
-  fragments.header = clean(between(body, page === "login" ? "<header>" : '<header class="oh"', "</header>"));
+  between(body, page === "login" ? "<header>" : '<header class="oh"', "</header>"); // asserts the header we drop exists
   fragments.footer = contactPlaceholders(clean(between(body, '<footer class="of">', "</footer>")));
   if (page === "pricing") {
     const main = between(body, "</header>", "<!--OF-START-->", { includeStart: false, includeEnd: false });

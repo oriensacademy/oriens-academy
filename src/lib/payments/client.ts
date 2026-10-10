@@ -13,6 +13,8 @@ export interface CreatePaytrTokenInput {
   learnerId: string;
   guardianUserId?: string;
   paymentPhone: string;
+  /** Tek bir form açılışının kimliği; sunucu token'ı yalnız aynı kimliğin tekrarında yeniden verir. */
+  clientRequestId?: string;
   locale: "tr" | "en";
   termsAccepted?: boolean;
   refundPolicyAccepted?: boolean;

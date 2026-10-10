@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import "./generated/reference-pricing.css";
-import { PRICING_AFTER_HTML, PRICING_FOOTER_HTML, PRICING_HEADER_HTML, PRICING_HERO_HTML } from "./generated/markup";
+import { PRICING_AFTER_HTML, PRICING_FOOTER_HTML, PRICING_HERO_HTML } from "./generated/markup";
 import {
+  NavbarSpacer,
   ReferenceFonts,
   ReferenceHtml,
   fillContact,
   useInternalLinkNavigation,
   useReferenceContact,
-  useReferenceHeader,
 } from "./reference-shared";
 import { CANONICAL_DEFAULT_PACKAGES, getPublicPricingPackages, isBestValueBadge, selectPurchasablePackages, type PublicPricingPackage } from "@/lib/admin/pricing";
 import { getLocalizedPackageDisplayPrice } from "@/lib/pricing/package-display";
@@ -102,7 +102,6 @@ function pickPackages(packages: PublicPricingPackage[]) {
 
 export function ReferencePricingPage() {
   const scopeRef = useRef<HTMLDivElement>(null);
-  useReferenceHeader(scopeRef);
   useInternalLinkNavigation(scopeRef);
   const contact = useReferenceContact();
   const { showPricing, loading: settingsLoading } = usePublicSettings();
@@ -121,10 +120,11 @@ export function ReferencePricingPage() {
   const pricingHidden = !settingsLoading && !showPricing;
 
   return (
+    <>
+    <NavbarSpacer />
     <div ref={scopeRef} className="reference-pricing-page">
       <ReferenceFonts />
       <div style={{ fontFamily: "Inter, system-ui, sans-serif", color: "#10271B", background: "#F6F8F3", width: "100%", fontSize: 16, lineHeight: 1.65 }}>
-        <ReferenceHtml html={PRICING_HEADER_HTML} />
         <main id="main-content" style={{ display: "contents" }}>
           <ReferenceHtml html={PRICING_HERO_HTML} />
           <section className="pk-wrap" aria-label="Ders paketleri">
@@ -144,5 +144,6 @@ export function ReferencePricingPage() {
         <ReferenceHtml html={fillContact(PRICING_FOOTER_HTML, contact)} />
       </div>
     </div>
+    </>
   );
 }

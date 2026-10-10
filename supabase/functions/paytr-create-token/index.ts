@@ -45,6 +45,11 @@ Deno.serve(async (req: Request) => {
     const refundPolicyAccepted = payload.refundPolicyAccepted === true;
     const legalAccepted = termsAccepted && refundPolicyAccepted;
     const legalVersions = (payload.legalVersions as Record<string, string>) || {};
+    // Her otomatik form açılışı kendi kimliğiyle gelir. Token yalnızca aynı
+    // isteğin ağ tekrarında yeniden verilir; yeni bir açılış (yenileme, kupon
+    // kaldırma, telefon değişikliği) her zaman taze bir PayTR oturumu alır.
+    const rawClientRequestId = typeof payload.clientRequestId === "string" ? payload.clientRequestId.trim() : "";
+    const clientRequestId = /^[A-Za-z0-9-]{8,64}$/.test(rawClientRequestId) ? rawClientRequestId : null;
     // Defense-in-depth: the frontend only ever calls this endpoint from the
     // single "Ödemeye Geç" action, which always sends both flags true (the
     // click itself is the acceptance). A request missing either flag never
@@ -170,6 +175,7 @@ Deno.serve(async (req: Request) => {
     const TOKEN_REUSE_WINDOW_MS = 90 * 1000;
     const isReusableToken = (meta: Record<string, unknown> | null | undefined) => {
       if (!meta?.iframe_token) return false;
+      if (clientRequestId && meta.client_request_id !== clientRequestId) return false;
       const issuedAt = Date.parse(String(meta.iframe_token_issued_at ?? ""));
       if (!Number.isFinite(issuedAt)) return false;
       return Date.now() - issuedAt < TOKEN_REUSE_WINDOW_MS;
@@ -250,6 +256,7 @@ Deno.serve(async (req: Request) => {
       package_list_price_snapshot: baseAmount, package_discount_snapshot: 0, coupon_discount_snapshot: discountAmount, amount_paid: finalAmount,
       is_preload: true,
       checkout_idempotency_key: checkoutIdempotencyKey,
+      client_request_id: clientRequestId,
       status_token: statusToken,
     };
 
